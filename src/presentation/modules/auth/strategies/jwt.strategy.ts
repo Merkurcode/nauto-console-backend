@@ -29,12 +29,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User no longer active or not found');
     }
 
-    // Return the payload with roles and permissions which will be injected into the request object
+    // Return the payload with roles, permissions, and tenant info which will be injected into the request object
     return {
       sub: payload.sub,
       email: payload.email,
       roles: payload.roles || [],
       permissions: payload.permissions || [],
+      tenantId: payload.tenantId,
     };
   }
 }

@@ -107,7 +107,6 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
     const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
       user,
       Array.from(userPermissions),
-      true, // Email is verified at this point
     );
 
     this.logger.log({
@@ -119,7 +118,7 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
     return {
       accessToken,
       refreshToken,
-      user: UserMapper.toAuthResponse(user, true),
+      user: UserMapper.toAuthResponse(user),
       message: this.i18n.t('common.auth.login.success'),
     };
   }

@@ -1,0 +1,138 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+export interface IAddressResponse {
+  country: string;
+  state: string;
+  city: string;
+  street: string;
+  exteriorNumber: string;
+  interiorNumber?: string;
+  postalCode: string;
+  fullAddress: string;
+}
+
+export interface ICompanyResponse {
+  id: string;
+  name: string;
+  description: string;
+  businessSector: string;
+  businessUnit: string;
+  host: string;
+  address: IAddressResponse;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class AddressResponse implements IAddressResponse {
+  @ApiProperty({
+    example: 'United States',
+    description: 'Country name',
+  })
+  country: string;
+
+  @ApiProperty({
+    example: 'California',
+    description: 'State name',
+  })
+  state: string;
+
+  @ApiProperty({
+    example: 'Los Angeles',
+    description: 'City name',
+  })
+  city: string;
+
+  @ApiProperty({
+    example: 'Main Street',
+    description: 'Street name',
+  })
+  street: string;
+
+  @ApiProperty({
+    example: '123',
+    description: 'Exterior number',
+  })
+  exteriorNumber: string;
+
+  @ApiProperty({
+    example: 'A',
+    description: 'Interior number',
+    required: false,
+  })
+  interiorNumber?: string;
+
+  @ApiProperty({
+    example: '90210',
+    description: 'Postal code',
+  })
+  postalCode: string;
+
+  @ApiProperty({
+    example: 'Main Street 123 A, Los Angeles, California, United States 90210',
+    description: 'Full formatted address',
+  })
+  fullAddress: string;
+}
+
+export class CompanyResponse implements ICompanyResponse {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Company unique identifier (also serves as Tenant ID for multi-tenant operations)',
+  })
+  id: string;
+
+  @ApiProperty({
+    example: 'Acme Corporation',
+    description: 'Company name',
+  })
+  name: string;
+
+  @ApiProperty({
+    example: 'A leading technology company focused on innovative solutions',
+    description: 'Company description',
+  })
+  description: string;
+
+  @ApiProperty({
+    example: 'Technology',
+    description: 'Business sector',
+  })
+  businessSector: string;
+
+  @ApiProperty({
+    example: 'Software Development',
+    description: 'Business unit',
+  })
+  businessUnit: string;
+
+  @ApiProperty({
+    example: 'acme-corp.com',
+    description: 'Company host domain',
+  })
+  host: string;
+
+  @ApiProperty({
+    type: AddressResponse,
+    description: 'Company address',
+  })
+  address: AddressResponse;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether the company is active',
+  })
+  isActive: boolean;
+
+  @ApiProperty({
+    example: '2023-01-01T00:00:00.000Z',
+    description: 'Company creation date',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    example: '2023-01-01T00:00:00.000Z',
+    description: 'Company last update date',
+  })
+  updatedAt: Date;
+}

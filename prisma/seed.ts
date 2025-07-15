@@ -77,6 +77,24 @@ const permissions = [
     resource: 'file',
     action: 'manage',
   },
+  {
+    name: 'company:read',
+    description: 'Can read company information',
+    resource: 'company',
+    action: 'read',
+  },
+  {
+    name: 'company:write',
+    description: 'Can create and update companies',
+    resource: 'company',
+    action: 'write',
+  },
+  {
+    name: 'company:delete',
+    description: 'Can delete companies',
+    resource: 'company',
+    action: 'delete',
+  },
 ];
 
 // Map of role names to permissions they should have
@@ -92,8 +110,11 @@ const rolePermissionsMap = {
     'storage:read',
     'storage:delete',
     'storage:manage',
+    'company:read',
+    'company:write',
+    'company:delete',
   ],
-  user: ['user:read', 'storage:manage', 'storage:write', 'storage:read'],
+  user: ['user:read', 'storage:manage', 'storage:write', 'storage:read', 'company:read'],
 };
 
 // Default admin user
@@ -102,6 +123,24 @@ const adminUser = {
   firstName: 'Admin',
   lastName: 'User',
   password: 'Admin@123', // This will be hashed before saving
+};
+
+// Default company
+const defaultCompany = {
+  name: 'Default Company',
+  description: 'Default company for seed data',
+  businessSector: 'Technology',
+  businessUnit: 'Software Development',
+  host: 'default-company.local',
+  address: {
+    country: 'United States',
+    state: 'California',
+    city: 'San Francisco',
+    street: 'Market Street',
+    exteriorNumber: '123',
+    postalCode: '94105',
+    interiorNumber: 'Suite 100',
+  },
 };
 
 // Helper function to hash password
@@ -173,6 +212,23 @@ async function main() {
     }
   }
 
+  // Create default company
+  console.log('Creating default company...');
+  const company = await prisma.company.upsert({
+    where: { name: defaultCompany.name },
+    update: {},
+    create: {
+      name: defaultCompany.name,
+      description: defaultCompany.description,
+      businessSector: defaultCompany.businessSector,
+      businessUnit: defaultCompany.businessUnit,
+      host: defaultCompany.host,
+      address: {
+        create: defaultCompany.address,
+      },
+    },
+  });
+
   // Create admin user
   console.log('Creating admin user...');
   const hashedPassword = await hashPassword(adminUser.password);
@@ -185,6 +241,7 @@ async function main() {
       passwordHash: hashedPassword,
       firstName: adminUser.firstName,
       lastName: adminUser.lastName,
+      companyId: company.id,
     },
   });
 

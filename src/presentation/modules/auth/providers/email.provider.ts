@@ -130,8 +130,8 @@ export class EmailProvider implements OnModuleInit {
           <h2 style="color: #333;">Reset Your Password</h2>
           <p>We received a request to reset your password. Click the button below to create a new password:</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetLink}" 
-                style="background-color: #4CAF50; color: white; padding: 12px 25px; 
+            <a href="${resetLink}"
+                style="background-color: #4CAF50; color: white; padding: 12px 25px;
                 text-decoration: none; border-radius: 4px; font-weight: bold;">
               Reset Password
             </a>
@@ -182,8 +182,8 @@ export class EmailProvider implements OnModuleInit {
             <li>Connect with other users</li>
           </ul>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${loginLink}" 
-                style="background-color: #4CAF50; color: white; padding: 12px 25px; 
+            <a href="${loginLink}"
+                style="background-color: #4CAF50; color: white; padding: 12px 25px;
                 text-decoration: none; border-radius: 4px; font-weight: bold;">
               Get Started
             </a>
@@ -198,6 +198,42 @@ export class EmailProvider implements OnModuleInit {
     const result = await transporter.sendMail(mailOptions);
 
     // For test accounts, log the preview URL
+    if (this.configService.get('NODE_ENV') !== 'production') {
+      // eslint-disable-next-line no-console
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
+    }
+
+    return result;
+  }
+
+  /**
+   * Envía un correo electrónico genérico
+   * @param to destinatario
+   * @param subject asunto
+   * @param content contenido (texto o HTML)
+   * @param isHtml si el contenido es HTML
+   */
+  async sendEmail(
+    to: string,
+    subject: string,
+    content: string,
+    isHtml: boolean = false,
+  ): Promise<nodemailer.SentMessageInfo> {
+    const transporter = await this.getTransporter();
+    const appName = this.configService.get('APP_NAME', 'Nuestra Aplicación');
+    const from = `${appName} <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`;
+
+    const mailOptions = {
+      from,
+      to,
+      subject,
+      text: isHtml ? undefined : content,
+      html: isHtml ? content : undefined,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+
+    // Para cuentas de test, mostrar la URL de previsualización
     if (this.configService.get('NODE_ENV') !== 'production') {
       // eslint-disable-next-line no-console
       console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));

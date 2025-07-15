@@ -63,11 +63,14 @@ async function bootstrap() {
   // Swagger setup
   const config = new DocumentBuilder()
     .setTitle('NestJS Clean Architecture API')
-    .setDescription('The API documentation for the NestJS Clean Architecture template')
+    .setDescription(
+      'The API documentation for the NestJS Clean Architecture template with Multi-Tenant support',
+    )
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
     .addTag('roles', 'Role management endpoints')
+    .addTag('companies', 'Company management endpoints (Multi-Tenant)')
     .addTag('admin', 'Admin endpoints')
     .addGlobalParameters({
       name: 'Accept-Language',
@@ -81,13 +84,24 @@ async function bootstrap() {
         description: 'Language preference for the response',
       },
     })
+    .addGlobalParameters({
+      name: 'X-Tenant-ID',
+      in: 'header',
+      required: false,
+      schema: {
+        type: 'string',
+        format: 'uuid',
+        example: '550e8400-e29b-41d4-a716-446655440000',
+        description: 'Tenant ID for multi-tenant operations (optional, usually extracted from JWT)',
+      },
+    })
     .addBearerAuth(
       {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'JWT',
-        description: 'Enter JWT token',
+        description: 'Enter JWT token (includes tenantId for multi-tenant operations)',
         in: 'header',
       },
       'JWT-auth', // This is a key to be used in @ApiBearerAuth() decorator

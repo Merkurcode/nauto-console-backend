@@ -14,6 +14,9 @@ import { Password } from '@core/value-objects/password.vo';
 import { FirstName, LastName } from '@core/value-objects/name.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
+import { PasswordGenerator } from '@shared/utils/password-generator';
+import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
+import { EmailTemplates } from '@shared/services/email/email-templates';
 
 @Injectable()
 export class UserService {
@@ -23,19 +26,29 @@ export class UserService {
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
     private readonly domainValidationService: DomainValidationService,
+    private readonly emailProvider: EmailProvider,
   ) {}
 
   async createUser(
     emailStr: string,
-    passwordStr: string,
+    passwordStr: string | undefined,
     firstName: string,
     lastName: string,
   ): Promise<User> {
     // Validate email using value object
     const email = new Email(emailStr);
 
+    // Generate password if not provided
+    let actualPassword = passwordStr;
+    let passwordWasGenerated = false;
+
+    if (!passwordStr) {
+      actualPassword = PasswordGenerator.generateSecurePassword();
+      passwordWasGenerated = true;
+    }
+
     // Validate password using value object
-    const password = new Password(passwordStr);
+    const password = new Password(actualPassword!);
 
     // Check if user already exists
     const existingUser = await this.userRepository.findByEmail(email.getValue());
@@ -49,6 +62,9 @@ export class UserService {
     // Create a new user with value objects for name
     const user = User.create(email, passwordHash, new FirstName(firstName), new LastName(lastName));
 
+    // Mark email as verified (removing email verification requirement)
+    user.markEmailAsVerified();
+
     // Assign default role
     const defaultRole = await this.roleRepository.findDefaultRole();
     if (defaultRole) {
@@ -56,7 +72,19 @@ export class UserService {
     }
 
     // Save the user
-    return this.userRepository.create(user);
+    const savedUser = await this.userRepository.create(user);
+
+    // Send welcome email if password was generated
+    if (passwordWasGenerated) {
+      try {
+        await this.emailProvider.sendWelcomeEmail(emailStr, firstName);
+      } catch (error) {
+        console.error('Error sending welcome email:', error);
+        // Continue even if email sending fails
+      }
+    }
+
+    return savedUser;
   }
 
   async validateCredentials(emailStr: string, passwordStr: string): Promise<User | null> {
@@ -232,5 +260,34 @@ export class UserService {
 
   private async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
+  }
+
+  private async sendWelcomeEmail(
+    email: string,
+    firstName: string,
+    password: string,
+    companyId?: string,
+  ): Promise<void> {
+    let companyName: string | undefined;
+
+    // Get company name if companyId is provided
+    if (companyId) {
+      try {
+        // Note: We would need to inject the company repository to get the company name
+        // For now, we'll use a placeholder
+        companyName = 'Mi Empresa'; // TODO: Get actual company name from repository
+      } catch (error) {
+        console.error('Error fetching company name:', error);
+      }
+    }
+
+    const htmlContent = EmailTemplates.welcomeWithPassword(firstName, email, password, companyName);
+
+    await this.emailProvider.sendEmail(
+      email,
+      'Bienvenido a la plataforma - Tus credenciales de acceso',
+      htmlContent,
+      true, // isHtml
+    );
   }
 }

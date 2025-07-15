@@ -18,17 +18,22 @@ model User {
   firstName     String
   lastName      String
   isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
   otpEnabled    Boolean   @default(false)
   otpSecret     String?
   lastLoginAt   DateTime?
+  companyId     String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
   roles         UserRole[]
   otps          Otp[]
   refreshTokens RefreshToken[]
   passwordResets PasswordReset[]
   files         File[]
+  
+  @@index([companyId])
 }
 
 model Role {
@@ -137,4 +142,35 @@ model File {
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+}
+
+model Company {
+  id            String    @id @default(uuid())
+  name          String    @unique
+  description   String
+  businessSector String
+  businessUnit  String
+  host          String    @unique
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  address       Address?
+  users         User[]
+}
+
+model Address {
+  id              String    @id @default(uuid())
+  country         String
+  state           String
+  city            String
+  street          String
+  exteriorNumber  String
+  interiorNumber  String?
+  postalCode      String
+  companyId       String    @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }

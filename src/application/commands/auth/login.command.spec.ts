@@ -134,13 +134,13 @@ describe('LoginCommandHandler', () => {
     roleRepository = module.get<IRoleRepository>(ROLE_REPOSITORY);
 
     // Mock UserMapper if needed
-    jest.spyOn(UserMapper, 'toAuthResponse').mockImplementation((user, emailVerified) => {
+    jest.spyOn(UserMapper, 'toAuthResponse').mockImplementation(user => {
       return {
         id: user.id.getValue(),
         email: user.email.getValue(),
         firstName: user.firstName.getValue(),
         lastName: user.lastName.getValue(),
-        emailVerified: emailVerified || false,
+        emailVerified: user.emailVerified,
         roles: user.roles.map(role => ({
           id: role.id.getValue(),
           name: role.name,
@@ -274,8 +274,8 @@ describe('LoginCommandHandler', () => {
     expect(authService.updateLastLogin).toHaveBeenCalledWith(user.id.getValue());
     expect(authService.isEmailVerified).toHaveBeenCalledWith('test@example.com');
     expect(roleRepository.findById).toHaveBeenCalledWith(user.roles[0].id.getValue());
-    expect(tokenProvider.generateTokens).toHaveBeenCalledWith(user, ['user:read'], true);
-    expect(UserMapper.toAuthResponse).toHaveBeenCalledWith(user, true);
+    expect(tokenProvider.generateTokens).toHaveBeenCalledWith(user, ['user:read']);
+    expect(UserMapper.toAuthResponse).toHaveBeenCalledWith(user);
   });
 
   it('should collect permissions from all user roles', async () => {
@@ -352,7 +352,6 @@ describe('LoginCommandHandler', () => {
     expect(tokenProvider.generateTokens).toHaveBeenCalledWith(
       user,
       expect.arrayContaining(['user:read', 'user:write']),
-      true,
     );
 
     // Also check that roleRepository.findById was called for both roles

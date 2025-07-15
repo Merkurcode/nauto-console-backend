@@ -154,9 +154,11 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           firstName: user.firstName.getValue(),
           lastName: user.lastName.getValue(),
           isActive: user.isActive,
+          emailVerified: user.emailVerified,
           otpEnabled: user.otpEnabled,
           otpSecret: user.otpSecret,
           lastLoginAt: user.lastLoginAt,
+          companyId: user.companyId?.getValue(),
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -204,9 +206,11 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           firstName: user.firstName.getValue(),
           lastName: user.lastName.getValue(),
           isActive: user.isActive,
+          emailVerified: user.emailVerified,
           otpEnabled: user.otpEnabled,
           otpSecret: user.otpSecret,
           lastLoginAt: user.lastLoginAt,
+          companyId: user.companyId?.getValue(),
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -293,12 +297,14 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       firstName: record.firstName,
       lastName: record.lastName,
       isActive: record.isActive,
+      emailVerified: record.emailVerified,
       otpEnabled: record.otpEnabled,
       otpSecret: record.otpSecret || undefined,
       roles,
       lastLoginAt: record.lastLoginAt || undefined,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
+      companyId: record.companyId || undefined,
     });
   }
 }

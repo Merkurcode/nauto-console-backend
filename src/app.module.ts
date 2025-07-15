@@ -14,6 +14,7 @@ import { RoleModule } from '@presentation/modules/role/role.module';
 import { AdminModule } from '@presentation/modules/admin/admin.module';
 import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { HealthModule } from '@presentation/modules/health/health.module';
+import { CompanyModule } from '@presentation/modules/company/company.module';
 import { CoreModule } from '@core/core.module';
 
 // Global providers
@@ -60,6 +61,7 @@ import configuration from '@infrastructure/config/configuration';
     AdminModule,
     StorageModule,
     HealthModule,
+    CompanyModule,
   ],
   controllers: [],
   providers: [

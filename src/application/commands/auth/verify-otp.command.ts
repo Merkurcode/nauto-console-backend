@@ -47,6 +47,7 @@ export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand
     const payload = {
       sub: user.id.getValue(),
       email: user.email.getValue(),
+      emailVerified: user.emailVerified,
       roles: user.roles.map(role => role.name),
     };
 
@@ -61,7 +62,7 @@ export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand
     return {
       accessToken,
       refreshToken,
-      user: UserMapper.toAuthResponse(user, true),
+      user: UserMapper.toAuthResponse(user),
     };
   }
 }

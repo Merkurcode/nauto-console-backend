@@ -10,6 +10,7 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
 import { RoleRepository } from '@infrastructure/repositories/role.repository';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { CoreModule } from '@core/core.module';
+import { AuthModule } from '@presentation/modules/auth/auth.module';
 
 // Services
 import { UserService } from '@core/services/user.service';
@@ -38,7 +39,7 @@ const commandHandlers = [
 ];
 
 @Module({
-  imports: [CqrsModule, PrismaModule, CoreModule],
+  imports: [CqrsModule, PrismaModule, CoreModule, AuthModule],
   controllers: [UserController],
   providers: [
     // Services

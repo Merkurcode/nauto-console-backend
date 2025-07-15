@@ -16,13 +16,14 @@ export class TokenProvider {
   /**
    * Generate a JWT payload with user information
    */
-  buildPayload(user: User, permissions: string[], isEmailVerified: boolean) {
+  buildPayload(user: User, permissions: string[]) {
     return {
       sub: user.id.getValue(),
       email: user.email.getValue(),
-      emailVerified: isEmailVerified,
+      emailVerified: user.emailVerified,
       roles: user.roles.map(role => role.name),
       permissions: permissions,
+      tenantId: user.getTenantId(),
     };
   }
 
@@ -49,8 +50,8 @@ export class TokenProvider {
   /**
    * Generate both access and refresh tokens for a user
    */
-  async generateTokens(user: User, permissions: string[], isEmailVerified: boolean) {
-    const payload = this.buildPayload(user, permissions, isEmailVerified);
+  async generateTokens(user: User, permissions: string[]) {
+    const payload = this.buildPayload(user, permissions);
     const accessToken = this.generateAccessToken(payload);
     const refreshToken = await this.generateRefreshToken(user.id.getValue());
 

@@ -65,7 +65,7 @@ export class VerifyEmailCommandHandler
     const payload = {
       sub: user.id.getValue(),
       email: user.email.getValue(),
-      emailVerified: true,
+      emailVerified: user.emailVerified,
       roles: user.roles.map(role => role.name),
       permissions: Array.from(userPermissions),
     };
@@ -82,7 +82,7 @@ export class VerifyEmailCommandHandler
     return {
       accessToken,
       refreshToken,
-      user: UserMapper.toAuthResponse(user, true),
+      user: UserMapper.toAuthResponse(user),
     };
   }
 }

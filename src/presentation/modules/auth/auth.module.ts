@@ -122,6 +122,6 @@ const commandHandlers = [
     // Command handlers
     ...commandHandlers,
   ],
-  exports: [UserService, AuthService],
+  exports: [UserService, AuthService, EmailProvider],
 })
 export class AuthModule {}

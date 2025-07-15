@@ -3,6 +3,7 @@ import { Email } from '@core/value-objects/email.vo';
 import { FirstName, LastName } from '@core/value-objects/name.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 import { AggregateRoot } from '@core/events/domain-event.base';
 import {
   UserRegisteredEvent,
@@ -33,12 +34,14 @@ export class User extends AggregateRoot {
   private _firstName: FirstName;
   private _lastName: LastName;
   private _isActive: boolean;
+  private _emailVerified: boolean;
   private _otpEnabled: boolean;
   private _otpSecret?: string;
   private _roles: Role[];
   private _lastLoginAt?: Date;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
+  private _companyId?: CompanyId;
 
   private constructor(
     id: UserId,
@@ -48,6 +51,7 @@ export class User extends AggregateRoot {
     lastName: LastName,
     isActive: boolean = true,
     createdAt?: Date,
+    companyId?: CompanyId,
   ) {
     super();
     this._id = id;
@@ -56,10 +60,12 @@ export class User extends AggregateRoot {
     this._firstName = firstName;
     this._lastName = lastName;
     this._isActive = isActive;
+    this._emailVerified = false;
     this._otpEnabled = false;
     this._roles = [];
     this._createdAt = createdAt || new Date();
     this._updatedAt = new Date();
+    this._companyId = companyId;
   }
 
   // Factory method for creating new users
@@ -68,9 +74,19 @@ export class User extends AggregateRoot {
     passwordHash: string,
     firstName: FirstName,
     lastName: LastName,
+    companyId?: CompanyId,
   ): User {
     const userId = UserId.create();
-    const user = new User(userId, email, passwordHash, firstName, lastName);
+    const user = new User(
+      userId,
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+      true,
+      undefined,
+      companyId,
+    );
 
     user.addDomainEvent(
       new UserRegisteredEvent(userId, email.getValue(), firstName.getValue(), lastName.getValue()),
@@ -87,12 +103,14 @@ export class User extends AggregateRoot {
     firstName: string;
     lastName: string;
     isActive: boolean;
+    emailVerified?: boolean;
     otpEnabled: boolean;
     otpSecret?: string;
     roles: Role[];
     lastLoginAt?: Date;
     createdAt: Date;
     updatedAt: Date;
+    companyId?: string;
   }): User {
     const user = new User(
       UserId.fromString(data.id),
@@ -102,8 +120,10 @@ export class User extends AggregateRoot {
       new LastName(data.lastName),
       data.isActive,
       data.createdAt,
+      data.companyId ? CompanyId.fromString(data.companyId) : undefined,
     );
 
+    user._emailVerified = data.emailVerified || false;
     user._otpEnabled = data.otpEnabled;
     user._otpSecret = data.otpSecret;
     user._roles = data.roles;
@@ -138,6 +158,10 @@ export class User extends AggregateRoot {
     return this._isActive;
   }
 
+  get emailVerified(): boolean {
+    return this._emailVerified;
+  }
+
   get otpEnabled(): boolean {
     return this._otpEnabled;
   }
@@ -166,6 +190,10 @@ export class User extends AggregateRoot {
     return this._updatedAt;
   }
 
+  get companyId(): CompanyId | undefined {
+    return this._companyId;
+  }
+
   // Business methods with proper encapsulation and rules
   activate(): void {
     if (this._isActive) {
@@ -185,6 +213,16 @@ export class User extends AggregateRoot {
     this._isActive = false;
     this._updatedAt = new Date();
     this.addDomainEvent(new UserDeactivatedEvent(this._id));
+  }
+
+  markEmailAsVerified(): void {
+    if (this._emailVerified) {
+      return; // Already verified, no change needed
+    }
+
+    this._emailVerified = true;
+    this._updatedAt = new Date();
+    // Note: We could add an EmailVerifiedEvent if needed for domain events
   }
 
   enableTwoFactor(secret: string): void {
@@ -334,6 +372,28 @@ export class User extends AggregateRoot {
   isEligibleForAdminRole(): boolean {
     // Business rule: Only active users with at least one role can be admins
     return this._isActive && this.rolesCollection.hasAdminPrivileges();
+  }
+
+  assignToCompany(companyId: CompanyId): void {
+    if (!this._isActive) {
+      throw new InactiveUserException('assign to company');
+    }
+
+    this._companyId = companyId;
+    this._updatedAt = new Date();
+  }
+
+  removeFromCompany(): void {
+    if (!this._companyId) {
+      return;
+    }
+
+    this._companyId = undefined;
+    this._updatedAt = new Date();
+  }
+
+  getTenantId(): string | undefined {
+    return this._companyId?.getValue();
   }
 
   // Private helper methods

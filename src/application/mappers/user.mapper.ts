@@ -21,22 +21,22 @@ export class UserMapper {
   /**
    * Maps a User entity to a IUserBaseResponse DTO
    */
-  static toBaseResponse(user: User, emailVerified: boolean = false): IUserBaseResponse {
+  static toBaseResponse(user: User): IUserBaseResponse {
     return {
       id: user.id.getValue(),
       email: user.email.getValue(),
       firstName: user.firstName.getValue(),
       lastName: user.lastName.getValue(),
-      emailVerified,
+      emailVerified: user.emailVerified,
     };
   }
 
   /**
    * Maps a User entity to a IUserDetailResponse DTO
    */
-  static toDetailResponse(user: User, emailVerified: boolean = false): IUserDetailResponse {
+  static toDetailResponse(user: User): IUserDetailResponse {
     return {
-      ...this.toBaseResponse(user, emailVerified),
+      ...this.toBaseResponse(user),
       isActive: user.isActive,
       otpEnabled: user.otpEnabled,
       lastLoginAt: user.lastLoginAt,
@@ -49,9 +49,9 @@ export class UserMapper {
   /**
    * Maps a User entity to a IUserWithAuthResponse DTO
    */
-  static toAuthResponse(user: User, emailVerified: boolean = false): IUserWithAuthResponse {
+  static toAuthResponse(user: User): IUserWithAuthResponse {
     return {
-      ...this.toBaseResponse(user, emailVerified),
+      ...this.toBaseResponse(user),
       roles: user.roles?.map(role => this.toRoleResponse(role)) || [],
     };
   }
