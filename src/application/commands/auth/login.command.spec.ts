@@ -170,7 +170,7 @@ describe('LoginCommandHandler', () => {
     );
   });
 
-  it('should return email verification required response when email is not verified', async () => {
+  it('should skip email verification when disabled by default', async () => {
     // Arrange
     const command = new LoginCommand({
       email: 'test@example.com',
@@ -178,19 +178,30 @@ describe('LoginCommandHandler', () => {
     });
 
     const user = createTestUser();
+    const roleWithPermissions = createRoleWithPermissions();
+
     mockUserService.validateCredentials.mockResolvedValue(user);
     mockAuthService.updateLastLogin.mockResolvedValue(user);
     mockAuthService.isEmailVerified.mockResolvedValue(false);
+    mockRoleRepository.findById.mockResolvedValue(roleWithPermissions);
+    mockTokenProvider.generateTokens.mockResolvedValue({
+      accessToken: 'test-access-token',
+      refreshToken: 'test-refresh-token',
+    });
 
     // Act
     const result = await handler.execute(command);
 
-    // Assert
+    // Assert - Should proceed to generate tokens even if email is not verified
     expect(result).toEqual({
-      requiresEmailVerification: true,
-      userId: user.id.getValue(),
-      email: user.email.getValue(),
-      message: 'Email verification required',
+      accessToken: 'test-access-token',
+      refreshToken: 'test-refresh-token',
+      message: 'Login successful',
+      user: expect.objectContaining({
+        id: user.id.getValue(),
+        email: user.email.getValue(),
+        emailVerified: false, // Email verification is disabled by default
+      }),
     });
 
     expect(userService.validateCredentials).toHaveBeenCalledWith(
@@ -213,7 +224,7 @@ describe('LoginCommandHandler', () => {
 
     mockUserService.validateCredentials.mockResolvedValue(user);
     mockAuthService.updateLastLogin.mockResolvedValue(user);
-    mockAuthService.isEmailVerified.mockResolvedValue(true);
+    mockAuthService.isEmailVerified.mockResolvedValue(false);
 
     // Act
     const result = await handler.execute(command);
@@ -245,7 +256,7 @@ describe('LoginCommandHandler', () => {
 
     mockUserService.validateCredentials.mockResolvedValue(user);
     mockAuthService.updateLastLogin.mockResolvedValue(user);
-    mockAuthService.isEmailVerified.mockResolvedValue(true);
+    mockAuthService.isEmailVerified.mockResolvedValue(false);
     mockRoleRepository.findById.mockResolvedValue(roleWithPermissions);
     mockTokenProvider.generateTokens.mockResolvedValue({
       accessToken: 'test-access-token',
@@ -263,7 +274,7 @@ describe('LoginCommandHandler', () => {
       user: expect.objectContaining({
         id: user.id.getValue(),
         email: user.email.getValue(),
-        emailVerified: true,
+        emailVerified: false,
       }),
     });
 

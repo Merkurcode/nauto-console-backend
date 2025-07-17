@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
+import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
 import * as bcrypt from 'bcrypt';
 
 // Mocks
@@ -42,17 +43,25 @@ const createMockDomainValidationService = () => ({
   }),
 });
 
+// Mock EmailProvider
+const createMockEmailProvider = () => ({
+  sendEmail: jest.fn().mockResolvedValue(true),
+  sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+});
+
 describe('UserService', () => {
   let service: UserService;
   let userRepository;
   let roleRepository;
   let domainValidationService;
+  let emailProvider;
 
   beforeEach(async () => {
     // Create fresh mocks for each test
     userRepository = createMockUserRepository();
     roleRepository = createMockRoleRepository();
     domainValidationService = createMockDomainValidationService();
+    emailProvider = createMockEmailProvider();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,6 +69,7 @@ describe('UserService', () => {
         { provide: USER_REPOSITORY, useValue: userRepository },
         { provide: ROLE_REPOSITORY, useValue: roleRepository },
         { provide: DomainValidationService, useValue: domainValidationService },
+        { provide: EmailProvider, useValue: emailProvider },
       ],
     }).compile();
 

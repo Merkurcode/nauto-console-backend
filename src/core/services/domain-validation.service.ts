@@ -8,10 +8,12 @@ import {
   ActiveUserSpecification,
   CompleteUserAccountSpecification,
   AdminUserSpecification,
+  SuperAdminUserSpecification,
 } from '@core/specifications/user.specifications';
 import {
   DefaultRoleSpecification,
   AdminRoleSpecification,
+  SuperAdminRoleSpecification,
   HasMinimumPermissionsSpecification,
 } from '@core/specifications/role.specifications';
 import { BusinessRuleValidationException } from '@core/exceptions/domain-exceptions';
@@ -146,13 +148,23 @@ export class DomainValidationService {
   /**
    * Validate business rule compliance for user role assignment
    */
-  validateRoleAssignment(user: User, role: Role): ValidationResult {
+  validateRoleAssignment(user: User, role: Role, assigningUser?: User): ValidationResult {
     const result = new ValidationResult();
 
     // User must be active
     const activeUserSpec = new ActiveUserSpecification();
     if (!activeUserSpec.isSatisfiedBy(user)) {
       result.addError('Cannot assign roles to inactive users.');
+    }
+
+    // Check SUPERADMIN role assignment restrictions
+    const superAdminRoleSpec = new SuperAdminRoleSpecification();
+    if (superAdminRoleSpec.isSatisfiedBy(role) && assigningUser) {
+      // Only SUPERADMIN users can assign SUPERADMIN role
+      const superAdminUserSpec = new SuperAdminUserSpecification();
+      if (!superAdminUserSpec.isSatisfiedBy(assigningUser)) {
+        result.addError('Only SUPERADMIN users can assign SUPERADMIN role.');
+      }
     }
 
     // Check role compatibility

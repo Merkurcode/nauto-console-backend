@@ -7,6 +7,7 @@ export class RemoveRoleCommand {
   constructor(
     public readonly userId: string,
     public readonly roleId: string,
+    public readonly companyId?: string,
   ) {}
 }
 
@@ -17,7 +18,7 @@ export class RemoveRoleCommandHandler
   constructor(private readonly userService: UserService) {}
 
   async execute(command: RemoveRoleCommand): Promise<IUserDetailResponse> {
-    const { userId, roleId } = command;
+    const { userId, roleId, companyId: _companyId } = command;
 
     const user = await this.userService.removeRoleFromUser(userId, roleId);
 

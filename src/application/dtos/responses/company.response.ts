@@ -75,6 +75,25 @@ export class AddressResponse implements IAddressResponse {
   fullAddress: string;
 }
 
+export interface ITenantIdResponse {
+  tenantId: string;
+  host: string;
+}
+
+export class TenantIdResponse implements ITenantIdResponse {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Tenant unique identifier',
+  })
+  tenantId: string;
+
+  @ApiProperty({
+    example: 'acme-corp.com',
+    description: 'Host domain associated with the tenant',
+  })
+  host: string;
+}
+
 export class CompanyResponse implements ICompanyResponse {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',

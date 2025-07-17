@@ -7,6 +7,8 @@ export class AssignRoleCommand {
   constructor(
     public readonly userId: string,
     public readonly roleId: string,
+    public readonly companyId?: string,
+    public readonly assigningUserId?: string,
   ) {}
 }
 
@@ -17,9 +19,14 @@ export class AssignRoleCommandHandler
   constructor(private readonly userService: UserService) {}
 
   async execute(command: AssignRoleCommand): Promise<IUserDetailResponse> {
-    const { userId, roleId } = command;
+    const { userId, roleId, companyId, assigningUserId } = command;
 
-    const user = await this.userService.assignRoleToUser(userId, roleId);
+    const user = await this.userService.assignRoleToUser(
+      userId,
+      roleId,
+      companyId,
+      assigningUserId,
+    );
 
     // Use the mapper to convert to response DTO
     return UserMapper.toDetailResponse(user);

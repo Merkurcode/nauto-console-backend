@@ -6,6 +6,7 @@ export class ChangePasswordCommand {
     public readonly userId: string,
     public readonly newPassword: string,
     public readonly currentPassword?: string,
+    public readonly companyId?: string,
   ) {}
 }
 
@@ -14,7 +15,7 @@ export class ChangePasswordCommandHandler implements ICommandHandler<ChangePassw
   constructor(private readonly userService: UserService) {}
 
   async execute(command: ChangePasswordCommand): Promise<void> {
-    const { userId, newPassword, currentPassword } = command;
+    const { userId, newPassword, currentPassword, companyId: _companyId } = command;
 
     await this.userService.changePassword(userId, newPassword, currentPassword);
   }

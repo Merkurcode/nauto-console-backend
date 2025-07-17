@@ -51,11 +51,12 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
     // Update last login
     await this.authService.updateLastLogin(user.id.getValue());
 
-    // Check if email is verified
+    // Check if email is verified (disabled by default)
+    const emailVerificationEnabled = false; // TODO: Make this configurable
     const isEmailVerified = await this.authService.isEmailVerified(email);
 
     // If email verification is required and not verified, prompt user to verify first
-    if (!isEmailVerified) {
+    if (emailVerificationEnabled && !isEmailVerified) {
       this.logger.debug({
         message: 'Login requires email verification',
         userId: user.id.getValue(),

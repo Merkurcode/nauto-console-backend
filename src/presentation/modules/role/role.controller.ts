@@ -15,8 +15,11 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 
 // Guards & Decorators
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
+import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesEnum } from '@shared/constants/roles.constants';
 
 // DTOs
 import { CreateRoleDto } from '@application/dtos/role/create-role.dto';
@@ -35,7 +38,7 @@ import { RemovePermissionCommand } from '@application/commands/role/remove-permi
 
 @ApiTags('roles')
 @Controller('roles')
-@UseGuards(PermissionsGuard)
+@UseGuards(RolesGuard, PermissionsGuard)
 @RequirePermissions('role:read')
 @ApiBearerAuth('JWT-auth')
 export class RoleController {
@@ -45,29 +48,38 @@ export class RoleController {
   ) {}
 
   @Get()
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all roles (Admin only)' })
+  @ApiOperation({ summary: 'Get all roles (All authenticated users)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all roles' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
   async getAllRoles() {
     return this.queryBus.execute(new GetRolesQuery());
   }
 
   @Get(':id')
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get role by ID (Admin only)' })
+  @ApiOperation({ summary: 'Get role by ID (All authenticated users)' })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns role information' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Role not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
   async getRoleById(@Param('id') id: string) {
     return this.queryBus.execute(new GetRoleQuery(id));
   }
 
   @Post()
+  @Roles(RolesEnum.SUPERADMIN)
   @CanWrite('role')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new role (Requires role:write permission)' })
+  @ApiOperation({ summary: 'Create new role (SuperAdmin only)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Role created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({
@@ -86,9 +98,10 @@ export class RoleController {
   }
 
   @Put(':id')
+  @Roles(RolesEnum.SUPERADMIN)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update role by ID (Requires role:write permission)' })
+  @ApiOperation({ summary: 'Update role by ID (SuperAdmin only)' })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role updated successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
@@ -109,9 +122,10 @@ export class RoleController {
   }
 
   @Delete(':id')
+  @Roles(RolesEnum.SUPERADMIN)
   @CanDelete('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete role by ID (Requires role:delete permission)' })
+  @ApiOperation({ summary: 'Delete role by ID (SuperAdmin only)' })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role deleted successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Role not found' })
@@ -126,9 +140,10 @@ export class RoleController {
   }
 
   @Post(':roleId/permissions/:permissionId')
+  @Roles(RolesEnum.SUPERADMIN)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign permission to role (Requires role:write permission)' })
+  @ApiOperation({ summary: 'Assign permission to role (SuperAdmin only)' })
   @ApiParam({
     name: 'roleId',
     description: 'Role ID',
@@ -153,9 +168,10 @@ export class RoleController {
   }
 
   @Delete(':roleId/permissions/:permissionId')
+  @Roles(RolesEnum.SUPERADMIN)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove permission from role (Requires role:write permission)' })
+  @ApiOperation({ summary: 'Remove permission from role (SuperAdmin only)' })
   @ApiParam({
     name: 'roleId',
     description: 'Role ID',

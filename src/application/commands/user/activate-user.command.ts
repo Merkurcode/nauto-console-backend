@@ -6,6 +6,7 @@ export class ActivateUserCommand {
   constructor(
     public readonly userId: string,
     public readonly active: boolean,
+    public readonly companyId?: string,
   ) {}
 }
 
@@ -16,7 +17,7 @@ export class ActivateUserCommandHandler
   constructor(private readonly userService: UserService) {}
 
   async execute(command: ActivateUserCommand): Promise<IUserBaseResponse> {
-    const { userId, active } = command;
+    const { userId, active, companyId: _companyId } = command;
 
     let user;
     if (active) {

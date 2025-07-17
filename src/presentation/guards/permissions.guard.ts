@@ -2,6 +2,7 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { User } from '@core/entities/user.entity';
+import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
 
 /**
  * Enhanced PermissionsGuard that uses the UserAuthorizationService
@@ -15,6 +16,16 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // Check if the route is marked as public
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const user: User = request.user;
 

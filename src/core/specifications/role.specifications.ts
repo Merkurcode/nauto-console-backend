@@ -2,6 +2,7 @@ import { Specification } from './specification.base';
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
+import { RolesEnum } from '@shared/constants/roles.constants';
 
 /**
  * Specification to check if a role is the default role
@@ -18,6 +19,15 @@ export class DefaultRoleSpecification extends Specification<Role> {
 export class AdminRoleSpecification extends Specification<Role> {
   isSatisfiedBy(role: Role): boolean {
     return role.isAdminRole();
+  }
+}
+
+/**
+ * Specification to check if a role is a superadmin role
+ */
+export class SuperAdminRoleSpecification extends Specification<Role> {
+  isSatisfiedBy(role: Role): boolean {
+    return role.name.toLowerCase() === RolesEnum.SUPERADMIN.toLowerCase();
   }
 }
 

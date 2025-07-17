@@ -16,9 +16,12 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 
 // Guards & Decorators
 import { RolesGuard } from '@presentation/guards/roles.guard';
+import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/roles.constants';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
+import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 
 // DTOs
 import { CreateUserDto } from '@application/dtos/user/create-user.dto';
@@ -41,8 +44,8 @@ import { VerifyPasswordCommand } from '@application/commands/user/verify-passwor
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 @ApiTags('users')
-@Controller('users')
-@UseGuards(RolesGuard)
+@Controller('companies/:companyId/users')
+@UseGuards(RolesGuard, PermissionsGuard)
 @ApiBearerAuth('JWT-auth')
 export class UserController {
   constructor(
@@ -51,55 +54,91 @@ export class UserController {
   ) {}
 
   @Get()
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @RequirePermissions('user:read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all users (Admin only)' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all users' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async getAllUsers() {
-    return this.queryBus.execute(new GetUsersQuery());
+  @ApiOperation({ summary: 'Get all users in company (SuperAdmin/Admin only)' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all users in the company' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async getAllUsers(@Param('companyId') companyId: string) {
+    return this.queryBus.execute(new GetUsersQuery(companyId));
   }
 
   @Get(':id')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @RequirePermissions('user:read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get user by ID (Admin only)' })
+  @ApiOperation({ summary: 'Get user by ID (SuperAdmin/Admin only)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns user information' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async getUserById(@Param('id') id: string) {
-    return this.queryBus.execute(new GetUserQuery(id));
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async getUserById(@Param('companyId') companyId: string, @Param('id') id: string) {
+    return this.queryBus.execute(new GetUserQuery(id, companyId));
   }
 
   @Post()
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @CanWrite('user')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new user (Admin only)' })
+  @ApiOperation({ summary: 'Create new user in company (SuperAdmin/Admin only)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async createUser(@Body() _createUserDto: CreateUserDto) {
-    // This would normally use a command
-    return { message: 'User created successfully' };
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async createUser(@Param('companyId') companyId: string, @Body() _createUserDto: CreateUserDto) {
+    // This would normally use a command with company context
+    return { message: 'User created successfully', companyId };
   }
 
   @Put(':id')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update user by ID (Admin only)' })
+  @ApiOperation({ summary: 'Update user by ID (SuperAdmin/Admin only)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User updated successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async updateUser(
+    @Param('companyId') companyId: string,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.commandBus.execute(
       new UpdateUserCommand(
         id,
         updateUserDto.firstName,
         updateUserDto.lastName,
         updateUserDto.email,
+        companyId,
       ),
     );
   }
@@ -124,33 +163,56 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @CanDelete('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete user by ID (Admin only)' })
+  @ApiOperation({ summary: 'Delete user by ID (SuperAdmin/Admin only)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User deleted successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async deleteUser(@Param('id') _id: string) {
-    // This would normally use a command
-    return { message: 'User deleted successfully' };
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async deleteUser(@Param('companyId') companyId: string, @Param('id') _id: string) {
+    // This would normally use a command with company context
+    return { message: 'User deleted successfully', companyId };
   }
 
   @Post(':id/change-password')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change user password (Admin only)' })
+  @ApiOperation({ summary: 'Change user password (SuperAdmin/Admin only)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password changed successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async changePassword(@Param('id') id: string, @Body() changePasswordDto: ChangePasswordDto) {
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async changePassword(
+    @Param('companyId') companyId: string,
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
     await this.commandBus.execute(
       new ChangePasswordCommand(
         id,
         changePasswordDto.newPassword,
         changePasswordDto.currentPassword,
+        companyId,
       ),
     );
 
@@ -193,35 +255,70 @@ export class UserController {
   }
 
   @Patch(':id/activate')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Activate or deactivate user (Admin only)' })
+  @ApiOperation({ summary: 'Activate or deactivate user (SuperAdmin/Admin only)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User activation status updated' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async activateUser(@Param('id') id: string, @Body() activateUserDto: ActivateUserDto) {
-    return this.commandBus.execute(new ActivateUserCommand(id, activateUserDto.active));
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async activateUser(
+    @Param('companyId') companyId: string,
+    @Param('id') id: string,
+    @Body() activateUserDto: ActivateUserDto,
+  ) {
+    return this.commandBus.execute(new ActivateUserCommand(id, activateUserDto.active, companyId));
   }
 
   @Post(':id/roles')
   @Roles(RolesEnum.ADMIN)
+  @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign role to user (Admin only)' })
+  @ApiOperation({ summary: 'Assign role to user (Admin only - cannot assign SUPERADMIN)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role assigned successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User or role not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async assignRoleToUser(@Param('id') id: string, @Body() assignRoleDto: AssignRoleDto) {
-    return this.commandBus.execute(new AssignRoleCommand(id, assignRoleDto.roleId));
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async assignRoleToUser(
+    @Param('companyId') companyId: string,
+    @Param('id') id: string,
+    @Body() assignRoleDto: AssignRoleDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
+    return this.commandBus.execute(
+      new AssignRoleCommand(id, assignRoleDto.roleId, companyId, currentUser.sub),
+    );
   }
 
   @Delete(':id/roles/:roleId')
   @Roles(RolesEnum.ADMIN)
+  @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove role from user (Admin only)' })
+  @ApiOperation({ summary: 'Remove role from user (Admin only - cannot remove SUPERADMIN)' })
+  @ApiParam({
+    name: 'companyId',
+    description: 'Company ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiParam({
     name: 'roleId',
@@ -230,8 +327,15 @@ export class UserController {
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role removed successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
-  async removeRoleFromUser(@Param('id') id: string, @Param('roleId') roleId: string) {
-    return this.commandBus.execute(new RemoveRoleCommand(id, roleId));
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async removeRoleFromUser(
+    @Param('companyId') companyId: string,
+    @Param('id') id: string,
+    @Param('roleId') roleId: string,
+  ) {
+    return this.commandBus.execute(new RemoveRoleCommand(id, roleId, companyId));
   }
 }

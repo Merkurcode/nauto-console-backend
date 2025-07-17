@@ -30,13 +30,17 @@ import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
+import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesEnum } from '@shared/constants/roles.constants';
+import { Public } from '@shared/decorators/public.decorator';
 
 @ApiTags('companies')
 @Controller('companies')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class CompanyController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -44,7 +48,8 @@ export class CompanyController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all companies' })
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
+  @ApiOperation({ summary: 'Get all companies (All authenticated users)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of companies retrieved successfully',
@@ -56,7 +61,12 @@ export class CompanyController {
   }
 
   @Get('by-host/:host')
-  @ApiOperation({ summary: 'Get company by host' })
+  @Public()
+  @ApiOperation({
+    summary: 'Get company by host (Public)',
+    description:
+      'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company retrieved successfully',
@@ -66,7 +76,6 @@ export class CompanyController {
     status: HttpStatus.NOT_FOUND,
     description: 'Company not found',
   })
-  @RequirePermissions('company:read')
   async getCompanyByHost(@Param('host') host: string): Promise<CompanyResponse> {
     const hostVO = new Host(host);
 
@@ -74,7 +83,8 @@ export class CompanyController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get company by ID' })
+  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
+  @ApiOperation({ summary: 'Get company by ID (All authenticated users)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company retrieved successfully',
@@ -92,8 +102,9 @@ export class CompanyController {
   }
 
   @Post()
+  @Roles(RolesEnum.SUPERADMIN)
   @ApiOperation({
-    summary: 'Create a new company',
+    summary: 'Create a new company (SuperAdmin only)',
     description:
       'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.',
   })
@@ -109,6 +120,10 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Validation error - check request body format',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have SuperAdmin role',
   })
   @CanWrite('company')
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
@@ -135,7 +150,8 @@ export class CompanyController {
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update company' })
+  @Roles(RolesEnum.SUPERADMIN)
+  @ApiOperation({ summary: 'Update company (SuperAdmin only)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company updated successfully',
@@ -148,6 +164,10 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.CONFLICT,
     description: 'Company name already exists',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have SuperAdmin role',
   })
   @CanWrite('company')
   async updateCompany(
@@ -187,7 +207,8 @@ export class CompanyController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete company' })
+  @Roles(RolesEnum.SUPERADMIN)
+  @ApiOperation({ summary: 'Delete company (SuperAdmin only)' })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: 'Company deleted successfully',
@@ -195,6 +216,10 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Company not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have SuperAdmin role',
   })
   @CanDelete('company')
   async deleteCompany(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

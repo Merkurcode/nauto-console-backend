@@ -2,6 +2,7 @@ import { Specification } from './specification.base';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
 import { RoleId } from '@core/value-objects/role-id.vo';
+import { RolesEnum } from '@shared/constants/roles.constants';
 
 /**
  * Specification to check if a user is active
@@ -40,6 +41,15 @@ export class UserHasRoleSpecification extends Specification<User> {
 export class AdminUserSpecification extends Specification<User> {
   isSatisfiedBy(user: User): boolean {
     return user.roles.some(role => role.isAdminRole());
+  }
+}
+
+/**
+ * Specification to check if a user has superadmin privileges
+ */
+export class SuperAdminUserSpecification extends Specification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.roles.some(role => role.name.toLowerCase() === RolesEnum.SUPERADMIN.toLowerCase());
   }
 }
 

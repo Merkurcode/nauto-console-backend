@@ -29,6 +29,30 @@ async function bootstrap() {
     }),
   );
 
+  // Add middleware to handle ngrok and preflight requests
+  app.use((req, res, next) => {
+    // Handle ngrok browser warning
+    if (req.headers['ngrok-skip-browser-warning']) {
+      res.setHeader('ngrok-skip-browser-warning', 'true');
+    }
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning',
+      );
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Max-Age', '86400');
+
+      return res.status(200).end();
+    }
+
+    next();
+  });
+
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -46,12 +70,28 @@ async function bootstrap() {
   const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS')?.split(',') || [
     'http://localhost:3000',
   ];
-  app.enableCors({
-    origin: allowedOrigins,
+
+  // In development, allow all origins for easier testing with ngrok
+  const corsOptions = {
+    origin:
+      configService.get<string>('NODE_ENV') === 'development'
+        ? true // Allow all origins in development
+        : allowedOrigins,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
-  });
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept-Language',
+      'X-Tenant-ID',
+      'X-Forwarded-For',
+      'X-Real-IP',
+      'ngrok-skip-browser-warning', // Allow ngrok header
+    ],
+    optionsSuccessStatus: 200,
+  };
+
+  app.enableCors(corsOptions);
 
   // API prefix
   app.setGlobalPrefix('api');

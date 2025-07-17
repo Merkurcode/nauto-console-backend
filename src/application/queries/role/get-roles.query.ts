@@ -5,7 +5,9 @@ import { RoleDetailResponse } from '@application/dtos/responses/role.response';
 import { RoleMapper } from '@application/mappers/role.mapper';
 import { ROLE_REPOSITORY } from '@shared/constants/tokens';
 
-export class GetRolesQuery implements IQuery {}
+export class GetRolesQuery implements IQuery {
+  constructor(public readonly companyId?: string) {}
+}
 
 @QueryHandler(GetRolesQuery)
 export class GetRolesQueryHandler implements IQueryHandler<GetRolesQuery> {

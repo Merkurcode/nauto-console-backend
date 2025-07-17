@@ -5,7 +5,9 @@ import { IUserDetailResponse } from '@application/dtos/responses/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
 
-export class GetUsersQuery implements IQuery {}
+export class GetUsersQuery implements IQuery {
+  constructor(public readonly companyId?: string) {}
+}
 
 @Injectable()
 @QueryHandler(GetUsersQuery)
@@ -15,7 +17,10 @@ export class GetUsersQueryHandler implements IQueryHandler<GetUsersQuery> {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async execute(): Promise<IUserDetailResponse[]> {
+  async execute(query: GetUsersQuery): Promise<IUserDetailResponse[]> {
+    const { companyId: _companyId } = query;
+
+    // For now, we'll use the basic findAll until company-specific queries are implemented
     const users = await this.userRepository.findAll();
 
     // Use the mapper to convert each user to response DTO

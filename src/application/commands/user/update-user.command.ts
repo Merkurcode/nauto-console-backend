@@ -9,6 +9,7 @@ export class UpdateUserCommand {
     public readonly firstName?: string,
     public readonly lastName?: string,
     public readonly email?: string,
+    public readonly companyId?: string,
   ) {}
 }
 
@@ -19,7 +20,7 @@ export class UpdateUserCommandHandler
   constructor(private readonly userService: UserService) {}
 
   async execute(command: UpdateUserCommand): Promise<IUserBaseResponse> {
-    const { userId, firstName, lastName, email } = command;
+    const { userId, firstName, lastName, email, companyId: _companyId } = command;
 
     const user = await this.userService.updateUserDetails(userId, firstName, lastName, email);
 

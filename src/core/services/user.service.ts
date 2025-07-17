@@ -196,7 +196,12 @@ export class UserService {
     return this.userRepository.update(user);
   }
 
-  async assignRoleToUser(userId: string, roleId: string): Promise<User> {
+  async assignRoleToUser(
+    userId: string,
+    roleId: string,
+    companyId?: string,
+    assigningUserId?: string,
+  ): Promise<User> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new EntityNotFoundException('User', userId);
@@ -207,10 +212,17 @@ export class UserService {
       throw new EntityNotFoundException('Role', roleId);
     }
 
+    // Get assigning user if provided
+    let assigningUser: User | undefined;
+    if (assigningUserId) {
+      assigningUser = await this.userRepository.findById(assigningUserId);
+    }
+
     // Validate role assignment using domain validation service
     const roleAssignmentValidation = this.domainValidationService.validateRoleAssignment(
       user,
       role,
+      assigningUser,
     );
     roleAssignmentValidation.throwIfInvalid();
 

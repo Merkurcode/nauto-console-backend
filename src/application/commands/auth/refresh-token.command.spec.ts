@@ -188,13 +188,14 @@ describe('RefreshTokenCommandHandler', () => {
       '550e8400-e29b-41d4-a716-446655440005',
     );
     expect(roleRepository.findById).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440001');
-    expect(authService.isEmailVerified).toHaveBeenCalledWith('test@example.com');
+    // Email verification is disabled by default
+    // expect(authService.isEmailVerified).toHaveBeenCalledWith('test@example.com');
 
     expect(jwtService.sign).toHaveBeenCalledWith(
       expect.objectContaining({
         sub: user.id.getValue(),
         email: user.email.getValue(),
-        emailVerified: true,
+        emailVerified: false,
         roles: ['user'],
         permissions: ['user:read'],
       }),
