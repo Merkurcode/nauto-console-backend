@@ -5,6 +5,8 @@ import { BusinessSector } from '@core/value-objects/business-sector.vo';
 import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
+import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
+import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
 import { AggregateRoot } from '@core/events/domain-event.base';
 import {
   CompanyCreatedEvent,
@@ -22,6 +24,8 @@ export class Company extends AggregateRoot {
   private _address: Address;
   private _host: Host;
   private _isActive: boolean;
+  private _industrySector: IndustrySector;
+  private _industryOperationChannel: IndustryOperationChannel;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -33,6 +37,8 @@ export class Company extends AggregateRoot {
     businessUnit: BusinessUnit,
     address: Address,
     host: Host,
+    industrySector: IndustrySector,
+    industryOperationChannel: IndustryOperationChannel,
     isActive: boolean = true,
     createdAt?: Date,
   ) {
@@ -44,6 +50,8 @@ export class Company extends AggregateRoot {
     this._businessUnit = businessUnit;
     this._address = address;
     this._host = host;
+    this._industrySector = industrySector;
+    this._industryOperationChannel = industryOperationChannel;
     this._isActive = isActive;
     this._createdAt = createdAt || new Date();
     this._updatedAt = new Date();
@@ -56,6 +64,8 @@ export class Company extends AggregateRoot {
     businessUnit: BusinessUnit,
     address: Address,
     host: Host,
+    industrySector?: IndustrySector,
+    industryOperationChannel?: IndustryOperationChannel,
   ): Company {
     const companyId = CompanyId.create();
     const company = new Company(
@@ -66,6 +76,8 @@ export class Company extends AggregateRoot {
       businessUnit,
       address,
       host,
+      industrySector || IndustrySector.create('OTHER'),
+      industryOperationChannel || IndustryOperationChannel.create('MIXED'),
     );
 
     company.addDomainEvent(
@@ -97,6 +109,8 @@ export class Company extends AggregateRoot {
       postalCode: string;
     };
     host: string;
+    industrySector?: string;
+    industryOperationChannel?: string;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -119,6 +133,12 @@ export class Company extends AggregateRoot {
       new BusinessUnit(data.businessUnit),
       address,
       new Host(data.host),
+      data.industrySector
+        ? IndustrySector.create(data.industrySector)
+        : IndustrySector.create('OTHER'),
+      data.industryOperationChannel
+        ? IndustryOperationChannel.create(data.industryOperationChannel)
+        : IndustryOperationChannel.create('MIXED'),
       data.isActive,
       data.createdAt,
     );
@@ -168,6 +188,14 @@ export class Company extends AggregateRoot {
     return this._updatedAt;
   }
 
+  get industrySector(): IndustrySector {
+    return this._industrySector;
+  }
+
+  get industryOperationChannel(): IndustryOperationChannel {
+    return this._industryOperationChannel;
+  }
+
   updateCompanyInfo(
     name?: CompanyName,
     description?: CompanyDescription,
@@ -175,6 +203,8 @@ export class Company extends AggregateRoot {
     businessUnit?: BusinessUnit,
     address?: Address,
     host?: Host,
+    industrySector?: IndustrySector,
+    industryOperationChannel?: IndustryOperationChannel,
   ): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
@@ -209,6 +239,19 @@ export class Company extends AggregateRoot {
 
     if (host && !this._host.equals(host)) {
       this._host = host;
+      hasChanges = true;
+    }
+
+    if (industrySector && !this._industrySector.equals(industrySector)) {
+      this._industrySector = industrySector;
+      hasChanges = true;
+    }
+
+    if (
+      industryOperationChannel &&
+      !this._industryOperationChannel.equals(industryOperationChannel)
+    ) {
+      this._industryOperationChannel = industryOperationChannel;
       hasChanges = true;
     }
 

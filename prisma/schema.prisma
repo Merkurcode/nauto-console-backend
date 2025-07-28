@@ -18,6 +18,21 @@ enum EnumAssistantArea {
   UPSELL_ASSISTANT // Niko
 }
 
+enum EnumIndustrySector {
+  AUTOMOTIVE
+  CUSTOMER_SERVICE
+  EDUCATION
+  HEALTHCARE
+  REAL_ESTATE
+  OTHER
+}
+
+enum EnumIndustryOperationChannel {
+  ONLINE
+  PHYSICAL
+  MIXED
+}
+
 model AIAssistant {
   id          String                    @id @default(uuid())
   name        String                    @unique
@@ -332,6 +347,9 @@ model Company {
   websiteUrl    String?
   privacyPolicyUrl String?
   language      String @default("es-MX")
+
+  industrySector EnumIndustrySector @default(OTHER)
+  industryOperationChannel EnumIndustryOperationChannel @default(MIXED)
   
   address       Address?
   users         User[]

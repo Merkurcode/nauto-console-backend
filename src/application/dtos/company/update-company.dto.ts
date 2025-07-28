@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, Length, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, Length, ValidateNested, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
 
 export class UpdateAddressDto {
   @ApiProperty({
@@ -134,4 +135,24 @@ export class UpdateCompanyDto {
   @Type(() => UpdateAddressDto)
   @IsOptional()
   address?: UpdateAddressDto;
+
+  @ApiProperty({
+    enum: IndustrySectorEnum,
+    example: IndustrySectorEnum.OTHER,
+    description: 'Industry sector of the company',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(IndustrySectorEnum)
+  industrySector?: IndustrySectorEnum;
+
+  @ApiProperty({
+    enum: IndustryOperationChannelEnum,
+    example: IndustryOperationChannelEnum.MIXED,
+    description: 'Industry operation channel of the company',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(IndustryOperationChannelEnum)
+  industryOperationChannel?: IndustryOperationChannelEnum;
 }

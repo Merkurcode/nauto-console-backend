@@ -13,3 +13,18 @@ export enum AssistantAreaEnum {
   FINCANCE_ASSISTANT = 'FINCANCE_ASSISTANT', // Oscar
   UPSELL_ASSISTANT = 'UPSELL_ASSISTANT', // Niko
 }
+
+export enum IndustrySectorEnum {
+  AUTOMOTIVE = 'AUTOMOTIVE',
+  CUSTOMER_SERVICE = 'CUSTOMER_SERVICE',
+  EDUCATION = 'EDUCATION',
+  HEALTHCARE = 'HEALTHCARE',
+  REAL_ESTATE = 'REAL_ESTATE',
+  OTHER = 'OTHER',
+}
+
+export enum IndustryOperationChannelEnum {
+  ONLINE = 'ONLINE',
+  PHYSICAL = 'PHYSICAL',
+  MIXED = 'MIXED',
+}

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
 
 export interface IAddressResponse {
   country: string;
@@ -20,6 +21,8 @@ export interface ICompanyResponse {
   host: string;
   address: IAddressResponse;
   isActive: boolean;
+  industrySector: IndustrySectorEnum;
+  industryOperationChannel: IndustryOperationChannelEnum;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -154,4 +157,18 @@ export class CompanyResponse implements ICompanyResponse {
     description: 'Company last update date',
   })
   updatedAt: Date;
+
+  @ApiProperty({
+    enum: IndustrySectorEnum,
+    example: IndustrySectorEnum.OTHER,
+    description: 'Industry sector of the company',
+  })
+  industrySector: IndustrySectorEnum;
+
+  @ApiProperty({
+    enum: IndustryOperationChannelEnum,
+    example: IndustryOperationChannelEnum.MIXED,
+    description: 'Industry operation channel of the company',
+  })
+  industryOperationChannel: IndustryOperationChannelEnum;
 }
