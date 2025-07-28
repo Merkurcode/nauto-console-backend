@@ -62,11 +62,23 @@ export class AuthController {
       'User successfully authenticated. Returns access token, refresh token, and user data. May return OTP requirement if 2FA is enabled.',
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto, @Request() req: any) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Request()
+    req: {
+      headers: Record<string, string>;
+      ip?: string;
+      connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
+      socket?: { remoteAddress?: string };
+    },
+  ) {
     const userAgent = req.headers['user-agent'];
-    const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 
-                     (req.connection.socket ? req.connection.socket.remoteAddress : null);
-    
+    const ipAddress =
+      req.ip ||
+      req.connection.remoteAddress ||
+      req.socket.remoteAddress ||
+      (req.connection.socket ? req.connection.socket.remoteAddress : null);
+
     return this.commandBus.execute(new LoginCommand(loginDto, userAgent, ipAddress));
   }
 
@@ -108,15 +120,17 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Logout the current user - local (current session) or global (all sessions)' })
+  @ApiOperation({
+    summary: 'Logout the current user - local (current session) or global (all sessions)',
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'User logged out successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
-  async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto, @Request() req: any) {
+  async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto) {
     // Extract session token from JWT for local logout
     const currentSessionToken = user.jti; // Session token stored in JWT's jti claim
-    
+
     return this.commandBus.execute(
-      new LogoutCommand(user.sub, logoutDto.scope, currentSessionToken)
+      new LogoutCommand(user.sub, logoutDto.scope, currentSessionToken),
     );
   }
 

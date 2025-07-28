@@ -9,7 +9,7 @@ export class SessionRepository implements ISessionRepository {
 
   async create(session: Session): Promise<Session> {
     const data = session.toPersistence();
-    
+
     const created = await this.prisma.sessions.create({
       data,
     });
@@ -52,7 +52,7 @@ export class SessionRepository implements ISessionRepository {
 
   async update(session: Session): Promise<Session> {
     const data = session.toPersistence();
-    
+
     const updated = await this.prisma.sessions.update({
       where: { id: data.id },
       data: {

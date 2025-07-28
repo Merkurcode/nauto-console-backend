@@ -51,6 +51,7 @@ export class Session extends AggregateRoot {
     );
 
     session.addDomainEvent(new SessionCreatedEvent(session._id, session._userId));
+
     return session;
   }
 

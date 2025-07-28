@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpStatus,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -51,15 +52,33 @@ export class CompanyController {
 
   @Get()
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT)
-  @ApiOperation({ summary: 'Get all companies (All authenticated users)' })
+  @ApiOperation({ 
+    summary: 'Get companies', 
+    description: 'Root users can see all companies, other users can only see their own company'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of companies retrieved successfully',
     type: [CompanyResponse],
   })
   @RequirePermissions('company:read')
-  async getCompanies(): Promise<CompanyResponse[]> {
-    return this.queryBus.execute(new GetCompaniesQuery());
+  async getCompanies(@Request() req: { user: { roles: string[]; tenantId?: string } }): Promise<CompanyResponse[]> {
+    const user = req.user;
+    const isRootUser = user.roles.includes('root') || user.roles.includes('root_readonly');
+    
+    if (isRootUser) {
+      // Root users can see all companies
+      return this.queryBus.execute(new GetCompaniesQuery());
+    } else {
+      // Other users can only see their own company
+      if (!user.tenantId) {
+        return []; // No company assigned
+      }
+      const companyId = CompanyId.fromString(user.tenantId);
+      const company = await this.queryBus.execute(new GetCompanyQuery(companyId));
+      
+return [company];
+    }
   }
 
   @Get('by-host/:host')

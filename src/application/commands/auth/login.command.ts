@@ -12,6 +12,7 @@ import { UserMapper } from '@application/mappers/user.mapper';
 import { I18nService } from 'nestjs-i18n';
 import { ROLE_REPOSITORY } from '@shared/constants/tokens';
 import { LoggerService } from '@infrastructure/logger/logger.service';
+import { v4 as uuidv4 } from 'uuid';
 
 export class LoginCommand implements ICommand {
   constructor(
@@ -117,7 +118,7 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
     });
 
     // Generate session token and JWT tokens
-    const sessionToken = require('uuid').v4();
+    const sessionToken = uuidv4();
     const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
       user,
       Array.from(userPermissions),

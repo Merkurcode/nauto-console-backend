@@ -207,7 +207,10 @@ export class UserBannedException extends AuthenticationDomainException {
     public readonly bannedUntil: Date,
     public readonly banReason: string,
   ) {
-    super(`User is banned until ${bannedUntil.toISOString()}. Reason: ${banReason}`, HttpStatus.FORBIDDEN);
+    super(
+      `User is banned until ${bannedUntil.toISOString()}. Reason: ${banReason}`,
+      HttpStatus.FORBIDDEN,
+    );
     this.name = 'UserBannedException';
   }
 }
