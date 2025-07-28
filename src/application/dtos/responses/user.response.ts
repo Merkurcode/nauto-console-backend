@@ -57,6 +57,7 @@ export interface IJwtPayload {
   roles: string[];
   permissions?: string[];
   tenantId?: string;
+  jti?: string; // JWT ID - session token
   iat?: number;
   exp?: number;
 }

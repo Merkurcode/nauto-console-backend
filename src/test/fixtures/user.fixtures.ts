@@ -32,6 +32,7 @@ export const userFixtures = {
       changePassword: jest.fn(),
       changeEmail: jest.fn(),
       isEligibleForAdminRole: jest.fn().mockReturnValue(true),
+      isEligibleForRootRole: jest.fn().mockReturnValue(false),
     }),
     adminUser: () => ({
       id: { getValue: () => '550e8400-e29b-41d4-a716-446655440001' },
@@ -61,6 +62,7 @@ export const userFixtures = {
       changePassword: jest.fn(),
       changeEmail: jest.fn(),
       isEligibleForAdminRole: jest.fn().mockReturnValue(true),
+      isEligibleForRootRole: jest.fn().mockReturnValue(false),
     }),
     inactiveUser: () => ({
       id: { getValue: () => '550e8400-e29b-41d4-a716-446655440002' },
@@ -90,6 +92,7 @@ export const userFixtures = {
       changePassword: jest.fn(),
       changeEmail: jest.fn(),
       isEligibleForAdminRole: jest.fn().mockReturnValue(true),
+      isEligibleForRootRole: jest.fn().mockReturnValue(false),
     }),
   },
 
@@ -107,6 +110,7 @@ export const userFixtures = {
         { id: '5', name: 'role:write' },
       ],
       isAdminRole: jest.fn().mockReturnValue(true),
+      isRootLevelRole: jest.fn().mockReturnValue(false),
     }),
     userRole: () => ({
       id: '2',
@@ -115,6 +119,7 @@ export const userFixtures = {
       isDefault: true,
       permissions: [{ id: '1', name: 'user:read' }],
       isAdminRole: jest.fn().mockReturnValue(false),
+      isRootLevelRole: jest.fn().mockReturnValue(false),
     }),
   },
 

@@ -180,6 +180,26 @@ export class Role extends AggregateRoot {
     );
   }
 
+  isRootRole(): boolean {
+    // Business rule: Root role is the highest privilege level
+    return this._name.toLowerCase() === 'root';
+  }
+
+  isRootReadOnlyRole(): boolean {
+    // Business rule: Root readonly role has full read access but no write operations
+    return this._name.toLowerCase() === 'root_readonly';
+  }
+
+  isRootLevelRole(): boolean {
+    // Business rule: Root level roles include both root and root_readonly
+    return this.isRootRole() || this.isRootReadOnlyRole();
+  }
+
+  hasElevatedPrivileges(): boolean {
+    // Business rule: Elevated privileges include root level
+    return this.isRootLevelRole();
+  }
+
   canBeDeleted(): boolean {
     // Business rule: Default roles cannot be deleted
     return !this._isDefault;

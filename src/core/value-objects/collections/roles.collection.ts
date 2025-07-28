@@ -149,20 +149,60 @@ export class RolesCollection {
   /**
    * Get the highest privilege level in the collection
    */
-  getHighestPrivilegeLevel(): 'guest' | 'user' | 'admin' | 'superadmin' {
-    if (this.hasPermission('system:admin')) {
-      return 'superadmin';
+  getHighestPrivilegeLevel():
+    | 'guest'
+    | 'sales_agent'
+    | 'manager'
+    | 'admin'
+    | 'root_readonly'
+    | 'root' {
+    // Check for root privileges (highest level)
+    if (this.containsByName('root')) {
+      return 'root';
     }
 
-    if (this.hasAdminPrivileges()) {
+    // Check for root readonly privileges
+    if (this.containsByName('root_readonly')) {
+      return 'root_readonly';
+    }
+
+    // Check for admin privileges
+    if (this.containsByName('admin')) {
       return 'admin';
     }
 
-    if (this.size > 0) {
-      return 'user';
+    // Check for manager privileges
+    if (this.containsByName('manager')) {
+      return 'manager';
+    }
+
+    // Check for sales agent privileges
+    if (this.containsByName('sales_agent')) {
+      return 'sales_agent';
     }
 
     return 'guest';
+  }
+
+  /**
+   * Check if collection has root privileges
+   */
+  hasRootPrivileges(): boolean {
+    return this.containsByName('root');
+  }
+
+  /**
+   * Check if collection has root readonly privileges
+   */
+  hasRootReadOnlyPrivileges(): boolean {
+    return this.containsByName('root_readonly');
+  }
+
+  /**
+   * Check if collection has any root level privileges (root or root_readonly)
+   */
+  hasRootLevelPrivileges(): boolean {
+    return this.hasRootPrivileges() || this.hasRootReadOnlyPrivileges();
   }
 
   /**

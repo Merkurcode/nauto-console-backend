@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RefreshTokenCommand, RefreshTokenCommandHandler } from './refresh-token.command';
 import { AuthService } from '@core/services/auth.service';
+import { SessionService } from '@core/services/session.service';
+import { UserBanService } from '@core/services/user-ban.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { LoggerService } from '@infrastructure/logger/logger.service';
@@ -62,6 +64,17 @@ const mockLoggerService = {
   warn: jest.fn(),
   debug: jest.fn(),
   verbose: jest.fn(),
+};
+
+// Mock SessionService
+const mockSessionService = {
+  validateRefreshToken: jest.fn(),
+  refreshSession: jest.fn(),
+};
+
+// Mock UserBanService
+const mockUserBanService = {
+  validateUserNotBanned: jest.fn(),
 };
 
 // Create test data
@@ -138,6 +151,8 @@ describe('RefreshTokenCommandHandler', () => {
         { provide: USER_REPOSITORY, useValue: mockUserRepository },
         { provide: ROLE_REPOSITORY, useValue: mockRoleRepository },
         { provide: AuthService, useValue: mockAuthService },
+        { provide: SessionService, useValue: mockSessionService },
+        { provide: UserBanService, useValue: mockUserBanService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: LoggerService, useValue: mockLoggerService },

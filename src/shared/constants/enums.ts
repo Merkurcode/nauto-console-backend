@@ -1,7 +1,10 @@
 export enum RolesEnum {
-  SUPERADMIN = 'superadmin',
+  ROOT = 'root',
+  ROOT_READONLY = 'root_readonly',
   ADMIN = 'admin',
-  USER = 'user',
+  MANAGER = 'manager',
+  SALES_AGENT = 'sales_agent',
+  GUEST = 'guest',
 }
 
 export enum AssistantAreaEnum {

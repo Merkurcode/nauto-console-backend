@@ -23,6 +23,8 @@ import { TransformInterceptor } from '@presentation/interceptors/transform.inter
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DomainExceptionsFilter } from '@presentation/filters/domain-exceptions.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { UserBanGuard } from '@presentation/guards/user-ban.guard';
+import { SessionGuard } from '@presentation/guards/session.guard';
 
 // Config
 import configuration from '@infrastructure/config/configuration';
@@ -85,10 +87,18 @@ import configuration from '@infrastructure/config/configuration';
       useClass: AllExceptionsFilter,
     },
 
-    // Global guards
+    // Global guards (order matters!)
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: UserBanGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SessionGuard,
     },
   ],
 })

@@ -8,6 +8,7 @@ export const EMAIL_VERIFICATION_REPOSITORY = Symbol('EmailVerificationRepository
 export const PASSWORD_RESET_REPOSITORY = Symbol('PasswordResetRepository');
 export const FILE_REPOSITORY = Symbol('FileRepository');
 export const COMPANY_REPOSITORY = Symbol('CompanyRepository');
+export const SESSION_REPOSITORY = Symbol('SessionRepository');
 
 // Repository tokens object
 export const REPOSITORY_TOKENS = {
@@ -20,6 +21,7 @@ export const REPOSITORY_TOKENS = {
   PASSWORD_RESET_REPOSITORY,
   FILE_REPOSITORY,
   COMPANY_REPOSITORY,
+  SESSION_REPOSITORY,
 } as const;
 
 // Service injection tokens

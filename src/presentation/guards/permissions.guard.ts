@@ -41,10 +41,10 @@ export class PermissionsGuard implements CanActivate {
       return this.userAuthorizationService.canAccessResource(user, resource, action);
     }
 
-    // Check for admin access requirement
-    const requiresAdmin = this.reflector.get<boolean>('admin', context.getHandler());
-    if (requiresAdmin) {
-      return this.userAuthorizationService.canAccessAdminFeatures(user);
+    // Check for root access requirement
+    const requiresRoot = this.reflector.get<boolean>('root', context.getHandler());
+    if (requiresRoot) {
+      return this.userAuthorizationService.canAccessRootFeatures(user);
     }
 
     // Check for sensitive operation requirement

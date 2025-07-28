@@ -16,8 +16,8 @@ export class TokenProvider {
   /**
    * Generate a JWT payload with user information
    */
-  buildPayload(user: User, permissions: string[]) {
-    return {
+  buildPayload(user: User, permissions: string[], sessionToken?: string) {
+    const payload = {
       sub: user.id.getValue(),
       email: user.email.getValue(),
       emailVerified: user.emailVerified,
@@ -25,6 +25,13 @@ export class TokenProvider {
       permissions: permissions,
       tenantId: user.getTenantId(),
     };
+
+    // Add session token as jti (JWT ID) claim if provided
+    if (sessionToken) {
+      payload['jti'] = sessionToken;
+    }
+
+    return payload;
   }
 
   /**
@@ -50,14 +57,15 @@ export class TokenProvider {
   /**
    * Generate both access and refresh tokens for a user
    */
-  async generateTokens(user: User, permissions: string[]) {
-    const payload = this.buildPayload(user, permissions);
+  async generateTokens(user: User, permissions: string[], sessionToken?: string) {
+    const payload = this.buildPayload(user, permissions, sessionToken);
     const accessToken = this.generateAccessToken(payload);
     const refreshToken = await this.generateRefreshToken(user.id.getValue());
 
     return {
       accessToken,
       refreshToken,
+      sessionToken: sessionToken || uuidv4(), // Return the session token
     };
   }
 }
