@@ -432,6 +432,7 @@ export class User extends AggregateRoot {
     if (!this._bannedUntil) {
       return false;
     }
+
     return new Date() < this._bannedUntil;
   }
 

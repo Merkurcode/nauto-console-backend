@@ -36,6 +36,7 @@ export class UserBanGuard implements CanActivate {
     // Validate that the user is not banned
     try {
       await this.userBanService.validateUserNotBannedById(user.sub);
+
       return true;
     } catch (error) {
       this.logger.warn({
@@ -43,7 +44,7 @@ export class UserBanGuard implements CanActivate {
         userId: user.sub,
         error: error.message,
       });
-      
+
       // The UserBannedException will be thrown and handled by the exception filter
       throw error;
     }

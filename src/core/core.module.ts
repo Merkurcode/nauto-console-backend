@@ -9,8 +9,9 @@ import { HealthService } from './services/health.service';
 import { LoggerModule } from '@infrastructure/logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { SESSION_REPOSITORY } from '@shared/constants/tokens';
+import { SESSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
+import { UserRepository } from '@infrastructure/repositories/user.repository';
 
 /**
  * Core Domain Module
@@ -29,6 +30,10 @@ import { SessionRepository } from '@infrastructure/repositories/session.reposito
     {
       provide: SESSION_REPOSITORY,
       useClass: SessionRepository,
+    },
+    {
+      provide: USER_REPOSITORY,
+      useClass: UserRepository,
     },
   ],
   exports: [

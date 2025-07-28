@@ -50,7 +50,7 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     this.userBanService.validateUserNotBanned(user);
 
     // Validate session exists and is active
-    const session = await this.sessionService.validateRefreshToken(refreshToken);
+    await this.sessionService.validateRefreshToken(refreshToken);
 
     // Revoke current refresh token
     await this.authService.revokeRefreshToken(refreshToken);
@@ -71,11 +71,7 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     const newRefreshToken = uuidv4();
 
     // Refresh the session (creates new session and revokes old one)
-    await this.sessionService.refreshSession(
-      refreshToken,
-      newSessionToken,
-      newRefreshToken,
-    );
+    await this.sessionService.refreshSession(refreshToken, newSessionToken, newRefreshToken);
 
     // Generate new JWT with session token
     const payload = {

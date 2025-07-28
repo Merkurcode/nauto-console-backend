@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Session } from '@core/entities/session.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { ISessionRepository } from '@core/repositories/session.repository.interface';
-import { InvalidSessionException, UserBannedException } from '@core/exceptions/domain-exceptions';
+import { InvalidSessionException } from '@core/exceptions/domain-exceptions';
 import { SESSION_REPOSITORY } from '@shared/constants/tokens';
 import { LoggerService } from '@infrastructure/logger/logger.service';
 
@@ -105,6 +105,7 @@ export class SessionService {
     const session = await this.sessionRepository.findBySessionToken(sessionToken);
     if (!session) {
       this.logger.warn({ message: 'Session not found for revocation', sessionToken });
+
       return;
     }
 
@@ -138,6 +139,7 @@ export class SessionService {
     const session = await this.sessionRepository.findByRefreshToken(refreshToken);
     if (!session) {
       this.logger.warn({ message: 'Session not found for refresh token revocation' });
+
       return;
     }
 

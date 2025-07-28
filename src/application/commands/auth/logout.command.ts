@@ -26,12 +26,14 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
     if (scope === LogoutScope.LOCAL && currentSessionToken) {
       // Revoke only the current session
       await this.sessionService.revokeSession(currentSessionToken);
+
       return { message: 'Logged out from current session successfully' };
     } else {
       // Revoke all sessions for the user (global logout)
       await this.sessionService.revokeUserSessions(userId, 'global');
       // Also revoke all refresh tokens as a backup
       await this.authService.revokeAllRefreshTokens(userId);
+
       return { message: 'Logged out from all sessions successfully' };
     }
   }
