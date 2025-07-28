@@ -34,7 +34,7 @@ import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
 import { Roles } from '@shared/decorators/roles.decorator';
-import { RolesEnum } from '@shared/constants/roles.constants';
+import { RolesEnum } from '@shared/constants/enums';
 import { Public } from '@shared/decorators/public.decorator';
 
 @ApiTags('companies')

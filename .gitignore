@@ -50,3 +50,5 @@ lerna-debug.log*
 /prisma/migrations/dev
 
 CLAUDE.md
+NOTES.txt
+*.ps1

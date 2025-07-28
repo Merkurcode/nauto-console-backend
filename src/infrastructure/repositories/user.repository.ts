@@ -31,6 +31,33 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     super();
   }
 
+  async findAllByCompanyId(companyId: string): Promise<User[]> {
+    return this.executeWithErrorHandling('findAll', async () => {
+      const userRecords = await this.prisma.user.findMany({
+        where: {
+          companyId: companyId,
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return userRecords.map(record => this.mapToModel(record as UserWithRelations));
+    });
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.executeWithErrorHandling('findById', async () => {
       const userRecord = await this.prisma.user.findUnique({

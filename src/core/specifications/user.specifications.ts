@@ -2,7 +2,7 @@ import { Specification } from './specification.base';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
 import { RoleId } from '@core/value-objects/role-id.vo';
-import { RolesEnum } from '@shared/constants/roles.constants';
+import { RolesEnum } from '@shared/constants/enums';
 
 /**
  * Specification to check if a user is active
