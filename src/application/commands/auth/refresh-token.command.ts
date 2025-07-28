@@ -7,6 +7,8 @@ import { ConfigService } from '@nestjs/config';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { AuthService } from '@core/services/auth.service';
+import { SessionService } from '@core/services/session.service';
+import { UserBanService } from '@core/services/user-ban.service';
 import { v4 as uuidv4 } from 'uuid';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
 
@@ -23,6 +25,8 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly userBanService: UserBanService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -42,6 +46,12 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
       throw new UnauthorizedException();
     }
 
+    // Check if user is banned
+    this.userBanService.validateUserNotBanned(user);
+
+    // Validate session exists and is active
+    const session = await this.sessionService.validateRefreshToken(refreshToken);
+
     // Revoke current refresh token
     await this.authService.revokeRefreshToken(refreshToken);
 
@@ -56,14 +66,26 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
       }
     }
 
-    // Check if email is verified
-    // Generate new JWT tokens
+    // Generate new session and refresh tokens
+    const newSessionToken = uuidv4();
+    const newRefreshToken = uuidv4();
+
+    // Refresh the session (creates new session and revokes old one)
+    await this.sessionService.refreshSession(
+      refreshToken,
+      newSessionToken,
+      newRefreshToken,
+    );
+
+    // Generate new JWT with session token
     const payload = {
       sub: user.id.getValue(),
       email: user.email.getValue(),
       emailVerified: user.emailVerified,
       roles: user.roles.map(role => role.name),
       permissions: Array.from(userPermissions),
+      tenantId: user.getTenantId(),
+      jti: newSessionToken, // Include session token as JWT ID
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -71,7 +93,7 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
       expiresIn: this.configService.get('JWT_ACCESS_EXPIRATION'),
     });
 
-    const newRefreshToken = uuidv4();
+    // Create new refresh token entry
     await this.authService.createRefreshToken(user.id.getValue(), newRefreshToken);
 
     return {

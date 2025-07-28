@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   Controller,
   Get,
@@ -31,8 +32,9 @@ import { Host } from '@core/value-objects/host.vo';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
+import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
-import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
+import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operation.decorator';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { Public } from '@shared/decorators/public.decorator';
@@ -40,7 +42,7 @@ import { Public } from '@shared/decorators/public.decorator';
 @ApiTags('companies')
 @Controller('companies')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
 export class CompanyController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -48,7 +50,7 @@ export class CompanyController {
   ) {}
 
   @Get()
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT)
   @ApiOperation({ summary: 'Get all companies (All authenticated users)' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -83,7 +85,7 @@ export class CompanyController {
   }
 
   @Get(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT)
   @ApiOperation({ summary: 'Get company by ID (All authenticated users)' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -102,9 +104,10 @@ export class CompanyController {
   }
 
   @Post()
-  @Roles(RolesEnum.SUPERADMIN)
+  @Roles(RolesEnum.ROOT)
+  @WriteOperation('company')
   @ApiOperation({
-    summary: 'Create a new company (SuperAdmin only)',
+    summary: 'Create a new company (Root only)',
     description:
       'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.',
   })
@@ -123,9 +126,8 @@ export class CompanyController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'User does not have SuperAdmin role',
+    description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
-  @CanWrite('company')
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
     const { name, description, businessSector, businessUnit, address, host } = createCompanyDto;
 
@@ -150,8 +152,9 @@ export class CompanyController {
   }
 
   @Put(':id')
-  @Roles(RolesEnum.SUPERADMIN)
-  @ApiOperation({ summary: 'Update company (SuperAdmin only)' })
+  @Roles(RolesEnum.ROOT)
+  @WriteOperation('company')
+  @ApiOperation({ summary: 'Update company (Root only)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company updated successfully',
@@ -167,9 +170,8 @@ export class CompanyController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'User does not have SuperAdmin role',
+    description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
-  @CanWrite('company')
   async updateCompany(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
@@ -207,8 +209,9 @@ export class CompanyController {
   }
 
   @Delete(':id')
-  @Roles(RolesEnum.SUPERADMIN)
-  @ApiOperation({ summary: 'Delete company (SuperAdmin only)' })
+  @Roles(RolesEnum.ROOT)
+  @DeleteOperation('company')
+  @ApiOperation({ summary: 'Delete company (Root only)' })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: 'Company deleted successfully',
@@ -219,9 +222,8 @@ export class CompanyController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'User does not have SuperAdmin role',
+    description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
-  @CanDelete('company')
   async deleteCompany(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     const companyId = CompanyId.fromString(id);
     await this.commandBus.execute(new DeleteCompanyCommand(companyId));

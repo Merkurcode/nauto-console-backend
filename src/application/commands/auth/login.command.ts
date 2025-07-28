@@ -4,6 +4,8 @@ import { AuthResponse } from '@application/dtos/responses/user.response';
 import { UnauthorizedException, Injectable, Inject } from '@nestjs/common';
 import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
+import { SessionService } from '@core/services/session.service';
+import { UserBanService } from '@core/services/user-ban.service';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
 import { UserMapper } from '@application/mappers/user.mapper';
@@ -12,7 +14,11 @@ import { ROLE_REPOSITORY } from '@shared/constants/tokens';
 import { LoggerService } from '@infrastructure/logger/logger.service';
 
 export class LoginCommand implements ICommand {
-  constructor(public readonly loginDto: LoginDto) {}
+  constructor(
+    public readonly loginDto: LoginDto,
+    public readonly userAgent?: string,
+    public readonly ipAddress?: string,
+  ) {}
 }
 
 @Injectable()
@@ -21,6 +27,8 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
   constructor(
     private readonly userService: UserService,
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly userBanService: UserBanService,
     private readonly tokenProvider: TokenProvider,
     private readonly i18n: I18nService,
     @Inject(ROLE_REPOSITORY)
@@ -32,8 +40,9 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
 
   async execute(command: LoginCommand): Promise<AuthResponse> {
     const { email } = command.loginDto;
+    const { userAgent, ipAddress } = command;
 
-    this.logger.log({ message: 'Login attempt', email });
+    this.logger.log({ message: 'Login attempt', email, ipAddress, userAgent });
 
     // Validate credentials
     const user = await this.userService.validateCredentials(email, command.loginDto.password);
@@ -41,6 +50,9 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
       this.logger.warn({ message: 'Login failed - invalid credentials', email });
       throw new UnauthorizedException(this.i18n.t('common.auth.login.failed'));
     }
+
+    // Check if user is banned
+    this.userBanService.validateUserNotBanned(user);
 
     this.logger.debug({
       message: 'Credentials validated successfully',
@@ -104,16 +116,28 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
       permissionsCount: userPermissions.size,
     });
 
-    // Generate JWT tokens
+    // Generate session token and JWT tokens
+    const sessionToken = require('uuid').v4();
     const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
       user,
       Array.from(userPermissions),
+      sessionToken,
+    );
+
+    // Register the session
+    await this.sessionService.createSession(
+      user.id.getValue(),
+      sessionToken,
+      refreshToken,
+      userAgent || null,
+      ipAddress || '?',
     );
 
     this.logger.log({
       message: 'Login successful',
       userId: user.id.getValue(),
       email,
+      sessionToken,
     });
 
     return {

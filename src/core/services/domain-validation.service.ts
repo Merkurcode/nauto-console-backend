@@ -7,13 +7,13 @@ import { Password } from '@core/value-objects/password.vo';
 import {
   ActiveUserSpecification,
   CompleteUserAccountSpecification,
-  AdminUserSpecification,
-  SuperAdminUserSpecification,
+  RootLevelUserSpecification,
 } from '@core/specifications/user.specifications';
 import {
   DefaultRoleSpecification,
-  AdminRoleSpecification,
-  SuperAdminRoleSpecification,
+  RootRoleSpecification,
+  RootReadOnlyRoleSpecification,
+  RootLevelRoleSpecification,
   HasMinimumPermissionsSpecification,
 } from '@core/specifications/role.specifications';
 import { BusinessRuleValidationException } from '@core/exceptions/domain-exceptions';
@@ -48,10 +48,10 @@ export class DomainValidationService {
       result.addError('User must have at least one role assigned.');
     }
 
-    // Admin users must have 2FA enabled
-    const adminSpec = new AdminUserSpecification();
-    if (adminSpec.isSatisfiedBy(user) && !user.otpEnabled) {
-      result.addWarning('Admin users should have two-factor authentication enabled.');
+    // Root users must have 2FA enabled
+    const rootSpec = new RootLevelUserSpecification();
+    if (rootSpec.isSatisfiedBy(user) && !user.otpEnabled) {
+      result.addWarning('Root level users should have two-factor authentication enabled.');
     }
 
     return result;
@@ -71,12 +71,14 @@ export class DomainValidationService {
       result.addError('Non-default roles must have at least one permission.');
     }
 
-    // Admin roles should have substantial permissions
-    const adminRoleSpec = new AdminRoleSpecification();
-    const minAdminPermissionsSpec = new HasMinimumPermissionsSpecification(5);
+    // Root roles should have substantial permissions
+    const rootRoleSpec = new RootLevelRoleSpecification();
+    const minRootPermissionsSpec = new HasMinimumPermissionsSpecification(10);
 
-    if (adminRoleSpec.isSatisfiedBy(role) && !minAdminPermissionsSpec.isSatisfiedBy(role)) {
-      result.addWarning('Admin roles should have at least 5 permissions for proper functionality.');
+    if (rootRoleSpec.isSatisfiedBy(role) && !minRootPermissionsSpec.isSatisfiedBy(role)) {
+      result.addWarning(
+        'Root level roles should have at least 10 permissions for proper functionality.',
+      );
     }
 
     // Validate role name conventions
@@ -84,8 +86,8 @@ export class DomainValidationService {
       result.addError('Role name must be at least 3 characters long.');
     }
 
-    if (role.name.toLowerCase().includes('admin') && !adminRoleSpec.isSatisfiedBy(role)) {
-      result.addWarning('Role name suggests admin privileges but lacks admin permissions.');
+    if (role.name.toLowerCase().includes('root') && !rootRoleSpec.isSatisfiedBy(role)) {
+      result.addWarning('Role name suggests root privileges but lacks root permissions.');
     }
 
     return result;
@@ -107,9 +109,9 @@ export class DomainValidationService {
 
     // Validate permission scope
     if (this.isSystemCriticalPermission(permission)) {
-      const adminRoleSpec = new AdminRoleSpecification();
-      if (!adminRoleSpec.isSatisfiedBy(role)) {
-        result.addError('System-critical permissions can only be assigned to admin roles.');
+      const rootRoleSpec = new RootLevelRoleSpecification();
+      if (!rootRoleSpec.isSatisfiedBy(role)) {
+        result.addError('System-critical permissions can only be assigned to root level roles.');
       }
     }
 
@@ -157,26 +159,36 @@ export class DomainValidationService {
       result.addError('Cannot assign roles to inactive users.');
     }
 
-    // Check SUPERADMIN role assignment restrictions
-    const superAdminRoleSpec = new SuperAdminRoleSpecification();
-    if (superAdminRoleSpec.isSatisfiedBy(role) && assigningUser) {
-      // Only SUPERADMIN users can assign SUPERADMIN role
-      const superAdminUserSpec = new SuperAdminUserSpecification();
-      if (!superAdminUserSpec.isSatisfiedBy(assigningUser)) {
-        result.addError('Only SUPERADMIN users can assign SUPERADMIN role.');
+    // Check ROOT role assignment restrictions
+    const rootRoleSpec = new RootRoleSpecification();
+    const rootReadOnlyRoleSpec = new RootReadOnlyRoleSpecification();
+
+    if (rootRoleSpec.isSatisfiedBy(role) && assigningUser) {
+      // Only ROOT users can assign ROOT role
+      const rootUserSpec = new RootLevelUserSpecification();
+      if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
+        result.addError('Only ROOT users can assign ROOT role.');
       }
     }
 
-    // Check role compatibility
-    const adminRoleSpec = new AdminRoleSpecification();
-    if (adminRoleSpec.isSatisfiedBy(role)) {
-      // Validate admin role assignment requirements
-      if (!user.isEligibleForAdminRole()) {
-        result.addError('User is not eligible for admin role assignment.');
+    if (rootReadOnlyRoleSpec.isSatisfiedBy(role) && assigningUser) {
+      // Only ROOT users can assign ROOT_READONLY role
+      const rootUserSpec = new RootLevelUserSpecification();
+      if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
+        result.addError('Only ROOT users can assign ROOT_READONLY role.');
+      }
+    }
+
+    // Check role compatibility for root level roles
+    const rootLevelRoleSpec = new RootLevelRoleSpecification();
+    if (rootLevelRoleSpec.isSatisfiedBy(role)) {
+      // Validate root role assignment requirements
+      if (!user.isEligibleForRootRole()) {
+        result.addError('User is not eligible for root role assignment.');
       }
 
       if (!user.otpEnabled) {
-        result.addWarning('Admin role assignment recommended with 2FA enabled.');
+        result.addWarning('Root role assignment requires 2FA to be enabled.');
       }
     }
 
@@ -216,8 +228,11 @@ export class DomainValidationService {
 
     // Define role conflicts
     const roleConflicts = new Map([
-      ['admin', ['guest', 'readonly']],
-      ['editor', ['readonly']],
+      ['root', ['guest', 'readonly', 'admin', 'manager', 'sales_agent']],
+      ['root_readonly', ['guest', 'admin', 'manager', 'sales_agent']],
+      ['admin', ['guest', 'sales_agent']],
+      ['manager', ['guest', 'sales_agent']],
+      ['sales_agent', ['guest']],
     ]);
 
     const newRoleName = newRole.name.toLowerCase();

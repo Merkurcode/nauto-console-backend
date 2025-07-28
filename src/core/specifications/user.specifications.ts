@@ -1,3 +1,5 @@
+/* eslint-disable newline-before-return */
+/* eslint-disable prettier/prettier */
 import { Specification } from './specification.base';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
@@ -45,11 +47,35 @@ export class AdminUserSpecification extends Specification<User> {
 }
 
 /**
- * Specification to check if a user has superadmin privileges
+ * Specification to check if a user has root privileges
  */
-export class SuperAdminUserSpecification extends Specification<User> {
+export class RootUserSpecification extends Specification<User> {
   isSatisfiedBy(user: User): boolean {
-    return user.roles.some(role => role.name.toLowerCase() === RolesEnum.SUPERADMIN.toLowerCase());
+    return user.roles.some(role => role.name.toLowerCase() === RolesEnum.ROOT.toLowerCase());
+  }
+}
+
+/**
+ * Specification to check if a user has root readonly privileges
+ */
+export class RootReadOnlyUserSpecification extends Specification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.roles.some(
+      role => role.name.toLowerCase() === RolesEnum.ROOT_READONLY.toLowerCase(),
+    );
+  }
+}
+
+/**
+ * Specification to check if a user has any root level privileges (root or root_readonly)
+ */
+export class RootLevelUserSpecification extends Specification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.roles.some(role => {
+      const roleName = role.name.toLowerCase();
+      return roleName === RolesEnum.ROOT.toLowerCase() || 
+             roleName === RolesEnum.ROOT_READONLY.toLowerCase();
+    });
   }
 }
 
@@ -92,8 +118,8 @@ export class CanAssignRoleSpecification extends Specification<User> {
       return false; // Already has the role
     }
 
-    // Admin roles require special eligibility
-    if (this.role.isAdminRole() && !user.isEligibleForAdminRole()) {
+    // Root level roles require special eligibility
+    if (this.role.isRootLevelRole() && !user.isEligibleForRootRole()) {
       return false;
     }
 
@@ -107,7 +133,7 @@ export class CanAssignRoleSpecification extends Specification<User> {
 export class CanDeactivateUserSpecification extends Specification<User> {
   isSatisfiedBy(user: User): boolean {
     // Business rule: Active users can be deactivated
-    // Additional rules can be added here (e.g., cannot deactivate last admin)
+    // Additional rules can be added here (e.g., cannot deactivate last root user)
     return user.isActive;
   }
 }

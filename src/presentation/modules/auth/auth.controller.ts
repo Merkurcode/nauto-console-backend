@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Param, Request } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
@@ -7,6 +7,7 @@ import { RegisterDto } from '@application/dtos/auth/register.dto';
 import { LoginDto } from '@application/dtos/auth/login.dto';
 import { VerifyOtpDto } from '@application/dtos/auth/verify-otp.dto';
 import { RefreshTokenDto } from '@application/dtos/auth/refresh-token.dto';
+import { LogoutDto } from '@application/dtos/auth/logout.dto';
 import {
   SendVerificationEmailDto,
   VerifyEmailDto,
@@ -61,8 +62,12 @@ export class AuthController {
       'User successfully authenticated. Returns access token, refresh token, and user data. May return OTP requirement if 2FA is enabled.',
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto) {
-    return this.commandBus.execute(new LoginCommand(loginDto));
+  async login(@Body() loginDto: LoginDto, @Request() req: any) {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 
+                     (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    
+    return this.commandBus.execute(new LoginCommand(loginDto, userAgent, ipAddress));
   }
 
   @Public()
@@ -103,11 +108,16 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Logout the current user and revoke all refresh tokens' })
+  @ApiOperation({ summary: 'Logout the current user - local (current session) or global (all sessions)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User logged out successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
-  async logout(@CurrentUser() user: IJwtPayload) {
-    return this.commandBus.execute(new LogoutCommand(user.sub));
+  async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto, @Request() req: any) {
+    // Extract session token from JWT for local logout
+    const currentSessionToken = user.jti; // Session token stored in JWT's jti claim
+    
+    return this.commandBus.execute(
+      new LogoutCommand(user.sub, logoutDto.scope, currentSessionToken)
+    );
   }
 
   @Get('me')

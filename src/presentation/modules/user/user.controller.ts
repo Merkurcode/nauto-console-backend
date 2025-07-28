@@ -54,10 +54,10 @@ export class UserController {
   ) {}
 
   @Get()
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @RequirePermissions('user:read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all users in company (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Get all users in company (Root/Admin only)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all users in the company' })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -68,10 +68,10 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @RequirePermissions('user:read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get user by ID (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Get user by ID (Root/Admin only)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -89,10 +89,10 @@ export class UserController {
   }
 
   @Post()
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new user in company (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Create new user in company (Root/Admin only)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -110,10 +110,10 @@ export class UserController {
   }
 
   @Put(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update user by ID (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Update user by ID (Root/Admin only)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -163,10 +163,10 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanDelete('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete user by ID (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Delete user by ID (Root/Admin only)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -185,10 +185,10 @@ export class UserController {
   }
 
   @Post(':id/change-password')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change user password (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Change user password (Root/Admin only)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -255,10 +255,10 @@ export class UserController {
   }
 
   @Patch(':id/activate')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Activate or deactivate user (SuperAdmin/Admin only)' })
+  @ApiOperation({ summary: 'Activate or deactivate user (Root/Admin only)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -284,7 +284,7 @@ export class UserController {
   @Roles(RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign role to user (Admin only - cannot assign SUPERADMIN)' })
+  @ApiOperation({ summary: 'Assign role to user (Admin only - cannot assign Root)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -313,7 +313,7 @@ export class UserController {
   @Roles(RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove role from user (Admin only - cannot remove SUPERADMIN)' })
+  @ApiOperation({ summary: 'Remove role from user (Admin only - cannot remove Root)' })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',

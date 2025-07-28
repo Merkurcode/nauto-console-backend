@@ -48,7 +48,14 @@ export class RoleController {
   ) {}
 
   @Get()
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
+  @Roles(
+    RolesEnum.ROOT,
+    RolesEnum.ROOT_READONLY,
+    RolesEnum.ADMIN,
+    RolesEnum.MANAGER,
+    RolesEnum.SALES_AGENT,
+    RolesEnum.GUEST,
+  )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get all roles (All authenticated users)' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all roles' })
@@ -61,7 +68,14 @@ export class RoleController {
   }
 
   @Get(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN, RolesEnum.USER)
+  @Roles(
+    RolesEnum.ROOT,
+    RolesEnum.ROOT_READONLY,
+    RolesEnum.ADMIN,
+    RolesEnum.MANAGER,
+    RolesEnum.SALES_AGENT,
+    RolesEnum.GUEST,
+  )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get role by ID (All authenticated users)' })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -76,10 +90,10 @@ export class RoleController {
   }
 
   @Post()
-  @Roles(RolesEnum.SUPERADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new role (SuperAdmin only)' })
+  @ApiOperation({ summary: 'Create new role (Root only)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Role created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({
@@ -98,10 +112,10 @@ export class RoleController {
   }
 
   @Put(':id')
-  @Roles(RolesEnum.SUPERADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update role by ID (SuperAdmin only)' })
+  @ApiOperation({ summary: 'Update role by ID (Root only)' })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role updated successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
@@ -122,10 +136,10 @@ export class RoleController {
   }
 
   @Delete(':id')
-  @Roles(RolesEnum.SUPERADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanDelete('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete role by ID (SuperAdmin only)' })
+  @ApiOperation({ summary: 'Delete role by ID (Root only)' })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role deleted successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Role not found' })
@@ -140,10 +154,10 @@ export class RoleController {
   }
 
   @Post(':roleId/permissions/:permissionId')
-  @Roles(RolesEnum.SUPERADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign permission to role (SuperAdmin only)' })
+  @ApiOperation({ summary: 'Assign permission to role (Root only)' })
   @ApiParam({
     name: 'roleId',
     description: 'Role ID',
@@ -168,10 +182,10 @@ export class RoleController {
   }
 
   @Delete(':roleId/permissions/:permissionId')
-  @Roles(RolesEnum.SUPERADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove permission from role (SuperAdmin only)' })
+  @ApiOperation({ summary: 'Remove permission from role (Root only)' })
   @ApiParam({
     name: 'roleId',
     description: 'Role ID',

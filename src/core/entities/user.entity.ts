@@ -39,6 +39,8 @@ export class User extends AggregateRoot {
   private _otpSecret?: string;
   private _roles: Role[];
   private _lastLoginAt?: Date;
+  private _bannedUntil?: Date;
+  private _banReason?: string;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
   private _companyId?: CompanyId;
@@ -108,6 +110,8 @@ export class User extends AggregateRoot {
     otpSecret?: string;
     roles: Role[];
     lastLoginAt?: Date;
+    bannedUntil?: Date;
+    banReason?: string;
     createdAt: Date;
     updatedAt: Date;
     companyId?: string;
@@ -128,6 +132,8 @@ export class User extends AggregateRoot {
     user._otpSecret = data.otpSecret;
     user._roles = data.roles;
     user._lastLoginAt = data.lastLoginAt;
+    user._bannedUntil = data.bannedUntil;
+    user._banReason = data.banReason;
     user._updatedAt = data.updatedAt;
 
     return user;
@@ -180,6 +186,14 @@ export class User extends AggregateRoot {
 
   get lastLoginAt(): Date | undefined {
     return this._lastLoginAt;
+  }
+
+  get bannedUntil(): Date | undefined {
+    return this._bannedUntil;
+  }
+
+  get banReason(): string | undefined {
+    return this._banReason;
   }
 
   get createdAt(): Date {
@@ -370,8 +384,25 @@ export class User extends AggregateRoot {
   }
 
   isEligibleForAdminRole(): boolean {
-    // Business rule: Only active users with at least one role can be admins
-    return this._isActive && this.rolesCollection.hasAdminPrivileges();
+    // Business rule: Active users can be assigned admin roles (admin is now a regular role)
+    return this._isActive;
+  }
+
+  isEligibleForRootRole(): boolean {
+    // Business rule: Only users with existing root privileges can be assigned root roles
+    return this._isActive && this.rolesCollection.hasRootPrivileges();
+  }
+
+  hasRootPrivileges(): boolean {
+    return this.rolesCollection.hasRootPrivileges();
+  }
+
+  hasRootReadOnlyPrivileges(): boolean {
+    return this.rolesCollection.hasRootReadOnlyPrivileges();
+  }
+
+  hasRootLevelPrivileges(): boolean {
+    return this.rolesCollection.hasRootLevelPrivileges();
   }
 
   assignToCompany(companyId: CompanyId): void {
@@ -396,6 +427,30 @@ export class User extends AggregateRoot {
     return this._companyId?.getValue();
   }
 
+  // Ban management methods
+  isBanned(): boolean {
+    if (!this._bannedUntil) {
+      return false;
+    }
+    return new Date() < this._bannedUntil;
+  }
+
+  banUser(bannedUntil: Date, banReason: string): void {
+    if (bannedUntil <= new Date()) {
+      throw new InvalidValueObjectException('Ban expiration date must be in the future');
+    }
+
+    this._bannedUntil = bannedUntil;
+    this._banReason = banReason;
+    this._updatedAt = new Date();
+  }
+
+  unbanUser(): void {
+    this._bannedUntil = undefined;
+    this._banReason = undefined;
+    this._updatedAt = new Date();
+  }
+
   // Private helper methods
   private isEligibleForRole(role: Role): boolean {
     // Business rule: Only active users can be assigned roles
@@ -403,10 +458,13 @@ export class User extends AggregateRoot {
       return false;
     }
 
-    // Business rule: Admin roles require special eligibility
-    if (role.isAdminRole() && !this.isEligibleForAdminRole()) {
+    // Business rule: Root roles require existing root privileges
+    if (role.isRootLevelRole() && !this.isEligibleForRootRole()) {
       return false;
     }
+
+    // Business rule: Admin roles are now regular roles, no special requirements
+    // (Admin is no longer the highest privilege level, root is)
 
     return true;
   }
