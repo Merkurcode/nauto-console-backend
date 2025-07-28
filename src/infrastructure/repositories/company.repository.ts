@@ -95,6 +95,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             businessSector: company.businessSector.getValue(),
             businessUnit: company.businessUnit.getValue(),
             host: company.host.getValue(),
+            industrySector: company.industrySector.value,
+            industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
             createdAt: company.createdAt,
             updatedAt: company.updatedAt,
@@ -133,6 +135,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             businessSector: company.businessSector.getValue(),
             businessUnit: company.businessUnit.getValue(),
             host: company.host.getValue(),
+            industrySector: company.industrySector.value,
+            industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
             updatedAt: company.updatedAt,
             address: {
@@ -219,6 +223,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     businessSector: string;
     businessUnit: string;
     host: string;
+    industrySector?: any;
+    industryOperationChannel?: any;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -239,6 +245,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       businessSector: data.businessSector,
       businessUnit: data.businessUnit,
       host: data.host,
+      industrySector: data.industrySector ? String(data.industrySector) : undefined,
+      industryOperationChannel: data.industryOperationChannel ? String(data.industryOperationChannel) : undefined,
       address: {
         country: data.address.country,
         state: data.address.state,

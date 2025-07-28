@@ -30,6 +30,8 @@ import { BusinessSector } from '@core/value-objects/business-sector.vo';
 import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
+import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
+import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
@@ -148,7 +150,7 @@ return [company];
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
-    const { name, description, businessSector, businessUnit, address, host } = createCompanyDto;
+    const { name, description, businessSector, businessUnit, address, host, industrySector, industryOperationChannel } = createCompanyDto;
 
     const command = new CreateCompanyCommand(
       new CompanyName(name),
@@ -165,6 +167,8 @@ return [company];
         address.interiorNumber,
       ),
       new Host(host),
+      industrySector ? IndustrySector.create(industrySector) : undefined,
+      industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
     );
 
     return this.commandBus.execute(command);
@@ -196,7 +200,7 @@ return [company];
     @Body() updateCompanyDto: UpdateCompanyDto,
   ): Promise<CompanyResponse> {
     const companyId = CompanyId.fromString(id);
-    const { name, description, businessSector, businessUnit, address, host } = updateCompanyDto;
+    const { name, description, businessSector, businessUnit, address, host, industrySector, industryOperationChannel } = updateCompanyDto;
 
     const command = new UpdateCompanyCommand(
       companyId,
@@ -222,6 +226,8 @@ return [company];
           )
         : undefined,
       host ? new Host(host) : undefined,
+      industrySector ? IndustrySector.create(industrySector) : undefined,
+      industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
     );
 
     return this.commandBus.execute(command);

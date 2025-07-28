@@ -12,6 +12,8 @@ export class CompanyMapper {
       host: company.host.getValue(),
       address: this.mapAddressToResponse(company.address),
       isActive: company.isActive,
+      industrySector: company.industrySector.value,
+      industryOperationChannel: company.industryOperationChannel.value,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };

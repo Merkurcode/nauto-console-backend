@@ -5,6 +5,8 @@ import { BusinessSector } from '@core/value-objects/business-sector.vo';
 import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
+import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
+import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
 
 export class CreateCompanyCommand implements ICommand {
   constructor(
@@ -14,6 +16,8 @@ export class CreateCompanyCommand implements ICommand {
     public readonly businessUnit: BusinessUnit,
     public readonly address: Address,
     public readonly host: Host,
+    public readonly industrySector?: IndustrySector,
+    public readonly industryOperationChannel?: IndustryOperationChannel,
   ) {}
 }
 
@@ -32,7 +36,16 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
   ) {}
 
   async execute(command: CreateCompanyCommand): Promise<ICompanyResponse> {
-    const { name, description, businessSector, businessUnit, address, host } = command;
+    const {
+      name,
+      description,
+      businessSector,
+      businessUnit,
+      address,
+      host,
+      industrySector,
+      industryOperationChannel,
+    } = command;
 
     // Check if company name already exists
     const existingCompany = await this.companyRepository.findByName(name);
@@ -47,7 +60,16 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
     }
 
     // Create new company
-    const company = Company.create(name, description, businessSector, businessUnit, address, host);
+    const company = Company.create(
+      name,
+      description,
+      businessSector,
+      businessUnit,
+      address,
+      host,
+      industrySector,
+      industryOperationChannel,
+    );
 
     // Save company
     const savedCompany = await this.companyRepository.save(company);

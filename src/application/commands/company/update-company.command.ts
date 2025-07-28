@@ -6,6 +6,8 @@ import { BusinessSector } from '@core/value-objects/business-sector.vo';
 import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
+import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
+import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
 
 export class UpdateCompanyCommand implements ICommand {
   constructor(
@@ -16,6 +18,8 @@ export class UpdateCompanyCommand implements ICommand {
     public readonly businessUnit?: BusinessUnit,
     public readonly address?: Address,
     public readonly host?: Host,
+    public readonly industrySector?: IndustrySector,
+    public readonly industryOperationChannel?: IndustryOperationChannel,
   ) {}
 }
 
@@ -33,7 +37,17 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
   ) {}
 
   async execute(command: UpdateCompanyCommand): Promise<ICompanyResponse> {
-    const { id, name, description, businessSector, businessUnit, address, host } = command;
+    const {
+      id,
+      name,
+      description,
+      businessSector,
+      businessUnit,
+      address,
+      host,
+      industrySector,
+      industryOperationChannel,
+    } = command;
 
     // Find existing company
     const company = await this.companyRepository.findById(id);
@@ -58,7 +72,16 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
     }
 
     // Update company
-    company.updateCompanyInfo(name, description, businessSector, businessUnit, address, host);
+    company.updateCompanyInfo(
+      name,
+      description,
+      businessSector,
+      businessUnit,
+      address,
+      host,
+      industrySector,
+      industryOperationChannel,
+    );
 
     // Save updated company
     const updatedCompany = await this.companyRepository.update(company);
