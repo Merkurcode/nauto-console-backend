@@ -272,7 +272,8 @@ return [company];
   @RequirePermissions('company:read')
   async getCompanySubsidiaries(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
-    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
+    
+return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
   }
 
   @Get('root-companies')
@@ -305,6 +306,7 @@ return [company];
   @RequirePermissions('company:read')
   async getCompanyHierarchy(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse> {
     const companyId = CompanyId.fromString(id);
-    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId));
+    
+return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId));
   }
 }

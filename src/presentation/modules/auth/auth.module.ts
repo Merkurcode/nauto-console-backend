@@ -32,6 +32,7 @@ import { TokenProvider } from './providers/token.provider';
 // Services
 import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
+import { InvitationRulesService } from '@core/services/invitation-rules.service';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { I18nModule } from '@infrastructure/i18n/i18n.module';
 import { CoreModule } from '@core/core.module';
@@ -87,6 +88,7 @@ const commandHandlers = [
     // Services
     UserService,
     AuthService,
+    InvitationRulesService,
 
     // Repository tokens
     {

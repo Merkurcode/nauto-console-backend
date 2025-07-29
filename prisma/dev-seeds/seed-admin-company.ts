@@ -3,7 +3,7 @@ import * as bcrypt from 'bcrypt';
 
 // Default users
 const defaultUsers = [
-  // root user
+  // default root user
   {
     email: 'root@root.com',
     password: '12345678', // This will be hashed before saving
@@ -32,7 +32,7 @@ const defaultUsers = [
       interiorNumber: null,
       postalCode: '72000',
     },
-  }
+  },
 ];
 
 // Default companies
@@ -59,7 +59,7 @@ const defaultCompanies = [
     logoUrl: null,
     websiteUrl: null,
     privacyPolicyUrl: null,
-  }
+  },
 ];
 
 // Helper function to hash password

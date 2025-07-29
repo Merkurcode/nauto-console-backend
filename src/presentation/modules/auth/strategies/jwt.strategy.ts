@@ -21,6 +21,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: IJwtPayload): Promise<IJwtPayload> {
+    console.log('DEBUG: JWT Strategy received payload:', payload);
+    console.log('DEBUG: Session token (jti) in payload:', payload.jti);
+    
     // Check if the user still exists
     const user = await this.userRepository.findById(payload.sub);
 
@@ -29,13 +32,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User no longer active or not found');
     }
 
-    // Return the payload with roles, permissions, and tenant info which will be injected into the request object
-    return {
+    // Return the payload with roles, permissions, tenant info, and session token which will be injected into the request object
+    const result = {
       sub: payload.sub,
       email: payload.email,
       roles: payload.roles || [],
       permissions: payload.permissions || [],
       tenantId: payload.tenantId,
+      companyId: payload.companyId,
+      jti: payload.jti, // Include session token from JWT
     };
+    
+    console.log('DEBUG: JWT Strategy returning:', result);
+    return result;
   }
 }

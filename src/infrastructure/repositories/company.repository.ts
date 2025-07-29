@@ -354,7 +354,9 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         businessSector: data.parentCompany.businessSector,
         businessUnit: data.parentCompany.businessUnit,
         host: data.parentCompany.host,
-        industrySector: data.parentCompany.industrySector ? String(data.parentCompany.industrySector) : undefined,
+        industrySector: data.parentCompany.industrySector
+          ? String(data.parentCompany.industrySector)
+          : undefined,
         industryOperationChannel: data.parentCompany.industryOperationChannel
           ? String(data.parentCompany.industryOperationChannel)
           : undefined,
@@ -376,30 +378,32 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     // Create subsidiaries
     let subsidiaries: Company[] | undefined;
     if (data.subsidiaries) {
-      subsidiaries = data.subsidiaries.map(sub => Company.fromData({
-        id: sub.id,
-        name: sub.name,
-        description: sub.description,
-        businessSector: sub.businessSector,
-        businessUnit: sub.businessUnit,
-        host: sub.host,
-        industrySector: sub.industrySector ? String(sub.industrySector) : undefined,
-        industryOperationChannel: sub.industryOperationChannel
-          ? String(sub.industryOperationChannel)
-          : undefined,
-        address: {
-          country: sub.address.country,
-          state: sub.address.state,
-          city: sub.address.city,
-          street: sub.address.street,
-          exteriorNumber: sub.address.exteriorNumber,
-          interiorNumber: sub.address.interiorNumber,
-          postalCode: sub.address.postalCode,
-        },
-        isActive: sub.isActive,
-        createdAt: sub.createdAt,
-        updatedAt: sub.updatedAt,
-      }));
+      subsidiaries = data.subsidiaries.map(sub =>
+        Company.fromData({
+          id: sub.id,
+          name: sub.name,
+          description: sub.description,
+          businessSector: sub.businessSector,
+          businessUnit: sub.businessUnit,
+          host: sub.host,
+          industrySector: sub.industrySector ? String(sub.industrySector) : undefined,
+          industryOperationChannel: sub.industryOperationChannel
+            ? String(sub.industryOperationChannel)
+            : undefined,
+          address: {
+            country: sub.address.country,
+            state: sub.address.state,
+            city: sub.address.city,
+            street: sub.address.street,
+            exteriorNumber: sub.address.exteriorNumber,
+            interiorNumber: sub.address.interiorNumber,
+            postalCode: sub.address.postalCode,
+          },
+          isActive: sub.isActive,
+          createdAt: sub.createdAt,
+          updatedAt: sub.updatedAt,
+        }),
+      );
     }
 
     return Company.fromData({
