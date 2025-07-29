@@ -27,10 +27,10 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
       if (!currentSessionToken) {
         throw new Error('Session token is required for local logout');
       }
-      
+
       // Revoke only the current session
       await this.sessionService.revokeSession(currentSessionToken);
-      
+
       return { message: 'Logged out from current session successfully' };
     } else {
       // Global logout - revoke all sessions for the user

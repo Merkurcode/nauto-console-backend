@@ -12,6 +12,7 @@ export interface IUserRepository {
   findAll(): Promise<User[]>;
   findAllByCompanyId(companyId: string): Promise<User[]>;
   findUsersByRoleId(roleId: string): Promise<User[]>;
+  getUserCountryPhoneCode(userId: string): Promise<string | null>;
   create(user: User): Promise<User>;
   update(user: User): Promise<User>;
   delete(id: string): Promise<boolean>;

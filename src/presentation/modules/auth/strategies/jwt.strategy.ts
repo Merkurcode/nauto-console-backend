@@ -23,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: IJwtPayload): Promise<IJwtPayload> {
     console.log('DEBUG: JWT Strategy received payload:', payload);
     console.log('DEBUG: Session token (jti) in payload:', payload.jti);
-    
+
     // Check if the user still exists
     const user = await this.userRepository.findById(payload.sub);
 
@@ -42,8 +42,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       companyId: payload.companyId,
       jti: payload.jti, // Include session token from JWT
     };
-    
+
     console.log('DEBUG: JWT Strategy returning:', result);
+
     return result;
   }
 }

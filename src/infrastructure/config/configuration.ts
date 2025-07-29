@@ -2,9 +2,11 @@ export default () => ({
   // Application
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
+  appName: process.env.APP_NAME || 'NestJS Template',
 
   // Database
   database: {
+    url: process.env.DATABASE_URL,
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT || '5432', 10),
     username: process.env.DB_USERNAME,
@@ -27,6 +29,78 @@ export default () => ({
     digits: parseInt(process.env.OTP_DIGITS || '6', 10),
   },
 
+  // SMTP/Email
+  smtp: {
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER,
+    password: process.env.SMTP_PASSWORD,
+    from: process.env.SMTP_FROM,
+    secure: process.env.SMTP_SECURE === 'true',
+  },
+
+  // Email providers
+  email: {
+    provider: process.env.EMAIL_PROVIDER || 'mailhog',
+    productionProvider: process.env.EMAIL_PRODUCTION_PROVIDER || 'resend',
+  },
+
+  // Resend
+  resend: {
+    apiKey: process.env.RESEND_API_KEY,
+    fromEmail: process.env.RESEND_FROM_EMAIL,
+    apiUrl: process.env.RESEND_API_URL || 'https://api.resend.com/emails',
+  },
+
+  // SMS
+  sms: {
+    masivos: {
+      apiUrl: process.env.SMS_MASIVOS_API_URL,
+      apiKey: process.env.SMS_MASIVOS_API_KEY,
+    },
+  },
+
+  // Frontend
+  frontend: {
+    url: process.env.FRONTEND_URL || 'http://localhost:3000',
+  },
+
+  // CORS
+  cors: {
+    allowedOrigins: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : ['http://localhost:3000'],
+  },
+
+  // Security
+  security: {
+    sessionSecret: process.env.SESSION_SECRET,
+  },
+
+  // Storage
+  storage: {
+    provider: process.env.STORAGE_PROVIDER || 'local',
+    minio: {
+      endpoint: process.env.MINIO_ENDPOINT,
+      port: parseInt(process.env.MINIO_PORT || '9000', 10),
+      useSSL: process.env.MINIO_USE_SSL === 'true',
+      accessKey: process.env.MINIO_ACCESS_KEY,
+      secretKey: process.env.MINIO_SECRET_KEY,
+    },
+    aws: {
+      region: process.env.AWS_REGION,
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      bucketName: process.env.AWS_S3_BUCKET_NAME,
+    },
+  },
+
+  // Swagger
+  swagger: {
+    user: process.env.SWAGGER_USER,
+    password: process.env.SWAGGER_PASSWORD,
+  },
+
   // Throttler
   throttler: {
     ttl: parseInt(process.env.THROTTLER_TTL || '60', 10),
@@ -43,5 +117,10 @@ export default () => ({
     supportedLocales: process.env.SUPPORTED_LOCALES
       ? process.env.SUPPORTED_LOCALES.split(',')
       : ['en', 'ar'],
+  },
+
+  // Logging
+  logging: {
+    level: process.env.LOG_LEVEL || 'info',
   },
 });
