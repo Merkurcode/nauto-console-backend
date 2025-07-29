@@ -4,24 +4,29 @@ import { permissions } from './seed-permissions';
 // Map of role names to permissions they should have
 const rolePermissionsMap = {
   root: [
+    'auth:write',
     'user:read', 'user:write', 'user:delete',
     'role:read', 'role:write', 'role:delete',
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write', 'company:delete',
+    'audit:read',
   ],
   root_readonly: [
     'user:read',
     'role:read',
     'storage:read', 'storage:manage',
     'company:read',
+    'audit:read',
   ],
   admin: [
+    'auth:write',
     'user:read', 'user:write', 'user:delete',
     'role:read', 'role:write', 'role:delete',
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write', 'company:delete',
   ],
   manager: [
+    'auth:write',
     'user:read',
     'storage:manage', 'storage:write', 'storage:read',
     'company:read'
@@ -51,6 +56,13 @@ export default async function main(prisma: PrismaClient) {
       continue;
     }
 
+    // Delete all existing permissions for this role first
+    console.log(`Clearing existing permissions for role: ${roleName}`);
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: role.id },
+    });
+
+    // Add new permissions for this role
     for (const permissionName of permissionNames) {
       if (!permissions.some(p => p.name === permissionName)) {
         console.error(`Permission ${permissionName} not declared in seed-permissions.ts`);
@@ -66,19 +78,14 @@ export default async function main(prisma: PrismaClient) {
         continue;
       }
 
-      await prisma.rolePermission.upsert({
-        where: {
-          roleId_permissionId: {
-            roleId: role.id,
-            permissionId: permission.id,
-          },
-        },
-        update: {},
-        create: {
+      await prisma.rolePermission.create({
+        data: {
           roleId: role.id,
           permissionId: permission.id,
         },
       });
     }
+
+    console.log(`Assigned ${permissionNames.length} permissions to role: ${roleName}`);
   }
 }
