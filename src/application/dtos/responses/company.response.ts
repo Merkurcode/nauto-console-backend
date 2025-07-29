@@ -23,6 +23,9 @@ export interface ICompanyResponse {
   isActive: boolean;
   industrySector: IndustrySectorEnum;
   industryOperationChannel: IndustryOperationChannelEnum;
+  parentCompany?: ICompanyResponse;
+  subsidiaries?: ICompanyResponse[];
+  hierarchyLevel?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -171,4 +174,25 @@ export class CompanyResponse implements ICompanyResponse {
     description: 'Industry operation channel of the company',
   })
   industryOperationChannel: IndustryOperationChannelEnum;
+
+  @ApiProperty({
+    type: () => CompanyResponse,
+    description: 'Parent company information',
+    required: false,
+  })
+  parentCompany?: CompanyResponse;
+
+  @ApiProperty({
+    type: [CompanyResponse],
+    description: 'Subsidiary companies',
+    required: false,
+  })
+  subsidiaries?: CompanyResponse[];
+
+  @ApiProperty({
+    example: 0,
+    description: 'Level in company hierarchy (0 = root company, 1 = first level subsidiary, etc.)',
+    required: false,
+  })
+  hierarchyLevel?: number;
 }

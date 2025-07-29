@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Length, ValidateNested, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, Length, ValidateNested, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
 
@@ -141,4 +141,13 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsEnum(IndustryOperationChannelEnum)
   industryOperationChannel?: IndustryOperationChannelEnum;
+
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Parent company ID (for subsidiaries)',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  parentCompanyId?: string;
 }

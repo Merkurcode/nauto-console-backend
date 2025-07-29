@@ -6,7 +6,7 @@ const defaultUsers = [
   // root user
   {
     email: 'root@root.com',
-    password: '123456', // This will be hashed before saving
+    password: '12345678', // This will be hashed before saving
     firstName: 'rootName',
     lastName: 'rootLastName',
     secondLastName: 'rootSecondLastName',
@@ -144,7 +144,73 @@ export default async function main(prisma: PrismaClient) {
     
     await prisma.user.upsert({
       where: { email: user.email },
-      update: {},
+      update: {
+        email: user.email,
+        passwordHash: hashedPassword,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        secondLastName: user.secondLastName,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,        
+        companyId: company.id,
+        bannedUntil: user.bannedUntil,
+        banReason: user.banReason,
+        agentPhone: user.agentPhone,
+        roles: {
+          deleteMany: {},
+          create: user.roles.map(role => ({
+            role: {
+              connect: { name: role },
+            },
+          })),
+        },
+        profile: {
+          upsert: {
+            update: {
+              phone: user.profile.phone,
+              avatarUrl: user.profile.avatarUrl,
+              bio: user.profile.bio,
+              birthdate: user.profile.birthDate,
+            },
+            create: {
+              phone: user.profile.phone,
+              avatarUrl: user.profile.avatarUrl,
+              bio: user.profile.bio,
+              birthdate: user.profile.birthDate,
+            },
+          },
+        },
+        address: {
+          upsert: {
+            update: {
+              city: user.address.city,
+              street: user.address.street,
+              exteriorNumber: user.address.exteriorNumber,
+              interiorNumber: user.address.interiorNumber,
+              postalCode: user.address.postalCode,
+              country: {
+                connect: { name: user.address.country },
+              },
+              state: {
+                connect: { name: user.address.state },
+              },
+            },
+            create: {
+              city: user.address.city,
+              street: user.address.street,
+              exteriorNumber: user.address.exteriorNumber,
+              interiorNumber: user.address.interiorNumber,
+              postalCode: user.address.postalCode,
+              country: {
+                connect: { name: user.address.country },
+              },
+              state: {
+                connect: { name: user.address.state },
+              },
+            },
+          },
+        },
+      },
       create: {
         email: user.email,
         passwordHash: hashedPassword,

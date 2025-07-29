@@ -7,6 +7,7 @@ import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
 import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 
 export class CreateCompanyCommand implements ICommand {
   constructor(
@@ -18,10 +19,11 @@ export class CreateCompanyCommand implements ICommand {
     public readonly host: Host,
     public readonly industrySector?: IndustrySector,
     public readonly industryOperationChannel?: IndustryOperationChannel,
+    public readonly parentCompanyId?: CompanyId,
   ) {}
 }
 
-import { Inject, ConflictException } from '@nestjs/common';
+import { Inject, ConflictException, NotFoundException } from '@nestjs/common';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { Company } from '@core/entities/company.entity';
 import { CompanyMapper } from '@application/mappers/company.mapper';
@@ -45,6 +47,7 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
       host,
       industrySector,
       industryOperationChannel,
+      parentCompanyId,
     } = command;
 
     // Check if company name already exists
@@ -59,6 +62,15 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
       throw new ConflictException('Company host already exists');
     }
 
+    // Find parent company if parentCompanyId is provided
+    let parentCompany: Company | undefined;
+    if (parentCompanyId) {
+      parentCompany = await this.companyRepository.findById(parentCompanyId);
+      if (!parentCompany) {
+        throw new NotFoundException('Parent company not found');
+      }
+    }
+
     // Create new company
     const company = Company.create(
       name,
@@ -69,6 +81,7 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
       host,
       industrySector,
       industryOperationChannel,
+      parentCompany,
     );
 
     // Save company

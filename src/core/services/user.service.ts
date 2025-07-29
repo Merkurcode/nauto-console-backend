@@ -12,6 +12,10 @@ import {
 import { Email } from '@core/value-objects/email.vo';
 import { Password } from '@core/value-objects/password.vo';
 import { FirstName, LastName } from '@core/value-objects/name.vo';
+import { SecondLastName } from '@core/value-objects/second-lastname.vo';
+import { AgentPhone } from '@core/value-objects/agent-phone.vo';
+import { UserProfile } from '@core/value-objects/user-profile.vo';
+import { Address } from '@core/value-objects/address.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
@@ -69,6 +73,146 @@ export class UserService {
     const defaultRole = await this.roleRepository.findDefaultRole();
     if (defaultRole) {
       user.addRole(defaultRole);
+    }
+
+    // Save the user
+    const savedUser = await this.userRepository.create(user);
+
+    // Send welcome email if password was generated
+    if (passwordWasGenerated) {
+      try {
+        await this.emailProvider.sendWelcomeEmail(emailStr, firstName);
+      } catch (error) {
+        console.error('Error sending welcome email:', error);
+        // Continue even if email sending fails
+      }
+    }
+
+    return savedUser;
+  }
+
+  async createUserWithExtendedData(
+    emailStr: string,
+    passwordStr: string | undefined,
+    firstName: string,
+    lastName: string,
+    options?: {
+      secondLastName?: string;
+      isActive?: boolean;
+      emailVerified?: boolean;
+      bannedUntil?: Date;
+      banReason?: string;
+      agentPhone?: string;
+      profile?: {
+        phone?: string;
+        avatarUrl?: string;
+        bio?: string;
+        birthDate?: string;
+      };
+      address?: {
+        country?: string;
+        state?: string;
+        city?: string;
+        street?: string;
+        exteriorNumber?: string;
+        interiorNumber?: string;
+        postalCode?: string;
+      };
+      companyName?: string;
+      roles?: string[];
+    },
+  ): Promise<User> {
+    // Validate email using value object
+    const email = new Email(emailStr);
+
+    // Generate password if not provided
+    let actualPassword = passwordStr;
+    let passwordWasGenerated = false;
+
+    if (!passwordStr) {
+      actualPassword = PasswordGenerator.generateSecurePassword();
+      passwordWasGenerated = true;
+    }
+
+    // Validate password using value object
+    const password = new Password(actualPassword!);
+
+    // Check if user already exists
+    const existingUser = await this.userRepository.findByEmail(email.getValue());
+    if (existingUser) {
+      throw new EntityAlreadyExistsException('User', 'email');
+    }
+
+    // Hash the password
+    const passwordHash = await this.hashPassword(password.getValue());
+
+    // Create value objects for optional fields
+    const secondLastNameVO = options?.secondLastName
+      ? new SecondLastName(options.secondLastName)
+      : undefined;
+    const agentPhoneVO = options?.agentPhone ? new AgentPhone(options.agentPhone) : undefined;
+    const profileVO = options?.profile
+      ? new UserProfile(
+          options.profile.phone,
+          options.profile.avatarUrl,
+          options.profile.bio,
+          options.profile.birthDate,
+        )
+      : undefined;
+
+    let addressVO: Address | undefined;
+    if (
+      options?.address &&
+      options.address.country &&
+      options.address.state &&
+      options.address.city &&
+      options.address.street &&
+      options.address.exteriorNumber &&
+      options.address.postalCode
+    ) {
+      addressVO = new Address(
+        options.address.country,
+        options.address.state,
+        options.address.city,
+        options.address.street,
+        options.address.exteriorNumber,
+        options.address.postalCode,
+        options.address.interiorNumber,
+      );
+    }
+
+    // Create a new user with extended data
+    const user = User.createWithExtendedData(
+      email,
+      passwordHash,
+      new FirstName(firstName),
+      new LastName(lastName),
+      {
+        secondLastName: secondLastNameVO,
+        isActive: options?.isActive ?? true,
+        emailVerified: options?.emailVerified ?? false,
+        bannedUntil: options?.bannedUntil,
+        banReason: options?.banReason,
+        agentPhone: agentPhoneVO,
+        profile: profileVO,
+        address: addressVO,
+      },
+    );
+
+    // Assign roles if provided, otherwise use default role
+    if (options?.roles && options.roles.length > 0) {
+      for (const roleName of options.roles) {
+        const role = await this.roleRepository.findByName(roleName);
+        if (role) {
+          user.addRole(role);
+        }
+      }
+    } else {
+      // Assign default role if no roles provided
+      const defaultRole = await this.roleRepository.findDefaultRole();
+      if (defaultRole) {
+        user.addRole(defaultRole);
+      }
     }
 
     // Save the user

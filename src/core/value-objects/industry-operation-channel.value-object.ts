@@ -21,7 +21,9 @@ export class IndustryOperationChannel {
   }
 
   public static isValid(value: string): boolean {
-    return Object.values(IndustryOperationChannelEnum).includes(value as IndustryOperationChannelEnum);
+    return Object.values(IndustryOperationChannelEnum).includes(
+      value as IndustryOperationChannelEnum,
+    );
   }
 
   public static getValidValues(): string[] {
