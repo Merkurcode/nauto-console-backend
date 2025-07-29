@@ -52,17 +52,17 @@ export class AuthService {
 
   private get otpConfig() {
     return {
-      secret: this.configService.get<string>('OTP_SECRET'),
-      expiration: this.configService.get<number>('OTP_EXPIRATION', 5),
-      step: this.configService.get<number>('OTP_STEP', 30),
-      digits: this.configService.get<number>('OTP_DIGITS', 6),
+      secret: this.configService.get<string>('otp.secret'),
+      expiration: this.configService.get<number>('otp.expiration', 5),
+      step: this.configService.get<number>('otp.step', 30),
+      digits: this.configService.get<number>('otp.digits', 6),
     };
   }
 
   private get tokenConfig() {
     return {
       refreshExpiration: parseInt(
-        this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d').replace('d', ''),
+        this.configService.get<string>('jwt.refreshExpiration', '7d').replace('d', ''),
         10,
       ),
     };

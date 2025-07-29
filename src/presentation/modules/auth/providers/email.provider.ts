@@ -20,7 +20,7 @@ export class EmailProvider implements OnModuleInit {
 
     try {
       // If in development mode, create a test account
-      if (this.configService.get('NODE_ENV') !== 'production') {
+      if (this.configService.get('env') !== 'production') {
         const testAccount = await nodemailer.createTestAccount();
 
         this.transporter = nodemailer.createTransport({
@@ -35,12 +35,12 @@ export class EmailProvider implements OnModuleInit {
       } else {
         // For production, use real SMTP settings from config
         this.transporter = nodemailer.createTransport({
-          host: this.configService.get('SMTP_HOST'),
-          port: this.configService.get('SMTP_PORT'),
-          secure: this.configService.get('SMTP_SECURE') === 'true',
+          host: this.configService.get('smtp.host'),
+          port: this.configService.get('smtp.port'),
+          secure: this.configService.get('smtp.secure') === 'true',
           auth: {
-            user: this.configService.get('SMTP_USER'),
-            pass: this.configService.get('SMTP_PASSWORD'),
+            user: this.configService.get('smtp.user'),
+            pass: this.configService.get('smtp.password'),
           },
         });
       }
@@ -71,10 +71,10 @@ export class EmailProvider implements OnModuleInit {
    */
   async sendVerificationCode(email: string, code: string): Promise<nodemailer.SentMessageInfo> {
     const transporter = await this.getTransporter();
-    const appName = this.configService.get('APP_NAME', 'Our Application');
+    const appName = this.configService.get('appName', 'Our Application');
 
     const mailOptions = {
-      from: `"${appName}" <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`,
+      from: `"${appName}" <${this.configService.get('smtp.from', 'noreply@example.com')}>`,
       to: email,
       subject: `Your ${appName} Verification Code`,
       text: `Your verification code is: ${code}. It will expire in 5 minutes.`,
@@ -97,7 +97,7 @@ export class EmailProvider implements OnModuleInit {
     const result = await transporter.sendMail(mailOptions);
 
     // For test accounts, log the preview URL
-    if (this.configService.get('NODE_ENV') !== 'production') {
+    if (this.configService.get('env') !== 'production') {
       // eslint-disable-next-line no-console
       console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
     }
@@ -116,12 +116,12 @@ export class EmailProvider implements OnModuleInit {
     resetToken: string,
   ): Promise<nodemailer.SentMessageInfo> {
     const transporter = await this.getTransporter();
-    const appName = this.configService.get('APP_NAME', 'Our Application');
-    const frontendUrl = this.configService.get('FRONTEND_URL', 'https://example.com');
+    const appName = this.configService.get('appName', 'Our Application');
+    const frontendUrl = this.configService.get('frontend.url', 'https://example.com');
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     const mailOptions = {
-      from: `"${appName}" <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`,
+      from: `"${appName}" <${this.configService.get('smtp.from', 'noreply@example.com')}>`,
       to: email,
       subject: `Reset Your ${appName} Password`,
       text: `Click on the following link to reset your password: ${resetLink}. This link will expire in 1 hour.`,
@@ -147,7 +147,7 @@ export class EmailProvider implements OnModuleInit {
     const result = await transporter.sendMail(mailOptions);
 
     // For test accounts, log the preview URL
-    if (this.configService.get('NODE_ENV') !== 'production') {
+    if (this.configService.get('env') !== 'production') {
       // eslint-disable-next-line no-console
       console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
     }
@@ -163,11 +163,11 @@ export class EmailProvider implements OnModuleInit {
    */
   async sendWelcomeEmail(email: string, firstName: string): Promise<nodemailer.SentMessageInfo> {
     const transporter = await this.getTransporter();
-    const appName = this.configService.get('APP_NAME', 'Our Application');
-    const loginLink = this.configService.get('FRONTEND_URL', 'https://example.com');
+    const appName = this.configService.get('appName', 'Our Application');
+    const loginLink = this.configService.get('frontend.url', 'https://example.com');
 
     const mailOptions = {
-      from: `"${appName}" <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`,
+      from: `"${appName}" <${this.configService.get('smtp.from', 'noreply@example.com')}>`,
       to: email,
       subject: `Welcome to ${appName}!`,
       text: `Hi ${firstName}, welcome to ${appName}! We're excited to have you on board.`,
@@ -198,7 +198,7 @@ export class EmailProvider implements OnModuleInit {
     const result = await transporter.sendMail(mailOptions);
 
     // For test accounts, log the preview URL
-    if (this.configService.get('NODE_ENV') !== 'production') {
+    if (this.configService.get('env') !== 'production') {
       // eslint-disable-next-line no-console
       console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
     }
@@ -220,8 +220,8 @@ export class EmailProvider implements OnModuleInit {
     isHtml: boolean = false,
   ): Promise<nodemailer.SentMessageInfo> {
     const transporter = await this.getTransporter();
-    const appName = this.configService.get('APP_NAME', 'Nuestra Aplicación');
-    const from = `${appName} <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`;
+    const appName = this.configService.get('appName', 'Nuestra Aplicación');
+    const from = `${appName} <${this.configService.get('smtp.from', 'noreply@example.com')}>`;
 
     const mailOptions = {
       from,
@@ -234,7 +234,7 @@ export class EmailProvider implements OnModuleInit {
     const result = await transporter.sendMail(mailOptions);
 
     // Para cuentas de test, mostrar la URL de previsualización
-    if (this.configService.get('NODE_ENV') !== 'production') {
+    if (this.configService.get('env') !== 'production') {
       // eslint-disable-next-line no-console
       console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
     }

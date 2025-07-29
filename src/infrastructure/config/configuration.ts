@@ -42,7 +42,6 @@ export default () => ({
   // Email providers
   email: {
     provider: process.env.EMAIL_PROVIDER || 'mailhog',
-    productionProvider: process.env.EMAIL_PRODUCTION_PROVIDER || 'resend',
   },
 
   // Resend
@@ -81,11 +80,14 @@ export default () => ({
   storage: {
     provider: process.env.STORAGE_PROVIDER || 'local',
     minio: {
-      endpoint: process.env.MINIO_ENDPOINT,
+      endPoint: process.env.MINIO_ENDPOINT,
       port: parseInt(process.env.MINIO_PORT || '9000', 10),
       useSSL: process.env.MINIO_USE_SSL === 'true',
       accessKey: process.env.MINIO_ACCESS_KEY,
       secretKey: process.env.MINIO_SECRET_KEY,
+      region: process.env.MINIO_REGION || 'us-east-1',
+      publicBucket: process.env.MINIO_PUBLIC_BUCKET || 'public',
+      privateBucket: process.env.MINIO_PRIVATE_BUCKET || 'private',
     },
     aws: {
       region: process.env.AWS_REGION,

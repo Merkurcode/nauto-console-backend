@@ -67,14 +67,14 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(exceptionLogger));
 
   // Enable CORS with security settings
-  const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS')?.split(',') || [
+  const allowedOrigins = configService.get<string[]>('cors.allowedOrigins') || [
     'http://localhost:3000',
   ];
 
   // In development, allow all origins for easier testing with ngrok
   const corsOptions = {
     origin:
-      configService.get<string>('NODE_ENV') === 'development'
+      configService.get<string>('env') === 'development'
         ? true // Allow all origins in development
         : allowedOrigins,
     credentials: true,
@@ -149,14 +149,14 @@ async function bootstrap() {
     .build();
 
   // Basic Auth for Swagger (only in production)
-  if (configService.get<string>('NODE_ENV') === 'production') {
+  if (configService.get<string>('env') === 'production') {
     app.use(
       '/docs',
       basicAuth({
         challenge: true,
         users: {
-          [configService.get<string>('SWAGGER_USER', 'admin')]: configService.get<string>(
-            'SWAGGER_PASSWORD',
+          [configService.get<string>('swagger.user', 'admin')]: configService.get<string>(
+            'swagger.password',
             'admin',
           ),
         },
@@ -179,8 +179,8 @@ async function bootstrap() {
   });
 
   // Start server
-  const port = configService.get<number>('PORT', 3000);
-  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  const port = configService.get<number>('port', 3000);
+  const nodeEnv = configService.get<string>('env', 'development');
 
   await app.listen(port);
   const appUrl = await app.getUrl();

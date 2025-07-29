@@ -38,7 +38,7 @@ export class HealthService {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: this.configService.get<string>('NODE_ENV', 'development'),
+      environment: this.configService.get<string>('env', 'development'),
       version: this.getApplicationVersion(),
     };
   }
@@ -182,7 +182,7 @@ export class HealthService {
       status: overallStatus,
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: this.configService.get<string>('NODE_ENV', 'development'),
+      environment: this.configService.get<string>('env', 'development'),
       version: this.getApplicationVersion(),
       checks,
     };
@@ -199,12 +199,12 @@ export class HealthService {
   }
 
   private async checkConfiguration(): Promise<void> {
-    const requiredVars = ['JWT_SECRET', 'DATABASE_URL'];
-    const missing = requiredVars.filter(key => !this.configService.get(key));
+    const requiredConfigs = [{ key: 'jwt.secret', name: 'JWT_SECRET' }, { key: 'database.url', name: 'DATABASE_URL' }];
+    const missing = requiredConfigs.filter(config => !this.configService.get(config.key));
 
     if (missing.length > 0) {
       throw new ConfigurationException(
-        `Missing required environment variables: ${missing.join(', ')}`,
+        `Missing required configuration values: ${missing.map(c => c.name).join(', ')}`,
       );
     }
   }
