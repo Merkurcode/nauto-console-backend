@@ -169,7 +169,7 @@ model User {
   
   bannedUntil   DateTime? // por implementar
   banReason     String?   // por implementar
-  agentPhone    String?   // por implementar
+  agentPhone    String?   // se usa para buscar a los agentes de ventas por su número de teléfono en la compañia (tenat-id)
 
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   roles         UserRole[]
@@ -351,9 +351,16 @@ model Company {
   industrySector EnumIndustrySector @default(OTHER)
   industryOperationChannel EnumIndustryOperationChannel @default(MIXED)
   
+  // Parent company relationship (self-referential)
+  parentCompanyId String?
+  parentCompany   Company? @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  subsidiaries    Company[] @relation("CompanyHierarchy")
+  
   address       Address?
   users         User[]
   assistants    CompanyAIAssistant[]
+  
+  @@index([parentCompanyId])
 }
 
 model Address {

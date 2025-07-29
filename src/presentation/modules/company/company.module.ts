@@ -15,6 +15,9 @@ import { RemoveUserFromCompanyCommandHandler } from '@application/commands/compa
 import { GetCompanyQueryHandler } from '@application/queries/company/get-company.query';
 import { GetCompaniesQueryHandler } from '@application/queries/company/get-companies.query';
 import { GetCompanyByHostQueryHandler } from '@application/queries/company/get-company-by-host.query';
+import { GetCompanySubsidiariesQueryHandler } from '@application/queries/company/get-company-subsidiaries.query';
+import { GetRootCompaniesQueryHandler } from '@application/queries/company/get-root-companies.query';
+import { GetCompanyHierarchyQueryHandler } from '@application/queries/company/get-company-hierarchy.query';
 import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 const commandHandlers = [
@@ -29,6 +32,9 @@ const queryHandlers = [
   GetCompanyQueryHandler,
   GetCompaniesQueryHandler,
   GetCompanyByHostQueryHandler,
+  GetCompanySubsidiariesQueryHandler,
+  GetRootCompaniesQueryHandler,
+  GetCompanyHierarchyQueryHandler,
 ];
 
 @Module({

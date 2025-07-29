@@ -10,6 +10,7 @@ import { I18nService } from 'nestjs-i18n';
 // Mock user service
 const mockUserService = {
   createUser: jest.fn(),
+  createUserWithExtendedData: jest.fn(),
 };
 
 // Mock i18n service
@@ -73,7 +74,7 @@ describe('RegisterUserCommandHandler', () => {
       new LastName('User'),
     );
 
-    mockUserService.createUser.mockResolvedValue(createdUser);
+    mockUserService.createUserWithExtendedData.mockResolvedValue(createdUser);
 
     // Act
     const result = await handler.execute(command);
@@ -86,11 +87,23 @@ describe('RegisterUserCommandHandler', () => {
       lastName: createdUser.lastName.getValue(),
     });
 
-    expect(userService.createUser).toHaveBeenCalledWith(
+    expect(userService.createUserWithExtendedData).toHaveBeenCalledWith(
       'new@example.com',
       'Password123!',
       'New',
       'User',
+      {
+        secondLastName: undefined,
+        isActive: undefined,
+        emailVerified: undefined,
+        bannedUntil: undefined,
+        banReason: undefined,
+        agentPhone: undefined,
+        profile: undefined,
+        address: undefined,
+        companyName: undefined,
+        roles: undefined,
+      }
     );
 
     expect(UserMapper.toBaseResponse).toHaveBeenCalledWith(createdUser);
@@ -106,16 +119,28 @@ describe('RegisterUserCommandHandler', () => {
     });
 
     const error = new Error('Email already in use');
-    mockUserService.createUser.mockRejectedValue(error);
+    mockUserService.createUserWithExtendedData.mockRejectedValue(error);
 
     // Act & Assert
     await expect(handler.execute(command)).rejects.toThrow(error);
 
-    expect(userService.createUser).toHaveBeenCalledWith(
+    expect(userService.createUserWithExtendedData).toHaveBeenCalledWith(
       'existing@example.com',
       'Password123!',
       'Existing',
       'User',
+      {
+        secondLastName: undefined,
+        isActive: undefined,
+        emailVerified: undefined,
+        bannedUntil: undefined,
+        banReason: undefined,
+        agentPhone: undefined,
+        profile: undefined,
+        address: undefined,
+        companyName: undefined,
+        roles: undefined,
+      }
     );
   });
 });

@@ -14,6 +14,28 @@ export class CompanyMapper {
       isActive: company.isActive,
       industrySector: company.industrySector.value,
       industryOperationChannel: company.industryOperationChannel.value,
+      parentCompany: company.parentCompany ? this.toBasicResponse(company.parentCompany) : undefined,
+      subsidiaries: company.subsidiaries.length > 0 ? company.subsidiaries.map(sub => this.toBasicResponse(sub)) : undefined,
+      hierarchyLevel: company.getHierarchyLevel(),
+      createdAt: company.createdAt,
+      updatedAt: company.updatedAt,
+    };
+  }
+
+  // Basic response without nested relationships to avoid circular references
+  static toBasicResponse(company: Company): ICompanyResponse {
+    return {
+      id: company.id.getValue(),
+      name: company.name.getValue(),
+      description: company.description.getValue(),
+      businessSector: company.businessSector.getValue(),
+      businessUnit: company.businessUnit.getValue(),
+      host: company.host.getValue(),
+      address: this.mapAddressToResponse(company.address),
+      isActive: company.isActive,
+      industrySector: company.industrySector.value,
+      industryOperationChannel: company.industryOperationChannel.value,
+      hierarchyLevel: company.getHierarchyLevel(),
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };

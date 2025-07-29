@@ -23,6 +23,9 @@ import { DeleteCompanyCommand } from '@application/commands/company/delete-compa
 import { GetCompanyQuery } from '@application/queries/company/get-company.query';
 import { GetCompaniesQuery } from '@application/queries/company/get-companies.query';
 import { GetCompanyByHostQuery } from '@application/queries/company/get-company-by-host.query';
+import { GetCompanySubsidiariesQuery } from '@application/queries/company/get-company-subsidiaries.query';
+import { GetRootCompaniesQuery } from '@application/queries/company/get-root-companies.query';
+import { GetCompanyHierarchyQuery } from '@application/queries/company/get-company-hierarchy.query';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { CompanyDescription } from '@core/value-objects/company-description.vo';
@@ -150,7 +153,7 @@ return [company];
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
-    const { name, description, businessSector, businessUnit, address, host, industrySector, industryOperationChannel } = createCompanyDto;
+    const { name, description, businessSector, businessUnit, address, host, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
 
     const command = new CreateCompanyCommand(
       new CompanyName(name),
@@ -169,6 +172,7 @@ return [company];
       new Host(host),
       industrySector ? IndustrySector.create(industrySector) : undefined,
       industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
+      parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
     );
 
     return this.commandBus.execute(command);
@@ -252,5 +256,55 @@ return [company];
   async deleteCompany(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     const companyId = CompanyId.fromString(id);
     await this.commandBus.execute(new DeleteCompanyCommand(companyId));
+  }
+
+  @Get(':id/subsidiaries')
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
+  @ApiOperation({ 
+    summary: 'Get company subsidiaries', 
+    description: 'Get all direct subsidiaries of a company'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Company subsidiaries retrieved successfully',
+    type: [CompanyResponse],
+  })
+  @RequirePermissions('company:read')
+  async getCompanySubsidiaries(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse[]> {
+    const companyId = CompanyId.fromString(id);
+    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
+  }
+
+  @Get('root-companies')
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
+  @ApiOperation({ 
+    summary: 'Get root companies', 
+    description: 'Get all companies that have no parent company (root level)'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Root companies retrieved successfully',
+    type: [CompanyResponse],
+  })
+  @RequirePermissions('company:read')
+  async getRootCompanies(): Promise<CompanyResponse[]> {
+    return this.queryBus.execute(new GetRootCompaniesQuery());
+  }
+
+  @Get(':id/hierarchy')
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
+  @ApiOperation({ 
+    summary: 'Get company hierarchy', 
+    description: 'Get the complete hierarchy tree for a company including all subsidiaries'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Company hierarchy retrieved successfully',
+    type: CompanyResponse,
+  })
+  @RequirePermissions('company:read')
+  async getCompanyHierarchy(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse> {
+    const companyId = CompanyId.fromString(id);
+    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId));
   }
 }
