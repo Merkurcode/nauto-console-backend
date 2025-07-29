@@ -8,6 +8,7 @@ import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
+import { I18nService } from 'nestjs-i18n';
 import { v4 as uuidv4 } from 'uuid';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
 
@@ -29,6 +30,7 @@ export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly tokenProvider: TokenProvider,
+    private readonly i18n: I18nService,
   ) {}
 
   async execute(command: VerifyOtpCommand): Promise<IAuthTokenResponse> {
@@ -78,6 +80,7 @@ export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand
       accessToken,
       refreshToken,
       user: UserMapper.toAuthResponse(user),
+      message: this.i18n.t('common.auth.2fa.success'),
     };
   }
 }
