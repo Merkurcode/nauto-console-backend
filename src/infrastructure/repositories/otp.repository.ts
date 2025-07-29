@@ -92,7 +92,7 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
   }
 
   private mapToModel(record: PrismaOtp): Otp {
-    const expirationMinutes = this.configService.get<number>('OTP_EXPIRATION', 5);
+    const expirationMinutes = this.configService.get<number>('otp.expiration', 5);
 
     // Create value object from primitive value
     const userIdVO = UserId.fromString(record.userId);

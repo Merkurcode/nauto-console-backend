@@ -13,7 +13,7 @@ export class LoggerService implements NestLoggerService {
   private static logLevels: LogLevel[] = ['error', 'warn', 'log', 'debug', 'verbose'];
 
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
-    const env = this.configService.get<string>('NODE_ENV', 'development');
+    const env = this.configService.get<string>('env', 'development');
     LoggerService.logLevels = this.getLogLevels(env);
   }
 

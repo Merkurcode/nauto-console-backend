@@ -54,16 +54,14 @@ export class EmailService {
   }
 
   async sendEmail(options: IEmailOptions): Promise<boolean> {
-    const nodeEnv = this.configService.get<string>('env', 'development');
     const emailProvider = this.configService.get<string>('email.provider', 'mailhog');
-    const productionProvider = this.configService.get<string>('email.productionProvider', 'resend');
 
-    // Use Resend for production
-    if (nodeEnv === 'production' && productionProvider === 'resend') {
+    // Use provider specified in environment config
+    if (emailProvider === 'resend') {
       return this.sendEmailWithResend(options);
     }
 
-    // Use MailHog or SMTP for development/staging
+    // Use MailHog or SMTP for other providers
     return this.sendEmailWithNodemailer(options);
   }
 

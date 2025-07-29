@@ -59,9 +59,9 @@ import configuration from '@infrastructure/config/configuration';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
+        secret: configService.get('jwt.secret'),
         signOptions: {
-          expiresIn: configService.get('JWT_ACCESS_EXPIRATION', '15m'),
+          expiresIn: configService.get('jwt.accessExpiration', '15m'),
         },
       }),
     }),
