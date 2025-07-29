@@ -3,6 +3,12 @@ import { PrismaClient } from '@prisma/client';
 // Permissions
 export const permissions = [
   {
+    name: 'auth:write',
+    description: 'Can register users and perform authentication operations',
+    resource: 'auth',
+    action: 'write',
+  },
+  {
     name: 'user:read',
     description: 'Can read user information',
     resource: 'user',
@@ -79,6 +85,12 @@ export const permissions = [
     description: 'Can delete companies',
     resource: 'company',
     action: 'delete',
+  },
+  {
+    name: 'audit:read',
+    description: 'Can read audit logs and system monitoring information',
+    resource: 'audit',
+    action: 'read',
   },
 ];
 

@@ -13,6 +13,7 @@ import {
   EMAIL_VERIFICATION_REPOSITORY,
   PASSWORD_RESET_REPOSITORY,
   SESSION_REPOSITORY,
+  COMPANY_REPOSITORY,
 } from '@shared/constants/tokens';
 
 // Controllers
@@ -26,6 +27,7 @@ import { RefreshTokenRepository } from '@infrastructure/repositories/refresh-tok
 import { EmailVerificationRepository } from '@infrastructure/repositories/email-verification.repository';
 import { PasswordResetRepository } from '@infrastructure/repositories/password-reset.repository';
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
+import { CompanyRepository } from '@infrastructure/repositories/company.repository';
 import { EmailProvider } from './providers/email.provider';
 import { TokenProvider } from './providers/token.provider';
 
@@ -118,6 +120,10 @@ const commandHandlers = [
     {
       provide: SESSION_REPOSITORY,
       useClass: SessionRepository,
+    },
+    {
+      provide: COMPANY_REPOSITORY,
+      useClass: CompanyRepository,
     },
 
     // Providers
