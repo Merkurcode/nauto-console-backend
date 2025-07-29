@@ -20,14 +20,14 @@ export class GetCompanyHierarchyQueryHandler implements IQueryHandler<GetCompany
 
   async execute(query: GetCompanyHierarchyQuery): Promise<ICompanyResponse> {
     const company = await this.companyRepository.findById(query.companyId);
-    
+
     if (!company) {
       throw new NotFoundException('Company not found');
     }
 
     // Get the root company first to show the complete hierarchy
     const rootCompany = company.getRootCompany();
-    
+
     return CompanyMapper.toResponse(rootCompany);
   }
 }

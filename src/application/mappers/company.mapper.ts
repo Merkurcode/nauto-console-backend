@@ -14,8 +14,13 @@ export class CompanyMapper {
       isActive: company.isActive,
       industrySector: company.industrySector.value,
       industryOperationChannel: company.industryOperationChannel.value,
-      parentCompany: company.parentCompany ? this.toBasicResponse(company.parentCompany) : undefined,
-      subsidiaries: company.subsidiaries.length > 0 ? company.subsidiaries.map(sub => this.toBasicResponse(sub)) : undefined,
+      parentCompany: company.parentCompany
+        ? this.toBasicResponse(company.parentCompany)
+        : undefined,
+      subsidiaries:
+        company.subsidiaries.length > 0
+          ? company.subsidiaries.map(sub => this.toBasicResponse(sub))
+          : undefined,
       hierarchyLevel: company.getHierarchyLevel(),
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,

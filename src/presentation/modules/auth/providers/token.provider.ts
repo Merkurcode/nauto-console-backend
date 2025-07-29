@@ -24,13 +24,18 @@ export class TokenProvider {
       roles: user.roles.map(role => role.name),
       permissions: permissions,
       tenantId: user.getTenantId(),
+      companyId: user.companyId?.getValue(),
     };
 
     // Add session token as jti (JWT ID) claim if provided
     if (sessionToken) {
       payload['jti'] = sessionToken;
+      console.log('DEBUG: Session token added to JWT payload:', sessionToken);
+    } else {
+      console.log('DEBUG: No session token provided to buildPayload');
     }
 
+    console.log('DEBUG: Final JWT payload:', payload);
     return payload;
   }
 

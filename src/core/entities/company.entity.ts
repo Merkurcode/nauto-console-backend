@@ -345,8 +345,8 @@ export class Company extends AggregateRoot {
     }
 
     if (this._parentCompany) {
-      const index = this._parentCompany._subsidiaries.findIndex(
-        subsidiary => subsidiary._id.equals(this._id)
+      const index = this._parentCompany._subsidiaries.findIndex(subsidiary =>
+        subsidiary._id.equals(this._id),
       );
       if (index !== -1) {
         this._parentCompany._subsidiaries.splice(index, 1);
@@ -377,10 +377,8 @@ export class Company extends AggregateRoot {
       throw new InvalidValueObjectException('Cannot modify inactive company');
     }
 
-    const index = this._subsidiaries.findIndex(subsidiary => 
-      subsidiary._id.equals(subsidiaryId)
-    );
-    
+    const index = this._subsidiaries.findIndex(subsidiary => subsidiary._id.equals(subsidiaryId));
+
     if (index !== -1) {
       this._subsidiaries[index]._parentCompany = undefined;
       this._subsidiaries.splice(index, 1);
@@ -397,6 +395,7 @@ export class Company extends AggregateRoot {
       }
       current = current._parentCompany;
     }
+
     return false;
   }
 
@@ -409,12 +408,13 @@ export class Company extends AggregateRoot {
     while (current._parentCompany) {
       current = current._parentCompany;
     }
+
     return current;
   }
 
   getAllSubsidiaries(): Company[] {
     const result: Company[] = [];
-    
+
     const addSubsidiariesRecursive = (company: Company) => {
       for (const subsidiary of company._subsidiaries) {
         result.push(subsidiary);
@@ -423,6 +423,7 @@ export class Company extends AggregateRoot {
     };
 
     addSubsidiariesRecursive(this);
+
     return result;
   }
 
@@ -433,6 +434,7 @@ export class Company extends AggregateRoot {
       level++;
       current = current._parentCompany;
     }
+
     return level;
   }
 }

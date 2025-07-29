@@ -30,6 +30,7 @@ export interface IAuthTokenResponse {
   accessToken: string;
   refreshToken: string;
   user: IUserWithAuthResponse;
+  message?: string;
 }
 
 export interface IOtpRequiredResponse {
@@ -57,6 +58,7 @@ export interface IJwtPayload {
   roles: string[];
   permissions?: string[];
   tenantId?: string;
+  companyId?: string;
   jti?: string; // JWT ID - session token
   iat?: number;
   exp?: number;

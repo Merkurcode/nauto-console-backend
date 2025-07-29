@@ -12,7 +12,9 @@ export class GetCompanySubsidiariesQuery implements IQuery {
 
 @Injectable()
 @QueryHandler(GetCompanySubsidiariesQuery)
-export class GetCompanySubsidiariesQueryHandler implements IQueryHandler<GetCompanySubsidiariesQuery> {
+export class GetCompanySubsidiariesQueryHandler
+  implements IQueryHandler<GetCompanySubsidiariesQuery>
+{
   constructor(
     @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
     private readonly companyRepository: ICompanyRepository,
@@ -20,6 +22,7 @@ export class GetCompanySubsidiariesQueryHandler implements IQueryHandler<GetComp
 
   async execute(query: GetCompanySubsidiariesQuery): Promise<ICompanyResponse[]> {
     const subsidiaries = await this.companyRepository.findSubsidiaries(query.companyId);
+
     return CompanyMapper.toListResponse(subsidiaries);
   }
 }

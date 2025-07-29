@@ -14,7 +14,7 @@ export interface ICompanyRepository {
   exists(id: CompanyId): Promise<boolean>;
   existsByName(name: CompanyName): Promise<boolean>;
   existsByHost(host: Host): Promise<boolean>;
-  
+
   // Hierarchy methods
   findSubsidiaries(parentId: CompanyId): Promise<Company[]>;
   findRootCompanies(): Promise<Company[]>;

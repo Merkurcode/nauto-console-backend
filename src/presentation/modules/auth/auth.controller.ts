@@ -1,4 +1,14 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Param, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+  Param,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
@@ -7,7 +17,7 @@ import { RegisterDto } from '@application/dtos/auth/register.dto';
 import { LoginDto } from '@application/dtos/auth/login.dto';
 import { VerifyOtpDto } from '@application/dtos/auth/verify-otp.dto';
 import { RefreshTokenDto } from '@application/dtos/auth/refresh-token.dto';
-import { LogoutDto } from '@application/dtos/auth/logout.dto';
+import { LogoutDto, LogoutScope } from '@application/dtos/auth/logout.dto';
 import {
   SendVerificationEmailDto,
   VerifyEmailDto,
@@ -33,6 +43,13 @@ import { ResetPasswordCommand } from '@application/commands/auth/reset-password.
 import { Public } from '@shared/decorators/public.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { SkipThrottle, Throttle } from '@shared/decorators/throttle.decorator';
+import { WriteOperation } from '@shared/decorators/write-operation.decorator';
+import { RequirePermissions } from '@shared/decorators/permissions.decorator';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@presentation/guards/permissions.guard';
+import { RolesGuard } from '@presentation/guards/roles.guard';
+import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
+import { InvitationGuard } from '@presentation/guards/invitation.guard';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 @ApiTags('auth')
@@ -41,14 +58,22 @@ import { IJwtPayload } from '@application/dtos/responses/user.response';
 export class AuthController {
   constructor(private readonly commandBus: CommandBus) {}
 
-  @Public()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard)
+  @RequirePermissions('auth:write')
+  @WriteOperation('auth')
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Register a new user (invitation-based)' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User successfully registered' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'User with this email already exists' })
-  async register(@Body() registerDto: RegisterDto) {
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions to invite user',
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
+  async register(@Body() registerDto: RegisterDto, @CurrentUser() _currentUser: IJwtPayload) {
     return this.commandBus.execute(new RegisterUserCommand(registerDto));
   }
 
@@ -122,15 +147,35 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Logout the current user - local (current session) or global (all sessions)',
+    description: 'Local logout revokes only the current session, global logout revokes all user sessions'
   })
-  @ApiResponse({ status: HttpStatus.OK, description: 'User logged out successfully' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'User logged out successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Logged out from current session successfully' }
+      }
+    }
+  })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Session token required for local logout' })
   async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto) {
+    console.log('DEBUG: Logout - Full user object:', user);
+    console.log('DEBUG: Logout - Session token (jti):', user.jti);
+    console.log('DEBUG: Logout - Scope requested:', logoutDto.scope);
+    
     // Extract session token from JWT for local logout
     const currentSessionToken = user.jti; // Session token stored in JWT's jti claim
+    
+    // Validate that we have a session token for local logout
+    if (logoutDto.scope === LogoutScope.LOCAL && !currentSessionToken) {
+      throw new Error('Session token not found in JWT. Local logout requires a valid session token.');
+    }
 
     return this.commandBus.execute(
-      new LogoutCommand(user.sub, logoutDto.scope, currentSessionToken),
+      new LogoutCommand(user.sub, logoutDto.scope || LogoutScope.GLOBAL, currentSessionToken),
     );
   }
 
