@@ -185,6 +185,28 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     });
   }
 
+  async getUserCountryPhoneCode(userId: string): Promise<string | null> {
+    return this.executeWithErrorHandling('getUserCountryPhoneCode', async () => {
+      const userWithAddress = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          address: {
+            include: {
+              country: true,
+            },
+          },
+        },
+      });
+
+      if (!userWithAddress?.address?.country) {
+        return null;
+      }
+
+      // Return phone code without the + sign for SMS API
+      return userWithAddress.address.country.phoneCode.replace('+', '');
+    });
+  }
+
   async create(user: User): Promise<User> {
     return this.executeWithErrorHandling('create', async () => {
       const createdUser = await this.prisma.user.create({

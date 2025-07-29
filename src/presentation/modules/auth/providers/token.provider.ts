@@ -36,6 +36,7 @@ export class TokenProvider {
     }
 
     console.log('DEBUG: Final JWT payload:', payload);
+
     return payload;
   }
 

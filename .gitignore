@@ -37,8 +37,10 @@ lerna-debug.log*
 # Environment
 .env
 .env.local
-.env.development
+.env.dev
 .env.test
+.env.prod
+.env.development
 .env.production
 
 # Docker volumes

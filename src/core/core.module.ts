@@ -6,6 +6,8 @@ import { SessionService } from './services/session.service';
 import { UserBanService } from './services/user-ban.service';
 import { ApplicationEventService } from './services/application-event.service';
 import { HealthService } from './services/health.service';
+import { EmailService } from './services/email.service';
+import { SmsService } from './services/sms.service';
 import { LoggerModule } from '@infrastructure/logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
@@ -27,6 +29,8 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
     UserBanService,
     ApplicationEventService,
     HealthService,
+    EmailService,
+    SmsService,
     {
       provide: SESSION_REPOSITORY,
       useClass: SessionRepository,
@@ -44,6 +48,8 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
     UserBanService,
     ApplicationEventService,
     HealthService,
+    EmailService,
+    SmsService,
   ],
 })
 export class CoreModule {}

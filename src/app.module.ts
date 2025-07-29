@@ -35,7 +35,7 @@ import configuration from '@infrastructure/config/configuration';
     // Global Config
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
       load: [configuration],
     }),
 

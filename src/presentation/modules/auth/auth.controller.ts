@@ -147,31 +147,37 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Logout the current user - local (current session) or global (all sessions)',
-    description: 'Local logout revokes only the current session, global logout revokes all user sessions'
+    description:
+      'Local logout revokes only the current session, global logout revokes all user sessions',
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'User logged out successfully',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Logged out from current session successfully' }
-      }
-    }
+        message: { type: 'string', example: 'Logged out from current session successfully' },
+      },
+    },
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Session token required for local logout' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Session token required for local logout',
+  })
   async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto) {
     console.log('DEBUG: Logout - Full user object:', user);
     console.log('DEBUG: Logout - Session token (jti):', user.jti);
     console.log('DEBUG: Logout - Scope requested:', logoutDto.scope);
-    
+
     // Extract session token from JWT for local logout
     const currentSessionToken = user.jti; // Session token stored in JWT's jti claim
-    
+
     // Validate that we have a session token for local logout
     if (logoutDto.scope === LogoutScope.LOCAL && !currentSessionToken) {
-      throw new Error('Session token not found in JWT. Local logout requires a valid session token.');
+      throw new Error(
+        'Session token not found in JWT. Local logout requires a valid session token.',
+      );
     }
 
     return this.commandBus.execute(
