@@ -21,7 +21,7 @@ import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
-import { EmailProvider } from '@infrastructure/providers/email.provider';
+import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
 
 @Injectable()
 export class UserService {
@@ -81,6 +81,7 @@ export class UserService {
     // Send welcome email with password
     try {
       const roleNames = user.roles?.map(role => role.name) || [];
+      console.log('Enviando correo de bienvenida a:', emailStr, 'con roles:', roleNames);
       await this.emailProvider.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, undefined, roleNames);
     } catch (error) {
       console.error('Error sending welcome email:', error);
@@ -218,6 +219,7 @@ export class UserService {
     // Send welcome email with password
     try {
       const roleNames = user.roles?.map(role => role.name) || [];
+      console.log('Enviando correo de bienvenida a:', emailStr, 'con roles:', roleNames, 'y compañía:', options?.companyName);
       await this.emailProvider.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, options?.companyName, roleNames);
     } catch (error) {
       console.error('Error sending welcome email:', error);

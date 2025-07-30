@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, Length, ValidateNested, IsEnum, IsUUID, IsUrl } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  Length,
+  ValidateNested,
+  IsEnum,
+  IsUUID,
+  IsUrl,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
 

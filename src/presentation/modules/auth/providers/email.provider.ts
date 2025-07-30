@@ -25,17 +25,37 @@ export class EmailProvider implements OnModuleInit {
       console.log('Current NODE_ENV:', nodeEnv);
 
       if (nodeEnv !== 'production') {
-        const testAccount = await nodemailer.createTestAccount();
+        const emailProvider = this.configService.get('email.provider', 'ethereal');
+        console.log('Email provider configurado:', emailProvider);
+        
+        if (emailProvider === 'mailhog') {
+          console.log('Configurando transporter para MailHog...');
+          this.transporter = nodemailer.createTransport({
+            host: this.configService.get('smtp.host', 'localhost'),
+            port: this.configService.get('smtp.port', 1025),
+            secure: false,
+            ignoreTLS: true,
+            // MailHog no requiere autenticación
+          });
+          console.log('Transporter configurado para MailHog en', 
+            this.configService.get('smtp.host', 'localhost') + ':' + this.configService.get('smtp.port', 1025));
+        } else {
+          console.log('Configurando transporter para desarrollo con Ethereal Email...');
+          const testAccount = await nodemailer.createTestAccount();
+          console.log('Test account creado:', testAccount.user);
 
-        this.transporter = nodemailer.createTransport({
-          host: 'smtp.ethereal.email',
-          port: 587,
-          secure: false,
-          auth: {
-            user: testAccount.user,
-            pass: testAccount.pass,
-          },
-        });
+          this.transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            secure: false,
+            auth: {
+              user: testAccount.user,
+              pass: testAccount.pass,
+            },
+          });
+          
+          console.log('Transporter configurado exitosamente para desarrollo con Ethereal');
+        }
       } else {
         // For production, use real SMTP settings from config
         this.transporter = nodemailer.createTransport({
@@ -50,6 +70,7 @@ export class EmailProvider implements OnModuleInit {
       }
 
       this.transporterInitialized = true;
+      console.log('Email transporter inicializado correctamente');
     } catch (error) {
       console.error('Failed to initialize email transport:', error);
       throw error;
@@ -169,6 +190,7 @@ export class EmailProvider implements OnModuleInit {
    * @param firstName The user's first name
    * @param password The user's generated password
    * @param companyName Optional company name
+   * @param roles Optional user roles
    * @returns Promise with the result of the operation
    */
   async sendWelcomeEmailWithPassword(
@@ -176,11 +198,35 @@ export class EmailProvider implements OnModuleInit {
     firstName: string,
     password: string,
     companyName?: string,
+    roles?: string[],
   ): Promise<nodemailer.SentMessageInfo> {
     const transporter = await this.getTransporter();
     const appName = this.configService.get('APP_NAME', 'Nuestra Aplicación');
 
-    const htmlContent = EmailTemplates.welcomeWithPassword(firstName, email, password, companyName);
+    // Obtener configuración para el template
+    const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
+    const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
+    const dashboardUrl = `${frontendUrl}${dashboardPath}`;
+    
+    const colors = {
+      primary: this.configService.get('email.templates.primaryColor', '007bff'),
+      secondary: this.configService.get('email.templates.secondaryColor', '6c757d'),
+    };
+    
+    const htmlContent = EmailTemplates.welcomeWithPassword(
+      firstName, 
+      email, 
+      password, 
+      companyName, 
+      roles, 
+      dashboardUrl, 
+      colors, 
+      appName
+    );
+    
+    console.log('Enviando correo de bienvenida con contraseña a:', email);
+    console.log('Roles incluidos:', roles);
+    console.log('Dashboard URL:', dashboardUrl);
 
     const mailOptions = {
       from: `"${appName}" <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`,
@@ -189,15 +235,27 @@ export class EmailProvider implements OnModuleInit {
       html: htmlContent,
     };
 
-    const result = await transporter.sendMail(mailOptions);
+    try {
+      const result = await transporter.sendMail(mailOptions);
+      
+      console.log('Correo enviado exitosamente. MessageId:', result.messageId);
 
-    // For test accounts, log the preview URL
-    if (this.configService.get('NODE_ENV') !== 'production') {
-      // eslint-disable-next-line no-console
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
+      // For test accounts, log the preview URL (solo para Ethereal)
+      if (this.configService.get('NODE_ENV') !== 'production') {
+        const emailProvider = this.configService.get('email.provider', 'ethereal');
+        if (emailProvider === 'ethereal') {
+          // eslint-disable-next-line no-console
+          console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
+        } else if (emailProvider === 'mailhog') {
+          console.log('Email enviado a MailHog. Ve a http://localhost:8025 para ver el correo.');
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error enviando correo de bienvenida:', error);
+      throw error;
     }
-
-    return result;
   }
 
   /**
