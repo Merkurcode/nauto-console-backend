@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 // DTOs
 import { RegisterDto } from '@application/dtos/auth/register.dto';
@@ -56,7 +57,12 @@ import { IJwtPayload } from '@application/dtos/responses/user.response';
 @Throttle(60, 5) // 5 requests per minute
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(AuthController.name);
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard)
   @RequirePermissions('auth:write')
@@ -157,9 +163,13 @@ export class AuthController {
     description: 'Session token required for local logout',
   })
   async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto) {
-    console.log('DEBUG: Logout - Full user object:', user);
-    console.log('DEBUG: Logout - Session token (jti):', user.jti);
-    console.log('DEBUG: Logout - Scope requested:', logoutDto.scope);
+    this.logger.debug({
+      message: 'Logout request received',
+      userId: user.sub,
+      sessionToken: user.jti,
+      scope: logoutDto.scope,
+      email: user.email,
+    });
 
     // Extract session token from JWT for local logout
     const currentSessionToken = user.jti; // Session token stored in JWT's jti claim

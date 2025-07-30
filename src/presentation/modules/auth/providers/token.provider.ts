@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '@core/services/auth.service';
 import { User } from '@core/entities/user.entity';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 @Injectable()
 export class TokenProvider {
@@ -11,7 +12,10 @@ export class TokenProvider {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
-  ) {}
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(TokenProvider.name);
+  }
 
   /**
    * Generate a JWT payload with user information
@@ -30,12 +34,25 @@ export class TokenProvider {
     // Add session token as jti (JWT ID) claim if provided
     if (sessionToken) {
       payload['jti'] = sessionToken;
-      console.log('DEBUG: Session token added to JWT payload:', sessionToken);
+      this.logger.debug({
+        message: 'Session token added to JWT payload',
+        sessionToken,
+        userId: user.id.getValue(),
+      });
     } else {
-      console.log('DEBUG: No session token provided to buildPayload');
+      this.logger.debug({
+        message: 'No session token provided to buildPayload',
+        userId: user.id.getValue(),
+      });
     }
 
-    console.log('DEBUG: Final JWT payload:', payload);
+    this.logger.debug({
+      message: 'JWT payload built successfully',
+      userId: user.id.getValue(),
+      email: user.email.getValue(),
+      rolesCount: user.roles?.length || 0,
+      hasSessionToken: !!sessionToken,
+    });
 
     return payload;
   }

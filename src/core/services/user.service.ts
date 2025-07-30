@@ -22,6 +22,9 @@ import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
 import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
+import { SmsService } from './sms.service';
+import { ConfigService } from '@nestjs/config';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 @Injectable()
 export class UserService {
@@ -33,7 +36,12 @@ export class UserService {
     private readonly domainValidationService: DomainValidationService,
     private readonly emailService: EmailService,
     private readonly emailProvider: EmailProvider,
-  ) {}
+    private readonly smsService: SmsService,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(UserService.name);
+  }
 
   async createUser(
     emailStr: string,
@@ -86,6 +94,27 @@ export class UserService {
     } catch (error) {
       console.error('Error sending welcome email:', error);
       // Continue even if email sending fails
+    }
+
+    // Send welcome SMS if user has phone number
+    try {
+      if (savedUser.profile?.phone) {
+        console.log('Enviando SMS de bienvenida al teléfono:', savedUser.profile.phone);
+        const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
+        const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
+        const dashboardUrl = `${frontendUrl}${dashboardPath}`;
+        
+        await this.smsService.sendWelcomeSms(
+          savedUser.profile.phone, 
+          firstName, 
+          actualPassword!, 
+          dashboardUrl,
+          savedUser.id.getValue()
+        );
+      }
+    } catch (error) {
+      console.error('Error sending welcome SMS:', error);
+      // Continue even if SMS sending fails
     }
 
     return savedUser;
@@ -224,6 +253,29 @@ export class UserService {
     } catch (error) {
       console.error('Error sending welcome email:', error);
       // Continue even if email sending fails
+    }
+
+    // Send welcome SMS if user has phone number
+    try {
+      if (savedUser.profile?.phone) {
+        console.log('Enviando SMS de bienvenida al teléfono:', savedUser.profile.phone);
+        const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
+        const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
+        const dashboardUrl = `${frontendUrl}${dashboardPath}`;
+        
+        await this.smsService.sendWelcomeSms(
+          savedUser.profile.phone, 
+          firstName, 
+          actualPassword!, 
+          dashboardUrl,
+          savedUser.id.getValue()
+        );
+      } else {
+        console.log('Usuario no tiene teléfono configurado, omitiendo SMS de bienvenida');
+      }
+    } catch (error) {
+      console.error('Error sending welcome SMS:', error);
+      // Continue even if SMS sending fails
     }
 
     return savedUser;

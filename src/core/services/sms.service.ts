@@ -102,24 +102,34 @@ export class SmsService {
   }
 
   async sendVerificationSms(phoneNumber: string, code: string, userId?: string): Promise<boolean> {
-    console.log('DEBUG SMS Service: sendVerificationSms called');
-    console.log('DEBUG SMS Service: phoneNumber:', phoneNumber);
-    console.log('DEBUG SMS Service: code:', code);
-    console.log('DEBUG SMS Service: userId:', userId);
+    this.logger.debug({
+      message: 'sendVerificationSms called',
+      phoneNumber,
+      codeLength: code?.length,
+      userId,
+    });
 
     const message = `Tu código de verificación es: ${code}. Este código expira en 5 minutos. Nauto Console`;
 
     // Get user's country phone code from database if userId is provided
     let countryCode = '52'; // Default to Mexico
     if (userId) {
-      console.log('DEBUG SMS Service: Getting country code for userId:', userId);
+      this.logger.debug({
+        message: 'Getting country code for verification SMS',
+        userId,
+      });
       countryCode = await this.getUserCountryPhoneCode(userId);
-      console.log('DEBUG SMS Service: Country code retrieved:', countryCode);
+      this.logger.debug({
+        message: 'Country code retrieved for verification SMS',
+        userId,
+        countryCode,
+      });
     }
 
-    console.log('DEBUG SMS Service: Calling sendSms with:', {
+    this.logger.debug({
+      message: 'Calling sendSms for verification',
       phoneNumber,
-      message,
+      messageLength: message?.length,
       countryCode,
     });
 
@@ -129,7 +139,68 @@ export class SmsService {
       countryCode,
     });
 
-    console.log('DEBUG SMS Service: Final result:', result);
+    this.logger.debug({
+      message: 'Verification SMS result',
+      result,
+      phoneNumber,
+    });
+
+    return result;
+  }
+
+  async sendWelcomeSms(
+    phoneNumber: string, 
+    firstName: string, 
+    password: string, 
+    dashboardUrl?: string, 
+    userId?: string
+  ): Promise<boolean> {
+    this.logger.debug({
+      message: 'sendWelcomeSms called',
+      phoneNumber,
+      firstName,
+      hasDashboardUrl: !!dashboardUrl,
+      userId,
+    });
+
+    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const shortUrl = dashboardUrl || 'la plataforma';
+    
+    const message = `¡Hola ${firstName}! Bienvenido a ${appName}. Tu contraseña es: ${password}. Accede en: ${shortUrl}`;
+
+    // Get user's country phone code from database if userId is provided
+    let countryCode = '52'; // Default to Mexico
+    if (userId) {
+      this.logger.debug({
+        message: 'Getting country code for welcome SMS',
+        userId,
+      });
+      countryCode = await this.getUserCountryPhoneCode(userId);
+      this.logger.debug({
+        message: 'Country code retrieved for welcome SMS',
+        userId,
+        countryCode,
+      });
+    }
+
+    this.logger.debug({
+      message: 'Calling sendSms for welcome message',
+      phoneNumber,
+      messageLength: message?.length,
+      countryCode,
+    });
+
+    const result = await this.sendSms({
+      phoneNumber,
+      message,
+      countryCode,
+    });
+
+    this.logger.debug({
+      message: 'Welcome SMS result',
+      result,
+      phoneNumber,
+    });
 
     return result;
   }

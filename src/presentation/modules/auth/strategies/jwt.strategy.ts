@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -12,7 +13,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
+    private readonly logger: LoggerService,
   ) {
+    logger.setContext(JwtStrategy.name);
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -21,8 +24,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: IJwtPayload): Promise<IJwtPayload> {
-    console.log('DEBUG: JWT Strategy received payload:', payload);
-    console.log('DEBUG: Session token (jti) in payload:', payload.jti);
+    this.logger.debug({
+      message: 'JWT Strategy validating payload',
+      userId: payload.sub,
+      email: payload.email,
+      sessionToken: payload.jti,
+      roles: payload.roles,
+    });
 
     // Check if the user still exists
     const user = await this.userRepository.findById(payload.sub);
@@ -43,7 +51,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jti: payload.jti, // Include session token from JWT
     };
 
-    console.log('DEBUG: JWT Strategy returning:', result);
+    this.logger.debug({
+      message: 'JWT Strategy validation successful',
+      userId: result.sub,
+      email: result.email,
+      rolesCount: result.roles?.length || 0,
+      permissionsCount: result.permissions?.length || 0,
+      tenantId: result.tenantId,
+    });
 
     return result;
   }
