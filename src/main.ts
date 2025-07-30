@@ -111,7 +111,7 @@ async function bootstrap() {
     .addTag('users', 'User management endpoints')
     .addTag('roles', 'Role management endpoints')
     .addTag('companies', 'Company management endpoints (Multi-Tenant)')
-    .addTag('admin', 'Admin endpoints')
+    .addTag('root', 'Root endpoints')
     .addGlobalParameters({
       name: 'Accept-Language',
       in: 'header',

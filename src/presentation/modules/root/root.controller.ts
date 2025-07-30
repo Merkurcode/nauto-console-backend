@@ -1,28 +1,27 @@
 import { Controller, Get, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint } from '@nestjs/swagger';
 
 // Guards & Decorators
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
-import { RequiresAdmin } from '@shared/decorators/admin.decorator';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesEnum } from '@shared/constants/enums';
 import { RequiresSensitive } from '@shared/decorators/sensitive.decorator';
 import { RequiresResourceAction } from '@shared/decorators/resource-action.decorator';
 
-@ApiTags('admin')
-@Controller('admin')
+@ApiTags('root')
+@Controller('root')
 @UseGuards(PermissionsGuard)
-@RequiresAdmin()
+@Roles(RolesEnum.ROOT)
 @ApiBearerAuth('JWT-auth')
-export class AdminController {
+export class RootController {
   constructor() {}
 
   @Get('dashboard')
+  @ApiExcludeEndpoint()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get admin dashboard data (Admin only)' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Returns dashboard statistics' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have admin role' })
   async getDashboard() {
     return {
-      message: 'Admin dashboard data',
+      message: 'Root dashboard data',
       stats: {
         totalUsers: 0,
         activeUsers: 0,
@@ -59,7 +58,7 @@ export class AdminController {
   })
   async getAuditLogs() {
     return {
-      message: 'Audit logs data',
+      message: 'Root audit logs data',
       logs: [],
     };
   }

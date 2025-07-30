@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 
 // Controllers
-import { AdminController } from './admin.controller';
+import { RootController } from './root.controller';
 
 // Import other modules
 import { UserModule } from '../user/user.module';
@@ -11,6 +11,6 @@ import { CoreModule } from '@core/core.module';
 
 @Module({
   imports: [CqrsModule, UserModule, RoleModule, CoreModule],
-  controllers: [AdminController],
+  controllers: [RootController],
 })
-export class AdminModule {}
+export class RootModule {}

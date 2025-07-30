@@ -12,7 +12,7 @@ import { LoggerModule } from '@infrastructure/logger/logger.module';
 import { AuthModule } from '@presentation/modules/auth/auth.module';
 import { UserModule } from '@presentation/modules/user/user.module';
 import { RoleModule } from '@presentation/modules/role/role.module';
-import { AdminModule } from '@presentation/modules/admin/admin.module';
+import { RootModule } from '@presentation/modules/root/root.module';
 import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { HealthModule } from '@presentation/modules/health/health.module';
 import { CompanyModule } from '@presentation/modules/company/company.module';
@@ -73,7 +73,7 @@ import configuration from '@infrastructure/config/configuration';
     AuthModule,
     UserModule,
     RoleModule,
-    AdminModule,
+    RootModule,
     StorageModule,
     HealthModule,
     CompanyModule,
