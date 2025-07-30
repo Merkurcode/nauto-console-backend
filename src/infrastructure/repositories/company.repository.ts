@@ -123,7 +123,10 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     );
   }
 
-  async findAllWithAssistants(): Promise<{ companies: Company[]; assistantsMap: Map<string, any[]> }> {
+  async findAllWithAssistants(): Promise<{
+    companies: Company[];
+    assistantsMap: Map<string, any[]>;
+  }> {
     return this.executeWithErrorHandling(
       'findAllWithAssistants',
       async () => {
@@ -166,9 +169,10 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           if (company.assistants && company.assistants.length > 0) {
             assistantsMap.set(company.id, company.assistants);
           }
-          
+
           // Return company without assistants to avoid circular references in entity
           const { assistants, ...companyWithoutAssistants } = company;
+
           return companyWithoutAssistants;
         });
 
@@ -181,7 +185,9 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     );
   }
 
-  async findByIdWithAssistants(id: CompanyId): Promise<{ company: Company | null; assistants: any[] }> {
+  async findByIdWithAssistants(
+    id: CompanyId,
+  ): Promise<{ company: Company | null; assistants: any[] }> {
     return this.executeWithErrorHandling(
       'findByIdWithAssistants',
       async () => {
@@ -222,7 +228,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
 
         const assistants = company.assistants || [];
         const { assistants: _, ...companyWithoutAssistants } = company;
-        
+
         return {
           company: this.mapToModel(companyWithoutAssistants as any),
           assistants,

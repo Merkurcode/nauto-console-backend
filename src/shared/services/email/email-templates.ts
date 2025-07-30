@@ -4,10 +4,24 @@ export class EmailTemplates {
     email: string,
     password: string,
     companyName?: string,
+    roles?: string[],
+    dashboardUrl?: string,
+    colors?: {
+      primary: string;
+      secondary: string;
+    },
+    appName?: string,
   ): string {
     const companySection = companyName
       ? `<p>Has sido registrado en <strong>${companyName}</strong>.</p>`
       : '';
+
+    const rolesSection = roles && roles.length > 0
+      ? `<p><strong>Roles asignados:</strong> ${roles.join(', ')}</p>`
+      : '';
+
+    const primaryColor = colors?.primary || '#007bff';
+    const secondaryColor = colors?.secondary || '#6c757d';
 
     return `
       <!DOCTYPE html>
@@ -42,13 +56,13 @@ export class EmailTemplates {
               padding: 20px;
               border-radius: 8px;
               margin: 20px 0;
-              border-left: 4px solid #007bff;
+              border-left: 4px solid #${primaryColor};
             }
             .password {
               font-family: 'Courier New', monospace;
               font-size: 16px;
               font-weight: bold;
-              color: #007bff;
+              color: #${primaryColor};
             }
             .warning {
               background-color: #fff3cd;
@@ -75,7 +89,7 @@ export class EmailTemplates {
           <div class="content">
             <h2>Hola ${firstName},</h2>
             
-            <p>Te damos la bienvenida a nuestra plataforma. Tu cuenta ha sido creada exitosamente.</p>
+            <p>Te damos la bienvenida a ${appName || 'nuestra plataforma'}. Tu cuenta ha sido creada exitosamente.</p>
             
             ${companySection}
             
@@ -83,6 +97,7 @@ export class EmailTemplates {
               <h3>Tus credenciales de acceso:</h3>
               <p><strong>Email:</strong> ${email}</p>
               <p><strong>Contraseña temporal:</strong> <span class="password">${password}</span></p>
+              ${rolesSection}
             </div>
             
             <div class="warning">
@@ -94,11 +109,15 @@ export class EmailTemplates {
               </ul>
             </div>
             
-            <p>Para iniciar sesión, visita nuestro sitio web y utiliza las credenciales proporcionadas arriba.</p>
+            <p>Para acceder a la plataforma, haz clic en el siguiente enlace:</p>
             
-            <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
-            
-            <p>¡Esperamos que disfrutes usando nuestra plataforma!</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${dashboardUrl || '#'}"
+                  style="background-color: #${primaryColor}; color: white; padding: 12px 25px;
+                  text-decoration: none; border-radius: 4px; font-weight: bold;">
+                Acceder a la Plataforma
+              </a>
+            </div>
             
             <p>Saludos cordiales,<br>El equipo de desarrollo</p>
           </div>

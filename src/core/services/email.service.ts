@@ -24,11 +24,13 @@ export class EmailService {
 
   private getPrimaryColor(): string {
     const color = this.configService.get<string>('email.templates.primaryColor', '#007bff');
+
     return color.startsWith('#') ? color : `#${color}`;
   }
 
   private getSecondaryColor(): string {
     const color = this.configService.get<string>('email.templates.secondaryColor', '#6c757d');
+
     return color.startsWith('#') ? color : `#${color}`;
   }
 
