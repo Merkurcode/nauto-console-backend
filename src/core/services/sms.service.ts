@@ -101,18 +101,34 @@ export class SmsService {
   }
 
   async sendVerificationSms(phoneNumber: string, code: string, userId?: string): Promise<boolean> {
+    console.log('DEBUG SMS Service: sendVerificationSms called');
+    console.log('DEBUG SMS Service: phoneNumber:', phoneNumber);
+    console.log('DEBUG SMS Service: code:', code);
+    console.log('DEBUG SMS Service: userId:', userId);
+    
     const message = `Tu código de verificación es: ${code}. Este código expira en 5 minutos. Nauto Console`;
 
     // Get user's country phone code from database if userId is provided
     let countryCode = '52'; // Default to Mexico
     if (userId) {
+      console.log('DEBUG SMS Service: Getting country code for userId:', userId);
       countryCode = await this.getUserCountryPhoneCode(userId);
+      console.log('DEBUG SMS Service: Country code retrieved:', countryCode);
     }
 
-    return this.sendSms({
+    console.log('DEBUG SMS Service: Calling sendSms with:', {
       phoneNumber,
       message,
       countryCode,
     });
+
+    const result = await this.sendSms({
+      phoneNumber,
+      message,
+      countryCode,
+    });
+    
+    console.log('DEBUG SMS Service: Final result:', result);
+    return result;
   }
 }
