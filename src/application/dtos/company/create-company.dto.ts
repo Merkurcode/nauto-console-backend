@@ -7,6 +7,7 @@ import {
   IsEnum,
   IsOptional,
   IsUUID,
+  IsUrl,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
@@ -158,4 +159,61 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsUUID()
   parentCompanyId?: string;
+
+  @ApiProperty({
+    example: 'America/Mexico_City',
+    description: 'Company timezone',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  timezone?: string;
+
+  @ApiProperty({
+    example: 'MXN',
+    description: 'Company currency',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
+
+  @ApiProperty({
+    example: 'es-MX',
+    description: 'Company language',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(2, 10)
+  language?: string;
+
+  @ApiProperty({
+    example: 'https://example.com/logo.png',
+    description: 'Company logo URL',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  logoUrl?: string;
+
+  @ApiProperty({
+    example: 'https://example.com',
+    description: 'Company website URL',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  websiteUrl?: string;
+
+  @ApiProperty({
+    example: 'https://example.com/privacy',
+    description: 'Company privacy policy URL',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  privacyPolicyUrl?: string;
 }

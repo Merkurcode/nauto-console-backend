@@ -123,6 +123,115 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     );
   }
 
+  async findAllWithAssistants(): Promise<{ companies: Company[]; assistantsMap: Map<string, any[]> }> {
+    return this.executeWithErrorHandling(
+      'findAllWithAssistants',
+      async () => {
+        const companies = await this.prisma.company.findMany({
+          include: {
+            address: true,
+            parentCompany: {
+              include: {
+                address: true,
+              },
+            },
+            subsidiaries: {
+              include: {
+                address: true,
+              },
+            },
+            assistants: {
+              include: {
+                aiAssistant: {
+                  include: {
+                    features: true,
+                  },
+                },
+                features: {
+                  include: {
+                    aiAssistantFeature: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+
+        const assistantsMap = new Map<string, any[]>();
+        const companiesData = companies.map(company => {
+          // Extract assistants data
+          if (company.assistants && company.assistants.length > 0) {
+            assistantsMap.set(company.id, company.assistants);
+          }
+          
+          // Return company without assistants to avoid circular references in entity
+          const { assistants, ...companyWithoutAssistants } = company;
+          return companyWithoutAssistants;
+        });
+
+        return {
+          companies: companiesData.map(company => this.mapToModel(company as any)),
+          assistantsMap,
+        };
+      },
+      { companies: [], assistantsMap: new Map() },
+    );
+  }
+
+  async findByIdWithAssistants(id: CompanyId): Promise<{ company: Company | null; assistants: any[] }> {
+    return this.executeWithErrorHandling(
+      'findByIdWithAssistants',
+      async () => {
+        const company = await this.prisma.company.findUnique({
+          where: { id: id.getValue() },
+          include: {
+            address: true,
+            parentCompany: {
+              include: {
+                address: true,
+              },
+            },
+            subsidiaries: {
+              include: {
+                address: true,
+              },
+            },
+            assistants: {
+              include: {
+                aiAssistant: {
+                  include: {
+                    features: true,
+                  },
+                },
+                features: {
+                  include: {
+                    aiAssistantFeature: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!company) {
+          return { company: null, assistants: [] };
+        }
+
+        const assistants = company.assistants || [];
+        const { assistants: _, ...companyWithoutAssistants } = company;
+        
+        return {
+          company: this.mapToModel(companyWithoutAssistants as any),
+          assistants,
+        };
+      },
+      { company: null, assistants: [] },
+    );
+  }
+
   async save(company: Company): Promise<Company> {
     return this.executeWithErrorHandling(
       'save',
@@ -135,6 +244,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             businessSector: company.businessSector.getValue(),
             businessUnit: company.businessUnit.getValue(),
             host: company.host.getValue(),
+            timezone: company.timezone,
+            currency: company.currency,
+            language: company.language,
+            logoUrl: company.logoUrl,
+            websiteUrl: company.websiteUrl,
+            privacyPolicyUrl: company.privacyPolicyUrl,
             industrySector: company.industrySector.value,
             industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
@@ -186,6 +301,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             businessSector: company.businessSector.getValue(),
             businessUnit: company.businessUnit.getValue(),
             host: company.host.getValue(),
+            timezone: company.timezone,
+            currency: company.currency,
+            language: company.language,
+            logoUrl: company.logoUrl,
+            websiteUrl: company.websiteUrl,
+            privacyPolicyUrl: company.privacyPolicyUrl,
             industrySector: company.industrySector.value,
             industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
@@ -285,6 +406,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     businessSector: string;
     businessUnit: string;
     host: string;
+    timezone?: string;
+    currency?: string;
+    language?: string;
+    logoUrl?: string;
+    websiteUrl?: string;
+    privacyPolicyUrl?: string;
     industrySector?: string;
     industryOperationChannel?: string;
     isActive: boolean;
@@ -306,6 +433,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       businessSector: string;
       businessUnit: string;
       host: string;
+      timezone?: string;
+      currency?: string;
+      language?: string;
+      logoUrl?: string;
+      websiteUrl?: string;
+      privacyPolicyUrl?: string;
       industrySector?: string;
       industryOperationChannel?: string;
       isActive: boolean;
@@ -328,6 +461,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       businessSector: string;
       businessUnit: string;
       host: string;
+      timezone?: string;
+      currency?: string;
+      language?: string;
+      logoUrl?: string;
+      websiteUrl?: string;
+      privacyPolicyUrl?: string;
       industrySector?: string;
       industryOperationChannel?: string;
       isActive: boolean;
@@ -354,6 +493,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         businessSector: data.parentCompany.businessSector,
         businessUnit: data.parentCompany.businessUnit,
         host: data.parentCompany.host,
+        timezone: data.parentCompany.timezone,
+        currency: data.parentCompany.currency,
+        language: data.parentCompany.language,
+        logoUrl: data.parentCompany.logoUrl,
+        websiteUrl: data.parentCompany.websiteUrl,
+        privacyPolicyUrl: data.parentCompany.privacyPolicyUrl,
         industrySector: data.parentCompany.industrySector
           ? String(data.parentCompany.industrySector)
           : undefined,
@@ -386,6 +531,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           businessSector: sub.businessSector,
           businessUnit: sub.businessUnit,
           host: sub.host,
+          timezone: sub.timezone,
+          currency: sub.currency,
+          language: sub.language,
+          logoUrl: sub.logoUrl,
+          websiteUrl: sub.websiteUrl,
+          privacyPolicyUrl: sub.privacyPolicyUrl,
           industrySector: sub.industrySector ? String(sub.industrySector) : undefined,
           industryOperationChannel: sub.industryOperationChannel
             ? String(sub.industryOperationChannel)
@@ -413,6 +564,12 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       businessSector: data.businessSector,
       businessUnit: data.businessUnit,
       host: data.host,
+      timezone: data.timezone,
+      currency: data.currency,
+      language: data.language,
+      logoUrl: data.logoUrl,
+      websiteUrl: data.websiteUrl,
+      privacyPolicyUrl: data.privacyPolicyUrl,
       industrySector: data.industrySector ? String(data.industrySector) : undefined,
       industryOperationChannel: data.industryOperationChannel
         ? String(data.industryOperationChannel)

@@ -47,7 +47,7 @@ import { Public } from '@shared/decorators/public.decorator';
 
 @ApiTags('companies')
 @Controller('companies')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
 export class CompanyController {
   constructor(
@@ -153,7 +153,7 @@ return [company];
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
-    const { name, description, businessSector, businessUnit, address, host, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
+    const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
 
     const command = new CreateCompanyCommand(
       new CompanyName(name),
@@ -170,6 +170,12 @@ return [company];
         address.interiorNumber,
       ),
       new Host(host),
+      timezone,
+      currency,
+      language,
+      logoUrl,
+      websiteUrl,
+      privacyPolicyUrl,
       industrySector ? IndustrySector.create(industrySector) : undefined,
       industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
       parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
@@ -204,7 +210,7 @@ return [company];
     @Body() updateCompanyDto: UpdateCompanyDto,
   ): Promise<CompanyResponse> {
     const companyId = CompanyId.fromString(id);
-    const { name, description, businessSector, businessUnit, address, host, industrySector, industryOperationChannel } = updateCompanyDto;
+    const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
 
     const command = new UpdateCompanyCommand(
       companyId,
@@ -230,8 +236,15 @@ return [company];
           )
         : undefined,
       host ? new Host(host) : undefined,
+      timezone,
+      currency,
+      language,
+      logoUrl,
+      websiteUrl,
+      privacyPolicyUrl,
       industrySector ? IndustrySector.create(industrySector) : undefined,
       industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
+      parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
     );
 
     return this.commandBus.execute(command);

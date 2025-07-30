@@ -18,8 +18,15 @@ export class UpdateCompanyCommand implements ICommand {
     public readonly businessUnit?: BusinessUnit,
     public readonly address?: Address,
     public readonly host?: Host,
+    public readonly timezone?: string,
+    public readonly currency?: string,
+    public readonly language?: string,
+    public readonly logoUrl?: string,
+    public readonly websiteUrl?: string,
+    public readonly privacyPolicyUrl?: string,
     public readonly industrySector?: IndustrySector,
     public readonly industryOperationChannel?: IndustryOperationChannel,
+    public readonly parentCompanyId?: CompanyId,
   ) {}
 }
 
@@ -45,8 +52,15 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
       businessUnit,
       address,
       host,
+      timezone,
+      currency,
+      language,
+      logoUrl,
+      websiteUrl,
+      privacyPolicyUrl,
       industrySector,
       industryOperationChannel,
+      parentCompanyId,
     } = command;
 
     // Find existing company
@@ -71,6 +85,21 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
       }
     }
 
+    // Handle parent company update
+    if (parentCompanyId !== undefined) {
+      if (parentCompanyId === null) {
+        // Remove parent company
+        company.removeFromParent();
+      } else {
+        // Set new parent company
+        const parentCompany = await this.companyRepository.findById(parentCompanyId);
+        if (!parentCompany) {
+          throw new NotFoundException('Parent company not found');
+        }
+        company.setParentCompany(parentCompany);
+      }
+    }
+
     // Update company
     company.updateCompanyInfo(
       name,
@@ -81,6 +110,12 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
       host,
       industrySector,
       industryOperationChannel,
+      timezone,
+      currency,
+      language,
+      logoUrl,
+      websiteUrl,
+      privacyPolicyUrl,
     );
 
     // Save updated company
