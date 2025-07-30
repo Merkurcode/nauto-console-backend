@@ -21,11 +21,11 @@ export class GetCompanyQueryHandler implements IQueryHandler<GetCompanyQuery> {
   async execute(query: GetCompanyQuery): Promise<ICompanyResponse> {
     const { id } = query;
 
-    const company = await this.companyRepository.findById(id);
+    const { company, assistants } = await this.companyRepository.findByIdWithAssistants(id);
     if (!company) {
       throw new NotFoundException('Company not found');
     }
 
-    return CompanyMapper.toResponse(company);
+    return CompanyMapper.toResponse(company, assistants);
   }
 }
