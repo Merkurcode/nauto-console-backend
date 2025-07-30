@@ -6,6 +6,7 @@ export const REFRESH_TOKEN_REPOSITORY = Symbol('RefreshTokenRepository');
 export const OTP_REPOSITORY = Symbol('OtpRepository');
 export const EMAIL_VERIFICATION_REPOSITORY = Symbol('EmailVerificationRepository');
 export const PASSWORD_RESET_REPOSITORY = Symbol('PasswordResetRepository');
+export const PASSWORD_RESET_ATTEMPT_REPOSITORY = Symbol('PasswordResetAttemptRepository');
 export const FILE_REPOSITORY = Symbol('FileRepository');
 export const COMPANY_REPOSITORY = Symbol('CompanyRepository');
 export const SESSION_REPOSITORY = Symbol('SessionRepository');
@@ -19,6 +20,7 @@ export const REPOSITORY_TOKENS = {
   OTP_REPOSITORY,
   EMAIL_VERIFICATION_REPOSITORY,
   PASSWORD_RESET_REPOSITORY,
+  PASSWORD_RESET_ATTEMPT_REPOSITORY,
   FILE_REPOSITORY,
   COMPANY_REPOSITORY,
   SESSION_REPOSITORY,

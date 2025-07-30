@@ -15,7 +15,7 @@ export class GetRootCompaniesQueryHandler implements IQueryHandler<GetRootCompan
     private readonly companyRepository: ICompanyRepository,
   ) {}
 
-  async execute(query: GetRootCompaniesQuery): Promise<ICompanyResponse[]> {
+  async execute(_query: GetRootCompaniesQuery): Promise<ICompanyResponse[]> {
     const rootCompanies = await this.companyRepository.findRootCompanies();
 
     return CompanyMapper.toListResponse(rootCompanies);

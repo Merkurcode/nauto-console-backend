@@ -20,7 +20,10 @@ export class EmailProvider implements OnModuleInit {
 
     try {
       // If in development mode, create a test account
-      if (this.configService.get('env') !== 'production') {
+      const nodeEnv = this.configService.get('NODE_ENV');
+      console.log('Current NODE_ENV:', nodeEnv);
+
+      if (nodeEnv !== 'production') {
         const testAccount = await nodemailer.createTestAccount();
 
         this.transporter = nodemailer.createTransport({
@@ -120,6 +123,9 @@ export class EmailProvider implements OnModuleInit {
     const frontendUrl = this.configService.get('frontend.url', 'https://example.com');
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
+    console.log('Sending password reset email to:', email);
+    console.log('Reset link:', resetLink);
+
     const mailOptions = {
       from: `"${appName}" <${this.configService.get('smtp.from', 'noreply@example.com')}>`,
       to: email,
@@ -147,9 +153,10 @@ export class EmailProvider implements OnModuleInit {
     const result = await transporter.sendMail(mailOptions);
 
     // For test accounts, log the preview URL
-    if (this.configService.get('env') !== 'production') {
+    const nodeEnv = this.configService.get('NODE_ENV');
+    if (nodeEnv !== 'production') {
       // eslint-disable-next-line no-console
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
+      console.log('Password Reset Email Preview URL: %s', nodemailer.getTestMessageUrl(result));
     }
 
     return result;

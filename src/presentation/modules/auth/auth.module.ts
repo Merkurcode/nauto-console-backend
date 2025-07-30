@@ -12,6 +12,7 @@ import {
   REFRESH_TOKEN_REPOSITORY,
   EMAIL_VERIFICATION_REPOSITORY,
   PASSWORD_RESET_REPOSITORY,
+  PASSWORD_RESET_ATTEMPT_REPOSITORY,
   SESSION_REPOSITORY,
   COMPANY_REPOSITORY,
 } from '@shared/constants/tokens';
@@ -26,14 +27,15 @@ import { OtpRepository } from '@infrastructure/repositories/otp.repository';
 import { RefreshTokenRepository } from '@infrastructure/repositories/refresh-token.repository';
 import { EmailVerificationRepository } from '@infrastructure/repositories/email-verification.repository';
 import { PasswordResetRepository } from '@infrastructure/repositories/password-reset.repository';
+import { PasswordResetAttemptRepository } from '@infrastructure/repositories/password-reset-attempt.repository';
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
 import { CompanyRepository } from '@infrastructure/repositories/company.repository';
-import { EmailProvider } from './providers/email.provider';
 import { TokenProvider } from './providers/token.provider';
 
 // Services
 import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
+import { CaptchaService } from '@core/services/captcha.service';
 import { InvitationRulesService } from '@core/services/invitation-rules.service';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { I18nModule } from '@infrastructure/i18n/i18n.module';
@@ -90,6 +92,7 @@ const commandHandlers = [
     // Services
     UserService,
     AuthService,
+    CaptchaService,
     InvitationRulesService,
 
     // Repository tokens
@@ -118,6 +121,10 @@ const commandHandlers = [
       useClass: PasswordResetRepository,
     },
     {
+      provide: PASSWORD_RESET_ATTEMPT_REPOSITORY,
+      useClass: PasswordResetAttemptRepository,
+    },
+    {
       provide: SESSION_REPOSITORY,
       useClass: SessionRepository,
     },
@@ -127,7 +134,6 @@ const commandHandlers = [
     },
 
     // Providers
-    EmailProvider,
     TokenProvider,
 
     // Strategy
@@ -136,6 +142,6 @@ const commandHandlers = [
     // Command handlers
     ...commandHandlers,
   ],
-  exports: [UserService, AuthService, EmailProvider],
+  exports: [UserService, AuthService],
 })
 export class AuthModule {}

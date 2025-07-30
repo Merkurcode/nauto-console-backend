@@ -285,8 +285,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     businessSector: string;
     businessUnit: string;
     host: string;
-    industrySector?: any;
-    industryOperationChannel?: any;
+    industrySector?: string;
+    industryOperationChannel?: string;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -306,8 +306,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       businessSector: string;
       businessUnit: string;
       host: string;
-      industrySector?: any;
-      industryOperationChannel?: any;
+      industrySector?: string;
+      industryOperationChannel?: string;
       isActive: boolean;
       createdAt: Date;
       updatedAt: Date;
@@ -328,8 +328,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       businessSector: string;
       businessUnit: string;
       host: string;
-      industrySector?: any;
-      industryOperationChannel?: any;
+      industrySector?: string;
+      industryOperationChannel?: string;
       isActive: boolean;
       createdAt: Date;
       updatedAt: Date;

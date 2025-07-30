@@ -3,6 +3,8 @@ export default () => ({
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
   appName: process.env.APP_NAME || 'NestJS Template',
+  apiUrl: process.env.API_URL || 'http://localhost:3001',
+  apiVersion: process.env.API_VERSION || 'v1',
 
   // Database
   database: {
@@ -42,6 +44,13 @@ export default () => ({
   // Email providers
   email: {
     provider: process.env.EMAIL_PROVIDER || 'mailhog',
+    supportEmail: process.env.SUPPORT_EMAIL || 'support@nauotoconsole.com',
+    noReplyEmail: process.env.NO_REPLY_EMAIL || 'noreply@nautoconsole.com',
+    templates: {
+      companyLogo: process.env.EMAIL_COMPANY_LOGO_URL || '',
+      primaryColor: process.env.EMAIL_PRIMARY_COLOR || '#007bff',
+      secondaryColor: process.env.EMAIL_SECONDARY_COLOR || '#6c757d',
+    },
   },
 
   // Resend
@@ -62,6 +71,10 @@ export default () => ({
   // Frontend
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000',
+    loginPath: process.env.FRONTEND_LOGIN_PATH || '/login',
+    passwordResetPath: process.env.FRONTEND_PASSWORD_RESET_PATH || '/reset-password',
+    emailVerificationPath: process.env.FRONTEND_EMAIL_VERIFICATION_PATH || '/verify-email',
+    dashboardPath: process.env.FRONTEND_DASHBOARD_PATH || '/dashboard',
   },
 
   // CORS

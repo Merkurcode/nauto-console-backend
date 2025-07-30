@@ -24,6 +24,7 @@ export class SmsService {
   private async getUserCountryPhoneCode(userId: string): Promise<string> {
     try {
       const phoneCode = await this.userRepository.getUserCountryPhoneCode(userId);
+
       return phoneCode || '52'; // Default to Mexico if not found
     } catch (error) {
       this.logger.warn({
@@ -105,7 +106,7 @@ export class SmsService {
     console.log('DEBUG SMS Service: phoneNumber:', phoneNumber);
     console.log('DEBUG SMS Service: code:', code);
     console.log('DEBUG SMS Service: userId:', userId);
-    
+
     const message = `Tu código de verificación es: ${code}. Este código expira en 5 minutos. Nauto Console`;
 
     // Get user's country phone code from database if userId is provided
@@ -127,8 +128,9 @@ export class SmsService {
       message,
       countryCode,
     });
-    
+
     console.log('DEBUG SMS Service: Final result:', result);
+
     return result;
   }
 }

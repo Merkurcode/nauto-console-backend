@@ -1,6 +1,6 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { SendVerificationEmailDto } from '@application/dtos/auth/email-verification.dto';
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
 import { EmailService } from '@core/services/email.service';
 import { SmsService } from '@core/services/sms.service';
@@ -18,6 +18,8 @@ export class SendVerificationEmailCommand implements ICommand {
 export class SendVerificationEmailCommandHandler
   implements ICommandHandler<SendVerificationEmailCommand, { message: string }>
 {
+  private readonly logger = new Logger(SendVerificationEmailCommandHandler.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly emailService: EmailService,
@@ -30,7 +32,7 @@ export class SendVerificationEmailCommandHandler
     const { email, phoneNumber } = command.dto;
 
     // Validate email format using value object
-    const emailVO = new Email(email);
+    const _emailVO = new Email(email);
 
     // SECURITY: Verify that the email is registered in the system
     const user = await this.userRepository.findByEmail(email);
@@ -47,22 +49,25 @@ export class SendVerificationEmailCommandHandler
     // Send SMS if phone number is provided (and user has phone number)
     let smsSent = false;
     if (phoneNumber && user.profile?.phone) {
-      console.log('DEBUG SMS: phoneNumber provided:', phoneNumber);
-      console.log('DEBUG SMS: user.profile.phone:', user.profile.phone);
-      console.log('DEBUG SMS: userId:', user.id.getValue());
-      
+      this.logger.debug('SMS verification requested', {
+        phoneNumberProvided: !!phoneNumber,
+        userHasPhone: !!user.profile?.phone,
+        userId: user.id.getValue(),
+      });
+
       // Verify the provided phone number matches the user's registered phone
       if (user.profile.phone === phoneNumber) {
-        console.log('DEBUG SMS: Phone numbers match, sending SMS...');
+        this.logger.debug('Phone numbers match, sending SMS verification');
         smsSent = await this.smsService.sendVerificationSms(phoneNumber, code, user.id.getValue());
-        console.log('DEBUG SMS: SMS result:', smsSent);
+        this.logger.debug('SMS verification result', { sent: smsSent });
       } else {
-        console.log('DEBUG SMS: Phone numbers do not match - SMS not sent');
+        this.logger.debug('Phone numbers do not match - SMS not sent');
       }
     } else {
-      console.log('DEBUG SMS: No phoneNumber or user.profile.phone missing');
-      console.log('DEBUG SMS: phoneNumber:', phoneNumber);
-      console.log('DEBUG SMS: user.profile?.phone:', user.profile?.phone);
+      this.logger.debug('SMS verification skipped', {
+        phoneNumberProvided: !!phoneNumber,
+        userHasPhone: !!user.profile?.phone,
+      });
     }
 
     // Build response message
