@@ -18,7 +18,7 @@ export default [
       '.vscode',
       '.DS_Store',
       'package-lock.json',
-      '**/*.spec.ts'
+      '**/*.spec.ts',
     ],
   },
   {
@@ -51,28 +51,31 @@ export default [
       '@typescript-eslint/naming-convention': [
         'error',
         {
-          'selector': 'interface',
-          'format': ['PascalCase'],
-          'custom': {
-            'regex': '^I[A-Z]',
-            'match': true
-          }
-        }
+          selector: 'interface',
+          format: ['PascalCase'],
+          custom: {
+            regex: '^I[A-Z]',
+            match: true,
+          },
+        },
       ],
-      '@typescript-eslint/no-unused-vars': ['error', {
-        'argsIgnorePattern': '^_',
-        'varsIgnorePattern': '^_',
-        "caughtErrorsIgnorePattern": "^_",
-      }],
-      'max-len': ['error', { 'code': 120, ignoreStrings: true }],
-      'no-console': ['warn', { 'allow': ['warn', 'error'] }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      'max-len': ['error', { code: 120, ignoreStrings: true }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-duplicate-imports': 'error',
-      'no-multiple-empty-lines': ['error', { 'max': 1 }],
-      'curly': 'error',
-      'eqeqeq': ['error', 'always'],
+      'no-multiple-empty-lines': ['error', { max: 1 }],
+      curly: 'error',
+      eqeqeq: ['error', 'always'],
       'prefer-const': 'error',
       'eol-last': ['error', 'always'],
     },
   },
-  prettierConfig
+  prettierConfig,
 ];

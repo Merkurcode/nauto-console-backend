@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RolesEnum } from '@shared/constants/roles.constants';
+import { RolesEnum } from '@shared/constants/enums';
 import { PREVENT_SUPERADMIN_ASSIGNMENT_KEY } from '@shared/decorators/prevent-superadmin-assignment.decorator';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 

@@ -18,7 +18,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
-import { RolesEnum } from '@shared/constants/roles.constants';
+import { RolesEnum } from '@shared/constants/enums';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';

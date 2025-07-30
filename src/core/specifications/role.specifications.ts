@@ -2,7 +2,7 @@ import { Specification } from './specification.base';
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
-import { RolesEnum } from '@shared/constants/roles.constants';
+import { RolesEnum } from '@shared/constants/enums';
 
 /**
  * Specification to check if a role is the default role

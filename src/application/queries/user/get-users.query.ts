@@ -20,8 +20,7 @@ export class GetUsersQueryHandler implements IQueryHandler<GetUsersQuery> {
   async execute(query: GetUsersQuery): Promise<IUserDetailResponse[]> {
     const { companyId: _companyId } = query;
 
-    // For now, we'll use the basic findAll until company-specific queries are implemented
-    const users = await this.userRepository.findAll();
+    const users = await this.userRepository.findAllByCompanyId(_companyId);
 
     // Use the mapper to convert each user to response DTO
     return users.map(user => UserMapper.toDetailResponse(user));
