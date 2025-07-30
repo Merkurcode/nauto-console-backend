@@ -293,7 +293,13 @@ export class AuthService {
   async generateEmailVerificationCode(email: string): Promise<string> {
     try {
       // Validate email format
-      new Email(email);
+      const emailVO = new Email(email);
+
+      // SECURITY: Verify that the email is registered in the system
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+        throw new EntityNotFoundException('User with this email is not registered', email);
+      }
 
       // Delete any existing verification codes for this email
       await this.emailVerificationRepository.deleteByEmail(email);
@@ -303,9 +309,9 @@ export class AuthService {
 
       // Create and save the verification entity
       const emailVerification = new EmailVerification(
-        new Email(email),
+        emailVO,
         new VerificationCode(code),
-        this.otpConfig.expiration,
+        this.configService.get<number>('otp.expiration', 5),
       );
 
       await this.emailVerificationRepository.create(emailVerification);
@@ -483,4 +489,5 @@ export class AuthService {
 
     return true;
   }
+
 }

@@ -116,17 +116,8 @@ export class AuthController {
     description: 'OTP verified successfully. Returns access token, refresh token, and user data.',
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid OTP code' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        userId: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
-        otp: { type: 'string', example: '123456' },
-      },
-    },
-  })
-  async verifyOtp(@Body('userId') userId: string, @Body() verifyOtpDto: VerifyOtpDto) {
-    return this.commandBus.execute(new VerifyOtpCommand(userId, verifyOtpDto));
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.commandBus.execute(new VerifyOtpCommand(verifyOtpDto.userId, verifyOtpDto));
   }
 
   @Public()
