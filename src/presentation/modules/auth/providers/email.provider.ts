@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { EmailTemplates } from '@shared/services/email/email-templates';
 
 @Injectable()
 export class EmailProvider implements OnModuleInit {
@@ -163,7 +164,44 @@ export class EmailProvider implements OnModuleInit {
   }
 
   /**
-   * Send a welcome email to a new user
+   * Send a welcome email to a new user with their password
+   * @param email The recipient's email address
+   * @param firstName The user's first name
+   * @param password The user's generated password
+   * @param companyName Optional company name
+   * @returns Promise with the result of the operation
+   */
+  async sendWelcomeEmailWithPassword(
+    email: string,
+    firstName: string,
+    password: string,
+    companyName?: string,
+  ): Promise<nodemailer.SentMessageInfo> {
+    const transporter = await this.getTransporter();
+    const appName = this.configService.get('APP_NAME', 'Nuestra Aplicación');
+
+    const htmlContent = EmailTemplates.welcomeWithPassword(firstName, email, password, companyName);
+
+    const mailOptions = {
+      from: `"${appName}" <${this.configService.get('SMTP_FROM', 'noreply@example.com')}>`,
+      to: email,
+      subject: 'Bienvenido a la plataforma - Tus credenciales de acceso',
+      html: htmlContent,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+
+    // For test accounts, log the preview URL
+    if (this.configService.get('NODE_ENV') !== 'production') {
+      // eslint-disable-next-line no-console
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(result));
+    }
+
+    return result;
+  }
+
+  /**
+   * Send a welcome email to a new user (without password)
    * @param email The recipient's email address
    * @param firstName The user's first name
    * @returns Promise with the result of the operation

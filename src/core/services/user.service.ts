@@ -21,6 +21,7 @@ import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
+import { EmailProvider } from '@infrastructure/providers/email.provider';
 
 @Injectable()
 export class UserService {
@@ -31,6 +32,7 @@ export class UserService {
     private readonly roleRepository: IRoleRepository,
     private readonly domainValidationService: DomainValidationService,
     private readonly emailService: EmailService,
+    private readonly emailProvider: EmailProvider,
   ) {}
 
   async createUser(
@@ -76,10 +78,10 @@ export class UserService {
     // Save the user
     const savedUser = await this.userRepository.create(user);
 
-    // Send welcome email always
+    // Send welcome email with password
     try {
       const roleNames = user.roles?.map(role => role.name) || [];
-      await this.emailService.sendWelcomeEmail(emailStr, firstName, undefined, roleNames);
+      await this.emailProvider.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, undefined, roleNames);
     } catch (error) {
       console.error('Error sending welcome email:', error);
       // Continue even if email sending fails
@@ -213,10 +215,10 @@ export class UserService {
     // Save the user
     const savedUser = await this.userRepository.create(user);
 
-    // Send welcome email always
+    // Send welcome email with password
     try {
       const roleNames = user.roles?.map(role => role.name) || [];
-      await this.emailService.sendWelcomeEmail(emailStr, firstName, options?.companyName, roleNames);
+      await this.emailProvider.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, options?.companyName, roleNames);
     } catch (error) {
       console.error('Error sending welcome email:', error);
       // Continue even if email sending fails
