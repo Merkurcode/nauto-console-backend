@@ -2,11 +2,15 @@ import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RequestPasswordResetDto } from '@application/dtos/auth/password-reset.dto';
 import { Injectable } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
-import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
-import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import { CaptchaService } from '@core/services/captcha.service';
+import { EntityNotFoundException, InvalidInputException } from '@core/exceptions/domain-exceptions';
 
 export class RequestPasswordResetCommand implements ICommand {
-  constructor(public readonly dto: RequestPasswordResetDto) {}
+  constructor(
+    public readonly dto: RequestPasswordResetDto,
+    public readonly ipAddress?: string,
+    public readonly userAgent?: string,
+  ) {}
 }
 
 @Injectable()
@@ -16,18 +20,22 @@ export class RequestPasswordResetCommandHandler
 {
   constructor(
     private readonly authService: AuthService,
-    private readonly emailProvider: EmailProvider,
+    private readonly captchaService: CaptchaService,
   ) {}
 
   async execute(command: RequestPasswordResetCommand): Promise<{ message: string }> {
-    const { email } = command.dto;
+    const { email, captchaToken } = command.dto;
+    const { ipAddress, userAgent } = command;
 
     try {
-      // Generate a reset token
-      const token = await this.authService.createPasswordResetToken(email);
+      // Validate captcha first
+      const isCaptchaValid = await this.captchaService.validateCaptcha(captchaToken);
+      if (!isCaptchaValid) {
+        throw new InvalidInputException('Invalid captcha. Please try again.');
+      }
 
-      // Send the password reset email
-      await this.emailProvider.sendPasswordResetEmail(email, token);
+      // Process the password reset request (includes rate limiting and email sending)
+      await this.authService.processPasswordResetRequest(email, captchaToken, ipAddress, userAgent);
 
       return { message: 'Password reset email sent successfully' };
     } catch (error) {
@@ -37,6 +45,10 @@ export class RequestPasswordResetCommandHandler
           message:
             'If your email exists in our system, you will receive a password reset link shortly',
         };
+      }
+      if (error instanceof InvalidInputException) {
+        // Re-throw validation errors (rate limiting, captcha) to inform the user
+        throw error;
       }
       throw error;
     }

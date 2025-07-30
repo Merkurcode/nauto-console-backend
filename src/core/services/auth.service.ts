@@ -8,28 +8,34 @@ import {
   REFRESH_TOKEN_REPOSITORY,
   EMAIL_VERIFICATION_REPOSITORY,
   PASSWORD_RESET_REPOSITORY,
+  PASSWORD_RESET_ATTEMPT_REPOSITORY,
 } from '@shared/constants/tokens';
 import { User } from '../entities/user.entity';
 import { Otp } from '../entities/otp.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { EmailVerification } from '../entities/email-verification.entity';
 import { PasswordReset } from '../entities/password-reset.entity';
+import { PasswordResetAttempt } from '../entities/password-reset-attempt.entity';
 import { IUserRepository } from '../repositories/user.repository.interface';
 import { IOtpRepository } from '../repositories/otp.repository.interface';
 import { IRefreshTokenRepository } from '../repositories/refresh-token.repository.interface';
 import { IEmailVerificationRepository } from '../repositories/email-verification.repository.interface';
 import { IPasswordResetRepository } from '../repositories/password-reset.repository.interface';
+import { IPasswordResetAttemptRepository } from '../repositories/password-reset-attempt.repository.interface';
 import {
   EntityNotFoundException,
   OtpExpiredException,
   OtpInvalidException,
   AuthenticationException,
+  InvalidInputException,
 } from '@core/exceptions/domain-exceptions';
 import { Email } from '@core/value-objects/email.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { Token } from '@core/value-objects/token.vo';
 import { VerificationCode } from '@core/value-objects/verification-code.vo';
 import { LoggerService } from '@infrastructure/logger/logger.service';
+import { EmailService } from './email.service';
+import { SessionService } from './session.service';
 
 @Injectable()
 export class AuthService {
@@ -44,8 +50,12 @@ export class AuthService {
     private readonly emailVerificationRepository: IEmailVerificationRepository,
     @Inject(PASSWORD_RESET_REPOSITORY)
     private readonly passwordResetRepository: IPasswordResetRepository,
+    @Inject(PASSWORD_RESET_ATTEMPT_REPOSITORY)
+    private readonly passwordResetAttemptRepository: IPasswordResetAttemptRepository,
     private readonly configService: ConfigService,
     @Inject(LoggerService) private readonly logger: LoggerService,
+    private readonly emailService: EmailService,
+    private readonly sessionService: SessionService,
   ) {
     this.logger.setContext(AuthService.name);
   }
@@ -378,21 +388,36 @@ export class AuthService {
   }
 
   /**
-   * Create a password reset token for a user
+   * Create a password reset token for a user with rate limiting
    * @param email The email of the user
+   * @param ipAddress The IP address of the requester
+   * @param userAgent The user agent of the requester
    * @returns The generated password reset token
    * @throws EntityNotFoundException if user not found
+   * @throws ValidationException if rate limit exceeded
    */
-  async createPasswordResetToken(email: string): Promise<string> {
+  async createPasswordResetToken(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<string> {
     try {
       // Validate email format
       new Email(email);
 
+      // Check rate limits before proceeding
+      await this.checkPasswordResetRateLimit(email, ipAddress);
+
       // Find the user
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
+        // Still record the attempt even if user doesn't exist for security monitoring
+        await this.recordPasswordResetAttempt(email, ipAddress, userAgent);
         throw new EntityNotFoundException('User', `with email ${email}`);
       }
+
+      // Record the password reset attempt
+      await this.recordPasswordResetAttempt(email, ipAddress, userAgent);
 
       // Delete any existing password reset tokens for this user
       await this.passwordResetRepository.deleteByUserId(user.id.getValue());
@@ -406,9 +431,89 @@ export class AuthService {
 
       await this.passwordResetRepository.create(passwordReset);
 
+      this.logger.log({
+        message: 'Password reset token created',
+        email,
+        userId: user.id.getValue(),
+        ipAddress,
+      });
+
       return passwordReset.token.getValue();
     } catch (error) {
       throw error;
+    }
+  }
+
+  /**
+   * Check if password reset rate limits are exceeded
+   * @param email The email to check
+   * @param ipAddress The IP address to check
+   * @throws ValidationException if rate limit exceeded
+   */
+  private async checkPasswordResetRateLimit(email: string, ipAddress?: string): Promise<void> {
+    const maxAttemptsPerEmail = 3;
+    const maxAttemptsPerIp = 10;
+
+    // Check email-based rate limit (3 attempts per day)
+    const emailAttemptCount = await this.passwordResetAttemptRepository.countByEmailToday(email);
+    if (emailAttemptCount >= maxAttemptsPerEmail) {
+      this.logger.warn({
+        message: 'Password reset rate limit exceeded for email',
+        email,
+        attemptCount: emailAttemptCount,
+        maxAttempts: maxAttemptsPerEmail,
+      });
+      throw new InvalidInputException(
+        'Password reset limit exceeded. Please try again tomorrow or contact support.',
+      );
+    }
+
+    // Check IP-based rate limit (10 attempts per day) if IP is provided
+    if (ipAddress) {
+      const ipAttemptCount = await this.passwordResetAttemptRepository.countByIpToday(ipAddress);
+      if (ipAttemptCount >= maxAttemptsPerIp) {
+        this.logger.warn({
+          message: 'Password reset rate limit exceeded for IP',
+          ipAddress,
+          attemptCount: ipAttemptCount,
+          maxAttempts: maxAttemptsPerIp,
+        });
+        throw new InvalidInputException(
+          'Too many password reset attempts from this location. Please try again tomorrow.',
+        );
+      }
+    }
+  }
+
+  /**
+   * Record a password reset attempt for rate limiting
+   * @param email The email of the attempt
+   * @param ipAddress The IP address of the attempt
+   * @param userAgent The user agent of the attempt
+   */
+  private async recordPasswordResetAttempt(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    try {
+      const attempt = PasswordResetAttempt.create(email, ipAddress, userAgent);
+      await this.passwordResetAttemptRepository.create(attempt);
+
+      this.logger.debug({
+        message: 'Password reset attempt recorded',
+        email,
+        ipAddress,
+        attemptId: attempt.id,
+      });
+    } catch (error) {
+      // Log the error but don't fail the main operation
+      this.logger.error({
+        message: 'Failed to record password reset attempt',
+        email,
+        ipAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -481,8 +586,17 @@ export class AuthService {
     // Revoke all refresh tokens for this user
     await this.refreshTokenRepository.deleteByUserId(user.id.getValue());
 
+    // Revoke all sessions for this user (global logout)
+    await this.sessionService.revokeUserSessions(user.id.getValue(), 'global');
+
+    // Clear any pending OTPs for this user (security measure)
+    const existingOtp = await this.otpRepository.findByUserId(user.id.getValue());
+    if (existingOtp) {
+      await this.otpRepository.delete(existingOtp.id);
+    }
+
     this.logger.log({
-      message: 'Password reset completed successfully',
+      message: 'Password reset completed successfully - all sessions, tokens, and OTPs revoked',
       userId: user.id,
       email: user.email,
     });
@@ -490,4 +604,57 @@ export class AuthService {
     return true;
   }
 
+  /**
+   * Process password reset request with captcha validation, rate limiting and email sending
+   * @param email The email of the user
+   * @param captchaToken The captcha token to validate
+   * @param ipAddress The IP address of the requester
+   * @param userAgent The user agent of the requester
+   * @returns Promise<boolean> indicating if the process was successful
+   * @throws InvalidInputException if captcha is invalid or rate limit exceeded
+   */
+  async processPasswordResetRequest(
+    email: string,
+    captchaToken: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<boolean> {
+    this.logger.log({
+      message: 'Processing password reset request',
+      email,
+      ipAddress,
+    });
+
+    try {
+      // Create password reset token with rate limiting
+      const token = await this.createPasswordResetToken(email, ipAddress, userAgent);
+
+      // Send password reset email
+      const emailSent = await this.emailService.sendPasswordResetEmail(email, token);
+
+      if (!emailSent) {
+        this.logger.error({
+          message: 'Failed to send password reset email',
+          email,
+        });
+        throw new Error('Failed to send password reset email');
+      }
+
+      this.logger.log({
+        message: 'Password reset process completed successfully',
+        email,
+        ipAddress,
+      });
+
+      return true;
+    } catch (error) {
+      this.logger.error({
+        message: 'Password reset process failed',
+        email,
+        ipAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
 }

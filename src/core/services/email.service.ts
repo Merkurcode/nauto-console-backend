@@ -22,6 +22,16 @@ export class EmailService {
     this.initializeTransporter();
   }
 
+  private getPrimaryColor(): string {
+    const color = this.configService.get<string>('email.templates.primaryColor', '#007bff');
+    return color.startsWith('#') ? color : `#${color}`;
+  }
+
+  private getSecondaryColor(): string {
+    const color = this.configService.get<string>('email.templates.secondaryColor', '#6c757d');
+    return color.startsWith('#') ? color : `#${color}`;
+  }
+
   private initializeTransporter(): void {
     const emailProvider = this.configService.get<string>('email.provider', 'mailhog');
     const nodeEnv = this.configService.get<string>('env', 'development');
@@ -153,14 +163,15 @@ export class EmailService {
   }
 
   async sendVerificationEmail(email: string, code: string): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('frontend.url', 'http://localhost:3000');
+    const appName = this.configService.get<string>('appName');
+    const primaryColor = this.getPrimaryColor();
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Verificación de Email</h2>
         <p>Tu código de verificación es:</p>
         <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${code}</h1>
+          <h1 style="color: ${primaryColor}; margin: 0; font-size: 32px; letter-spacing: 5px;">${code}</h1>
         </div>
         <p>Este código expira en 5 minutos.</p>
         <p>Si no solicitaste este código, puedes ignorar este email.</p>
@@ -181,7 +192,147 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Código de Verificación - Nauto Console',
+      subject: `Código de Verificación - ${appName}`,
+      text,
+      html,
+    });
+  }
+
+  async sendPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>('frontend.url');
+    const passwordResetPath = this.configService.get<string>('frontend.passwordResetPath');
+    const appName = this.configService.get<string>('appName');
+    const primaryColor = this.getPrimaryColor();
+    const resetLink = `${frontendUrl}${passwordResetPath}?token=${resetToken}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Restablecer Contraseña</h2>
+        <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón de abajo para crear una nueva contraseña:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" 
+             style="background-color: ${primaryColor}; color: white; padding: 12px 25px; 
+                    text-decoration: none; border-radius: 4px; font-weight: bold; 
+                    display: inline-block;">
+            Restablecer Contraseña
+          </a>
+        </div>
+        <p>Este enlace expirará en 1 hora.</p>
+        <p>Si no solicitaste restablecer tu contraseña, puedes ignorar este email o contactar a soporte.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="color: #666; font-size: 12px;">Este es un email automático, por favor no respondas.</p>
+      </div>
+    `;
+
+    const text = `
+      Restablecer Contraseña
+      
+      Recibimos una solicitud para restablecer tu contraseña.
+      
+      Haz clic en el siguiente enlace para restablecer tu contraseña:
+      ${resetLink}
+      
+      Este enlace expirará en 1 hora.
+      
+      Si no solicitaste restablecer tu contraseña, puedes ignorar este email.
+    `;
+
+    this.logger.log({
+      message: 'Sending password reset email',
+      email,
+      resetLink,
+    });
+
+    return this.sendEmail({
+      to: email,
+      subject: `Restablecer Contraseña - ${appName}`,
+      text,
+      html,
+    });
+  }
+
+  async sendWelcomeEmail(
+    email: string,
+    firstName: string,
+    companyName?: string,
+    roles?: string[],
+  ): Promise<boolean> {
+    const appName = this.configService.get<string>('appName');
+    const frontendUrl = this.configService.get<string>('frontend.url');
+    const dashboardPath = this.configService.get<string>('frontend.dashboardPath');
+    const primaryColor = this.getPrimaryColor();
+    const supportEmail = this.configService.get<string>('email.supportEmail');
+
+    const companyText = companyName ? ` de ${companyName}` : '';
+    const invitationText = companyName
+      ? `Has sido invitado a unirte a ${companyName} en ${appName}.`
+      : `Tu cuenta en ${appName} ha sido creada exitosamente.`;
+
+    // Format roles list
+    let rolesSection = '';
+    if (roles && roles.length > 0) {
+      const rolesList = roles.map(role => `<li>${role}</li>`).join('');
+      rolesSection = `
+        <p><strong>Tus roles asignados:</strong></p>
+        <ul style="margin-left: 20px;">
+          ${rolesList}
+        </ul>
+      `;
+    }
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">¡Bienvenido a ${appName}${companyText}!</h2>
+        <p>Hola ${firstName},</p>
+        <p>${invitationText}</p>
+        ${rolesSection}
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}${dashboardPath}" 
+             style="background-color: ${primaryColor}; color: white; padding: 12px 25px; 
+                    text-decoration: none; border-radius: 4px; font-weight: bold; 
+                    display: inline-block;">
+            Acceder a ${appName}
+          </a>
+        </div>
+        <p>Si tienes alguna pregunta, no dudes en contactar a nuestro equipo de soporte en <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="color: #666; font-size: 12px;">Este es un email automático, por favor no respondas.</p>
+      </div>
+    `;
+
+    // Format roles for text version
+    let rolesTextSection = '';
+    if (roles && roles.length > 0) {
+      rolesTextSection = `
+      
+Tus roles asignados:
+${roles.map(role => `- ${role}`).join('\n')}
+      `;
+    }
+
+    const text = `
+      ¡Bienvenido a ${appName}${companyText}!
+      
+      Hola ${firstName},
+      
+      ${invitationText}${rolesTextSection}
+      
+      Visita ${frontendUrl}${dashboardPath} para comenzar.
+      
+      Si tienes alguna pregunta, no dudes en contactar a nuestro equipo de soporte en ${supportEmail}.
+    `;
+
+    this.logger.log({
+      message: 'Sending welcome email',
+      email,
+      firstName,
+      companyName,
+      roles,
+    });
+
+    return this.sendEmail({
+      to: email,
+      subject: `¡Bienvenido a ${appName}${companyText}!`,
       text,
       html,
     });

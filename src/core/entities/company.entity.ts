@@ -404,6 +404,7 @@ export class Company extends AggregateRoot {
   }
 
   getRootCompany(): Company {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let current: Company = this;
     while (current._parentCompany) {
       current = current._parentCompany;

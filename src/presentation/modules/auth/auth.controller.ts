@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 // DTOs
 import { RegisterDto } from '@application/dtos/auth/register.dto';
@@ -241,11 +241,26 @@ export class AuthController {
   @Public()
   @Post('password/request-reset')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request a password reset email' })
+  @ApiOperation({ summary: 'Request a password reset email with captcha validation' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset email sent successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
-  async requestPasswordReset(@Body() requestPasswordResetDto: RequestPasswordResetDto) {
-    return this.commandBus.execute(new RequestPasswordResetCommand(requestPasswordResetDto));
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format or captcha' })
+  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
+  async requestPasswordReset(
+    @Body() requestPasswordResetDto: RequestPasswordResetDto,
+    @Request()
+    req: {
+      headers: Record<string, string>;
+      ip?: string;
+      connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
+      socket?: { remoteAddress?: string };
+    },
+  ) {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress;
+
+    return this.commandBus.execute(
+      new RequestPasswordResetCommand(requestPasswordResetDto, ipAddress, userAgent),
+    );
   }
 
   @Public()

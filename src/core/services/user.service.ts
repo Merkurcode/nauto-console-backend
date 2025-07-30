@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import * as bcrypt from 'bcrypt';
 import { Injectable, Inject } from '@nestjs/common';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
@@ -19,8 +20,7 @@ import { Address } from '@core/value-objects/address.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
-import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
-import { EmailTemplates } from '@shared/services/email/email-templates';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class UserService {
@@ -30,7 +30,7 @@ export class UserService {
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
     private readonly domainValidationService: DomainValidationService,
-    private readonly emailProvider: EmailProvider,
+    private readonly emailService: EmailService,
   ) {}
 
   async createUser(
@@ -44,11 +44,9 @@ export class UserService {
 
     // Generate password if not provided
     let actualPassword = passwordStr;
-    let passwordWasGenerated = false;
 
     if (!passwordStr) {
       actualPassword = PasswordGenerator.generateSecurePassword();
-      passwordWasGenerated = true;
     }
 
     // Validate password using value object
@@ -78,14 +76,13 @@ export class UserService {
     // Save the user
     const savedUser = await this.userRepository.create(user);
 
-    // Send welcome email if password was generated
-    if (passwordWasGenerated) {
-      try {
-        await this.emailProvider.sendWelcomeEmail(emailStr, firstName);
-      } catch (error) {
-        console.error('Error sending welcome email:', error);
-        // Continue even if email sending fails
-      }
+    // Send welcome email always
+    try {
+      const roleNames = user.roles?.map(role => role.name) || [];
+      await this.emailService.sendWelcomeEmail(emailStr, firstName, undefined, roleNames);
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+      // Continue even if email sending fails
     }
 
     return savedUser;
@@ -127,11 +124,9 @@ export class UserService {
 
     // Generate password if not provided
     let actualPassword = passwordStr;
-    let passwordWasGenerated = false;
 
     if (!passwordStr) {
       actualPassword = PasswordGenerator.generateSecurePassword();
-      passwordWasGenerated = true;
     }
 
     // Validate password using value object
@@ -218,14 +213,13 @@ export class UserService {
     // Save the user
     const savedUser = await this.userRepository.create(user);
 
-    // Send welcome email if password was generated
-    if (passwordWasGenerated) {
-      try {
-        await this.emailProvider.sendWelcomeEmail(emailStr, firstName);
-      } catch (error) {
-        console.error('Error sending welcome email:', error);
-        // Continue even if email sending fails
-      }
+    // Send welcome email always
+    try {
+      const roleNames = user.roles?.map(role => role.name) || [];
+      await this.emailService.sendWelcomeEmail(emailStr, firstName, options?.companyName, roleNames);
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+      // Continue even if email sending fails
     }
 
     return savedUser;
@@ -416,34 +410,5 @@ export class UserService {
 
   private async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
-  }
-
-  private async sendWelcomeEmail(
-    email: string,
-    firstName: string,
-    password: string,
-    companyId?: string,
-  ): Promise<void> {
-    let companyName: string | undefined;
-
-    // Get company name if companyId is provided
-    if (companyId) {
-      try {
-        // Note: We would need to inject the company repository to get the company name
-        // For now, we'll use a placeholder
-        companyName = 'Mi Empresa'; // TODO: Get actual company name from repository
-      } catch (error) {
-        console.error('Error fetching company name:', error);
-      }
-    }
-
-    const htmlContent = EmailTemplates.welcomeWithPassword(firstName, email, password, companyName);
-
-    await this.emailProvider.sendEmail(
-      email,
-      'Bienvenido a la plataforma - Tus credenciales de acceso',
-      htmlContent,
-      true, // isHtml
-    );
   }
 }
