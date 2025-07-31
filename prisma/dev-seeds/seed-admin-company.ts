@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import * as readline from 'readline';
 
 // Default users
 const defaultUsers = [
@@ -7,7 +8,7 @@ const defaultUsers = [
   {
     email: 'root@test.com',
     password: '12345678', // This will be hashed before saving
-    firstName: 'rootName',
+    firstName: 'Root',
     lastName: 'rootLastName',
     secondLastName: 'rootSecondLastName',
     isActive: true,
@@ -37,7 +38,7 @@ const defaultUsers = [
   {
     email: 'root.readonly@test.com',
     password: '12345678',
-    firstName: 'Root',
+    firstName: 'RootReadOnly',
     lastName: 'ReadOnly',
     secondLastName: 'User',
     isActive: true,
@@ -248,7 +249,37 @@ async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, salt);
 }
 
+// Helper function to ask user confirmation
+function askQuestion(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase());
+    });
+  });
+}
+
 export default async function main(prisma: PrismaClient) {
+  // Ask if user wants to delete existing users
+  const deleteUsers = await askQuestion('¿Quieres eliminar todos los usuarios existentes? (s/n): ');
+  
+  if (deleteUsers === 's' || deleteUsers === 'si' || deleteUsers === 'y' || deleteUsers === 'yes') {
+    const confirmDelete = await askQuestion('¿Estás seguro? Esta acción no se puede deshacer (s/n): ');
+    
+    if (confirmDelete === 's' || confirmDelete === 'si' || confirmDelete === 'y' || confirmDelete === 'yes') {
+      console.log('Eliminando usuarios existentes...');
+      await prisma.user.deleteMany({});
+      console.log('Usuarios eliminados.');
+    } else {
+      console.log('Eliminación cancelada.');
+    }
+  }
+
   // Create default companies
   console.log('Creating default companines...');
   for (const companyData of defaultCompanies) {

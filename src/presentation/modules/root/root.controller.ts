@@ -1,47 +1,29 @@
+/* eslint-disable prettier/prettier */
 import { Controller, Get, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiExcludeEndpoint,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 // Guards & Decorators
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
-import { RequiresSensitive } from '@shared/decorators/sensitive.decorator';
+//import { RequiresSensitive } from '@shared/decorators/sensitive.decorator'; // 2FA
 import { RequiresResourceAction } from '@shared/decorators/resource-action.decorator';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('root')
 @Controller('root')
-@UseGuards(PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Roles(RolesEnum.ROOT)
 @ApiBearerAuth('JWT-auth')
 export class RootController {
   constructor() {}
 
-  @Get('dashboard')
-  @ApiExcludeEndpoint()
-  @HttpCode(HttpStatus.OK)
-  async getDashboard() {
-    return {
-      message: 'Root dashboard data',
-      stats: {
-        totalUsers: 0,
-        activeUsers: 0,
-        totalRoles: 0,
-      },
-    };
-  }
-
   @Get('system-info')
   @HttpCode(HttpStatus.OK)
-  @RequiresSensitive()
-  @ApiOperation({ summary: 'Get system information (Requires 2FA)' })
+  @RequiresResourceAction('system', 'read')
+  @ApiOperation({ summary: 'Get system information' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns system information' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have 2FA enabled' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have required permissions' })
   async getSystemInfo() {
     return {
       message: 'Sensitive system information',

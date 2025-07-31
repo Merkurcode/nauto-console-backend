@@ -55,6 +55,7 @@ export interface IJwtPayload {
   sub: string;
   email: string;
   emailVerified?: boolean;
+  isActive: boolean;
   roles: string[];
   permissions?: string[];
   tenantId?: string;
