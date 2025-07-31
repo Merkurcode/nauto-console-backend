@@ -44,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const result = {
       sub: payload.sub,
       email: payload.email,
+      isActive: user.isActive, // Include isActive from the database user
       roles: payload.roles || [],
       permissions: payload.permissions || [],
       tenantId: payload.tenantId,

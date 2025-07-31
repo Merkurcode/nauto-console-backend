@@ -4,12 +4,13 @@ import { permissions } from './seed-permissions';
 // Map of role names to permissions they should have
 const rolePermissionsMap = {
   root: [
+    'system:read',
+    'audit:read',
     'auth:write',
     'user:read', 'user:write', 'user:delete',
     'role:read', 'role:write', 'role:delete',
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write', 'company:delete',
-    'audit:read',
   ],
   root_readonly: [
     'user:read',
