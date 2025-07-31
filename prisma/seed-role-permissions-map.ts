@@ -22,30 +22,31 @@ const rolePermissionsMap = {
   admin: [
     'auth:write',
     'user:read', 'user:write', 'user:delete',
-    'role:read', 'role:write', 'role:delete',
+    'role:read',
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write',
   ],
   manager: [
     'auth:write',
     'user:read',
+    'role:read',
     'storage:manage', 'storage:write', 'storage:read',
     'company:read'
   ],
   sales_agent: [
     'user:read',
+    'role:read',
     'storage:manage', 'storage:write', 'storage:read',
     'company:read'
   ],
   host: [
     'user:read',
+    'role:read',
     'storage:manage', 'storage:write', 'storage:read',
     'company:read'
   ],
   guest: [
-    'user:read',
-    'storage:manage', 'storage:write', 'storage:read',
-    'company:read'
+    'user:read'
   ],
 };
 

@@ -36,7 +36,7 @@ export class CreateRoleDto {
 
   @ApiPropertyOptional({
     description: 'List of permission IDs to assign to the role',
-    example: ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'],
+    example: ['550e8400-e29b-41d4-a716-446655440000', 'role:read'],
     type: [String],
   })
   @IsArray()

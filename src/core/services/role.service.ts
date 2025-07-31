@@ -92,9 +92,12 @@ export class RoleService {
       throw new EntityNotFoundException('Role', roleId);
     }
 
-    const permission = await this.permissionRepository.findById(permissionId);
+    let permission = await this.permissionRepository.findById(permissionId);
     if (!permission) {
-      throw new EntityNotFoundException('Permission', permissionId);
+      permission = await this.permissionRepository.findByName(permissionId);
+      if (!permission) {
+        throw new EntityNotFoundException('Permission', permissionId);
+      }
     }
 
     role.addPermission(permission);
@@ -103,9 +106,12 @@ export class RoleService {
   }
 
   async removePermissionFromRole(roleId: string, permissionId: string): Promise<Role> {
-    const role = await this.roleRepository.findById(roleId);
+    let role = await this.roleRepository.findById(roleId);
     if (!role) {
-      throw new EntityNotFoundException('Role', roleId);
+      role = await this.roleRepository.findByName(roleId);
+      if (!role) {
+        throw new EntityNotFoundException('Role', roleId);
+      }
     }
 
     role.removePermission(PermissionId.fromString(permissionId));

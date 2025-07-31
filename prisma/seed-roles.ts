@@ -52,7 +52,11 @@ export default async function main(prisma: PrismaClient) {
   for (const role of roles) {
     await prisma.role.upsert({
       where: { name: role.name },
-      update: {},
+      update: {
+        description: role.description,
+        isDefault: role.isDefault,
+        isDefaultAppRole: role.isDefaultAppRole,
+      },
       create: role,
     });
   }
