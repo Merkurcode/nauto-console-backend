@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   Controller,
   Post,
@@ -201,14 +202,31 @@ export class AuthController {
     };
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Post('email/send-verification')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Send email verification code' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Send email verification code',
+    description: 'Role-based access: Root can send to any email, Admin/Manager can send to emails within their company (and subsidiaries for Admin), other roles can only send to their own email. Only sends if email is not already verified.'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Verification email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
-  async sendVerificationEmail(@Body() sendVerificationEmailDto: SendVerificationEmailDto) {
-    return this.commandBus.execute(new SendVerificationEmailCommand(sendVerificationEmailDto));
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions to send verification to this email' })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Email is already verified' })
+  async sendVerificationEmail(
+    @Body() sendVerificationEmailDto: SendVerificationEmailDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
+    return this.commandBus.execute(
+      new SendVerificationEmailCommand(
+        sendVerificationEmailDto,
+        currentUser.sub,
+        currentUser.roles,
+        currentUser.companyId || null,
+      ),
+    );
   }
 
   @Public()
