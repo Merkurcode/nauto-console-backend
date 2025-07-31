@@ -54,6 +54,7 @@ export class RoleController {
     RolesEnum.ADMIN,
     RolesEnum.MANAGER,
     RolesEnum.SALES_AGENT,
+    RolesEnum.HOST,
     RolesEnum.GUEST,
   )
   @HttpCode(HttpStatus.OK)
@@ -74,6 +75,7 @@ export class RoleController {
     RolesEnum.ADMIN,
     RolesEnum.MANAGER,
     RolesEnum.SALES_AGENT,
+    RolesEnum.HOST,
     RolesEnum.GUEST,
   )
   @HttpCode(HttpStatus.OK)
@@ -107,6 +109,7 @@ export class RoleController {
         createRoleDto.description,
         createRoleDto.isDefault,
         createRoleDto.permissionIds,
+        createRoleDto.isDefaultAppRole,
       ),
     );
   }

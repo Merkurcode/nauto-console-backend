@@ -376,6 +376,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         name: roleRecord.name,
         description: roleRecord.description,
         isDefault: roleRecord.isDefault,
+        isDefaultAppRole: roleRecord.isDefaultAppRole,
         permissions,
         createdAt: roleRecord.createdAt,
         updatedAt: roleRecord.updatedAt,

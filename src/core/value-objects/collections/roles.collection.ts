@@ -151,6 +151,7 @@ export class RolesCollection {
    */
   getHighestPrivilegeLevel():
     | 'guest'
+    | 'host'
     | 'sales_agent'
     | 'manager'
     | 'admin'
@@ -179,6 +180,11 @@ export class RolesCollection {
     // Check for sales agent privileges
     if (this.containsByName('sales_agent')) {
       return 'sales_agent';
+    }
+
+    // Check for host privileges
+    if (this.containsByName('host')) {
+      return 'host';
     }
 
     return 'guest';
