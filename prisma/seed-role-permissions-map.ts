@@ -13,11 +13,11 @@ const rolePermissionsMap = {
     'company:read', 'company:write', 'company:delete',
   ],
   root_readonly: [
+    'system:read',
     'user:read',
     'role:read',
     'storage:read', 'storage:manage',
     'company:read',
-    'audit:read',
   ],
   admin: [
     'auth:write',
