@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   Controller,
   Get,
@@ -208,7 +209,7 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Remove permission from role (Root only)',
-    description: 'Remove a permission from a specific role\\n\\n**Required Permissions:** role:write\\n**Required Roles:** root\\n**Restrictions:** Root readonly users cannot perform this operation'
+    description: 'Remove a permission from a specific role\n\n**Required Permissions:** role:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
   })
   @ApiParam({
     name: 'roleId',
