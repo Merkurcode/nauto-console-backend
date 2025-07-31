@@ -36,6 +36,11 @@ const rolePermissionsMap = {
     'storage:manage', 'storage:write', 'storage:read',
     'company:read'
   ],
+  host: [
+    'user:read',
+    'storage:manage', 'storage:write', 'storage:read',
+    'company:read'
+  ],
   guest: [
     'user:read',
     'storage:manage', 'storage:write', 'storage:read',
