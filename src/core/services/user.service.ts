@@ -21,7 +21,6 @@ import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
-import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@infrastructure/logger/logger.service';
@@ -35,7 +34,6 @@ export class UserService {
     private readonly roleRepository: IRoleRepository,
     private readonly domainValidationService: DomainValidationService,
     private readonly emailService: EmailService,
-    private readonly emailProvider: EmailProvider,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
@@ -89,17 +87,30 @@ export class UserService {
     // Send welcome email with password
     try {
       const roleNames = user.roles?.map(role => role.name) || [];
-      console.log('Enviando correo de bienvenida a:', emailStr, 'con roles:', roleNames);
-      await this.emailProvider.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, undefined, roleNames);
+      this.logger.log({
+        message: 'Sending welcome email',
+        email: emailStr,
+        firstName,
+        roles: roleNames,
+      });
+      await this.emailService.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, undefined, roleNames);
     } catch (error) {
-      console.error('Error sending welcome email:', error);
+      this.logger.error({
+        message: 'Error sending welcome email',
+        email: emailStr,
+        error: error.message,
+      });
       // Continue even if email sending fails
     }
 
     // Send welcome SMS if user has phone number
     try {
       if (savedUser.profile?.phone) {
-        console.log('Enviando SMS de bienvenida al teléfono:', savedUser.profile.phone);
+        this.logger.log({
+          message: 'Sending welcome SMS to user',
+          phone: savedUser.profile.phone,
+          firstName,
+        });
         const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
         const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
         const dashboardUrl = `${frontendUrl}${dashboardPath}`;
@@ -113,7 +124,11 @@ export class UserService {
         );
       }
     } catch (error) {
-      console.error('Error sending welcome SMS:', error);
+      this.logger.error({
+        message: 'Error sending welcome SMS',
+        phone: savedUser.profile?.phone,
+        error: error.message,
+      });
       // Continue even if SMS sending fails
     }
 
@@ -248,17 +263,31 @@ export class UserService {
     // Send welcome email with password
     try {
       const roleNames = user.roles?.map(role => role.name) || [];
-      console.log('Enviando correo de bienvenida a:', emailStr, 'con roles:', roleNames, 'y compañía:', options?.companyName);
-      await this.emailProvider.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, options?.companyName, roleNames);
+      this.logger.log({
+        message: 'Sending welcome email with extended data',
+        email: emailStr,
+        firstName,
+        roles: roleNames,
+        companyName: options?.companyName,
+      });
+      await this.emailService.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, options?.companyName, roleNames);
     } catch (error) {
-      console.error('Error sending welcome email:', error);
+      this.logger.error({
+        message: 'Error sending welcome email',
+        email: emailStr,
+        error: error.message,
+      });
       // Continue even if email sending fails
     }
 
     // Send welcome SMS if user has phone number
     try {
       if (savedUser.profile?.phone) {
-        console.log('Enviando SMS de bienvenida al teléfono:', savedUser.profile.phone);
+        this.logger.log({
+          message: 'Sending welcome SMS to user with extended data',
+          phone: savedUser.profile.phone,
+          firstName,
+        });
         const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
         const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
         const dashboardUrl = `${frontendUrl}${dashboardPath}`;
@@ -271,10 +300,17 @@ export class UserService {
           savedUser.id.getValue()
         );
       } else {
-        console.log('Usuario no tiene teléfono configurado, omitiendo SMS de bienvenida');
+        this.logger.debug({
+          message: 'User has no phone configured, skipping welcome SMS',
+          email: emailStr,
+        });
       }
     } catch (error) {
-      console.error('Error sending welcome SMS:', error);
+      this.logger.error({
+        message: 'Error sending welcome SMS',
+        phone: savedUser.profile?.phone,
+        error: error.message,
+      });
       // Continue even if SMS sending fails
     }
 
