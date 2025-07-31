@@ -1,10 +1,18 @@
 /* eslint-disable prettier/prettier */
 import * as bcrypt from 'bcrypt';
 import { Injectable, Inject } from '@nestjs/common';
-import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { User } from '../entities/user.entity';
 import { IUserRepository } from '../repositories/user.repository.interface';
 import { IRoleRepository } from '../repositories/role.repository.interface';
+import { ICompanyRepository } from '../repositories/company.repository.interface';
+import { Company } from '../entities/company.entity';
+import { CompanyName } from '@core/value-objects/company-name.vo';
+import { CompanyDescription } from '@core/value-objects/company-description.vo';
+import { BusinessSector } from '@core/value-objects/business-sector.vo';
+import { BusinessUnit } from '@core/value-objects/business-unit.vo';
+import { Host } from '@core/value-objects/host.vo';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 import {
   EntityNotFoundException,
   EntityAlreadyExistsException,
@@ -32,6 +40,8 @@ export class UserService {
     private readonly userRepository: IUserRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
+    @Inject(COMPANY_REPOSITORY)
+    private readonly companyRepository: ICompanyRepository,
     private readonly domainValidationService: DomainValidationService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
@@ -223,6 +233,12 @@ export class UserService {
       );
     }
 
+    // Handle company assignment if provided
+    let companyId: CompanyId | undefined;
+    if (options?.companyName) {
+      companyId = await this.findCompanyByName(options.companyName);
+    }
+
     // Create a new user with extended data
     const user = User.createWithExtendedData(
       email,
@@ -238,6 +254,7 @@ export class UserService {
         agentPhone: agentPhoneVO,
         profile: profileVO,
         address: addressVO,
+        companyId: companyId,
       },
     );
 
@@ -502,5 +519,23 @@ export class UserService {
 
   private async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
+  }
+
+  private async findCompanyByName(companyName: string): Promise<CompanyId> {
+    const companyNameVO = new CompanyName(companyName);
+    
+    const company = await this.companyRepository.findByName(companyNameVO);
+    
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyName);
+    }
+
+    this.logger.log({
+      message: 'Found existing company for user registration',
+      companyName,
+      companyId: company.id.getValue(),
+    });
+
+    return company.id;
   }
 }
