@@ -12,6 +12,8 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
+import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
 
 export class ProfileDto {
   @ApiPropertyOptional({
@@ -54,6 +56,7 @@ export class AddressDto {
   })
   @IsString()
   @IsOptional()
+  @CountryExists()
   country?: string;
 
   @ApiPropertyOptional({
@@ -62,6 +65,7 @@ export class AddressDto {
   })
   @IsString()
   @IsOptional()
+  @StateExists()
   state?: string;
 
   @ApiPropertyOptional({
@@ -197,6 +201,7 @@ export class RegisterDto {
   })
   @IsString()
   @IsOptional()
+  @AgentPhoneUniqueForCompany()
   agentPhone?: string;
 
   @ApiPropertyOptional({

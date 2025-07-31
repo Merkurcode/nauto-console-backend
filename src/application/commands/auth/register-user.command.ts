@@ -39,6 +39,11 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
       options,
     );
 
+    // Check if user creation was successful
+    if (!user) {
+      throw new Error('Failed to create user - user creation returned null');
+    }
+
     // Use the mapper to convert to response DTO
     return UserMapper.toBaseResponse(user);
   }

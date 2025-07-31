@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as basicAuth from 'express-basic-auth';
 import helmet from 'helmet';
 import { LoggerService } from '@infrastructure/logger/logger.service';
+import { useContainer } from 'class-validator';
 
 async function bootstrap() {
   // =========================================================================
@@ -17,6 +18,9 @@ async function bootstrap() {
   const logger = await app.resolve(LoggerService);
 
   logger.setContext('Application');
+
+  // Enable class-validator to use NestJS dependency injection
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // =========================================================================
   // SECURITY MIDDLEWARE

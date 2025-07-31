@@ -2,10 +2,21 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { User } from '@core/entities/user.entity';
 import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { Email } from '@core/value-objects/email.vo';
+
+// Interface for user authorization service compatibility
+interface IUserForAuth {
+  email: Email;
+  isActive: boolean;
+  hasPermission(permissionName: string): boolean;
+  rolesCollection: {
+    getAllPermissions(): {
+      toArray(): Array<{ name: string }>;
+    };
+  };
+}
 
 /**
  * Enhanced PermissionsGuard that uses the UserAuthorizationService
@@ -37,7 +48,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Create a user-like object from JWT payload for authorization service
-    const userForAuth = {
+    const userForAuth: IUserForAuth = {
       email: new Email(jwtPayload.email),
       isActive: jwtPayload.isActive,
       rolesCollection: {
@@ -48,7 +59,7 @@ export class PermissionsGuard implements CanActivate {
       hasPermission: (permissionName: string) => {
         return (jwtPayload.permissions || []).includes(permissionName);
       }
-    } as any;
+    };
 
     // Check for resource and action metadata
     const resource = this.reflector.get<string>('resource', context.getHandler());

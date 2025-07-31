@@ -71,7 +71,10 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Register a new user (invitation-based)' })
+  @ApiOperation({ 
+    summary: 'Register a new user (invitation-based)',
+    description: 'Register a new user in the system through invitation\n\n**Required Permissions:** auth:write\n**Required Roles:** root, admin (users with invitation permissions)\n**Restrictions:** Root readonly users cannot perform this operation. Requires valid invitation token'
+  })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User successfully registered' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'User with this email already exists' })
@@ -87,7 +90,10 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authenticate user and get tokens' })
+  @ApiOperation({ 
+    summary: 'Authenticate user and get tokens',
+    description: 'Authenticate user credentials and retrieve access/refresh tokens\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description:
@@ -117,7 +123,10 @@ export class AuthController {
   @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify OTP code for 2FA' })
+  @ApiOperation({ 
+    summary: 'Verify OTP code for 2FA',
+    description: 'Verify OTP code for two-factor authentication\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'OTP verified successfully. Returns access token, refresh token, and user data.',
@@ -130,7 +139,10 @@ export class AuthController {
   @Public()
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiOperation({ 
+    summary: 'Refresh access token using refresh token',
+    description: 'Get new access token using a valid refresh token\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Token refreshed successfully. Returns new access token and refresh token.',
@@ -146,7 +158,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Logout the current user - local (current session) or global (all sessions)',
     description:
-      'Local logout revokes only the current session, global logout revokes all user sessions',
+      'Local logout revokes only the current session, global logout revokes all user sessions\n\n**Required Permissions:** None (Authenticated users only)\n**Required Roles:** Any authenticated user',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -191,7 +203,10 @@ export class AuthController {
   @SkipThrottle()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get current user information' })
+  @ApiOperation({ 
+    summary: 'Get current user information',
+    description: 'Get current authenticated user basic information\n\n**Required Permissions:** None (Authenticated users only)\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'User information retrieved successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
   async me(@CurrentUser() user: IJwtPayload) {
@@ -208,7 +223,7 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Send email verification code',
-    description: 'Role-based access: Root can send to any email, Admin/Manager can send to emails within their company (and subsidiaries for Admin), other roles can only send to their own email. Only sends if email is not already verified.'
+    description: 'Role-based access: Root can send to any email, Admin/Manager can send to emails within their company (and subsidiaries for Admin), other roles can only send to their own email. Only sends if email is not already verified.\n\n**Required Permissions:** Varies by role scope\n**Required Roles:** Any authenticated user (with role-based restrictions)'
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Verification email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
@@ -235,7 +250,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Verify email with verification code',
     description:
-      'Verify email with the code received. If successful, returns auth tokens like the login endpoint.',
+      'Verify email with the code received. If successful, returns auth tokens like the login endpoint.\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -257,7 +272,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Check if an email is verified',
     description:
-      'Role-based access: Root can check any email, Admin/Manager can check emails within their company, other roles can only check their own email',
+      'Role-based access: Root can check any email, Admin/Manager can check emails within their company, other roles can only check their own email\n\n**Required Permissions:** Varies by role scope\n**Required Roles:** Any authenticated user (with role-based restrictions)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -294,7 +309,10 @@ export class AuthController {
   @Public()
   @Post('password/request-reset')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request a password reset email with captcha validation' })
+  @ApiOperation({ 
+    summary: 'Request a password reset email with captcha validation',
+    description: 'Request password reset via email with captcha protection\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format or captcha' })
   @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
@@ -319,7 +337,10 @@ export class AuthController {
   @Public()
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password with a token' })
+  @ApiOperation({ 
+    summary: 'Reset password with a token',
+    description: 'Reset user password using a valid reset token\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid or expired token' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid password format' })

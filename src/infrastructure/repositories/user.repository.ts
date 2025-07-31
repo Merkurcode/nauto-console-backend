@@ -126,6 +126,40 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     });
   }
 
+  async findByAgentPhoneAndCompany(agentPhone: string, companyId: string): Promise<User | null> {
+    return this.executeWithErrorHandling('findByAgentPhoneAndCompany', async () => {
+      const userRecord = await this.prisma.user.findFirst({
+        where: {
+          agentPhone,
+          companyId,
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          profile: true,
+          address: true,
+        },
+      });
+
+      if (!userRecord) {
+        return null;
+      }
+
+      return this.mapToModel(userRecord as UserWithRelations);
+    });
+  }
+
   async findAll(): Promise<User[]> {
     return this.executeWithErrorHandling('findAll', async () => {
       const userRecords = await this.prisma.user.findMany({
