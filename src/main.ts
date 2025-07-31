@@ -121,9 +121,7 @@ async function bootstrap() {
   // Swagger document configuration
   const config = new DocumentBuilder()
     .setTitle('Nauto Console API')
-    .setDescription(
-      'The API documentation for the NestJS Clean Architecture template with Multi-Tenant support',
-    )
+    .setDescription('Documentation.')
     .setVersion(configService.get<string>('API_VERSION', '1.0'))
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
