@@ -36,7 +36,7 @@ export class CompanyUsersController {
   @WriteOperation('company')
   @ApiOperation({
     summary: 'Assign user to company (Root only)',
-    description: 'Assigns a user to a specific company. Only available to root users.',
+    description: 'Assigns a user to a specific company. Only available to root users.\n\n**Required Permissions:** user:write, company:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -69,7 +69,7 @@ export class CompanyUsersController {
   @ApiOperation({
     summary: 'Remove user from company (Root only)',
     description:
-      'Removes a user from their current company assignment. Only available to root users.',
+      'Removes a user from their current company assignment. Only available to root users.\n\n**Required Permissions:** user:delete, company:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.OK,

@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
+
+// Interface for lightweight user authorization checks
+interface IUserAuthInfo {
+  isActive: boolean;
+  hasPermission(permissionName: string): boolean;
+}
 import {
   ActiveUserSpecification,
   TwoFactorEnabledSpecification,
   AdminUserSpecification,
   RootLevelUserSpecification,
-  UserHasPermissionSpecification,
   CanAssignRoleSpecification,
   EligibleForAdminRoleSpecification,
   CompleteUserAccountSpecification,
@@ -39,7 +44,20 @@ export class UserAuthorizationService {
   /**
    * Check if a user can access root features (highest privilege level)
    */
-  canAccessRootFeatures(user: User): boolean {
+  canAccessRootFeatures(user: User): boolean;
+  canAccessRootFeatures(user: IUserAuthInfo): boolean;
+  canAccessRootFeatures(user: User | IUserAuthInfo): boolean {
+    // Check if user is active
+    if (!user.isActive) {
+      return false;
+    }
+
+    // For lightweight checks, use permission-based approach
+    if ('hasPermission' in user && typeof user.hasPermission === 'function') {
+      return user.hasPermission('root:access');
+    }
+
+    // For full User entities, use specifications
     const activeUserSpec = new ActiveUserSpecification();
     const rootUserSpec = new RootLevelUserSpecification();
     const completeAccountSpec = new CompleteUserAccountSpecification();
@@ -47,20 +65,33 @@ export class UserAuthorizationService {
     // Combine specifications: user must be active, have root level role, and complete account
     const rootAccessSpec = activeUserSpec.and(rootUserSpec).and(completeAccountSpec);
 
-    return rootAccessSpec.isSatisfiedBy(user);
+    return rootAccessSpec.isSatisfiedBy(user as User);
   }
 
   /**
    * Check if a user can perform sensitive operations (requires 2FA)
    */
-  canPerformSensitiveOperations(user: User): boolean {
+  canPerformSensitiveOperations(user: User): boolean;
+  canPerformSensitiveOperations(user: IUserAuthInfo): boolean;
+  canPerformSensitiveOperations(user: User | IUserAuthInfo): boolean {
+    // Check if user is active
+    if (!user.isActive) {
+      return false;
+    }
+
+    // For lightweight checks, use permission-based approach
+    if ('hasPermission' in user && typeof user.hasPermission === 'function') {
+      return user.hasPermission('sensitive:operations');
+    }
+
+    // For full User entities, use specifications
     const activeUserSpec = new ActiveUserSpecification();
     const twoFactorSpec = new TwoFactorEnabledSpecification();
 
     // Combine specifications: user must be active and have 2FA enabled
     const sensitiveOperationSpec = activeUserSpec.and(twoFactorSpec);
 
-    return sensitiveOperationSpec.isSatisfiedBy(user);
+    return sensitiveOperationSpec.isSatisfiedBy(user as User);
   }
 
   /**
@@ -114,17 +145,19 @@ export class UserAuthorizationService {
   /**
    * Check if a user can access a specific resource
    */
-  canAccessResource(user: User, resource: string, action: string): boolean {
-    const activeUserSpec = new ActiveUserSpecification();
-    if (!activeUserSpec.isSatisfiedBy(user)) {
+  canAccessResource(user: User, resource: string, action: string): boolean;
+  canAccessResource(user: IUserAuthInfo, resource: string, action: string): boolean;
+  canAccessResource(user: User | IUserAuthInfo, resource: string, action: string): boolean {
+    // Check if user is active
+    if (!user.isActive) {
       return false;
     }
 
     // Build permission name from resource and action
     const permissionName = `${resource}:${action}`;
-    const hasPermissionSpec = new UserHasPermissionSpecification(permissionName);
 
-    return hasPermissionSpec.isSatisfiedBy(user);
+    // Check if user has the required permission
+    return user.hasPermission(permissionName);
   }
 
   /**

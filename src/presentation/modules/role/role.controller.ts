@@ -58,7 +58,10 @@ export class RoleController {
     RolesEnum.GUEST,
   )
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all roles (All authenticated users)' })
+  @ApiOperation({ 
+    summary: 'Get all roles (All authenticated users)',
+    description: 'Get all available roles in the system\n\n**Required Permissions:** role:read\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all roles' })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -79,7 +82,10 @@ export class RoleController {
     RolesEnum.GUEST,
   )
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get role by ID (All authenticated users)' })
+  @ApiOperation({ 
+    summary: 'Get role by ID (All authenticated users)',
+    description: 'Get detailed information about a specific role\n\n**Required Permissions:** role:read\n**Required Roles:** Any authenticated user'
+  })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns role information' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Role not found' })
@@ -95,7 +101,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new role (Root only)' })
+  @ApiOperation({ 
+    summary: 'Create new role (Root only)',
+    description: 'Create a new role in the system\n\n**Required Permissions:** role:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Role created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({
@@ -118,7 +127,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update role by ID (Root only)' })
+  @ApiOperation({ 
+    summary: 'Update role by ID (Root only)',
+    description: 'Update role information\n\n**Required Permissions:** role:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role updated successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
@@ -142,7 +154,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanDelete('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete role by ID (Root only)' })
+  @ApiOperation({ 
+    summary: 'Delete role by ID (Root only)',
+    description: 'Delete a role from the system\n\n**Required Permissions:** role:delete\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role deleted successfully' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Role not found' })
@@ -160,7 +175,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign permission to role (Root only)' })
+  @ApiOperation({ 
+    summary: 'Assign permission to role (Root only)',
+    description: 'Assign a permission to a specific role\n\n**Required Permissions:** role:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'roleId',
     description: 'Role ID',
@@ -188,7 +206,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove permission from role (Root only)' })
+  @ApiOperation({ 
+    summary: 'Remove permission from role (Root only)',
+    description: 'Remove a permission from a specific role\\n\\n**Required Permissions:** role:write\\n**Required Roles:** root\\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'roleId',
     description: 'Role ID',

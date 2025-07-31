@@ -10,6 +10,8 @@ export const PASSWORD_RESET_ATTEMPT_REPOSITORY = Symbol('PasswordResetAttemptRep
 export const FILE_REPOSITORY = Symbol('FileRepository');
 export const COMPANY_REPOSITORY = Symbol('CompanyRepository');
 export const SESSION_REPOSITORY = Symbol('SessionRepository');
+export const COUNTRY_REPOSITORY = Symbol('CountryRepository');
+export const STATE_REPOSITORY = Symbol('StateRepository');
 
 // Repository tokens object
 export const REPOSITORY_TOKENS = {
@@ -24,6 +26,8 @@ export const REPOSITORY_TOKENS = {
   FILE_REPOSITORY,
   COMPANY_REPOSITORY,
   SESSION_REPOSITORY,
+  COUNTRY_REPOSITORY,
+  STATE_REPOSITORY,
 } as const;
 
 // Service injection tokens

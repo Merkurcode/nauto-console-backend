@@ -11,6 +11,7 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -56,10 +57,9 @@ export class CompanyController {
   ) {}
 
   @Get()
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT)
   @ApiOperation({ 
     summary: 'Get companies', 
-    description: 'Root users can see all companies, other users can only see their own company'
+    description: 'Root users can see all companies, other users can only see their own company\n\n**Required Permissions:** company:read\n**Required Roles:** Any authenticated user'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -82,7 +82,7 @@ export class CompanyController {
       const companyId = CompanyId.fromString(user.tenantId);
       const company = await this.queryBus.execute(new GetCompanyQuery(companyId));
       
-return [company];
+      return [company];
     }
   }
 
@@ -91,7 +91,7 @@ return [company];
   @ApiOperation({
     summary: 'Get company by host (Public)',
     description:
-      'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.',
+      'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -108,9 +108,27 @@ return [company];
     return this.queryBus.execute(new GetCompanyByHostQuery(hostVO));
   }
 
+  @Get('root-companies')
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
+  @ApiOperation({ 
+    summary: 'Get root companies', 
+    description: 'Get all companies that have no parent company (root level)\n\n**Required Permissions:** company:read\n**Required Roles:** root, root_readonly'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Root companies retrieved successfully',
+    type: [CompanyResponse],
+  })
+  @RequirePermissions('company:read')
+  async getRootCompanies(): Promise<CompanyResponse[]> {
+    return this.queryBus.execute(new GetRootCompaniesQuery());
+  }
+
   @Get(':id')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT)
-  @ApiOperation({ summary: 'Get company by ID (All authenticated users)' })
+  @ApiOperation({ 
+    summary: 'Get company by ID (All authenticated users)',
+    description: 'Get detailed information about a specific company\n\n**Required Permissions:** company:read\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company retrieved successfully',
@@ -133,7 +151,7 @@ return [company];
   @ApiOperation({
     summary: 'Create a new company (Root only)',
     description:
-      'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.',
+      'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.\n\n**Required Permissions:** company:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -185,9 +203,12 @@ return [company];
   }
 
   @Put(':id')
-  @Roles(RolesEnum.ROOT)
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @WriteOperation('company')
-  @ApiOperation({ summary: 'Update company (Root only)' })
+  @ApiOperation({ 
+    summary: 'Update company (Root and Admin)', 
+    description: 'Root users can update any company, Admin users can only update their own company\n\n**Required Permissions:** company:write\n**Required Roles:** root, admin\n**Restrictions:** Root readonly users cannot perform this operation. Admin users can only update their own company'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company updated successfully',
@@ -203,13 +224,27 @@ return [company];
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'User does not have Root role or Root readonly users cannot perform write operations',
+    description: 'User does not have sufficient permissions or Admin users can only update their own company',
   })
   async updateCompany(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
+    @Request() req: { user: { roles: string[]; companyId?: string } },
   ): Promise<CompanyResponse> {
     const companyId = CompanyId.fromString(id);
+    const user = req.user;
+    
+    // Authorization check: Admin users can only update their own company
+    const isRootUser = user.roles.includes('root');
+    const isAdminUser = user.roles.includes('admin');
+    
+    if (isAdminUser && !isRootUser) {
+      // Admin users can only update their own company
+      if (!user.companyId || user.companyId !== id) {
+        throw new ForbiddenException('Admin users can only update their own company');
+      }
+    }
+    
     const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
 
     const command = new UpdateCompanyCommand(
@@ -253,7 +288,10 @@ return [company];
   @Delete(':id')
   @Roles(RolesEnum.ROOT)
   @DeleteOperation('company')
-  @ApiOperation({ summary: 'Delete company (Root only)' })
+  @ApiOperation({ 
+    summary: 'Delete company (Root only)',
+    description: 'Delete a company from the system\n\n**Required Permissions:** company:delete\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: 'Company deleted successfully',
@@ -275,7 +313,7 @@ return [company];
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @ApiOperation({ 
     summary: 'Get company subsidiaries', 
-    description: 'Get all direct subsidiaries of a company'
+    description: 'Get all direct subsidiaries of a company\n\n**Required Permissions:** company:read\n**Required Roles:** root, root_readonly, admin'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -289,27 +327,11 @@ return [company];
 return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
   }
 
-  @Get('root-companies')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
-  @ApiOperation({ 
-    summary: 'Get root companies', 
-    description: 'Get all companies that have no parent company (root level)'
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Root companies retrieved successfully',
-    type: [CompanyResponse],
-  })
-  @RequirePermissions('company:read')
-  async getRootCompanies(): Promise<CompanyResponse[]> {
-    return this.queryBus.execute(new GetRootCompaniesQuery());
-  }
-
   @Get(':id/hierarchy')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @ApiOperation({ 
     summary: 'Get company hierarchy', 
-    description: 'Get the complete hierarchy tree for a company including all subsidiaries'
+    description: 'Get the complete hierarchy tree for a company including all subsidiaries\n\n**Required Permissions:** company:read\n**Required Roles:** root, root_readonly, admin'
   })
   @ApiResponse({
     status: HttpStatus.OK,

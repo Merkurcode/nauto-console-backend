@@ -15,6 +15,8 @@ import {
   PASSWORD_RESET_ATTEMPT_REPOSITORY,
   SESSION_REPOSITORY,
   COMPANY_REPOSITORY,
+  COUNTRY_REPOSITORY,
+  STATE_REPOSITORY,
 } from '@shared/constants/tokens';
 
 // Controllers
@@ -30,7 +32,16 @@ import { PasswordResetRepository } from '@infrastructure/repositories/password-r
 import { PasswordResetAttemptRepository } from '@infrastructure/repositories/password-reset-attempt.repository';
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
 import { CompanyRepository } from '@infrastructure/repositories/company.repository';
+import { CountryRepository } from '@infrastructure/repositories/country.repository';
+import { StateRepository } from '@infrastructure/repositories/state.repository';
 import { TokenProvider } from './providers/token.provider';
+
+// Validators
+import {
+  CountryExistsConstraint,
+  StateExistsConstraint,
+} from '@shared/validators/country-state.validator';
+import { AgentPhoneUniqueForCompanyConstraint } from '@shared/validators/agent-phone.validator';
 
 // Services
 import { UserService } from '@core/services/user.service';
@@ -132,6 +143,19 @@ const commandHandlers = [
       provide: COMPANY_REPOSITORY,
       useClass: CompanyRepository,
     },
+    {
+      provide: COUNTRY_REPOSITORY,
+      useClass: CountryRepository,
+    },
+    {
+      provide: STATE_REPOSITORY,
+      useClass: StateRepository,
+    },
+
+    // Validators
+    CountryExistsConstraint,
+    StateExistsConstraint,
+    AgentPhoneUniqueForCompanyConstraint,
 
     // Providers
     TokenProvider,

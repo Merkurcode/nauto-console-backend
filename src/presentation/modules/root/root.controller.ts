@@ -21,7 +21,10 @@ export class RootController {
   @Get('system-info')
   @HttpCode(HttpStatus.OK)
   @RequiresResourceAction('system', 'read')
-  @ApiOperation({ summary: 'Get system information' })
+  @ApiOperation({ 
+    summary: 'Get system information',
+    description: 'Get basic system information and status\n\n**Required Permissions:** system:read\n**Required Roles:** root'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns system information' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have required permissions' })
   async getSystemInfo() {
@@ -38,7 +41,10 @@ export class RootController {
   @Get('audit-logs')
   @HttpCode(HttpStatus.OK)
   @RequiresResourceAction('audit', 'read')
-  @ApiOperation({ summary: 'Get audit logs (Requires specific permission)' })
+  @ApiOperation({ 
+    summary: 'Get audit logs (Requires specific permission)',
+    description: 'Get system audit logs for security monitoring\n\n**Required Permissions:** audit:read\n**Required Roles:** root'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns audit logs' })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,

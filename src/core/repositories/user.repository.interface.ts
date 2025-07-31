@@ -9,6 +9,7 @@ import { User } from '../entities/user.entity';
 export interface IUserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
+  findByAgentPhoneAndCompany(agentPhone: string, companyId: string): Promise<User | null>;
   findAll(): Promise<User[]>;
   findAllByCompanyId(companyId: string): Promise<User[]>;
   findUsersByRoleId(roleId: string): Promise<User[]>;
