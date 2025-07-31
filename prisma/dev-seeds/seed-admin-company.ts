@@ -153,6 +153,36 @@ const defaultUsers = [
       postalCode: '72000',
     },
   },
+  // host user
+  {
+    email: 'host@test.com',
+    password: '12345678',
+    firstName: 'Host',
+    lastName: 'User',
+    secondLastName: 'Test',
+    isActive: true,
+    emailVerified: true,
+    bannedUntil: null,
+    banReason: null,
+    agentPhone: null,
+    company: 'Default Company',
+    roles: [ 'host' ],
+    profile: {
+      phone: '2211778817',
+      avatarUrl: null,
+      bio: 'Host user profile',
+      birthDate: '1990-07-01',
+    },
+    address: {
+      country: 'México',
+      state: 'Puebla',
+      city: 'Puebla',
+      street: 'Calle 5 de Mayo',
+      exteriorNumber: '129',
+      interiorNumber: null,
+      postalCode: '72000',
+    },
+  },
   // guest user
   {
     email: 'guest@test.com',
