@@ -31,6 +31,9 @@ export class RoleBaseResponse {
 
   @ApiProperty({ example: false })
   isDefault!: boolean;
+
+  @ApiProperty({ example: true })
+  isDefaultAppRole!: boolean;
 }
 
 // Detailed Role Response with permissions

@@ -56,12 +56,7 @@ export class SendVerificationEmailCommandHandler
     }
 
     // SECURITY: Validate access permissions
-    await this.validateAccess(
-      email,
-      currentUserId,
-      currentUserRoles,
-      currentUserCompanyId,
-    );
+    await this.validateAccess(email, currentUserId, currentUserRoles, currentUserCompanyId);
 
     // Generate a verification code
     const code = await this.authService.generateEmailVerificationCode(email);
@@ -81,7 +76,11 @@ export class SendVerificationEmailCommandHandler
       // Verify the provided phone number matches the user's registered phone
       if (targetUser.profile.phone === phoneNumber) {
         this.logger.debug('Phone numbers match, sending SMS verification');
-        smsSent = await this.smsService.sendVerificationSms(phoneNumber, code, targetUser.id.getValue());
+        smsSent = await this.smsService.sendVerificationSms(
+          phoneNumber,
+          code,
+          targetUser.id.getValue(),
+        );
         this.logger.debug('SMS verification result', { sent: smsSent });
       } else {
         this.logger.debug('Phone numbers do not match - SMS not sent');
@@ -135,7 +134,10 @@ export class SendVerificationEmailCommandHandler
 
         // Check if target user's company is a subsidiary of current user's company
         const targetCompany = await this.companyRepository.findById(targetUser.companyId);
-        if (targetCompany && await this.isSubsidiaryCompany(currentUserCompanyId, targetCompany.id.getValue())) {
+        if (
+          targetCompany &&
+          (await this.isSubsidiaryCompany(currentUserCompanyId, targetCompany.id.getValue()))
+        ) {
           return;
         }
       }
@@ -174,9 +176,14 @@ export class SendVerificationEmailCommandHandler
     }
   }
 
-  private async isSubsidiaryCompany(parentCompanyId: string, targetCompanyId: string): Promise<boolean> {
+  private async isSubsidiaryCompany(
+    parentCompanyId: string,
+    targetCompanyId: string,
+  ): Promise<boolean> {
     try {
-      const targetCompany = await this.companyRepository.findById({ getValue: () => targetCompanyId } as any);
+      const targetCompany = await this.companyRepository.findById({
+        getValue: () => targetCompanyId,
+      } as any);
       if (!targetCompany) {
         return false;
       }
@@ -184,7 +191,12 @@ export class SendVerificationEmailCommandHandler
       // Check if the target company's parent is the current user's company
       return targetCompany.isSubsidiaryOf({ getValue: () => parentCompanyId } as any);
     } catch (error) {
-      this.logger.error('Error checking subsidiary relationship', { error: error.message, parentCompanyId, targetCompanyId });
+      this.logger.error('Error checking subsidiary relationship', {
+        error: error.message,
+        parentCompanyId,
+        targetCompanyId,
+      });
+
       return false;
     }
   }

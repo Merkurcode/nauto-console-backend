@@ -223,12 +223,13 @@ model UserAddress {
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  name              String   @unique
+  description       String
+  isDefault         Boolean  @default(false)
+  isDefaultAppRole  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
   
   users       UserRole[]
   permissions RolePermission[]

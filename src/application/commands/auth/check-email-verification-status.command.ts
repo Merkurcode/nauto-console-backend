@@ -75,17 +75,20 @@ export class CheckEmailVerificationStatusCommandHandler
         // Check if target user's company is a subsidiary of current user's company
         if (targetUser.companyId) {
           const targetCompany = await this.companyRepository.findById(targetUser.companyId);
-          if (targetCompany && await this.isSubsidiaryCompany(currentUserCompanyId, targetCompany.id.getValue())) {
+          if (
+            targetCompany &&
+            (await this.isSubsidiaryCompany(currentUserCompanyId, targetCompany.id.getValue()))
+          ) {
             return;
           }
         }
       }
-      
+
       // Admin can also check their own email
       if (targetUser && targetUser.id.getValue() === currentUserId) {
         return;
       }
-      
+
       // If no target user found, only allow if checking their own email
       const currentUser = await this.userRepository.findById(currentUserId);
       if (currentUser && currentUser.email.getValue() === email) {
@@ -105,12 +108,12 @@ export class CheckEmailVerificationStatusCommandHandler
           return;
         }
       }
-      
+
       // Manager can also check their own email
       if (targetUser && targetUser.id.getValue() === currentUserId) {
         return;
       }
-      
+
       // If no target user found, only allow if checking their own email
       const currentUser = await this.userRepository.findById(currentUserId);
       if (currentUser && currentUser.email.getValue() === email) {
@@ -133,9 +136,14 @@ export class CheckEmailVerificationStatusCommandHandler
     }
   }
 
-  private async isSubsidiaryCompany(parentCompanyId: string, targetCompanyId: string): Promise<boolean> {
+  private async isSubsidiaryCompany(
+    parentCompanyId: string,
+    targetCompanyId: string,
+  ): Promise<boolean> {
     try {
-      const targetCompany = await this.companyRepository.findById({ getValue: () => targetCompanyId } as any);
+      const targetCompany = await this.companyRepository.findById({
+        getValue: () => targetCompanyId,
+      } as any);
       if (!targetCompany) {
         return false;
       }
@@ -143,7 +151,12 @@ export class CheckEmailVerificationStatusCommandHandler
       // Check if the target company's parent is the current user's company
       return targetCompany.isSubsidiaryOf({ getValue: () => parentCompanyId } as any);
     } catch (error) {
-      this.logger.error('Error checking subsidiary relationship', { error: error.message, parentCompanyId, targetCompanyId });
+      this.logger.error('Error checking subsidiary relationship', {
+        error: error.message,
+        parentCompanyId,
+        targetCompanyId,
+      });
+
       return false;
     }
   }

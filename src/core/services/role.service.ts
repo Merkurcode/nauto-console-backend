@@ -19,7 +19,12 @@ export class RoleService {
     private readonly permissionRepository: IPermissionRepository,
   ) {}
 
-  async createRole(name: string, description: string, isDefault: boolean = false): Promise<Role> {
+  async createRole(
+    name: string,
+    description: string,
+    isDefault: boolean = false,
+    isDefaultAppRole: boolean = false,
+  ): Promise<Role> {
     // Check if a role already exists
     const existingRole = await this.roleRepository.findByName(name);
     if (existingRole) {
@@ -35,7 +40,7 @@ export class RoleService {
       }
     }
 
-    const role = Role.create(name, description, isDefault);
+    const role = Role.create(name, description, isDefault, isDefaultAppRole);
 
     return this.roleRepository.create(role);
   }
@@ -116,6 +121,10 @@ export class RoleService {
 
     if (role.isDefault) {
       throw new ForbiddenActionException('Cannot delete the default role');
+    }
+
+    if (role.isDefaultAppRole) {
+      throw new ForbiddenActionException('Cannot delete system roles');
     }
 
     return this.roleRepository.delete(id);
