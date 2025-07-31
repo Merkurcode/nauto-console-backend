@@ -307,7 +307,7 @@ async function bootstrap() {
       .swagger-ui .opblock .opblock-summary {
         background: transparent !important;
         border: none !important;
-        padding: 16px 20px !important;
+        padding: 5px 5px !important;
         cursor: pointer !important;
       }
       
@@ -362,6 +362,7 @@ async function bootstrap() {
         user-select: text !important;
         cursor: text !important;
         font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+        padding: 8px !important;
       }
       
       /* Make all path-related elements copyable */
