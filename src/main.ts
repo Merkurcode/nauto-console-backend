@@ -120,7 +120,7 @@ async function bootstrap() {
 
   // Swagger document configuration
   const config = new DocumentBuilder()
-    .setTitle('Nauto Console API')
+    .setTitle(`${configService.get<string>('APP_NAME', 'API')} API`)
     .setDescription('Documentation.')
     .setVersion(configService.get<string>('API_VERSION', '1.0'))
     .addTag('auth', 'Authentication endpoints')
@@ -192,7 +192,7 @@ async function bootstrap() {
       showRequestHeaders: true,
       tryItOutEnabled: true,
     },
-    customSiteTitle: 'NestJS Clean Architecture API',
+    customSiteTitle: `${configService.get<string>('APP_NAME', 'Clean Architecture API')} - Clean Architecture API`,
 
     // =========================================================================
     // CUSTOM DARK THEME CSS (Supabase Style)
@@ -260,6 +260,10 @@ async function bootstrap() {
         max-width: 1200px;
         margin: 0 auto;
         padding: 0 24px;
+      }
+
+      .swagger-ui .info .title small {
+        margin-left: 20px !important;
       }
       
       /* ===== TAG SECTIONS ===== */
