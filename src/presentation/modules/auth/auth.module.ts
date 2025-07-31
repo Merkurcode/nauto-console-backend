@@ -31,7 +31,6 @@ import { PasswordResetAttemptRepository } from '@infrastructure/repositories/pas
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
 import { CompanyRepository } from '@infrastructure/repositories/company.repository';
 import { TokenProvider } from './providers/token.provider';
-import { EmailProvider } from './providers/email.provider';
 
 // Services
 import { UserService } from '@core/services/user.service';
@@ -136,7 +135,6 @@ const commandHandlers = [
 
     // Providers
     TokenProvider,
-    EmailProvider,
 
     // Strategy
     JwtStrategy,
@@ -144,6 +142,6 @@ const commandHandlers = [
     // Command handlers
     ...commandHandlers,
   ],
-  exports: [UserService, AuthService, EmailProvider],
+  exports: [UserService, AuthService],
 })
 export class AuthModule {}
