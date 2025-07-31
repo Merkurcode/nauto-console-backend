@@ -151,11 +151,11 @@ export class SmsService {
   }
 
   async sendWelcomeSms(
-    phoneNumber: string, 
-    firstName: string, 
-    password: string, 
-    dashboardUrl?: string, 
-    userId?: string
+    phoneNumber: string,
+    firstName: string,
+    password: string,
+    dashboardUrl?: string,
+    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendWelcomeSms called',
@@ -206,10 +206,10 @@ export class SmsService {
   }
 
   async sendWelcomeSmsWithoutPassword(
-    phoneNumber: string, 
-    firstName: string, 
-    dashboardUrl?: string, 
-    userId?: string
+    phoneNumber: string,
+    firstName: string,
+    dashboardUrl?: string,
+    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendWelcomeSmsWithoutPassword called',
@@ -260,9 +260,9 @@ export class SmsService {
   }
 
   async sendPasswordResetNotificationSms(
-    phoneNumber: string, 
-    firstName: string, 
-    userId?: string
+    phoneNumber: string,
+    firstName: string,
+    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendPasswordResetNotificationSms called',
@@ -296,9 +296,9 @@ export class SmsService {
   }
 
   async sendAccountActivatedSms(
-    phoneNumber: string, 
-    firstName: string, 
-    userId?: string
+    phoneNumber: string,
+    firstName: string,
+    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendAccountActivatedSms called',
@@ -332,10 +332,10 @@ export class SmsService {
   }
 
   async sendSecurityAlertSms(
-    phoneNumber: string, 
-    firstName: string, 
+    phoneNumber: string,
+    firstName: string,
     action: string,
-    userId?: string
+    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendSecurityAlertSms called',

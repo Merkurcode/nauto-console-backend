@@ -24,6 +24,7 @@ export class SmsTemplates {
     dashboardUrl?: string,
   ): string {
     const accessInfo = dashboardUrl || 'la plataforma';
+
     return `¡Hola ${firstName}! Bienvenido a ${appName}. Tu contraseña es: ${password}. Accede en: ${accessInfo}`;
   }
 
@@ -34,12 +35,9 @@ export class SmsTemplates {
    * @param dashboardUrl Dashboard URL or fallback text
    * @returns SMS message string
    */
-  static welcome(
-    firstName: string,
-    appName: string,
-    dashboardUrl?: string,
-  ): string {
+  static welcome(firstName: string, appName: string, dashboardUrl?: string): string {
     const accessInfo = dashboardUrl || 'la plataforma';
+
     return `¡Hola ${firstName}! Bienvenido a ${appName}. Accede en: ${accessInfo}`;
   }
 
@@ -70,11 +68,7 @@ export class SmsTemplates {
    * @param action Security action performed
    * @returns SMS message string
    */
-  static securityAlert(
-    firstName: string,
-    appName: string,
-    action: string,
-  ): string {
+  static securityAlert(firstName: string, appName: string, action: string): string {
     return `Hola ${firstName}, se ha realizado una acción de seguridad en tu cuenta de ${appName}: ${action}. Si no fuiste tú, contacta soporte.`;
   }
 }

@@ -232,17 +232,42 @@ export class AuthController {
     return this.commandBus.execute(new VerifyEmailCommand(verifyEmailDto));
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get('email/status/:email')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Check if an email is verified' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Check if an email is verified',
+    description:
+      'Role-based access: Root can check any email, Admin/Manager can check emails within their company, other roles can only check their own email',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Returns the verification status of the email',
+    schema: {
+      type: 'object',
+      properties: {
+        verified: { type: 'boolean', example: true },
+      },
+    },
   })
-  async checkEmailVerificationStatus(@Param('email') email: string) {
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions to check this email',
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
+  async checkEmailVerificationStatus(
+    @Param('email') email: string,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
     const isVerified = await this.commandBus.execute(
-      new CheckEmailVerificationStatusCommand(email),
+      new CheckEmailVerificationStatusCommand(
+        email,
+        currentUser.sub,
+        currentUser.roles,
+        currentUser.companyId || null,
+      ),
     );
 
     return { verified: isVerified };
