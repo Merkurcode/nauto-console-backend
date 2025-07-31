@@ -354,9 +354,18 @@ export class AuthService {
         throw new OtpExpiredException();
       }
 
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+        throw new EntityNotFoundException('User', `${email}`);
+      }
+
       // Mark as verified
       verification.markAsVerified();
       await this.emailVerificationRepository.update(verification);
+
+      // Mark user email as verified
+      user.markEmailAsVerified();
+      await this.userRepository.update(user);
 
       return true;
     } catch (error) {
