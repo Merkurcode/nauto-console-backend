@@ -702,8 +702,7 @@ async function bootstrap() {
         border: 1px solid #374151 !important;
         border-radius: 8px !important;
         color: #e5e7eb !important;
-        margin: 32px 0 !important;
-        padding: 24px !important;
+        margin: 0px !important;
       }
       
       .swagger-ui .auth .auth-wrapper {
@@ -740,29 +739,88 @@ async function bootstrap() {
         box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.1) !important;
       }
       
-      /* Auth buttons */
-      .swagger-ui .auth .auth-wrapper .btn {
+      /* Auth buttons container - improved spacing */
+      .swagger-ui .auth .auth-wrapper .auth-btn-wrapper,
+      .swagger-ui .auth .auth-wrapper .btn-wrapper,
+      .swagger-ui .modal-ux .auth-btn-wrapper {
+        display: flex !important;
+        gap: 12px !important;
+        justify-content: flex-end !important;
+        margin-top: 24px !important;
+        padding-top: 20px !important;
+        border-top: 1px solid #374151 !important;
+      }
+      
+      /* Auth buttons - enhanced styling */
+      .swagger-ui .auth .auth-wrapper .btn,
+      .swagger-ui .modal-ux .auth .btn {
         background: #3ecf8e !important;
         color: #0f1419 !important;
         border: none !important;
-        border-radius: 6px !important;
-        padding: 8px 16px !important;
+        border-radius: 8px !important;
+        padding: 12px 24px !important;
         font-weight: 600 !important;
+        font-size: 14px !important;
+        min-width: 90px !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        text-align: center !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
       }
       
-      .swagger-ui .auth .auth-wrapper .btn:hover {
+      .swagger-ui .auth .auth-wrapper .btn:hover,
+      .swagger-ui .modal-ux .auth .btn:hover {
         background: #2dd4bf !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
       }
       
-      .swagger-ui .auth .auth-wrapper .btn.cancel {
+      /* Cancel/Close button styling */
+      .swagger-ui .auth .auth-wrapper .btn.cancel,
+      .swagger-ui .modal-ux .auth .btn.cancel,
+      .swagger-ui .auth .auth-wrapper .btn-secondary,
+      .swagger-ui .modal-ux .auth .btn-secondary {
         background: transparent !important;
         color: #94a3b8 !important;
-        border: 1px solid #4b5563 !important;
+        border: 2px solid #4b5563 !important;
+        box-shadow: none !important;
       }
       
-      .swagger-ui .auth .auth-wrapper .btn.cancel:hover {
+      .swagger-ui .auth .auth-wrapper .btn.cancel:hover,
+      .swagger-ui .modal-ux .auth .btn.cancel:hover,
+      .swagger-ui .auth .auth-wrapper .btn-secondary:hover,
+      .swagger-ui .modal-ux .auth .btn-secondary:hover {
         background: #374151 !important;
         color: #e5e7eb !important;
+        border-color: #6b7280 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+      }
+      
+      /* Login/Authorize button specific styling */
+      .swagger-ui .auth .auth-wrapper .btn.authorize,
+      .swagger-ui .modal-ux .auth .btn.authorize,
+      .swagger-ui .auth .auth-wrapper .btn-primary,
+      .swagger-ui .modal-ux .auth .btn-primary {
+        background: linear-gradient(135deg, #3ecf8e 0%, #2dd4bf 100%) !important;
+        color: #0f1419 !important;
+        font-weight: 700 !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      
+      .swagger-ui .auth .auth-wrapper .btn.authorize:hover,
+      .swagger-ui .modal-ux .auth .btn.authorize:hover,
+      .swagger-ui .auth .auth-wrapper .btn-primary:hover,
+      .swagger-ui .modal-ux .auth .btn-primary:hover {
+        background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%) !important;
+      }
+      
+      /* Button text styling */
+      .swagger-ui .auth .auth-wrapper .btn span,
+      .swagger-ui .modal-ux .auth .btn span {
+        position: relative !important;
+        z-index: 1 !important;
       }
       
       /* Auth button wrapper */
