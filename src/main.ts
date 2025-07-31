@@ -120,11 +120,11 @@ async function bootstrap() {
 
   // Swagger document configuration
   const config = new DocumentBuilder()
-    .setTitle('NestJS Clean Architecture API')
+    .setTitle('Nauto Console API')
     .setDescription(
       'The API documentation for the NestJS Clean Architecture template with Multi-Tenant support',
     )
-    .setVersion('1.0')
+    .setVersion(configService.get<string>('API_VERSION', '1.0'))
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
     .addTag('roles', 'Role management endpoints')
@@ -355,12 +355,23 @@ async function bootstrap() {
       }
       
       /* ===== OPERATION CONTENT ===== */
-      /* Summary path and description */
+      /* Summary path and description - COPYABLE */
       .swagger-ui .opblock .opblock-summary-path {
         color: #e2e8f0 !important;
         font-weight: 500 !important;
         font-size: 16px !important;
         margin-left: 12px !important;
+        user-select: text !important;
+        cursor: text !important;
+        font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+      }
+      
+      /* Make all path-related elements copyable */
+      .swagger-ui .opblock .opblock-summary-path span,
+      .swagger-ui .opblock .opblock-summary-path a,
+      .swagger-ui .opblock .opblock-summary-path code {
+        user-select: text !important;
+        cursor: text !important;
       }
       
       .swagger-ui .opblock .opblock-summary-description {
@@ -1011,6 +1022,51 @@ async function bootstrap() {
       .swagger-ui [style*="color:rgb(59,65,81)"],
       .swagger-ui [style*="color: rgb(59, 65, 81)"] {
         color: #d1d5db !important;
+      }
+      
+      /* ===== COPYABLE TEXT ELEMENTS ===== */
+      /* Make API paths, URLs, and code snippets easily copyable */
+      .swagger-ui .renderedMarkdown code,
+      .swagger-ui .highlight-code pre,
+      .swagger-ui .model-example,
+      .swagger-ui .example__value,
+      .swagger-ui .parameter__name,
+      .swagger-ui .response-col_description code,
+      .swagger-ui .opblock-summary-path,
+      .swagger-ui .servers select option,
+      .swagger-ui .servers .url,
+      .swagger-ui .scheme-container .schemes > label > select option {
+        user-select: text !important;
+        cursor: text !important;
+      }
+      
+      /* Ensure base URL and server URLs are copyable */
+      .swagger-ui .servers .url,
+      .swagger-ui .servers select,
+      .swagger-ui .servers option {
+        user-select: text !important;
+        cursor: pointer !important;
+      }
+      
+      /* Make sure the text inside server dropdown is selectable */
+      .swagger-ui .servers select:focus,
+      .swagger-ui .servers select:active {
+        user-select: text !important;
+      }
+      
+      /* Override any user-select: none that might be applied globally */
+      .swagger-ui .opblock-summary,
+      .swagger-ui .opblock-summary * {
+        user-select: text !important;
+      }
+      
+      /* But keep buttons non-selectable for better UX */
+      .swagger-ui .btn,
+      .swagger-ui button,
+      .swagger-ui .opblock-summary-control,
+      .swagger-ui .authorization__btn {
+        user-select: none !important;
+        cursor: pointer !important;
       }
     `,
 

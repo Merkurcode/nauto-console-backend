@@ -16,9 +16,10 @@ export class EmailTemplates {
       ? `<p>Has sido registrado en <strong>${companyName}</strong>.</p>`
       : '';
 
-    const rolesSection = roles && roles.length > 0
-      ? `<p><strong>Roles asignados:</strong> ${roles.join(', ')}</p>`
-      : '';
+    const rolesSection =
+      roles && roles.length > 0
+        ? `<p><strong>Roles asignados:</strong> ${roles.join(', ')}</p>`
+        : '';
 
     const primaryColor = colors?.primary || '#007bff';
 
