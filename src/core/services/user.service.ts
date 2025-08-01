@@ -1,9 +1,13 @@
+/* eslint-disable prettier/prettier */
 import * as bcrypt from 'bcrypt';
 import { Injectable, Inject } from '@nestjs/common';
-import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { User } from '../entities/user.entity';
 import { IUserRepository } from '../repositories/user.repository.interface';
 import { IRoleRepository } from '../repositories/role.repository.interface';
+import { ICompanyRepository } from '../repositories/company.repository.interface';
+import { CompanyName } from '@core/value-objects/company-name.vo';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 import {
   EntityNotFoundException,
   EntityAlreadyExistsException,
@@ -12,11 +16,17 @@ import {
 import { Email } from '@core/value-objects/email.vo';
 import { Password } from '@core/value-objects/password.vo';
 import { FirstName, LastName } from '@core/value-objects/name.vo';
+import { SecondLastName } from '@core/value-objects/second-lastname.vo';
+import { AgentPhone } from '@core/value-objects/agent-phone.vo';
+import { UserProfile } from '@core/value-objects/user-profile.vo';
+import { Address } from '@core/value-objects/address.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
-import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
-import { EmailTemplates } from '@shared/services/email/email-templates';
+import { EmailService } from './email.service';
+import { SmsService } from './sms.service';
+import { ConfigService } from '@nestjs/config';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 @Injectable()
 export class UserService {
@@ -25,9 +35,16 @@ export class UserService {
     private readonly userRepository: IUserRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
+    @Inject(COMPANY_REPOSITORY)
+    private readonly companyRepository: ICompanyRepository,
     private readonly domainValidationService: DomainValidationService,
-    private readonly emailProvider: EmailProvider,
-  ) {}
+    private readonly emailService: EmailService,
+    private readonly smsService: SmsService,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(UserService.name);
+  }
 
   async createUser(
     emailStr: string,
@@ -40,11 +57,9 @@ export class UserService {
 
     // Generate password if not provided
     let actualPassword = passwordStr;
-    let passwordWasGenerated = false;
 
     if (!passwordStr) {
       actualPassword = PasswordGenerator.generateSecurePassword();
-      passwordWasGenerated = true;
     }
 
     // Validate password using value object
@@ -74,13 +89,242 @@ export class UserService {
     // Save the user
     const savedUser = await this.userRepository.create(user);
 
-    // Send welcome email if password was generated
-    if (passwordWasGenerated) {
+    // Send welcome email with password
+    try {
+      const roleNames = user.roles?.map(role => role.name) || [];
+      this.logger.log({
+        message: 'Sending welcome email',
+        email: emailStr,
+        firstName,
+        roles: roleNames,
+      });
+      await this.emailService.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, undefined, roleNames);
+    } catch (error) {
+      this.logger.error({
+        message: 'Error sending welcome email',
+        email: emailStr,
+        error: error.message,
+      });
+      // Continue even if email sending fails
+    }
+
+    // Send welcome SMS if user has phone number
+    try {
+      if (savedUser.profile?.phone) {
+        this.logger.log({
+          message: 'Sending welcome SMS to user',
+          phone: savedUser.profile.phone,
+          firstName,
+        });
+        const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
+        const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
+        const dashboardUrl = `${frontendUrl}${dashboardPath}`;
+        
+        await this.smsService.sendWelcomeSms(
+          savedUser.profile.phone, 
+          firstName, 
+          actualPassword!, 
+          dashboardUrl,
+          savedUser.id.getValue()
+        );
+      }
+    } catch (error) {
+      this.logger.error({
+        message: 'Error sending welcome SMS',
+        phone: savedUser.profile?.phone,
+        error: error.message,
+      });
+      // Continue even if SMS sending fails
+    }
+
+    return savedUser;
+  }
+
+  async createUserWithExtendedData(
+    emailStr: string,
+    passwordStr: string | undefined,
+    firstName: string,
+    lastName: string,
+    options?: {
+      secondLastName?: string;
+      isActive?: boolean;
+      emailVerified?: boolean;
+      bannedUntil?: Date;
+      banReason?: string;
+      agentPhone?: string;
+      profile?: {
+        phone?: string;
+        avatarUrl?: string;
+        bio?: string;
+        birthDate?: string;
+      };
+      address?: {
+        country?: string;
+        state?: string;
+        city?: string;
+        street?: string;
+        exteriorNumber?: string;
+        interiorNumber?: string;
+        postalCode?: string;
+      };
+      companyName?: string;
+      roles?: string[];
+    },
+  ): Promise<User> {
+    // Validate email using value object
+    const email = new Email(emailStr);
+
+    // Generate password if not provided
+    let actualPassword = passwordStr;
+
+    if (!passwordStr) {
+      actualPassword = PasswordGenerator.generateSecurePassword();
+    }
+
+    // Validate password using value object
+    const password = new Password(actualPassword!);
+
+    // Check if user already exists
+    const existingUser = await this.userRepository.findByEmail(email.getValue());
+    if (existingUser) {
+      throw new EntityAlreadyExistsException('User', 'email');
+    }
+
+    // Hash the password
+    const passwordHash = await this.hashPassword(password.getValue());
+
+    // Create value objects for optional fields
+    const secondLastNameVO = options?.secondLastName
+      ? new SecondLastName(options.secondLastName)
+      : undefined;
+    const agentPhoneVO = options?.agentPhone ? new AgentPhone(options.agentPhone) : undefined;
+    const profileVO = options?.profile
+      ? new UserProfile(
+          options.profile.phone,
+          options.profile.avatarUrl,
+          options.profile.bio,
+          options.profile.birthDate,
+        )
+      : undefined;
+
+    let addressVO: Address | undefined;
+    if (
+      options?.address &&
+      options.address.country &&
+      options.address.state &&
+      options.address.city &&
+      options.address.street &&
+      options.address.exteriorNumber &&
+      options.address.postalCode
+    ) {
+      addressVO = new Address(
+        options.address.country,
+        options.address.state,
+        options.address.city,
+        options.address.street,
+        options.address.exteriorNumber,
+        options.address.postalCode,
+        options.address.interiorNumber,
+      );
+    }
+
+    // Handle company assignment if provided
+    let companyId: CompanyId | undefined;
+    if (options?.companyName) {
+      companyId = await this.findCompanyByName(options.companyName);
+    }
+
+    // Create a new user with extended data
+    const user = User.createWithExtendedData(
+      email,
+      passwordHash,
+      new FirstName(firstName),
+      new LastName(lastName),
+      {
+        secondLastName: secondLastNameVO,
+        isActive: options?.isActive ?? true,
+        emailVerified: options?.emailVerified ?? false,
+        bannedUntil: options?.bannedUntil,
+        banReason: options?.banReason,
+        agentPhone: agentPhoneVO,
+        profile: profileVO,
+        address: addressVO,
+        companyId: companyId,
+      },
+    );
+
+    // Assign roles if provided, otherwise use default role
+    if (options?.roles && options.roles.length > 0) {
+      for (const roleName of options.roles) {
+        const role = await this.roleRepository.findByName(roleName);
+        if (role) {
+          user.addRole(role);
+        }
+      }
+    } else {
+      // Assign default role if no roles provided
+      const defaultRole = await this.roleRepository.findDefaultRole();
+      if (defaultRole) {
+        user.addRole(defaultRole);
+      }
+    }
+
+    // Save the user
+    const savedUser = await this.userRepository.create(user);
+
+    // Send welcome email with password - only if user was created successfully
+    if (savedUser) {
       try {
-        await this.emailProvider.sendWelcomeEmail(emailStr, firstName);
+        const roleNames = user.roles?.map(role => role.name) || [];
+        this.logger.log({
+          message: 'Sending welcome email with extended data',
+          email: emailStr,
+          firstName,
+          roles: roleNames,
+          companyName: options?.companyName,
+        });
+        await this.emailService.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, options?.companyName, roleNames);
       } catch (error) {
-        console.error('Error sending welcome email:', error);
+        this.logger.error({
+          message: 'Error sending welcome email',
+          email: emailStr,
+          error: error.message,
+        });
         // Continue even if email sending fails
+      }
+
+      // Send welcome SMS if user has phone number
+      try {
+        if (savedUser.profile?.phone) {
+          this.logger.log({
+            message: 'Sending welcome SMS to user with extended data',
+            phone: savedUser.profile.phone,
+            firstName,
+          });
+          const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
+          const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
+          const dashboardUrl = `${frontendUrl}${dashboardPath}`;
+          
+          await this.smsService.sendWelcomeSms(
+            savedUser.profile.phone, 
+            firstName, 
+            actualPassword!, 
+            dashboardUrl,
+            savedUser.id.getValue()
+          );
+        } else {
+          this.logger.debug({
+            message: 'User has no phone configured, skipping welcome SMS',
+            email: emailStr,
+          });
+        }
+      } catch (error) {
+        this.logger.error({
+          message: 'Error sending welcome SMS',
+          phone: savedUser.profile?.phone,
+          error: error.message,
+        });
+        // Continue even if SMS sending fails
       }
     }
 
@@ -274,32 +518,21 @@ export class UserService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
-  private async sendWelcomeEmail(
-    email: string,
-    firstName: string,
-    password: string,
-    companyId?: string,
-  ): Promise<void> {
-    let companyName: string | undefined;
-
-    // Get company name if companyId is provided
-    if (companyId) {
-      try {
-        // Note: We would need to inject the company repository to get the company name
-        // For now, we'll use a placeholder
-        companyName = 'Mi Empresa'; // TODO: Get actual company name from repository
-      } catch (error) {
-        console.error('Error fetching company name:', error);
-      }
+  private async findCompanyByName(companyName: string): Promise<CompanyId> {
+    const companyNameVO = new CompanyName(companyName);
+    
+    const company = await this.companyRepository.findByName(companyNameVO);
+    
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyName);
     }
 
-    const htmlContent = EmailTemplates.welcomeWithPassword(firstName, email, password, companyName);
+    this.logger.log({
+      message: 'Found existing company for user registration',
+      companyName,
+      companyId: company.id.getValue(),
+    });
 
-    await this.emailProvider.sendEmail(
-      email,
-      'Bienvenido a la plataforma - Tus credenciales de acceso',
-      htmlContent,
-      true, // isHtml
-    );
+    return company.id;
   }
 }
