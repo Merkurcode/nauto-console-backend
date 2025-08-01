@@ -23,14 +23,17 @@ export class RoleBaseResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   id!: string;
 
-  @ApiProperty({ example: 'admin' })
+  @ApiProperty({ example: 'root' })
   name!: string;
 
-  @ApiProperty({ example: 'Administrator role with full access' })
+  @ApiProperty({ example: 'Root role with full access' })
   description!: string;
 
   @ApiProperty({ example: false })
   isDefault!: boolean;
+
+  @ApiProperty({ example: true })
+  isDefaultAppRole!: boolean;
 }
 
 // Detailed Role Response with permissions
