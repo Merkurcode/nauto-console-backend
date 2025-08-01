@@ -97,6 +97,10 @@ const commandHandlers = [
       provide: USER_REPOSITORY,
       useClass: UserRepository,
     },
+    {
+      provide: USER_REPOSITORY,
+      useClass: UserRepository,
+    },
 
     // Query handlers
     ...queryHandlers,
