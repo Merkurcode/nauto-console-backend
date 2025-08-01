@@ -12,6 +12,11 @@ import {
   REFRESH_TOKEN_REPOSITORY,
   EMAIL_VERIFICATION_REPOSITORY,
   PASSWORD_RESET_REPOSITORY,
+  PASSWORD_RESET_ATTEMPT_REPOSITORY,
+  SESSION_REPOSITORY,
+  COMPANY_REPOSITORY,
+  COUNTRY_REPOSITORY,
+  STATE_REPOSITORY,
 } from '@shared/constants/tokens';
 
 // Controllers
@@ -24,12 +29,25 @@ import { OtpRepository } from '@infrastructure/repositories/otp.repository';
 import { RefreshTokenRepository } from '@infrastructure/repositories/refresh-token.repository';
 import { EmailVerificationRepository } from '@infrastructure/repositories/email-verification.repository';
 import { PasswordResetRepository } from '@infrastructure/repositories/password-reset.repository';
-import { EmailProvider } from './providers/email.provider';
+import { PasswordResetAttemptRepository } from '@infrastructure/repositories/password-reset-attempt.repository';
+import { SessionRepository } from '@infrastructure/repositories/session.repository';
+import { CompanyRepository } from '@infrastructure/repositories/company.repository';
+import { CountryRepository } from '@infrastructure/repositories/country.repository';
+import { StateRepository } from '@infrastructure/repositories/state.repository';
 import { TokenProvider } from './providers/token.provider';
+
+// Validators
+import {
+  CountryExistsConstraint,
+  StateExistsConstraint,
+} from '@shared/validators/country-state.validator';
+import { AgentPhoneUniqueForCompanyConstraint } from '@shared/validators/agent-phone.validator';
 
 // Services
 import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
+import { CaptchaService } from '@core/services/captcha.service';
+import { InvitationRulesService } from '@core/services/invitation-rules.service';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { I18nModule } from '@infrastructure/i18n/i18n.module';
 import { CoreModule } from '@core/core.module';
@@ -73,9 +91,9 @@ const commandHandlers = [
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
+        secret: configService.get('jwt.secret'),
         signOptions: {
-          expiresIn: configService.get('JWT_ACCESS_EXPIRATION', '15m'),
+          expiresIn: configService.get('jwt.accessExpiration', '15m'),
         },
       }),
     }),
@@ -85,6 +103,8 @@ const commandHandlers = [
     // Services
     UserService,
     AuthService,
+    CaptchaService,
+    InvitationRulesService,
 
     // Repository tokens
     {
@@ -111,9 +131,33 @@ const commandHandlers = [
       provide: PASSWORD_RESET_REPOSITORY,
       useClass: PasswordResetRepository,
     },
+    {
+      provide: PASSWORD_RESET_ATTEMPT_REPOSITORY,
+      useClass: PasswordResetAttemptRepository,
+    },
+    {
+      provide: SESSION_REPOSITORY,
+      useClass: SessionRepository,
+    },
+    {
+      provide: COMPANY_REPOSITORY,
+      useClass: CompanyRepository,
+    },
+    {
+      provide: COUNTRY_REPOSITORY,
+      useClass: CountryRepository,
+    },
+    {
+      provide: STATE_REPOSITORY,
+      useClass: StateRepository,
+    },
+
+    // Validators
+    CountryExistsConstraint,
+    StateExistsConstraint,
+    AgentPhoneUniqueForCompanyConstraint,
 
     // Providers
-    EmailProvider,
     TokenProvider,
 
     // Strategy
@@ -122,6 +166,6 @@ const commandHandlers = [
     // Command handlers
     ...commandHandlers,
   ],
-  exports: [UserService, AuthService, EmailProvider],
+  exports: [UserService, AuthService],
 })
 export class AuthModule {}

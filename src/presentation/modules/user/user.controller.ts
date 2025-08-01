@@ -54,10 +54,13 @@ export class UserController {
   ) {}
 
   @Get()
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @RequirePermissions('user:read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all users in company (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Get all users in company (Root/Root-Readonly/Admin)',
+    description: 'Get all users within a specific company\n\n**Required Permissions:** user:read\n**Required Roles:** root, root_readonly, admin'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all users in the company' })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -68,10 +71,13 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @RequirePermissions('user:read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get user by ID (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Get user by ID (Root/Root-Readonly/Admin)',
+    description: 'Get detailed information about a specific user\n\n**Required Permissions:** user:read\n**Required Roles:** root, root_readonly, admin'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -89,10 +95,13 @@ export class UserController {
   }
 
   @Post()
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new user in company (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Create new user in company (Root/Root-Readonly/Admin)',
+    description: 'Create a new user within a specific company\n\n**Required Permissions:** user:write\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -110,10 +119,13 @@ export class UserController {
   }
 
   @Put(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update user by ID (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Update user by ID (Root/Root-Readonly/Admin)',
+    description: 'Update user information within a specific company\n\n**Required Permissions:** user:write\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -145,7 +157,10 @@ export class UserController {
 
   @Put('/profile')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiOperation({ 
+    summary: 'Update current user profile',
+    description: 'Update current authenticated user profile information\n\n**Required Permissions:** None (Own profile)\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Profile updated successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   async updateCurrentUserProfile(
@@ -163,10 +178,13 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanDelete('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete user by ID (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Delete user by ID (Root/Root-Readonly/Admin)',
+    description: 'Delete a user from a specific company\n\n**Required Permissions:** user:delete\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -185,10 +203,13 @@ export class UserController {
   }
 
   @Post(':id/change-password')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change user password (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Change user password (Root only)',
+    description: 'Change password for any user (administrative action)\n\n**Required Permissions:** user:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -221,7 +242,10 @@ export class UserController {
 
   @Post('/profile/change-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change current user password' })
+  @ApiOperation({ 
+    summary: 'Change current user password',
+    description: 'Change own password (requires current password verification)\n\n**Required Permissions:** None (Own password)\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password changed successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Current password is incorrect' })
@@ -242,7 +266,10 @@ export class UserController {
 
   @Post('/profile/verify-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify current user password' })
+  @ApiOperation({ 
+    summary: 'Verify current user password',
+    description: 'Verify current user password for security operations\n\n**Required Permissions:** None (Own password)\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password verification result' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   async verifyCurrentUserPassword(
@@ -255,10 +282,13 @@ export class UserController {
   }
 
   @Patch(':id/activate')
-  @Roles(RolesEnum.SUPERADMIN, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Activate or deactivate user (SuperAdmin/Admin only)' })
+  @ApiOperation({ 
+    summary: 'Activate or deactivate user (Root/Root-Readonly/Admin)',
+    description: 'Change user activation status\n\n**Required Permissions:** user:write\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -281,10 +311,13 @@ export class UserController {
   }
 
   @Post(':id/roles')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign role to user (Admin only - cannot assign SUPERADMIN)' })
+  @ApiOperation({ 
+    summary: 'Assign role to user (Root only)',
+    description: 'Assign a role to a specific user\n\n**Required Permissions:** user:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
@@ -310,10 +343,13 @@ export class UserController {
   }
 
   @Delete(':id/roles/:roleId')
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove role from user (Admin only - cannot remove SUPERADMIN)' })
+  @ApiOperation({ 
+    summary: 'Remove role from user (Root only)',
+    description: 'Remove a role from a specific user\\n\\n**Required Permissions:** user:write\\n**Required Roles:** root\\n**Restrictions:** Root readonly users cannot perform this operation'
+  })
   @ApiParam({
     name: 'companyId',
     description: 'Company ID',
