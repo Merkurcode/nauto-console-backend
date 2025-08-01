@@ -200,3 +200,24 @@ export class ConfigurationException extends HealthCheckException {
     this.name = 'ConfigurationException';
   }
 }
+
+// Ban and session exceptions
+export class UserBannedException extends AuthenticationDomainException {
+  constructor(
+    public readonly bannedUntil: Date,
+    public readonly banReason: string,
+  ) {
+    super(
+      `User is banned until ${bannedUntil.toISOString()}. Reason: ${banReason}`,
+      HttpStatus.FORBIDDEN,
+    );
+    this.name = 'UserBannedException';
+  }
+}
+
+export class InvalidSessionException extends AuthenticationDomainException {
+  constructor(message: string = 'Invalid or expired session') {
+    super(message, HttpStatus.UNAUTHORIZED);
+    this.name = 'InvalidSessionException';
+  }
+}
