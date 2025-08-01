@@ -28,7 +28,7 @@ const rolePermissionsMap = {
   ],
   manager: [
     'auth:write',
-    'user:read',
+    'user:read', 'user:delete',
     'role:read',
     'storage:manage', 'storage:write', 'storage:read',
     'company:read'
