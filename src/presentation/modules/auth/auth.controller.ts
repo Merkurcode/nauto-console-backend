@@ -1,12 +1,25 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Param } from '@nestjs/common';
+/* eslint-disable prettier/prettier */
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+  Param,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 // DTOs
 import { RegisterDto } from '@application/dtos/auth/register.dto';
 import { LoginDto } from '@application/dtos/auth/login.dto';
 import { VerifyOtpDto } from '@application/dtos/auth/verify-otp.dto';
 import { RefreshTokenDto } from '@application/dtos/auth/refresh-token.dto';
+import { LogoutDto, LogoutScope } from '@application/dtos/auth/logout.dto';
 import {
   SendVerificationEmailDto,
   VerifyEmailDto,
@@ -32,65 +45,104 @@ import { ResetPasswordCommand } from '@application/commands/auth/reset-password.
 import { Public } from '@shared/decorators/public.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { SkipThrottle, Throttle } from '@shared/decorators/throttle.decorator';
+import { WriteOperation } from '@shared/decorators/write-operation.decorator';
+import { RequirePermissions } from '@shared/decorators/permissions.decorator';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@presentation/guards/permissions.guard';
+import { RolesGuard } from '@presentation/guards/roles.guard';
+import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
+import { InvitationGuard } from '@presentation/guards/invitation.guard';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 @ApiTags('auth')
 @Throttle(60, 5) // 5 requests per minute
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(AuthController.name);
+  }
 
-  @Public()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard)
+  @RequirePermissions('auth:write')
+  @WriteOperation('auth')
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Register a new user (invitation-based)',
+    description: 'Register a new user in the system through invitation\n\n**Required Permissions:** auth:write\n**Required Roles:** root, admin (users with invitation permissions)\n**Restrictions:** Root readonly users cannot perform this operation. Requires valid invitation token'
+  })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User successfully registered' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'User with this email already exists' })
-  async register(@Body() registerDto: RegisterDto) {
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions to invite user',
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
+  async register(@Body() registerDto: RegisterDto, @CurrentUser() _currentUser: IJwtPayload) {
     return this.commandBus.execute(new RegisterUserCommand(registerDto));
   }
 
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authenticate user and get tokens' })
+  @ApiOperation({ 
+    summary: 'Authenticate user and get tokens',
+    description: 'Authenticate user credentials and retrieve access/refresh tokens\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description:
       'User successfully authenticated. Returns access token, refresh token, and user data. May return OTP requirement if 2FA is enabled.',
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto) {
-    return this.commandBus.execute(new LoginCommand(loginDto));
+  async login(
+    @Body() loginDto: LoginDto,
+    @Request()
+    req: {
+      headers: Record<string, string>;
+      ip?: string;
+      connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
+      socket?: { remoteAddress?: string };
+    },
+  ) {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress =
+      req.ip ||
+      req.connection.remoteAddress ||
+      req.socket.remoteAddress ||
+      (req.connection.socket ? req.connection.socket.remoteAddress : null);
+
+    return this.commandBus.execute(new LoginCommand(loginDto, userAgent, ipAddress));
   }
 
   @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify OTP code for 2FA' })
+  @ApiOperation({ 
+    summary: 'Verify OTP code for 2FA',
+    description: 'Verify OTP code for two-factor authentication\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'OTP verified successfully. Returns access token, refresh token, and user data.',
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid OTP code' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        userId: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
-        otp: { type: 'string', example: '123456' },
-      },
-    },
-  })
-  async verifyOtp(@Body('userId') userId: string, @Body() verifyOtpDto: VerifyOtpDto) {
-    return this.commandBus.execute(new VerifyOtpCommand(userId, verifyOtpDto));
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.commandBus.execute(new VerifyOtpCommand(verifyOtpDto.userId, verifyOtpDto));
   }
 
   @Public()
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiOperation({ 
+    summary: 'Refresh access token using refresh token',
+    description: 'Get new access token using a valid refresh token\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Token refreshed successfully. Returns new access token and refresh token.',
@@ -103,18 +155,58 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Logout the current user and revoke all refresh tokens' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'User logged out successfully' })
+  @ApiOperation({
+    summary: 'Logout the current user - local (current session) or global (all sessions)',
+    description:
+      'Local logout revokes only the current session, global logout revokes all user sessions\n\n**Required Permissions:** None (Authenticated users only)\n**Required Roles:** Any authenticated user',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User logged out successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Logged out from current session successfully' },
+      },
+    },
+  })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
-  async logout(@CurrentUser() user: IJwtPayload) {
-    return this.commandBus.execute(new LogoutCommand(user.sub));
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Session token required for local logout',
+  })
+  async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto) {
+    this.logger.debug({
+      message: 'Logout request received',
+      userId: user.sub,
+      sessionToken: user.jti,
+      scope: logoutDto.scope,
+      email: user.email,
+    });
+
+    // Extract session token from JWT for local logout
+    const currentSessionToken = user.jti; // Session token stored in JWT's jti claim
+
+    // Validate that we have a session token for local logout
+    if (logoutDto.scope === LogoutScope.LOCAL && !currentSessionToken) {
+      throw new Error(
+        'Session token not found in JWT. Local logout requires a valid session token.',
+      );
+    }
+
+    return this.commandBus.execute(
+      new LogoutCommand(user.sub, logoutDto.scope || LogoutScope.GLOBAL, currentSessionToken),
+    );
   }
 
   @Get('me')
   @SkipThrottle()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get current user information' })
+  @ApiOperation({ 
+    summary: 'Get current user information',
+    description: 'Get current authenticated user basic information\n\n**Required Permissions:** None (Authenticated users only)\n**Required Roles:** Any authenticated user'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'User information retrieved successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
   async me(@CurrentUser() user: IJwtPayload) {
@@ -125,14 +217,31 @@ export class AuthController {
     };
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Post('email/send-verification')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Send email verification code' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Send email verification code',
+    description: 'Role-based access: Root can send to any email, Admin/Manager can send to emails within their company (and subsidiaries for Admin), other roles can only send to their own email. Only sends if email is not already verified.\n\n**Required Permissions:** Varies by role scope\n**Required Roles:** Any authenticated user (with role-based restrictions)'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Verification email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
-  async sendVerificationEmail(@Body() sendVerificationEmailDto: SendVerificationEmailDto) {
-    return this.commandBus.execute(new SendVerificationEmailCommand(sendVerificationEmailDto));
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions to send verification to this email' })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Email is already verified' })
+  async sendVerificationEmail(
+    @Body() sendVerificationEmailDto: SendVerificationEmailDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
+    return this.commandBus.execute(
+      new SendVerificationEmailCommand(
+        sendVerificationEmailDto,
+        currentUser.sub,
+        currentUser.roles,
+        currentUser.companyId || null,
+      ),
+    );
   }
 
   @Public()
@@ -141,7 +250,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Verify email with verification code',
     description:
-      'Verify email with the code received. If successful, returns auth tokens like the login endpoint.',
+      'Verify email with the code received. If successful, returns auth tokens like the login endpoint.\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -156,17 +265,42 @@ export class AuthController {
     return this.commandBus.execute(new VerifyEmailCommand(verifyEmailDto));
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get('email/status/:email')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Check if an email is verified' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Check if an email is verified',
+    description:
+      'Role-based access: Root can check any email, Admin/Manager can check emails within their company, other roles can only check their own email\n\n**Required Permissions:** Varies by role scope\n**Required Roles:** Any authenticated user (with role-based restrictions)',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Returns the verification status of the email',
+    schema: {
+      type: 'object',
+      properties: {
+        verified: { type: 'boolean', example: true },
+      },
+    },
   })
-  async checkEmailVerificationStatus(@Param('email') email: string) {
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions to check this email',
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
+  async checkEmailVerificationStatus(
+    @Param('email') email: string,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
     const isVerified = await this.commandBus.execute(
-      new CheckEmailVerificationStatusCommand(email),
+      new CheckEmailVerificationStatusCommand(
+        email,
+        currentUser.sub,
+        currentUser.roles,
+        currentUser.companyId || null,
+      ),
     );
 
     return { verified: isVerified };
@@ -175,17 +309,38 @@ export class AuthController {
   @Public()
   @Post('password/request-reset')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request a password reset email' })
+  @ApiOperation({ 
+    summary: 'Request a password reset email with captcha validation',
+    description: 'Request password reset via email with captcha protection\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset email sent successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
-  async requestPasswordReset(@Body() requestPasswordResetDto: RequestPasswordResetDto) {
-    return this.commandBus.execute(new RequestPasswordResetCommand(requestPasswordResetDto));
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format or captcha' })
+  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
+  async requestPasswordReset(
+    @Body() requestPasswordResetDto: RequestPasswordResetDto,
+    @Request()
+    req: {
+      headers: Record<string, string>;
+      ip?: string;
+      connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
+      socket?: { remoteAddress?: string };
+    },
+  ) {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress;
+
+    return this.commandBus.execute(
+      new RequestPasswordResetCommand(requestPasswordResetDto, ipAddress, userAgent),
+    );
   }
 
   @Public()
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password with a token' })
+  @ApiOperation({ 
+    summary: 'Reset password with a token',
+    description: 'Reset user password using a valid reset token\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+  })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid or expired token' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid password format' })
