@@ -18,7 +18,21 @@ enum EnumAssistantArea {
   UPSELL_ASSISTANT // Niko
 }
 
-// seed
+enum EnumIndustrySector {
+  AUTOMOTIVE
+  CUSTOMER_SERVICE
+  EDUCATION
+  HEALTHCARE
+  REAL_ESTATE
+  OTHER
+}
+
+enum EnumIndustryOperationChannel {
+  ONLINE
+  PHYSICAL
+  MIXED
+}
+
 model AIAssistant {
   id          String                    @id @default(uuid())
   name        String                    @unique
@@ -32,7 +46,6 @@ model AIAssistant {
   assignments CompanyAIAssistant[]
 }
 
-// seed
 model AIAssistantFeature {
   id             String         @id @default(uuid())
   aiAssistant    AIAssistant    @relation(fields: [aiAssistantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -156,7 +169,7 @@ model User {
   
   bannedUntil   DateTime? // por implementar
   banReason     String?   // por implementar
-  agentPhone    String?   // por implementar
+  agentPhone    String?   // se usa para buscar a los agentes de ventas por su número de teléfono en la compañia (tenat-id)
 
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   roles         UserRole[]
@@ -210,12 +223,13 @@ model UserAddress {
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  name              String   @unique
+  description       String
+  isDefault         Boolean  @default(false)
+  isDefaultAppRole  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
   
   users       UserRole[]
   permissions RolePermission[]
@@ -334,10 +348,20 @@ model Company {
   websiteUrl    String?
   privacyPolicyUrl String?
   language      String @default("es-MX")
+
+  industrySector EnumIndustrySector @default(OTHER)
+  industryOperationChannel EnumIndustryOperationChannel @default(MIXED)
+  
+  // Parent company relationship (self-referential)
+  parentCompanyId String?
+  parentCompany   Company? @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  subsidiaries    Company[] @relation("CompanyHierarchy")
   
   address       Address?
   users         User[]
   assistants    CompanyAIAssistant[]
+  
+  @@index([parentCompanyId])
 }
 
 model Address {
@@ -354,4 +378,16 @@ model Address {
   updatedAt       DateTime  @updatedAt
   
   company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+// Track password reset attempts for rate limiting (3 per day)
+model PasswordResetAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
 }
