@@ -20,7 +20,9 @@ import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RolesEnum } from '@shared/constants/enums';
+import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 // DTOs
 import { CreateRoleDto } from '@application/dtos/role/create-role.dto';
@@ -104,22 +106,27 @@ export class RoleController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ 
     summary: 'Create new role (Root only)',
-    description: 'Create a new role in the system\n\n**Required Permissions:** role:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+    description: 'Create a new role in the system with hierarchy level restrictions\n\n**Required Permissions:** role:write\n**Required Roles:** root\n**Hierarchy Rules:** Root users can create roles with hierarchy levels 2-5 (admin, manager, sales_agent, host, guest)\n**Restrictions:** Root readonly users cannot perform this operation. Cannot create root-level roles (hierarchy level 1).'
   })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Role created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'User does not have required permission',
+    description: 'User does not have required permission or hierarchy level restriction violated',
   })
-  async createRole(@Body() createRoleDto: CreateRoleDto) {
+  async createRole(
+    @Body() createRoleDto: CreateRoleDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
     return this.commandBus.execute(
       new CreateRoleCommand(
         createRoleDto.name,
         createRoleDto.description,
+        createRoleDto.hierarchyLevel,
         createRoleDto.isDefault,
         createRoleDto.permissionIds,
         createRoleDto.isDefaultAppRole,
+        currentUser.sub,
       ),
     );
   }

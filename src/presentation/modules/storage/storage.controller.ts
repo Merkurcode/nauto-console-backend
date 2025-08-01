@@ -44,9 +44,10 @@ export class StorageController {
 
   @Post('upload')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Upload a file',
-    description: 'Upload a file to the storage system\n\n**Required Permissions:** file:write\n**Required Roles:** Any authenticated user'
+    description:
+      'Upload a file to the storage system\n\n**Required Permissions:** file:write\n**Required Roles:** Any authenticated user',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -87,9 +88,10 @@ export class StorageController {
 
   @Get(':id')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get file by ID',
-    description: 'Retrieve file information and content by ID\n\n**Required Permissions:** file:read\n**Required Roles:** Any authenticated user (with ownership/access restrictions)'
+    description:
+      'Retrieve file information and content by ID\n\n**Required Permissions:** file:read\n**Required Roles:** Any authenticated user (with ownership/access restrictions)',
   })
   @ApiParam({ name: 'id', description: 'File ID' })
   async getFile(
@@ -101,9 +103,10 @@ export class StorageController {
 
   @Get('user/files')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all files for the current user',
-    description: 'Get all files owned by the current user\n\n**Required Permissions:** file:read\n**Required Roles:** Any authenticated user'
+    description:
+      'Get all files owned by the current user\n\n**Required Permissions:** file:read\n**Required Roles:** Any authenticated user',
   })
   async getUserFiles(@CurrentUser() user: IJwtPayload): Promise<FileResponseDto[]> {
     return this.queryBus.execute(new GetUserFilesQuery(user.sub));
@@ -111,9 +114,10 @@ export class StorageController {
 
   @Delete(':id')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete a file',
-    description: 'Delete a file from the storage system\n\n**Required Permissions:** file:delete\n**Required Roles:** Any authenticated user (own files only)\n**Restrictions:** Root readonly users cannot perform this operation'
+    description:
+      'Delete a file from the storage system\n\n**Required Permissions:** file:delete\n**Required Roles:** Any authenticated user (own files only)\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiParam({ name: 'id', description: 'File ID' })
   async deleteFile(@Param('id') id: string, @CurrentUser() user: IJwtPayload): Promise<void> {
@@ -122,9 +126,10 @@ export class StorageController {
 
   @Patch('access')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update file access (public/private)',
-    description: 'Change file visibility between public and private\n\n**Required Permissions:** file:write\n**Required Roles:** Any authenticated user (own files only)\n**Restrictions:** Root readonly users cannot perform this operation'
+    description:
+      'Change file visibility between public and private\n\n**Required Permissions:** file:write\n**Required Roles:** Any authenticated user (own files only)\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   async updateFileAccess(
     @Body() updateFileAccessDto: UpdateFileAccessDto,

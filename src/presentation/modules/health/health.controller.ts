@@ -27,9 +27,10 @@ export class HealthController {
   @Public()
   @Get()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Health check endpoint',
-    description: 'Basic health check for the application\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+    description:
+      'Basic health check for the application\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -52,9 +53,10 @@ export class HealthController {
   @Public()
   @Get('database')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Database health check',
-    description: 'Detailed health check including database connectivity\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+    description:
+      'Detailed health check including database connectivity\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -79,9 +81,10 @@ export class HealthController {
   @Public()
   @Get('ready')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Readiness probe for Kubernetes',
-    description: 'Kubernetes readiness probe endpoint\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+    description:
+      'Kubernetes readiness probe endpoint\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -112,9 +115,10 @@ export class HealthController {
   @Public()
   @Get('live')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Liveness probe for Kubernetes',
-    description: 'Kubernetes liveness probe endpoint\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)'
+    description:
+      'Kubernetes liveness probe endpoint\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
   })
   @ApiResponse({
     status: HttpStatus.OK,

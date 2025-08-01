@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateRoleDto {
@@ -17,6 +26,18 @@ export class CreateRoleDto {
   @IsString()
   @IsNotEmpty()
   description!: string;
+
+  @ApiProperty({
+    description:
+      'Role hierarchy level (2-5). 1=root (restricted), 2=admin, 3=manager, 4=sales_agent/host, 5=guest',
+    example: 5,
+    minimum: 2,
+    maximum: 5,
+  })
+  @IsInt()
+  @Min(2)
+  @Max(5)
+  hierarchyLevel!: number;
 
   @ApiPropertyOptional({
     description: 'Whether this role is the default for new users',

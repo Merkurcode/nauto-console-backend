@@ -226,6 +226,7 @@ model Role {
   id                String   @id @default(uuid())
   name              String   @unique
   description       String
+  hierarchyLevel    Int      @default(5) // 1=root, 2=admin, 3=manager, 4=sales_agent/host, 5=guest
   isDefault         Boolean  @default(false)
   isDefaultAppRole  Boolean  @default(false)
   createdAt         DateTime @default(now())
