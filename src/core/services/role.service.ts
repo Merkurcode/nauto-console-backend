@@ -19,7 +19,12 @@ export class RoleService {
     private readonly permissionRepository: IPermissionRepository,
   ) {}
 
-  async createRole(name: string, description: string, isDefault: boolean = false): Promise<Role> {
+  async createRole(
+    name: string,
+    description: string,
+    isDefault: boolean = false,
+    isDefaultAppRole: boolean = false,
+  ): Promise<Role> {
     // Check if a role already exists
     const existingRole = await this.roleRepository.findByName(name);
     if (existingRole) {
@@ -35,7 +40,7 @@ export class RoleService {
       }
     }
 
-    const role = Role.create(name, description, isDefault);
+    const role = Role.create(name, description, isDefault, isDefaultAppRole);
 
     return this.roleRepository.create(role);
   }
@@ -87,9 +92,12 @@ export class RoleService {
       throw new EntityNotFoundException('Role', roleId);
     }
 
-    const permission = await this.permissionRepository.findById(permissionId);
+    let permission = await this.permissionRepository.findById(permissionId);
     if (!permission) {
-      throw new EntityNotFoundException('Permission', permissionId);
+      permission = await this.permissionRepository.findByName(permissionId);
+      if (!permission) {
+        throw new EntityNotFoundException('Permission', permissionId);
+      }
     }
 
     role.addPermission(permission);
@@ -98,9 +106,12 @@ export class RoleService {
   }
 
   async removePermissionFromRole(roleId: string, permissionId: string): Promise<Role> {
-    const role = await this.roleRepository.findById(roleId);
+    let role = await this.roleRepository.findById(roleId);
     if (!role) {
-      throw new EntityNotFoundException('Role', roleId);
+      role = await this.roleRepository.findByName(roleId);
+      if (!role) {
+        throw new EntityNotFoundException('Role', roleId);
+      }
     }
 
     role.removePermission(PermissionId.fromString(permissionId));
@@ -116,6 +127,10 @@ export class RoleService {
 
     if (role.isDefault) {
       throw new ForbiddenActionException('Cannot delete the default role');
+    }
+
+    if (role.isDefaultAppRole) {
+      throw new ForbiddenActionException('Cannot delete system roles');
     }
 
     return this.roleRepository.delete(id);
