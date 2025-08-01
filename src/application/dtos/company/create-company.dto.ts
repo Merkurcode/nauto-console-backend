@@ -1,6 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Length, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  Length,
+  ValidateNested,
+  IsEnum,
+  IsOptional,
+  IsUUID,
+  IsUrl,
+} from 'class-validator';
 import { Type } from 'class-transformer';
+import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
 
 export class CreateAddressDto {
   @ApiProperty({
@@ -120,4 +130,90 @@ export class CreateCompanyDto {
   @ValidateNested()
   @Type(() => CreateAddressDto)
   address: CreateAddressDto;
+
+  @ApiProperty({
+    enum: IndustrySectorEnum,
+    example: IndustrySectorEnum.OTHER,
+    description: 'Industry sector of the company',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(IndustrySectorEnum)
+  industrySector?: IndustrySectorEnum;
+
+  @ApiProperty({
+    enum: IndustryOperationChannelEnum,
+    example: IndustryOperationChannelEnum.MIXED,
+    description: 'Industry operation channel of the company',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(IndustryOperationChannelEnum)
+  industryOperationChannel?: IndustryOperationChannelEnum;
+
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Parent company ID (for subsidiaries)',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  parentCompanyId?: string;
+
+  @ApiProperty({
+    example: 'America/Mexico_City',
+    description: 'Company timezone',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  timezone?: string;
+
+  @ApiProperty({
+    example: 'MXN',
+    description: 'Company currency',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
+
+  @ApiProperty({
+    example: 'es-MX',
+    description: 'Company language',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(2, 10)
+  language?: string;
+
+  @ApiProperty({
+    example: 'https://example.com/logo.png',
+    description: 'Company logo URL',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  logoUrl?: string;
+
+  @ApiProperty({
+    example: 'https://example.com',
+    description: 'Company website URL',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  websiteUrl?: string;
+
+  @ApiProperty({
+    example: 'https://example.com/privacy',
+    description: 'Company privacy policy URL',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  privacyPolicyUrl?: string;
 }

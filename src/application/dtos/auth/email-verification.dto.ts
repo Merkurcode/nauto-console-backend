@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, Length } from 'class-validator';
 
 export class SendVerificationEmailDto {
   @ApiProperty({
@@ -9,6 +9,17 @@ export class SendVerificationEmailDto {
   @IsEmail()
   @IsNotEmpty()
   email!: string;
+
+  @ApiProperty({
+    description:
+      'Optional phone number to also send SMS verification (digits only, no country code)',
+    example: '5512345678',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+$/, { message: 'Phone number must contain only digits' })
+  phoneNumber?: string;
 }
 
 export class VerifyEmailDto {
