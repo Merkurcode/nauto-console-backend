@@ -102,6 +102,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
         name: role.name,
         description: role.description,
         isDefault: role.isDefault,
+        isDefaultAppRole: role.isDefaultAppRole,
         permissions: {
           create:
             role.permissions?.map(permission => ({
@@ -138,6 +139,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
         name: role.name,
         description: role.description,
         isDefault: role.isDefault,
+        isDefaultAppRole: role.isDefaultAppRole,
         permissions: {
           create:
             role.permissions?.map(permission => ({
@@ -197,6 +199,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
       name: record.name,
       description: record.description,
       isDefault: record.isDefault,
+      isDefaultAppRole: record.isDefaultAppRole,
       permissions,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

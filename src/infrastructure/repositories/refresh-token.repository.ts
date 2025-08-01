@@ -124,7 +124,7 @@ export class RefreshTokenRepository
 
   private mapToModel(record: PrismaRefreshToken): RefreshToken {
     const refreshExpiration = parseInt(
-      this.configService.get('JWT_REFRESH_EXPIRATION', '7').replace('d', ''),
+      this.configService.get('jwt.refreshExpiration', '7d').replace('d', ''),
       10,
     );
 
