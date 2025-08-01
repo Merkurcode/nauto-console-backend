@@ -16,8 +16,8 @@ export class GetCompaniesQueryHandler implements IQueryHandler<GetCompaniesQuery
   ) {}
 
   async execute(): Promise<ICompanyResponse[]> {
-    const companies = await this.companyRepository.findAll();
+    const { companies, assistantsMap } = await this.companyRepository.findAllWithAssistants();
 
-    return companies.map(company => CompanyMapper.toResponse(company));
+    return CompanyMapper.toListResponse(companies, assistantsMap);
   }
 }
