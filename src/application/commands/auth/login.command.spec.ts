@@ -3,6 +3,8 @@ import { UnauthorizedException } from '@nestjs/common';
 import { LoginCommand, LoginCommandHandler } from './login.command';
 import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
+import { SessionService } from '@core/services/session.service';
+import { UserBanService } from '@core/services/user-ban.service';
 import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
@@ -57,6 +59,16 @@ const mockLoggerService = {
   verbose: jest.fn(),
 };
 
+// Mock SessionService
+const mockSessionService = {
+  createSession: jest.fn(),
+};
+
+// Mock UserBanService
+const mockUserBanService = {
+  validateUserNotBanned: jest.fn(),
+};
+
 // Create utility functions for test data
 const createTestUser = (): User => {
   const user = User.create(
@@ -72,6 +84,7 @@ const createTestUser = (): User => {
     name: 'user',
     description: 'Regular user role',
     isDefault: true,
+    isDefaultAppRole: false,
     permissions: [],
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -120,6 +133,8 @@ describe('LoginCommandHandler', () => {
         LoginCommandHandler,
         { provide: UserService, useValue: mockUserService },
         { provide: AuthService, useValue: mockAuthService },
+        { provide: SessionService, useValue: mockSessionService },
+        { provide: UserBanService, useValue: mockUserBanService },
         { provide: TokenProvider, useValue: mockTokenProvider },
         { provide: ROLE_REPOSITORY, useValue: mockRoleRepository },
         { provide: I18nService, useValue: mockI18nService },
@@ -285,7 +300,7 @@ describe('LoginCommandHandler', () => {
     expect(authService.updateLastLogin).toHaveBeenCalledWith(user.id.getValue());
     expect(authService.isEmailVerified).toHaveBeenCalledWith('test@example.com');
     expect(roleRepository.findById).toHaveBeenCalledWith(user.roles[0].id.getValue());
-    expect(tokenProvider.generateTokens).toHaveBeenCalledWith(user, ['user:read']);
+    expect(tokenProvider.generateTokens).toHaveBeenCalledWith(user, ['user:read'], expect.any(String));
     expect(UserMapper.toAuthResponse).toHaveBeenCalledWith(user);
   });
 
@@ -304,6 +319,7 @@ describe('LoginCommandHandler', () => {
       name: 'admin',
       description: 'Administrator role',
       isDefault: false,
+      isDefaultAppRole: false,
       permissions: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -330,6 +346,7 @@ describe('LoginCommandHandler', () => {
       name: 'admin',
       description: 'Administrator role',
       isDefault: false,
+      isDefaultAppRole: false,
       permissions: [adminPermission],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -363,6 +380,7 @@ describe('LoginCommandHandler', () => {
     expect(tokenProvider.generateTokens).toHaveBeenCalledWith(
       user,
       expect.arrayContaining(['user:read', 'user:write']),
+      expect.any(String),
     );
 
     // Also check that roleRepository.findById was called for both roles
