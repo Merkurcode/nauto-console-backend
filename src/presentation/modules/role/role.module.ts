@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { ROLE_REPOSITORY, PERMISSION_REPOSITORY } from '@shared/constants/tokens';
+import { ROLE_REPOSITORY, PERMISSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 
 // Controllers
 import { RoleController } from './role.controller';
@@ -8,6 +8,7 @@ import { RoleController } from './role.controller';
 // Repositories
 import { RoleRepository } from '@infrastructure/repositories/role.repository';
 import { PermissionRepository } from '@infrastructure/repositories/permission.repository';
+import { UserRepository } from '@infrastructure/repositories/user.repository';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { CoreModule } from '@core/core.module';
 
@@ -52,6 +53,10 @@ const commandHandlers = [
     {
       provide: PERMISSION_REPOSITORY,
       useClass: PermissionRepository,
+    },
+    {
+      provide: USER_REPOSITORY,
+      useClass: UserRepository,
     },
 
     // Query handlers
