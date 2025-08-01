@@ -66,6 +66,10 @@ const commandHandlers = [
         new UserRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
     },
+    {
+      provide: USER_REPOSITORY,
+      useClass: UserRepository,
+    },
 
     // Query handlers
     ...queryHandlers,
