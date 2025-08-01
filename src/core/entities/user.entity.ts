@@ -1,6 +1,10 @@
 import { Role } from './role.entity';
 import { Email } from '@core/value-objects/email.vo';
 import { FirstName, LastName } from '@core/value-objects/name.vo';
+import { SecondLastName } from '@core/value-objects/second-lastname.vo';
+import { AgentPhone } from '@core/value-objects/agent-phone.vo';
+import { UserProfile } from '@core/value-objects/user-profile.vo';
+import { Address } from '@core/value-objects/address.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
@@ -33,12 +37,18 @@ export class User extends AggregateRoot {
   private _passwordHash: string;
   private _firstName: FirstName;
   private _lastName: LastName;
+  private _secondLastName?: SecondLastName;
   private _isActive: boolean;
   private _emailVerified: boolean;
   private _otpEnabled: boolean;
   private _otpSecret?: string;
   private _roles: Role[];
   private _lastLoginAt?: Date;
+  private _bannedUntil?: Date;
+  private _banReason?: string;
+  private _agentPhone?: AgentPhone;
+  private _profile?: UserProfile;
+  private _address?: Address;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
   private _companyId?: CompanyId;
@@ -95,6 +105,52 @@ export class User extends AggregateRoot {
     return user;
   }
 
+  // Factory method for creating users with extended data
+  static createWithExtendedData(
+    email: Email,
+    passwordHash: string,
+    firstName: FirstName,
+    lastName: LastName,
+    options?: {
+      secondLastName?: SecondLastName;
+      isActive?: boolean;
+      emailVerified?: boolean;
+      bannedUntil?: Date;
+      banReason?: string;
+      agentPhone?: AgentPhone;
+      profile?: UserProfile;
+      address?: Address;
+      companyId?: CompanyId;
+    },
+  ): User {
+    const userId = UserId.create();
+    const user = new User(
+      userId,
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+      options?.isActive ?? true,
+      undefined,
+      options?.companyId,
+    );
+
+    // Set extended fields
+    user._secondLastName = options?.secondLastName;
+    user._emailVerified = options?.emailVerified ?? false;
+    user._bannedUntil = options?.bannedUntil;
+    user._banReason = options?.banReason;
+    user._agentPhone = options?.agentPhone;
+    user._profile = options?.profile;
+    user._address = options?.address;
+
+    user.addDomainEvent(
+      new UserRegisteredEvent(userId, email.getValue(), firstName.getValue(), lastName.getValue()),
+    );
+
+    return user;
+  }
+
   // Factory method for reconstituting from persistence
   static fromData(data: {
     id: string;
@@ -102,12 +158,31 @@ export class User extends AggregateRoot {
     passwordHash: string;
     firstName: string;
     lastName: string;
+    secondLastName?: string;
     isActive: boolean;
     emailVerified?: boolean;
     otpEnabled: boolean;
     otpSecret?: string;
     roles: Role[];
     lastLoginAt?: Date;
+    bannedUntil?: Date;
+    banReason?: string;
+    agentPhone?: string;
+    profile?: {
+      phone?: string;
+      avatarUrl?: string;
+      bio?: string;
+      birthDate?: string;
+    };
+    address?: {
+      country: string;
+      state: string;
+      city: string;
+      street: string;
+      exteriorNumber: string;
+      interiorNumber?: string;
+      postalCode: string;
+    };
     createdAt: Date;
     updatedAt: Date;
     companyId?: string;
@@ -123,11 +198,36 @@ export class User extends AggregateRoot {
       data.companyId ? CompanyId.fromString(data.companyId) : undefined,
     );
 
+    user._secondLastName = data.secondLastName
+      ? new SecondLastName(data.secondLastName)
+      : undefined;
     user._emailVerified = data.emailVerified || false;
     user._otpEnabled = data.otpEnabled;
     user._otpSecret = data.otpSecret;
     user._roles = data.roles;
     user._lastLoginAt = data.lastLoginAt;
+    user._bannedUntil = data.bannedUntil;
+    user._banReason = data.banReason;
+    user._agentPhone = data.agentPhone ? new AgentPhone(data.agentPhone) : undefined;
+    user._profile = data.profile
+      ? new UserProfile(
+          data.profile.phone,
+          data.profile.avatarUrl,
+          data.profile.bio,
+          data.profile.birthDate,
+        )
+      : undefined;
+    user._address = data.address
+      ? new Address(
+          data.address.country,
+          data.address.state,
+          data.address.city,
+          data.address.street,
+          data.address.exteriorNumber,
+          data.address.postalCode,
+          data.address.interiorNumber,
+        )
+      : undefined;
     user._updatedAt = data.updatedAt;
 
     return user;
@@ -182,6 +282,14 @@ export class User extends AggregateRoot {
     return this._lastLoginAt;
   }
 
+  get bannedUntil(): Date | undefined {
+    return this._bannedUntil;
+  }
+
+  get banReason(): string | undefined {
+    return this._banReason;
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
@@ -192,6 +300,22 @@ export class User extends AggregateRoot {
 
   get companyId(): CompanyId | undefined {
     return this._companyId;
+  }
+
+  get secondLastName(): SecondLastName | undefined {
+    return this._secondLastName;
+  }
+
+  get agentPhone(): AgentPhone | undefined {
+    return this._agentPhone;
+  }
+
+  get profile(): UserProfile | undefined {
+    return this._profile;
+  }
+
+  get address(): Address | undefined {
+    return this._address;
   }
 
   // Business methods with proper encapsulation and rules
@@ -370,8 +494,25 @@ export class User extends AggregateRoot {
   }
 
   isEligibleForAdminRole(): boolean {
-    // Business rule: Only active users with at least one role can be admins
-    return this._isActive && this.rolesCollection.hasAdminPrivileges();
+    // Business rule: Active users can be assigned admin roles (admin is now a regular role)
+    return this._isActive;
+  }
+
+  isEligibleForRootRole(): boolean {
+    // Business rule: Only users with existing root privileges can be assigned root roles
+    return this._isActive && this.rolesCollection.hasRootPrivileges();
+  }
+
+  hasRootPrivileges(): boolean {
+    return this.rolesCollection.hasRootPrivileges();
+  }
+
+  hasRootReadOnlyPrivileges(): boolean {
+    return this.rolesCollection.hasRootReadOnlyPrivileges();
+  }
+
+  hasRootLevelPrivileges(): boolean {
+    return this.rolesCollection.hasRootLevelPrivileges();
   }
 
   assignToCompany(companyId: CompanyId): void {
@@ -396,6 +537,31 @@ export class User extends AggregateRoot {
     return this._companyId?.getValue();
   }
 
+  // Ban management methods
+  isBanned(): boolean {
+    if (!this._bannedUntil) {
+      return false;
+    }
+
+    return new Date() < this._bannedUntil;
+  }
+
+  banUser(bannedUntil: Date, banReason: string): void {
+    if (bannedUntil <= new Date()) {
+      throw new InvalidValueObjectException('Ban expiration date must be in the future');
+    }
+
+    this._bannedUntil = bannedUntil;
+    this._banReason = banReason;
+    this._updatedAt = new Date();
+  }
+
+  unbanUser(): void {
+    this._bannedUntil = undefined;
+    this._banReason = undefined;
+    this._updatedAt = new Date();
+  }
+
   // Private helper methods
   private isEligibleForRole(role: Role): boolean {
     // Business rule: Only active users can be assigned roles
@@ -403,10 +569,13 @@ export class User extends AggregateRoot {
       return false;
     }
 
-    // Business rule: Admin roles require special eligibility
-    if (role.isAdminRole() && !this.isEligibleForAdminRole()) {
+    // Business rule: Root roles require existing root privileges
+    if (role.isRootLevelRole() && !this.isEligibleForRootRole()) {
       return false;
     }
+
+    // Business rule: Admin roles are now regular roles, no special requirements
+    // (Admin is no longer the highest privilege level, root is)
 
     return true;
   }

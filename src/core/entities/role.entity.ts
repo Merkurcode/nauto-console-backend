@@ -16,6 +16,7 @@ export class Role extends AggregateRoot {
   private _description: string;
   private _permissions: Permission[];
   private _isDefault: boolean;
+  private _isDefaultAppRole: boolean;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -24,6 +25,7 @@ export class Role extends AggregateRoot {
     name: string,
     description: string,
     isDefault: boolean = false,
+    isDefaultAppRole: boolean = false,
     createdAt?: Date,
   ) {
     super();
@@ -35,13 +37,19 @@ export class Role extends AggregateRoot {
     this._description = description;
     this._permissions = [];
     this._isDefault = isDefault;
+    this._isDefaultAppRole = isDefaultAppRole;
     this._createdAt = createdAt || new Date();
     this._updatedAt = new Date();
   }
 
   // Factory method for creating new roles
-  static create(name: string, description: string, isDefault: boolean = false): Role {
-    return new Role(RoleId.create(), name, description, isDefault);
+  static create(
+    name: string,
+    description: string,
+    isDefault: boolean = false,
+    isDefaultAppRole: boolean = false,
+  ): Role {
+    return new Role(RoleId.create(), name, description, isDefault, isDefaultAppRole);
   }
 
   // Factory method for reconstituting from persistence
@@ -51,6 +59,7 @@ export class Role extends AggregateRoot {
     description: string;
     permissions: Permission[];
     isDefault: boolean;
+    isDefaultAppRole: boolean;
     createdAt: Date;
     updatedAt: Date;
   }): Role {
@@ -59,6 +68,7 @@ export class Role extends AggregateRoot {
       data.name,
       data.description,
       data.isDefault,
+      data.isDefaultAppRole,
       data.createdAt,
     );
 
@@ -91,6 +101,10 @@ export class Role extends AggregateRoot {
 
   get isDefault(): boolean {
     return this._isDefault;
+  }
+
+  get isDefaultAppRole(): boolean {
+    return this._isDefaultAppRole;
   }
 
   get createdAt(): Date {
@@ -180,9 +194,29 @@ export class Role extends AggregateRoot {
     );
   }
 
+  isRootRole(): boolean {
+    // Business rule: Root role is the highest privilege level
+    return this._name.toLowerCase() === 'root';
+  }
+
+  isRootReadOnlyRole(): boolean {
+    // Business rule: Root readonly role has full read access but no write operations
+    return this._name.toLowerCase() === 'root_readonly';
+  }
+
+  isRootLevelRole(): boolean {
+    // Business rule: Root level roles include both root and root_readonly
+    return this.isRootRole() || this.isRootReadOnlyRole();
+  }
+
+  hasElevatedPrivileges(): boolean {
+    // Business rule: Elevated privileges include root level
+    return this.isRootLevelRole();
+  }
+
   canBeDeleted(): boolean {
-    // Business rule: Default roles cannot be deleted
-    return !this._isDefault;
+    // Business rule: Default roles and system roles cannot be deleted
+    return !this._isDefault && !this._isDefaultAppRole;
   }
 
   validateForDeletion(): void {
