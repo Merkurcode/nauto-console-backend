@@ -1,7 +1,11 @@
 export enum RolesEnum {
-  SUPERADMIN = 'superadmin',
+  ROOT = 'root',
+  ROOT_READONLY = 'root_readonly',
   ADMIN = 'admin',
-  USER = 'user',
+  MANAGER = 'manager',
+  SALES_AGENT = 'sales_agent',
+  HOST = 'host',
+  GUEST = 'guest',
 }
 
 export enum AssistantAreaEnum {
@@ -9,4 +13,19 @@ export enum AssistantAreaEnum {
   MARKETING_ASSISTANT = 'MARKETING_ASSISTANT', // Zoe
   FINCANCE_ASSISTANT = 'FINCANCE_ASSISTANT', // Oscar
   UPSELL_ASSISTANT = 'UPSELL_ASSISTANT', // Niko
+}
+
+export enum IndustrySectorEnum {
+  AUTOMOTIVE = 'AUTOMOTIVE',
+  CUSTOMER_SERVICE = 'CUSTOMER_SERVICE',
+  EDUCATION = 'EDUCATION',
+  HEALTHCARE = 'HEALTHCARE',
+  REAL_ESTATE = 'REAL_ESTATE',
+  OTHER = 'OTHER',
+}
+
+export enum IndustryOperationChannelEnum {
+  ONLINE = 'ONLINE',
+  PHYSICAL = 'PHYSICAL',
+  MIXED = 'MIXED',
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
+import { JwtModule } from '@nestjs/jwt';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 // Modules
@@ -11,7 +12,7 @@ import { LoggerModule } from '@infrastructure/logger/logger.module';
 import { AuthModule } from '@presentation/modules/auth/auth.module';
 import { UserModule } from '@presentation/modules/user/user.module';
 import { RoleModule } from '@presentation/modules/role/role.module';
-import { AdminModule } from '@presentation/modules/admin/admin.module';
+import { RootModule } from '@presentation/modules/root/root.module';
 import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { HealthModule } from '@presentation/modules/health/health.module';
 import { CompanyModule } from '@presentation/modules/company/company.module';
@@ -23,6 +24,8 @@ import { TransformInterceptor } from '@presentation/interceptors/transform.inter
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DomainExceptionsFilter } from '@presentation/filters/domain-exceptions.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { UserBanGuard } from '@presentation/guards/user-ban.guard';
+import { SessionGuard } from '@presentation/guards/session.guard';
 
 // Config
 import configuration from '@infrastructure/config/configuration';
@@ -32,7 +35,7 @@ import configuration from '@infrastructure/config/configuration';
     // Global Config
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       load: [configuration],
     }),
 
@@ -51,6 +54,18 @@ import configuration from '@infrastructure/config/configuration';
     // CQRS
     CqrsModule,
 
+    // JWT Module (Global)
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('jwt.secret'),
+        signOptions: {
+          expiresIn: configService.get('jwt.accessExpiration', '15m'),
+        },
+      }),
+    }),
+
     // Core Domain
     CoreModule,
 
@@ -58,7 +73,7 @@ import configuration from '@infrastructure/config/configuration';
     AuthModule,
     UserModule,
     RoleModule,
-    AdminModule,
+    RootModule,
     StorageModule,
     HealthModule,
     CompanyModule,
@@ -85,10 +100,18 @@ import configuration from '@infrastructure/config/configuration';
       useClass: AllExceptionsFilter,
     },
 
-    // Global guards
+    // Global guards (order matters!)
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: UserBanGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SessionGuard,
     },
   ],
 })
