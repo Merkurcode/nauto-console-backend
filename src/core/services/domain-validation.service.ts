@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
