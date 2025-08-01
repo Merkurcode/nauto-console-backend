@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-// Repository tokens are provided by InfrastructureModule
 
 // Controllers
 import { RoleController } from './role.controller';
@@ -70,6 +69,10 @@ const commandHandlers = [
       useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
         new UserRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
+    },
+    {
+      provide: USER_REPOSITORY,
+      useClass: UserRepository,
     },
     {
       provide: USER_REPOSITORY,
