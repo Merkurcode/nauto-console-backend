@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CoreModule } from '@core/core.module';
 import { CompanyController } from './company.controller';
 import { CompanyUsersController } from './company-users.controller';
@@ -43,11 +45,15 @@ const queryHandlers = [
   providers: [
     {
       provide: REPOSITORY_TOKENS.COMPANY_REPOSITORY,
-      useClass: CompanyRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new CompanyRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: REPOSITORY_TOKENS.USER_REPOSITORY,
-      useClass: UserRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new UserRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     TenantResolverService,
     ...commandHandlers,

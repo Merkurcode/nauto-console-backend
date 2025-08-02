@@ -22,6 +22,8 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { UploadFileCommand } from '@application/commands/storage/upload-file.command';
@@ -40,7 +42,21 @@ export class StorageController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
+    private readonly transactionService: TransactionService,
+    private readonly transactionContext: TransactionContextService,
   ) {}
+
+  private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionService.executeInTransaction(async tx => {
+      this.transactionContext.setTransactionClient(tx);
+
+      try {
+        return await callback();
+      } finally {
+        this.transactionContext.clearTransaction();
+      }
+    });
+  }
 
   @Post('upload')
   @ApiBearerAuth('JWT-auth')
@@ -83,7 +99,9 @@ export class StorageController {
       size: file.size,
     };
 
-    return this.commandBus.execute(new UploadFileCommand(storageFile, user.sub));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new UploadFileCommand(storageFile, user.sub));
+    });
   }
 
   @Get(':id')
@@ -121,7 +139,9 @@ export class StorageController {
   })
   @ApiParam({ name: 'id', description: 'File ID' })
   async deleteFile(@Param('id') id: string, @CurrentUser() user: IJwtPayload): Promise<void> {
-    return this.commandBus.execute(new DeleteFileCommand(id, user.sub));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new DeleteFileCommand(id, user.sub));
+    });
   }
 
   @Patch('access')
@@ -135,12 +155,14 @@ export class StorageController {
     @Body() updateFileAccessDto: UpdateFileAccessDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
-    return this.commandBus.execute(
-      new UpdateFileAccessCommand(
-        updateFileAccessDto.fileId,
-        updateFileAccessDto.isPublic,
-        user.sub,
-      ),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new UpdateFileAccessCommand(
+          updateFileAccessDto.fileId,
+          updateFileAccessDto.isPublic,
+          user.sub,
+        ),
+      );
+    });
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { RefreshToken } from '@core/entities/refresh-token.entity';
 import { IRefreshTokenRepository } from '@core/repositories/refresh-token.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { ConfigService } from '@nestjs/config';
 import { RefreshToken as PrismaRefreshToken } from '@prisma/client';
 import { BaseRepository } from './base.repository';
@@ -15,14 +16,19 @@ export class RefreshTokenRepository
 {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
   ) {
     super();
   }
 
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
   async findById(id: string): Promise<RefreshToken | null> {
     return this.executeWithErrorHandling('findById', async () => {
-      const tokenRecord = await this.prisma.refreshToken.findUnique({
+      const tokenRecord = await this.client.refreshToken.findUnique({
         where: { id },
       });
 
@@ -36,7 +42,7 @@ export class RefreshTokenRepository
 
   async findByToken(token: string): Promise<RefreshToken | null> {
     return this.executeWithErrorHandling('findByToken', async () => {
-      const tokenRecord = await this.prisma.refreshToken.findFirst({
+      const tokenRecord = await this.client.refreshToken.findFirst({
         where: { token },
       });
 
@@ -50,7 +56,7 @@ export class RefreshTokenRepository
 
   async findByUserId(userId: string): Promise<RefreshToken[]> {
     return this.executeWithErrorHandling('findByUserId', async () => {
-      const tokenRecords = await this.prisma.refreshToken.findMany({
+      const tokenRecords = await this.client.refreshToken.findMany({
         where: { userId },
       });
 
@@ -60,7 +66,7 @@ export class RefreshTokenRepository
 
   async create(token: RefreshToken): Promise<RefreshToken> {
     return this.executeWithErrorHandling('create', async () => {
-      const createdToken = await this.prisma.refreshToken.create({
+      const createdToken = await this.client.refreshToken.create({
         data: {
           id: token.id,
           userId: token.userId.getValue(),
@@ -77,7 +83,7 @@ export class RefreshTokenRepository
 
   async update(token: RefreshToken): Promise<RefreshToken> {
     return this.executeWithErrorHandling('update', async () => {
-      const updatedToken = await this.prisma.refreshToken.update({
+      const updatedToken = await this.client.refreshToken.update({
         where: { id: token.id },
         data: {
           token: token.token.getValue(),
@@ -94,7 +100,7 @@ export class RefreshTokenRepository
     return this.executeWithErrorHandling(
       'deleteByUserId',
       async () => {
-        await this.prisma.refreshToken.deleteMany({
+        await this.client.refreshToken.deleteMany({
           where: { userId },
         });
 
@@ -108,7 +114,7 @@ export class RefreshTokenRepository
     return this.executeWithErrorHandling(
       'deleteExpired',
       async () => {
-        const result = await this.prisma.refreshToken.deleteMany({
+        const result = await this.client.refreshToken.deleteMany({
           where: {
             expiresAt: {
               lt: new Date(),
