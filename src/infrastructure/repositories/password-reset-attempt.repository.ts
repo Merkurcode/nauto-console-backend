@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { IPasswordResetAttemptRepository } from '@core/repositories/password-reset-attempt.repository.interface';
 import { PasswordResetAttempt } from '@core/entities/password-reset-attempt.entity';
 import { BaseRepository } from './base.repository';
@@ -9,15 +10,22 @@ export class PasswordResetAttemptRepository
   extends BaseRepository<PasswordResetAttempt>
   implements IPasswordResetAttemptRepository
 {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
   }
 
   async findByEmail(email: string): Promise<PasswordResetAttempt[]> {
     return this.executeWithErrorHandling(
       'findByEmail',
       async () => {
-        const attempts = await this.prisma.passwordResetAttempt.findMany({
+        const attempts = await this.client.passwordResetAttempt.findMany({
           where: { email },
           orderBy: { createdAt: 'desc' },
         });
@@ -44,7 +52,7 @@ export class PasswordResetAttemptRepository
       async () => {
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        const attempts = await this.prisma.passwordResetAttempt.findMany({
+        const attempts = await this.client.passwordResetAttempt.findMany({
           where: {
             email,
             createdAt: {
@@ -76,7 +84,7 @@ export class PasswordResetAttemptRepository
       async () => {
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        const attempts = await this.prisma.passwordResetAttempt.findMany({
+        const attempts = await this.client.passwordResetAttempt.findMany({
           where: {
             ipAddress,
             createdAt: {
@@ -106,7 +114,7 @@ export class PasswordResetAttemptRepository
     return this.executeWithErrorHandling(
       'create',
       async () => {
-        const createdAttempt = await this.prisma.passwordResetAttempt.create({
+        const createdAttempt = await this.client.passwordResetAttempt.create({
           data: {
             id: attempt.id,
             email: attempt.email,
@@ -136,7 +144,7 @@ export class PasswordResetAttemptRepository
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
 
-        return await this.prisma.passwordResetAttempt.count({
+        return await this.client.passwordResetAttempt.count({
           where: {
             email,
             createdAt: {
@@ -157,7 +165,7 @@ export class PasswordResetAttemptRepository
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
 
-        return await this.prisma.passwordResetAttempt.count({
+        return await this.client.passwordResetAttempt.count({
           where: {
             ipAddress,
             createdAt: {

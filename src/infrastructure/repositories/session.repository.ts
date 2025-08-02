@@ -1,16 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { ISessionRepository } from '@core/repositories/session.repository.interface';
 import { Session } from '@core/entities/session.entity';
 
 @Injectable()
 export class SessionRepository implements ISessionRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {}
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
 
   async create(session: Session): Promise<Session> {
     const data = session.toPersistence();
 
-    const created = await this.prisma.sessions.create({
+    const created = await this.client.sessions.create({
       data,
     });
 
@@ -18,7 +26,7 @@ export class SessionRepository implements ISessionRepository {
   }
 
   async findById(id: string): Promise<Session | null> {
-    const session = await this.prisma.sessions.findUnique({
+    const session = await this.client.sessions.findUnique({
       where: { id },
     });
 
@@ -26,7 +34,7 @@ export class SessionRepository implements ISessionRepository {
   }
 
   async findBySessionToken(sessionToken: string): Promise<Session | null> {
-    const session = await this.prisma.sessions.findUnique({
+    const session = await this.client.sessions.findUnique({
       where: { sessionToken },
     });
 
@@ -34,7 +42,7 @@ export class SessionRepository implements ISessionRepository {
   }
 
   async findByRefreshToken(refreshToken: string): Promise<Session | null> {
-    const session = await this.prisma.sessions.findUnique({
+    const session = await this.client.sessions.findUnique({
       where: { refreshToken },
     });
 
@@ -42,7 +50,7 @@ export class SessionRepository implements ISessionRepository {
   }
 
   async findByUserId(userId: string): Promise<Session[]> {
-    const sessions = await this.prisma.sessions.findMany({
+    const sessions = await this.client.sessions.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
@@ -53,7 +61,7 @@ export class SessionRepository implements ISessionRepository {
   async update(session: Session): Promise<Session> {
     const data = session.toPersistence();
 
-    const updated = await this.prisma.sessions.update({
+    const updated = await this.client.sessions.update({
       where: { id: data.id },
       data: {
         updatedAt: data.updatedAt,
@@ -64,25 +72,25 @@ export class SessionRepository implements ISessionRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.sessions.delete({
+    await this.client.sessions.delete({
       where: { id },
     });
   }
 
   async deleteByUserId(userId: string): Promise<void> {
-    await this.prisma.sessions.deleteMany({
+    await this.client.sessions.deleteMany({
       where: { userId },
     });
   }
 
   async deleteBySessionToken(sessionToken: string): Promise<void> {
-    await this.prisma.sessions.deleteMany({
+    await this.client.sessions.deleteMany({
       where: { sessionToken },
     });
   }
 
   async deleteByRefreshToken(refreshToken: string): Promise<void> {
-    await this.prisma.sessions.deleteMany({
+    await this.client.sessions.deleteMany({
       where: { refreshToken },
     });
   }

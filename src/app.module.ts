@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
-import { JwtModule } from '@nestjs/jwt';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { JwtModule, JwtService } from '@nestjs/jwt';
+import { Reflector, APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 // Modules
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
@@ -26,6 +26,9 @@ import { DomainExceptionsFilter } from '@presentation/filters/domain-exceptions.
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { UserBanGuard } from '@presentation/guards/user-ban.guard';
 import { SessionGuard } from '@presentation/guards/session.guard';
+import { UserBanService } from '@core/services/user-ban.service';
+import { SessionService } from '@core/services/session.service';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 // Config
 import configuration from '@infrastructure/config/configuration';
@@ -66,11 +69,13 @@ import configuration from '@infrastructure/config/configuration';
       }),
     }),
 
+    // Feature Modules (AuthModule FIRST for strategy registration)
+    AuthModule,
+
     // Core Domain
     CoreModule,
 
-    // Feature Modules
-    AuthModule,
+    // Other Feature Modules
     UserModule,
     RoleModule,
     RootModule,
@@ -103,15 +108,24 @@ import configuration from '@infrastructure/config/configuration';
     // Global guards (order matters!)
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useFactory: (reflector: Reflector) => new JwtAuthGuard(reflector),
+      inject: [Reflector],
     },
     {
       provide: APP_GUARD,
-      useClass: UserBanGuard,
+      useFactory: (userBanService: UserBanService, reflector: Reflector, logger: LoggerService) =>
+        new UserBanGuard(userBanService, reflector, logger),
+      inject: [UserBanService, Reflector, LoggerService],
     },
     {
       provide: APP_GUARD,
-      useClass: SessionGuard,
+      useFactory: (
+        sessionService: SessionService,
+        reflector: Reflector,
+        logger: LoggerService,
+        jwtService: JwtService,
+      ) => new SessionGuard(sessionService, reflector, logger, jwtService),
+      inject: [SessionService, Reflector, LoggerService, JwtService],
     },
   ],
 })

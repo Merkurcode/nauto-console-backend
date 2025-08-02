@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import {
@@ -31,13 +32,20 @@ type UserWithRelations = PrismaUser & {
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> implements IUserRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
   }
 
   async findAllByCompanyId(companyId: string): Promise<User[]> {
     return this.executeWithErrorHandling('findAll', async () => {
-      const userRecords = await this.prisma.user.findMany({
+      const userRecords = await this.client.user.findMany({
         where: {
           companyId: companyId,
         },
@@ -66,7 +74,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async findById(id: string): Promise<User | null> {
     return this.executeWithErrorHandling('findById', async () => {
-      const userRecord = await this.prisma.user.findUnique({
+      const userRecord = await this.client.user.findUnique({
         where: { id },
         include: {
           roles: {
@@ -97,7 +105,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async findByEmail(email: string): Promise<User | null> {
     return this.executeWithErrorHandling('findByEmail', async () => {
-      const userRecord = await this.prisma.user.findUnique({
+      const userRecord = await this.client.user.findUnique({
         where: { email },
         include: {
           roles: {
@@ -128,7 +136,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async findByAgentPhoneAndCompany(agentPhone: string, companyId: string): Promise<User | null> {
     return this.executeWithErrorHandling('findByAgentPhoneAndCompany', async () => {
-      const userRecord = await this.prisma.user.findFirst({
+      const userRecord = await this.client.user.findFirst({
         where: {
           agentPhone,
           companyId,
@@ -162,7 +170,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async findAll(): Promise<User[]> {
     return this.executeWithErrorHandling('findAll', async () => {
-      const userRecords = await this.prisma.user.findMany({
+      const userRecords = await this.client.user.findMany({
         include: {
           roles: {
             include: {
@@ -188,7 +196,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async findUsersByRoleId(roleId: string): Promise<User[]> {
     return this.executeWithErrorHandling('findUsersByRoleId', async () => {
-      const userRecords = await this.prisma.user.findMany({
+      const userRecords = await this.client.user.findMany({
         where: {
           roles: {
             some: {
@@ -221,7 +229,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async getUserCountryPhoneCode(userId: string): Promise<string | null> {
     return this.executeWithErrorHandling('getUserCountryPhoneCode', async () => {
-      const userWithAddress = await this.prisma.user.findUnique({
+      const userWithAddress = await this.client.user.findUnique({
         where: { id: userId },
         include: {
           address: {
@@ -243,7 +251,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
   async create(user: User): Promise<User> {
     return this.executeWithErrorHandling('create', async () => {
-      const createdUser = await this.prisma.user.create({
+      const createdUser = await this.client.user.create({
         data: {
           id: user.id.getValue(),
           email: user.email.getValue(),
@@ -315,14 +323,14 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   async update(user: User): Promise<User> {
     return this.executeWithErrorHandling('update', async () => {
       // First, delete all role associations to recreate them
-      await this.prisma.userRole.deleteMany({
+      await this.client.userRole.deleteMany({
         where: {
           userId: user.id.getValue(),
         },
       });
 
       // Update the user with new role associations
-      const updatedUser = await this.prisma.user.update({
+      const updatedUser = await this.client.user.update({
         where: { id: user.id.getValue() },
         data: {
           email: user.email.getValue(),
@@ -370,7 +378,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     return this.executeWithErrorHandling(
       'delete',
       async () => {
-        await this.prisma.user.delete({
+        await this.client.user.delete({
           where: { id },
         });
 

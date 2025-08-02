@@ -13,6 +13,8 @@ import {
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LoggerService } from '@infrastructure/logger/logger.service';
+import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
 // DTOs
 import { RegisterDto } from '@application/dtos/auth/register.dto';
@@ -61,8 +63,22 @@ export class AuthController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly logger: LoggerService,
+    private readonly transactionService: TransactionService,
+    private readonly transactionContext: TransactionContextService,
   ) {
     this.logger.setContext(AuthController.name);
+  }
+
+  private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionService.executeInTransaction(async (tx) => {
+      this.transactionContext.setTransactionClient(tx);
+      
+      try {
+        return await callback();
+      } finally {
+        this.transactionContext.clearTransaction();
+      }
+    });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard)
@@ -84,7 +100,9 @@ export class AuthController {
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
   async register(@Body() registerDto: RegisterDto, @CurrentUser() _currentUser: IJwtPayload) {
-    return this.commandBus.execute(new RegisterUserCommand(registerDto));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new RegisterUserCommand(registerDto));
+    });
   }
 
   @Public()
@@ -110,14 +128,16 @@ export class AuthController {
       socket?: { remoteAddress?: string };
     },
   ) {
-    const userAgent = req.headers['user-agent'];
-    const ipAddress =
-      req.ip ||
-      req.connection.remoteAddress ||
-      req.socket.remoteAddress ||
-      (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    return this.executeInTransactionWithContext(async () => {
+      const userAgent = req.headers['user-agent'];
+      const ipAddress =
+        req.ip ||
+        req.connection.remoteAddress ||
+        req.socket.remoteAddress ||
+        (req.connection.socket ? req.connection.socket.remoteAddress : null);
 
-    return this.commandBus.execute(new LoginCommand(loginDto, userAgent, ipAddress));
+      return this.commandBus.execute(new LoginCommand(loginDto, userAgent, ipAddress));
+    });
   }
 
   @Public()
@@ -133,7 +153,9 @@ export class AuthController {
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid OTP code' })
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    return this.commandBus.execute(new VerifyOtpCommand(verifyOtpDto.userId, verifyOtpDto));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new VerifyOtpCommand(verifyOtpDto.userId, verifyOtpDto));
+    });
   }
 
   @Public()
@@ -149,7 +171,9 @@ export class AuthController {
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid refresh token' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.commandBus.execute(new RefreshTokenCommand(refreshTokenDto));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new RefreshTokenCommand(refreshTokenDto));
+    });
   }
 
   @Post('logout')
@@ -194,9 +218,11 @@ export class AuthController {
       );
     }
 
-    return this.commandBus.execute(
-      new LogoutCommand(user.sub, logoutDto.scope || LogoutScope.GLOBAL, currentSessionToken),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new LogoutCommand(user.sub, logoutDto.scope || LogoutScope.GLOBAL, currentSessionToken),
+      );
+    });
   }
 
   @Get('me')
@@ -234,14 +260,16 @@ export class AuthController {
     @Body() sendVerificationEmailDto: SendVerificationEmailDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
-    return this.commandBus.execute(
-      new SendVerificationEmailCommand(
-        sendVerificationEmailDto,
-        currentUser.sub,
-        currentUser.roles,
-        currentUser.companyId || null,
-      ),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new SendVerificationEmailCommand(
+          sendVerificationEmailDto,
+          currentUser.sub,
+          currentUser.roles,
+          currentUser.companyId || null,
+        ),
+      );
+    });
   }
 
   @Public()
@@ -262,7 +290,9 @@ export class AuthController {
     description: 'Invalid or expired verification code',
   })
   async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
-    return this.commandBus.execute(new VerifyEmailCommand(verifyEmailDto));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new VerifyEmailCommand(verifyEmailDto));
+    });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -326,12 +356,14 @@ export class AuthController {
       socket?: { remoteAddress?: string };
     },
   ) {
-    const userAgent = req.headers['user-agent'];
-    const ipAddress = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress;
+    return this.executeInTransactionWithContext(async () => {
+      const userAgent = req.headers['user-agent'];
+      const ipAddress = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress;
 
-    return this.commandBus.execute(
-      new RequestPasswordResetCommand(requestPasswordResetDto, ipAddress, userAgent),
-    );
+      return this.commandBus.execute(
+        new RequestPasswordResetCommand(requestPasswordResetDto, ipAddress, userAgent),
+      );
+    });
   }
 
   @Public()
@@ -345,6 +377,8 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid or expired token' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid password format' })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-    return this.commandBus.execute(new ResetPasswordCommand(resetPasswordDto));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new ResetPasswordCommand(resetPasswordDto));
+    });
   }
 }

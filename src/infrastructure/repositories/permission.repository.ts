@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Permission } from '@core/entities/permission.entity';
 import { IPermissionRepository } from '@core/repositories/permission.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { Permission as PrismaPermission } from '@prisma/client';
 import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
 import { BaseRepository } from './base.repository';
@@ -11,13 +12,20 @@ export class PermissionRepository
   extends BaseRepository<Permission>
   implements IPermissionRepository
 {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
   }
 
   async findById(id: string): Promise<Permission | null> {
     return this.executeWithErrorHandling('findById', async () => {
-      const permissionRecord = await this.prisma.permission.findUnique({
+      const permissionRecord = await this.client.permission.findUnique({
         where: { id },
       });
 
@@ -31,7 +39,7 @@ export class PermissionRepository
 
   async findByName(name: string): Promise<Permission | null> {
     return this.executeWithErrorHandling('findByName', async () => {
-      const permissionRecord = await this.prisma.permission.findUnique({
+      const permissionRecord = await this.client.permission.findUnique({
         where: { name },
       });
 
@@ -45,7 +53,7 @@ export class PermissionRepository
 
   async findAll(): Promise<Permission[]> {
     return this.executeWithErrorHandling('findAll', async () => {
-      const permissionRecords = await this.prisma.permission.findMany();
+      const permissionRecords = await this.client.permission.findMany();
 
       return permissionRecords.map(record => this.mapToModel(record));
     });
@@ -53,7 +61,7 @@ export class PermissionRepository
 
   async findByResource(resource: string): Promise<Permission[]> {
     return this.executeWithErrorHandling('findByResource', async () => {
-      const permissionRecords = await this.prisma.permission.findMany({
+      const permissionRecords = await this.client.permission.findMany({
         where: { resource },
       });
 
@@ -63,7 +71,7 @@ export class PermissionRepository
 
   async create(permission: Permission): Promise<Permission> {
     return this.executeWithErrorHandling('create', async () => {
-      const createdPermission = await this.prisma.permission.create({
+      const createdPermission = await this.client.permission.create({
         data: {
           id: permission.id.getValue(),
           name: permission.name.getValue(),
@@ -79,7 +87,7 @@ export class PermissionRepository
 
   async update(permission: Permission): Promise<Permission> {
     return this.executeWithErrorHandling('update', async () => {
-      const updatedPermission = await this.prisma.permission.update({
+      const updatedPermission = await this.client.permission.update({
         where: { id: permission.id.getValue() },
         data: {
           name: permission.name.getValue(),
@@ -97,7 +105,7 @@ export class PermissionRepository
     return this.executeWithErrorHandling(
       'delete',
       async () => {
-        await this.prisma.permission.delete({
+        await this.client.permission.delete({
           where: { id },
         });
 

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { JwtModule } from '@nestjs/jwt';
@@ -19,11 +20,15 @@ import {
   STATE_REPOSITORY,
 } from '@shared/constants/tokens';
 
+// JWT-specific token
+const JWT_USER_REPOSITORY = 'JWT_USER_REPOSITORY';
+
 // Controllers
 import { AuthController } from './auth.controller';
 
 // Repositories
 import { UserRepository } from '@infrastructure/repositories/user.repository';
+import { UserAuthRepository } from '@infrastructure/repositories/user-auth.repository';
 import { RoleRepository } from '@infrastructure/repositories/role.repository';
 import { OtpRepository } from '@infrastructure/repositories/otp.repository';
 import { RefreshTokenRepository } from '@infrastructure/repositories/refresh-token.repository';
@@ -49,7 +54,10 @@ import { AuthService } from '@core/services/auth.service';
 import { CaptchaService } from '@core/services/captcha.service';
 import { InvitationRulesService } from '@core/services/invitation-rules.service';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { I18nModule } from '@infrastructure/i18n/i18n.module';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 import { CoreModule } from '@core/core.module';
 
 // Command Handlers
@@ -66,6 +74,7 @@ import { ResetPasswordCommandHandler } from '@application/commands/auth/reset-pa
 
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
+
 
 const commandHandlers = [
   RegisterUserCommandHandler,
@@ -109,47 +118,73 @@ const commandHandlers = [
     // Repository tokens
     {
       provide: USER_REPOSITORY,
-      useClass: UserRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new UserRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
+    {
+      provide: JWT_USER_REPOSITORY,
+      useClass: UserAuthRepository,
     },
     {
       provide: ROLE_REPOSITORY,
-      useClass: RoleRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new RoleRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: OTP_REPOSITORY,
-      useClass: OtpRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService, configService: ConfigService) => 
+        new OtpRepository(prisma, transactionContext, configService),
+      inject: [PrismaService, TransactionContextService, ConfigService],
     },
     {
       provide: REFRESH_TOKEN_REPOSITORY,
-      useClass: RefreshTokenRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService, configService: ConfigService) => 
+        new RefreshTokenRepository(prisma, transactionContext, configService),
+      inject: [PrismaService, TransactionContextService, ConfigService],
     },
     {
       provide: EMAIL_VERIFICATION_REPOSITORY,
-      useClass: EmailVerificationRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new EmailVerificationRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: PASSWORD_RESET_REPOSITORY,
-      useClass: PasswordResetRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new PasswordResetRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: PASSWORD_RESET_ATTEMPT_REPOSITORY,
-      useClass: PasswordResetAttemptRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new PasswordResetAttemptRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: SESSION_REPOSITORY,
-      useClass: SessionRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new SessionRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: COMPANY_REPOSITORY,
-      useClass: CompanyRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) => 
+        new CompanyRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: COUNTRY_REPOSITORY,
-      useClass: CountryRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService, logger: LoggerService) => 
+        new CountryRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LoggerService],
     },
     {
       provide: STATE_REPOSITORY,
-      useClass: StateRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService, logger: LoggerService) => 
+        new StateRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LoggerService],
     },
 
     // Validators
@@ -160,12 +195,12 @@ const commandHandlers = [
     // Providers
     TokenProvider,
 
-    // Strategy
+    // Strategies
     JwtStrategy,
 
     // Command handlers
     ...commandHandlers,
   ],
-  exports: [UserService, AuthService],
+  exports: [UserService, AuthService, JwtStrategy],
 })
 export class AuthModule {}

@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { AssignUserToCompanyDto } from '@application/dtos/company/assign-user-to-company.dto';
 import { AssignUserToCompanyCommand } from '@application/commands/company/assign-user-to-company.command';
 import { RemoveUserFromCompanyCommand } from '@application/commands/company/remove-user-from-company.command';
@@ -29,7 +31,23 @@ import { RolesEnum } from '@shared/constants/enums';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
 export class CompanyUsersController {
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly transactionService: TransactionService,
+    private readonly transactionContext: TransactionContextService,
+  ) {}
+
+  private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionService.executeInTransaction(async tx => {
+      this.transactionContext.setTransactionClient(tx);
+
+      try {
+        return await callback();
+      } finally {
+        this.transactionContext.clearTransaction();
+      }
+    });
+  }
 
   @Post('assign')
   @Roles(RolesEnum.ROOT)
@@ -56,10 +74,12 @@ export class CompanyUsersController {
   async assignUserToCompany(
     @Body() assignUserDto: AssignUserToCompanyDto,
   ): Promise<{ message: string }> {
-    const userId = UserId.fromString(assignUserDto.userId);
-    const companyId = CompanyId.fromString(assignUserDto.companyId);
+    await this.executeInTransactionWithContext(async () => {
+      const userId = UserId.fromString(assignUserDto.userId);
+      const companyId = CompanyId.fromString(assignUserDto.companyId);
 
-    await this.commandBus.execute(new AssignUserToCompanyCommand(userId, companyId));
+      return this.commandBus.execute(new AssignUserToCompanyCommand(userId, companyId));
+    });
 
     return { message: 'User assigned to company successfully' };
   }
@@ -89,9 +109,11 @@ export class CompanyUsersController {
   async removeUserFromCompany(
     @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<{ message: string }> {
-    const userIdVO = UserId.fromString(userId);
+    await this.executeInTransactionWithContext(async () => {
+      const userIdVO = UserId.fromString(userId);
 
-    await this.commandBus.execute(new RemoveUserFromCompanyCommand(userIdVO));
+      return this.commandBus.execute(new RemoveUserFromCompanyCommand(userIdVO));
+    });
 
     return { message: 'User removed from company successfully' };
   }

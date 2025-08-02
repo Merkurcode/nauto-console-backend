@@ -133,7 +133,7 @@ export class EmailTemplates {
   static verificationEmail(
     code: string,
     primaryColor: string = '#007bff',
-    appName: string = 'Nuestra Aplicación',
+    _appName: string = 'Nuestra Aplicación',
   ): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -153,7 +153,7 @@ export class EmailTemplates {
   static passwordResetEmail(
     resetLink: string,
     primaryColor: string = '#007bff',
-    appName: string = 'Nuestra Aplicación',
+    _appName: string = 'Nuestra Aplicación',
   ): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

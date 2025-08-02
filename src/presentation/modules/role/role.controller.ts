@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { QueryBus, CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
 // Guards & Decorators
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
@@ -48,7 +50,21 @@ export class RoleController {
   constructor(
     private readonly queryBus: QueryBus,
     private readonly commandBus: CommandBus,
+    private readonly transactionService: TransactionService,
+    private readonly transactionContext: TransactionContextService,
   ) {}
+
+  private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionService.executeInTransaction(async (tx) => {
+      this.transactionContext.setTransactionClient(tx);
+      
+      try {
+        return await callback();
+      } finally {
+        this.transactionContext.clearTransaction();
+      }
+    });
+  }
 
   @Get()
   @Roles(
@@ -118,17 +134,19 @@ export class RoleController {
     @Body() createRoleDto: CreateRoleDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
-    return this.commandBus.execute(
-      new CreateRoleCommand(
-        createRoleDto.name,
-        createRoleDto.description,
-        createRoleDto.hierarchyLevel,
-        createRoleDto.isDefault,
-        createRoleDto.permissionIds,
-        createRoleDto.isDefaultAppRole,
-        currentUser.sub,
-      ),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new CreateRoleCommand(
+          createRoleDto.name,
+          createRoleDto.description,
+          createRoleDto.hierarchyLevel,
+          createRoleDto.isDefault,
+          createRoleDto.permissionIds,
+          createRoleDto.isDefaultAppRole,
+          currentUser.sub,
+        ),
+      );
+    });
   }
 
   @Put(':id')
@@ -148,14 +166,16 @@ export class RoleController {
     description: 'User does not have required permission',
   })
   async updateRole(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-    return this.commandBus.execute(
-      new UpdateRoleCommand(
-        id,
-        updateRoleDto.name,
-        updateRoleDto.description,
-        updateRoleDto.isDefault,
-      ),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new UpdateRoleCommand(
+          id,
+          updateRoleDto.name,
+          updateRoleDto.description,
+          updateRoleDto.isDefault,
+        ),
+      );
+    });
   }
 
   @Delete(':id')
@@ -174,7 +194,9 @@ export class RoleController {
     description: 'User does not have required permission',
   })
   async deleteRole(@Param('id') id: string) {
-    await this.commandBus.execute(new DeleteRoleCommand(id));
+    await this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new DeleteRoleCommand(id));
+    });
 
     return { message: 'Role deleted successfully' };
   }
@@ -207,7 +229,9 @@ export class RoleController {
     @Param('roleId') roleId: string,
     @Param('permissionId') permissionId: string,
   ) {
-    return this.commandBus.execute(new AssignPermissionCommand(roleId, permissionId));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new AssignPermissionCommand(roleId, permissionId));
+    });
   }
 
   @Delete(':roleId/permissions/:permissionId')
@@ -238,6 +262,8 @@ export class RoleController {
     @Param('roleId') roleId: string,
     @Param('permissionId') permissionId: string,
   ) {
-    return this.commandBus.execute(new RemovePermissionCommand(roleId, permissionId));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new RemovePermissionCommand(roleId, permissionId));
+    });
   }
 }

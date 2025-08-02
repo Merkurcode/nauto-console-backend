@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PasswordReset } from '@core/entities/password-reset.entity';
 import { IPasswordResetRepository } from '@core/repositories/password-reset.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { BaseRepository } from './base.repository';
 import { Email } from '@core/value-objects/email.vo';
 import { Token } from '@core/value-objects/token.vo';
@@ -13,13 +14,20 @@ export class PasswordResetRepository
   extends BaseRepository<PasswordReset>
   implements IPasswordResetRepository
 {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
   }
 
   async findById(id: string): Promise<PasswordReset | null> {
     return this.executeWithErrorHandling('findById', async () => {
-      const record = await this.prisma.passwordReset.findUnique({
+      const record = await this.client.passwordReset.findUnique({
         where: { id },
       });
 
@@ -29,7 +37,7 @@ export class PasswordResetRepository
 
   async findByUserId(userId: string): Promise<PasswordReset | null> {
     return this.executeWithErrorHandling('findByUserId', async () => {
-      const record = await this.prisma.passwordReset.findFirst({
+      const record = await this.client.passwordReset.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       });
@@ -40,7 +48,7 @@ export class PasswordResetRepository
 
   async findByToken(token: string): Promise<PasswordReset | null> {
     return this.executeWithErrorHandling('findByToken', async () => {
-      const record = await this.prisma.passwordReset.findUnique({
+      const record = await this.client.passwordReset.findUnique({
         where: { token },
       });
 
@@ -50,7 +58,7 @@ export class PasswordResetRepository
 
   async findByEmail(email: string): Promise<PasswordReset | null> {
     return this.executeWithErrorHandling('findByEmail', async () => {
-      const record = await this.prisma.passwordReset.findFirst({
+      const record = await this.client.passwordReset.findFirst({
         where: { email },
         orderBy: { createdAt: 'desc' },
       });
@@ -61,7 +69,7 @@ export class PasswordResetRepository
 
   async create(passwordReset: PasswordReset): Promise<PasswordReset> {
     return this.executeWithErrorHandling('create', async () => {
-      await this.prisma.passwordReset.create({
+      await this.client.passwordReset.create({
         data: {
           id: passwordReset.id,
           userId: passwordReset.userId.getValue(),
@@ -79,7 +87,7 @@ export class PasswordResetRepository
 
   async update(passwordReset: PasswordReset): Promise<PasswordReset> {
     return this.executeWithErrorHandling('update', async () => {
-      await this.prisma.passwordReset.update({
+      await this.client.passwordReset.update({
         where: { id: passwordReset.id },
         data: {
           userId: passwordReset.userId.getValue(),
@@ -98,7 +106,7 @@ export class PasswordResetRepository
     return this.executeWithErrorHandling(
       'delete',
       async () => {
-        await this.prisma.passwordReset.delete({
+        await this.client.passwordReset.delete({
           where: { id },
         });
 
@@ -112,7 +120,7 @@ export class PasswordResetRepository
     return this.executeWithErrorHandling(
       'deleteByUserId',
       async () => {
-        await this.prisma.passwordReset.deleteMany({
+        await this.client.passwordReset.deleteMany({
           where: { userId },
         });
 
@@ -126,7 +134,7 @@ export class PasswordResetRepository
     return this.executeWithErrorHandling(
       'deleteByEmail',
       async () => {
-        await this.prisma.passwordReset.deleteMany({
+        await this.client.passwordReset.deleteMany({
           where: { email },
         });
 

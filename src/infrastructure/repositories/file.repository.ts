@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { TransactionContextService } from '../database/prisma/transaction-context.service';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { File } from '@core/entities/file.entity';
 import { BaseRepository } from './base.repository';
@@ -23,12 +24,19 @@ export interface IFileData {
 
 @Injectable()
 export class FileRepository extends BaseRepository<File> implements IFileRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
   }
 
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
   async findById(id: string): Promise<File | null> {
-    const fileData = await this.prisma.file.findUnique({
+    const fileData = await this.client.file.findUnique({
       where: { id },
     });
 
@@ -36,7 +44,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   }
 
   async findByUserId(userId: string): Promise<File[]> {
-    const files = await this.prisma.file.findMany({
+    const files = await this.client.file.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
@@ -45,7 +53,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   }
 
   async findByPath(path: string): Promise<File | null> {
-    const fileData = await this.prisma.file.findFirst({
+    const fileData = await this.client.file.findFirst({
       where: { path },
     });
 
@@ -53,7 +61,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   }
 
   async save(file: File): Promise<File> {
-    const fileData = await this.prisma.file.create({
+    const fileData = await this.client.file.create({
       data: {
         id: file.id,
         filename: file.filename,
@@ -71,7 +79,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   }
 
   async update(file: File): Promise<File> {
-    const fileData = await this.prisma.file.update({
+    const fileData = await this.client.file.update({
       where: { id: file.id },
       data: {
         isPublic: file.isPublic,
@@ -83,7 +91,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.file.delete({
+    await this.client.file.delete({
       where: { id },
     });
   }

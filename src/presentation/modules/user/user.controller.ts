@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { QueryBus, CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
 // Guards & Decorators
 import { RolesGuard } from '@presentation/guards/roles.guard';
@@ -51,7 +53,21 @@ export class UserController {
   constructor(
     private readonly queryBus: QueryBus,
     private readonly commandBus: CommandBus,
+    private readonly transactionService: TransactionService,
+    private readonly transactionContext: TransactionContextService,
   ) {}
+
+  private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionService.executeInTransaction(async tx => {
+      this.transactionContext.setTransactionClient(tx);
+
+      try {
+        return await callback();
+      } finally {
+        this.transactionContext.clearTransaction();
+      }
+    });
+  }
 
   @Get()
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
@@ -117,8 +133,10 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async createUser(@Param('companyId') companyId: string, @Body() _createUserDto: CreateUserDto) {
-    // This would normally use a command with company context
-    return { message: 'User created successfully', companyId };
+    return this.executeInTransactionWithContext(async () => {
+      // This would normally use a command with company context
+      return { message: 'User created successfully', companyId };
+    });
   }
 
   @Put(':id')
@@ -148,15 +166,17 @@ export class UserController {
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.commandBus.execute(
-      new UpdateUserCommand(
-        id,
-        updateUserDto.firstName,
-        updateUserDto.lastName,
-        updateUserDto.email,
-        companyId,
-      ),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new UpdateUserCommand(
+          id,
+          updateUserDto.firstName,
+          updateUserDto.lastName,
+          updateUserDto.email,
+          companyId,
+        ),
+      );
+    });
   }
 
   @Put('/profile')
@@ -172,14 +192,16 @@ export class UserController {
     @CurrentUser() user: IJwtPayload,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.commandBus.execute(
-      new UpdateUserCommand(
-        user.sub,
-        updateUserDto.firstName,
-        updateUserDto.lastName,
-        updateUserDto.email,
-      ),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new UpdateUserCommand(
+          user.sub,
+          updateUserDto.firstName,
+          updateUserDto.lastName,
+          updateUserDto.email,
+        ),
+      );
+    });
   }
 
   @Delete(':id')
@@ -204,8 +226,10 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async deleteUser(@Param('companyId') companyId: string, @Param('id') _id: string) {
-    // This would normally use a command with company context
-    return { message: 'User deleted successfully', companyId };
+    return this.executeInTransactionWithContext(async () => {
+      // This would normally use a command with company context
+      return { message: 'User deleted successfully', companyId };
+    });
   }
 
   @Post(':id/change-password')
@@ -235,14 +259,16 @@ export class UserController {
     @Param('id') id: string,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    await this.commandBus.execute(
-      new ChangePasswordCommand(
-        id,
-        changePasswordDto.newPassword,
-        changePasswordDto.currentPassword,
-        companyId,
-      ),
-    );
+    await this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new ChangePasswordCommand(
+          id,
+          changePasswordDto.newPassword,
+          changePasswordDto.currentPassword,
+          companyId,
+        ),
+      );
+    });
 
     return { message: 'Password changed successfully' };
   }
@@ -261,13 +287,15 @@ export class UserController {
     @CurrentUser() user: IJwtPayload,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    await this.commandBus.execute(
-      new ChangePasswordCommand(
-        user.sub,
-        changePasswordDto.newPassword,
-        changePasswordDto.currentPassword,
-      ),
-    );
+    await this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new ChangePasswordCommand(
+          user.sub,
+          changePasswordDto.newPassword,
+          changePasswordDto.currentPassword,
+        ),
+      );
+    });
 
     return { message: 'Password changed successfully' };
   }
@@ -317,7 +345,11 @@ export class UserController {
     @Param('id') id: string,
     @Body() activateUserDto: ActivateUserDto,
   ) {
-    return this.commandBus.execute(new ActivateUserCommand(id, activateUserDto.active, companyId));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new ActivateUserCommand(id, activateUserDto.active, companyId),
+      );
+    });
   }
 
   @Post(':id/roles')
@@ -348,9 +380,11 @@ export class UserController {
     @Body() assignRoleDto: AssignRoleDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
-    return this.commandBus.execute(
-      new AssignRoleCommand(id, assignRoleDto.roleId, companyId, currentUser.sub),
-    );
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new AssignRoleCommand(id, assignRoleDto.roleId, companyId, currentUser.sub),
+      );
+    });
   }
 
   @Delete(':id/roles/:roleId')
@@ -384,6 +418,8 @@ export class UserController {
     @Param('id') id: string,
     @Param('roleId') roleId: string,
   ) {
-    return this.commandBus.execute(new RemoveRoleCommand(id, roleId, companyId));
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(new RemoveRoleCommand(id, roleId, companyId));
+    });
   }
 }

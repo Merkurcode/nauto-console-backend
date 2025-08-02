@@ -29,8 +29,15 @@ export class CreateRoleCommandHandler
   ) {}
 
   async execute(command: CreateRoleCommand): Promise<RoleDetailResponse> {
-    const { name, description, hierarchyLevel, isDefault, permissionIds, isDefaultAppRole, creatorUserId } =
-      command;
+    const {
+      name,
+      description,
+      hierarchyLevel,
+      isDefault,
+      permissionIds,
+      isDefaultAppRole,
+      creatorUserId,
+    } = command;
 
     // Create the role first
     const role = await this.roleService.createRole(

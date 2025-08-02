@@ -15,6 +15,8 @@ import {
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CreateCompanyDto } from '@application/dtos/company/create-company.dto';
 import { UpdateCompanyDto } from '@application/dtos/company/update-company.dto';
 import { CompanyResponse } from '@application/dtos/responses/company.response';
@@ -54,7 +56,21 @@ export class CompanyController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
+    private readonly transactionService: TransactionService,
+    private readonly transactionContext: TransactionContextService,
   ) {}
+
+  private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionService.executeInTransaction(async (tx) => {
+      this.transactionContext.setTransactionClient(tx);
+      
+      try {
+        return await callback();
+      } finally {
+        this.transactionContext.clearTransaction();
+      }
+    });
+  }
 
   @Get()
   @ApiOperation({ 
@@ -171,35 +187,37 @@ export class CompanyController {
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
-    const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
+    return this.executeInTransactionWithContext(async () => {
+      const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
 
-    const command = new CreateCompanyCommand(
-      new CompanyName(name),
-      new CompanyDescription(description),
-      new BusinessSector(businessSector),
-      new BusinessUnit(businessUnit),
-      new Address(
-        address.country,
-        address.state,
-        address.city,
-        address.street,
-        address.exteriorNumber,
-        address.postalCode,
-        address.interiorNumber,
-      ),
-      new Host(host),
-      timezone,
-      currency,
-      language,
-      logoUrl,
-      websiteUrl,
-      privacyPolicyUrl,
-      industrySector ? IndustrySector.create(industrySector) : undefined,
-      industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
-      parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
-    );
+      const command = new CreateCompanyCommand(
+        new CompanyName(name),
+        new CompanyDescription(description),
+        new BusinessSector(businessSector),
+        new BusinessUnit(businessUnit),
+        new Address(
+          address.country,
+          address.state,
+          address.city,
+          address.street,
+          address.exteriorNumber,
+          address.postalCode,
+          address.interiorNumber,
+        ),
+        new Host(host),
+        timezone,
+        currency,
+        language,
+        logoUrl,
+        websiteUrl,
+        privacyPolicyUrl,
+        industrySector ? IndustrySector.create(industrySector) : undefined,
+        industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
+        parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
+      );
 
-    return this.commandBus.execute(command);
+      return this.commandBus.execute(command);
+    });
   }
 
   @Put(':id')
@@ -231,58 +249,60 @@ export class CompanyController {
     @Body() updateCompanyDto: UpdateCompanyDto,
     @Request() req: { user: { roles: string[]; companyId?: string } },
   ): Promise<CompanyResponse> {
-    const companyId = CompanyId.fromString(id);
-    const user = req.user;
-    
-    // Authorization check: Admin users can only update their own company
-    const isRootUser = user.roles.includes('root');
-    const isAdminUser = user.roles.includes('admin');
-    
-    if (isAdminUser && !isRootUser) {
-      // Admin users can only update their own company
-      if (!user.companyId || user.companyId !== id) {
-        throw new ForbiddenException('Admin users can only update their own company');
+    return this.executeInTransactionWithContext(async () => {
+      const companyId = CompanyId.fromString(id);
+      const user = req.user;
+      
+      // Authorization check: Admin users can only update their own company
+      const isRootUser = user.roles.includes('root');
+      const isAdminUser = user.roles.includes('admin');
+      
+      if (isAdminUser && !isRootUser) {
+        // Admin users can only update their own company
+        if (!user.companyId || user.companyId !== id) {
+          throw new ForbiddenException('Admin users can only update their own company');
+        }
       }
-    }
-    
-    const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
+      
+      const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
 
-    const command = new UpdateCompanyCommand(
-      companyId,
-      name ? new CompanyName(name) : undefined,
-      description ? new CompanyDescription(description) : undefined,
-      businessSector ? new BusinessSector(businessSector) : undefined,
-      businessUnit ? new BusinessUnit(businessUnit) : undefined,
-      address &&
-      address.country &&
-      address.state &&
-      address.city &&
-      address.street &&
-      address.exteriorNumber &&
-      address.postalCode
-        ? new Address(
-            address.country,
-            address.state,
-            address.city,
-            address.street,
-            address.exteriorNumber,
-            address.postalCode,
-            address.interiorNumber,
-          )
-        : undefined,
-      host ? new Host(host) : undefined,
-      timezone,
-      currency,
-      language,
-      logoUrl,
-      websiteUrl,
-      privacyPolicyUrl,
-      industrySector ? IndustrySector.create(industrySector) : undefined,
-      industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
-      parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
-    );
+      const command = new UpdateCompanyCommand(
+        companyId,
+        name ? new CompanyName(name) : undefined,
+        description ? new CompanyDescription(description) : undefined,
+        businessSector ? new BusinessSector(businessSector) : undefined,
+        businessUnit ? new BusinessUnit(businessUnit) : undefined,
+        address &&
+        address.country &&
+        address.state &&
+        address.city &&
+        address.street &&
+        address.exteriorNumber &&
+        address.postalCode
+          ? new Address(
+              address.country,
+              address.state,
+              address.city,
+              address.street,
+              address.exteriorNumber,
+              address.postalCode,
+              address.interiorNumber,
+            )
+          : undefined,
+        host ? new Host(host) : undefined,
+        timezone,
+        currency,
+        language,
+        logoUrl,
+        websiteUrl,
+        privacyPolicyUrl,
+        industrySector ? IndustrySector.create(industrySector) : undefined,
+        industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
+        parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
+      );
 
-    return this.commandBus.execute(command);
+      return this.commandBus.execute(command);
+    });
   }
 
   @Delete(':id')
@@ -305,8 +325,11 @@ export class CompanyController {
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
   async deleteCompany(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    const companyId = CompanyId.fromString(id);
-    await this.commandBus.execute(new DeleteCompanyCommand(companyId));
+    await this.executeInTransactionWithContext(async () => {
+      const companyId = CompanyId.fromString(id);
+      
+return this.commandBus.execute(new DeleteCompanyCommand(companyId));
+    });
   }
 
   @Get(':id/subsidiaries')
