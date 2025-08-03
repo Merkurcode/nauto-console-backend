@@ -71,6 +71,7 @@ import { VerifyEmailCommandHandler } from '@application/commands/auth/verify-ema
 import { CheckEmailVerificationStatusCommandHandler } from '@application/commands/auth/check-email-verification-status.command';
 import { RequestPasswordResetCommandHandler } from '@application/commands/auth/request-password-reset.command';
 import { ResetPasswordCommandHandler } from '@application/commands/auth/reset-password.command';
+import { AdminChangePasswordCommandHandler } from '@application/commands/auth/admin-change-password.command';
 
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -87,6 +88,7 @@ const commandHandlers = [
   CheckEmailVerificationStatusCommandHandler,
   RequestPasswordResetCommandHandler,
   ResetPasswordCommandHandler,
+  AdminChangePasswordCommandHandler,
 ];
 
 @Module({

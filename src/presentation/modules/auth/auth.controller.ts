@@ -30,6 +30,7 @@ import {
   RequestPasswordResetDto,
   ResetPasswordDto,
 } from '@application/dtos/auth/password-reset.dto';
+import { AdminChangePasswordDto } from '@application/dtos/requests/auth/admin-change-password.dto';
 
 // Commands
 import { RegisterUserCommand } from '@application/commands/auth/register-user.command';
@@ -42,6 +43,7 @@ import { VerifyEmailCommand } from '@application/commands/auth/verify-email.comm
 import { CheckEmailVerificationStatusCommand } from '@application/commands/auth/check-email-verification-status.command';
 import { RequestPasswordResetCommand } from '@application/commands/auth/request-password-reset.command';
 import { ResetPasswordCommand } from '@application/commands/auth/reset-password.command';
+import { AdminChangePasswordCommand } from '@application/commands/auth/admin-change-password.command';
 
 // Guards & Decorators
 import { Public } from '@shared/decorators/public.decorator';
@@ -54,6 +56,8 @@ import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { InvitationGuard } from '@presentation/guards/invitation.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesEnum } from '@shared/constants/enums';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 @ApiTags('auth')
@@ -379,6 +383,38 @@ export class AuthController {
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(new ResetPasswordCommand(resetPasswordDto));
+    });
+  }
+
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
+  @Post('admin/change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change password of any user (Root/Admin only)',
+    description: 'Allow root and admin users to change passwords of other users\n\n**Required Permissions:** None (Role-based)\n**Required Roles:** root, admin\n**Restrictions:** Root can change any user password. Admin can only change passwords of users in their company'
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Password changed successfully' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Target user not found' })
+  @ApiResponse({ 
+    status: HttpStatus.FORBIDDEN, 
+    description: 'Insufficient permissions or user not in same company (for admin)' 
+  })
+  async adminChangePassword(
+    @Body() adminChangePasswordDto: AdminChangePasswordDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new AdminChangePasswordCommand(
+          adminChangePasswordDto.userId,
+          adminChangePasswordDto.password,
+          currentUser.sub,
+          currentUser.roles[0], // Primary role
+          currentUser.tenantId,
+        ),
+      );
     });
   }
 }
