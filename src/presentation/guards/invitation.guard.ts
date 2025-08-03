@@ -11,6 +11,7 @@ import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { CompanyName } from '@core/value-objects/company-name.vo';
+import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
 export class InvitationGuard implements CanActivate {
@@ -34,7 +35,7 @@ export class InvitationGuard implements CanActivate {
     }
 
     // Extract target roles from request body
-    const targetRoles = body.roles || ['guest']; // Default to guest if no roles specified
+    const targetRoles = body.roles || [RolesEnum.GUEST]; // Default to guest if no roles specified
     const targetCompanyName = body.company; // Company name from request body
 
     // Convert company name to company ID for comparison

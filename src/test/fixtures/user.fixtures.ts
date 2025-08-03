@@ -2,6 +2,8 @@
  * User fixtures for tests
  */
 
+import { RolesEnum } from '@shared/constants/enums';
+
 export const userFixtures = {
   users: {
     validUser: () => ({
@@ -19,9 +21,9 @@ export const userFixtures = {
       isActive: true,
       lastLoginAt: new Date(),
       twoFactorEnabled: false,
-      roles: [{ id: '2', name: 'user', description: 'Regular user', permissions: [] }],
+      roles: [{ id: '2', name: RolesEnum.GUEST, description: 'Regular user', permissions: [] }],
       getPermissions: () => ['user:read'],
-      getRoleNames: () => ['user'],
+      getRoleNames: () => [RolesEnum.GUEST],
       hasPermission: () => true,
       hasRole: () => true,
       updateLastLogin: jest.fn(),
@@ -49,9 +51,9 @@ export const userFixtures = {
       isActive: true,
       lastLoginAt: new Date(),
       twoFactorEnabled: false,
-      roles: [{ id: '1', name: 'admin', description: 'Administrator', permissions: [] }],
+      roles: [{ id: '1', name: RolesEnum.ADMIN, description: 'Administrator', permissions: [] }],
       getPermissions: () => ['user:read', 'user:write', 'user:delete', 'role:read', 'role:write'],
-      getRoleNames: () => ['admin'],
+      getRoleNames: () => [RolesEnum.ADMIN],
       hasPermission: () => true,
       hasRole: () => true,
       updateLastLogin: jest.fn(),
@@ -99,7 +101,7 @@ export const userFixtures = {
   roles: {
     adminRole: () => ({
       id: '1',
-      name: 'admin',
+      name: RolesEnum.ADMIN,
       description: 'Administrator role',
       isDefault: false,
       permissions: [
@@ -114,7 +116,7 @@ export const userFixtures = {
     }),
     userRole: () => ({
       id: '2',
-      name: 'user',
+      name: RolesEnum.GUEST,
       description: 'Regular user role',
       isDefault: true,
       permissions: [{ id: '1', name: 'user:read' }],
@@ -141,7 +143,7 @@ export const userFixture = {
   firstName: 'Test',
   lastName: 'User',
   isActive: true,
-  roles: ['user'],
+  roles: [RolesEnum.GUEST],
   permissions: ['user:read'],
 };
 
@@ -152,6 +154,6 @@ export const adminFixture = {
   firstName: 'Admin',
   lastName: 'User',
   isActive: true,
-  roles: ['admin'],
+  roles: [RolesEnum.ADMIN],
   permissions: ['user:read', 'user:write', 'user:delete', 'role:read', 'role:write', 'role:delete'],
 };

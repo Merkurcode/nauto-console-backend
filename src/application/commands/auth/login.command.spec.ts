@@ -17,6 +17,7 @@ import { ResourceAction, ActionType } from '@core/value-objects/resource-action.
 import { I18nService } from 'nestjs-i18n';
 import { LoggerService } from '@infrastructure/logger/logger.service';
 import { ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { RolesEnum } from '@shared/constants/enums';
 
 // Mock dependencies
 const mockUserService = {
@@ -316,7 +317,7 @@ describe('LoginCommandHandler', () => {
     // Add another role to the user - mock the eligibility check
     const adminRole = Role.fromData({
       id: '550e8400-e29b-41d4-a716-446655440003',
-      name: 'admin',
+      name: RolesEnum.ADMIN,
       description: 'Administrator role',
       isDefault: false,
       isDefaultAppRole: false,
@@ -343,7 +344,7 @@ describe('LoginCommandHandler', () => {
 
     const adminRoleWithPermissions = Role.fromData({
       id: '550e8400-e29b-41d4-a716-446655440003',
-      name: 'admin',
+      name: RolesEnum.ADMIN,
       description: 'Administrator role',
       isDefault: false,
       isDefaultAppRole: false,

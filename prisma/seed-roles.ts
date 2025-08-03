@@ -1,51 +1,52 @@
 import { PrismaClient } from '@prisma/client';
+import { RolesEnum } from '../src/shared/constants/enums';
 
 // Roles with hierarchy levels: 1=root, 2=admin, 3=manager, 4=sales_agent/host, 5=guest
 const roles = [
   {
-    name: 'root',
+    name: RolesEnum.ROOT,
     description: 'Super administrator role with full access',
     hierarchyLevel: 1,
     isDefault: false,
     isDefaultAppRole: true,
   },
   {
-    name: 'root_readonly',
+    name: RolesEnum.ROOT_READONLY,
     description: 'Super administrator role with full access (read only)',
     hierarchyLevel: 1,
     isDefault: false,
     isDefaultAppRole: true,
   },
   {
-    name: 'admin',
+    name: RolesEnum.ADMIN,
     description: 'Administrator role with limited access',
     hierarchyLevel: 2,
     isDefault: false,
     isDefaultAppRole: true,
   },
   {
-    name: 'manager',
+    name: RolesEnum.MANAGER,
     description: 'Manager role with limited access',
     hierarchyLevel: 3,
     isDefault: false,
     isDefaultAppRole: true,
   },
   {
-    name: 'sales_agent',
+    name: RolesEnum.SALES_AGENT,
     description: 'Sales agent role with limited access',
     hierarchyLevel: 4,
     isDefault: false,
     isDefaultAppRole: true,
   },
   {
-    name: 'host',
+    name: RolesEnum.HOST,
     description: 'Host role with limited access',
     hierarchyLevel: 4,
     isDefault: false,
     isDefaultAppRole: true,
   },
   {
-    name: 'guest',
+    name: RolesEnum.GUEST,
     description: 'Default user role with limited access',
     hierarchyLevel: 5,
     isDefault: true,

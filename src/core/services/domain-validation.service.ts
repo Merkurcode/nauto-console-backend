@@ -18,6 +18,7 @@ import {
   HasMinimumPermissionsSpecification,
 } from '@core/specifications/role.specifications';
 import { BusinessRuleValidationException } from '@core/exceptions/domain-exceptions';
+import { RolesEnum } from '@shared/constants/enums';
 
 /**
  * Domain Validation Service for complex business rule validation
@@ -87,7 +88,7 @@ export class DomainValidationService {
       result.addError('Role name must be at least 3 characters long.');
     }
 
-    if (role.name.toLowerCase().includes('root') && !rootRoleSpec.isSatisfiedBy(role)) {
+    if (role.name.toLowerCase().includes(RolesEnum.ROOT.toLowerCase()) && !rootRoleSpec.isSatisfiedBy(role)) {
       result.addWarning('Role name suggests root privileges but lacks root permissions.');
     }
 
@@ -229,18 +230,18 @@ export class DomainValidationService {
 
     // Define role conflicts
     const roleConflicts = new Map([
-      ['root', ['guest', 'readonly', 'admin', 'manager', 'sales_agent']],
-      ['root_readonly', ['guest', 'admin', 'manager', 'sales_agent']],
-      ['admin', ['guest', 'sales_agent']],
-      ['manager', ['guest', 'sales_agent']],
-      ['sales_agent', ['guest']],
+      [RolesEnum.ROOT, [RolesEnum.GUEST, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT]],
+      [RolesEnum.ROOT_READONLY, [RolesEnum.GUEST, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT]],
+      [RolesEnum.ADMIN, [RolesEnum.GUEST, RolesEnum.SALES_AGENT]],
+      [RolesEnum.MANAGER, [RolesEnum.GUEST, RolesEnum.SALES_AGENT]],
+      [RolesEnum.SALES_AGENT, [RolesEnum.GUEST]],
     ]);
 
-    const newRoleName = newRole.name.toLowerCase();
+    const newRoleName = newRole.name.toLowerCase() as RolesEnum;
     const conflictList = roleConflicts.get(newRoleName) || [];
 
     for (const existingRole of existingRoles) {
-      if (conflictList.includes(existingRole.name.toLowerCase())) {
+      if (conflictList.includes(existingRole.name.toLowerCase() as RolesEnum)) {
         conflicts.push(existingRole.name);
       }
     }

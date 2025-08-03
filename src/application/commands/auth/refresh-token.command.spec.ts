@@ -19,6 +19,7 @@ import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { RolesEnum } from '@shared/constants/enums';
 
 // Mock UUID generation
 jest.mock('uuid', () => ({
@@ -89,7 +90,7 @@ const createTestUser = (): User => {
   // Add role - need to use fromData method to set ID
   const role = Role.fromData({
     id: '550e8400-e29b-41d4-a716-446655440001',
-    name: 'user',
+    name: RolesEnum.GUEST,
     description: 'Regular user role',
     isDefault: true,
     isDefaultAppRole: false,
@@ -122,7 +123,7 @@ const createRoleWithPermissions = (): Role => {
 
   const role = Role.fromData({
     id: '550e8400-e29b-41d4-a716-446655440001',
-    name: 'user',
+    name: RolesEnum.GUEST,
     description: 'Regular user role',
     isDefault: true,
     permissions: [permission],
@@ -212,7 +213,7 @@ describe('RefreshTokenCommandHandler', () => {
         sub: user.id.getValue(),
         email: user.email.getValue(),
         emailVerified: false,
-        roles: ['user'],
+        roles: [RolesEnum.GUEST],
         permissions: ['user:read'],
       }),
       expect.objectContaining({
@@ -275,7 +276,7 @@ describe('RefreshTokenCommandHandler', () => {
     // Add another role to the user - mock the eligibility check
     const adminRole = Role.fromData({
       id: '550e8400-e29b-41d4-a716-446655440003',
-      name: 'admin',
+      name: RolesEnum.ADMIN,
       description: 'Administrator role',
       isDefault: false,
       isDefaultAppRole: false,
@@ -304,7 +305,7 @@ describe('RefreshTokenCommandHandler', () => {
 
     const adminRoleWithPermissions = Role.fromData({
       id: '550e8400-e29b-41d4-a716-446655440003',
-      name: 'admin',
+      name: RolesEnum.ADMIN,
       description: 'Administrator role',
       isDefault: false,
       isDefaultAppRole: false,

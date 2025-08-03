@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as readline from 'readline';
+import { RolesEnum } from '../../src/shared/constants/enums';
 
 // Default users
 const defaultUsers = [
@@ -17,7 +18,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: null,
     company: 'Default Company',
-    roles: [ 'root' ],
+    roles: [ RolesEnum.ROOT ],
     profile: {
       phone: '2211778811',
       avatarUrl: null,
@@ -47,7 +48,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: null,
     company: 'Default Company',
-    roles: [ 'root_readonly' ],
+    roles: [ RolesEnum.ROOT_READONLY ],
     profile: {
       phone: '2211778812',
       avatarUrl: null,
@@ -77,7 +78,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: null,
     company: 'Default Company',
-    roles: [ 'admin' ],
+    roles: [ RolesEnum.ADMIN ],
     profile: {
       phone: '2211778813',
       avatarUrl: null,
@@ -107,7 +108,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: null,
     company: 'Default Company',
-    roles: [ 'manager' ],
+    roles: [ RolesEnum.MANAGER ],
     profile: {
       phone: '2211778814',
       avatarUrl: null,
@@ -137,7 +138,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: '2211778890',
     company: 'Default Company',
-    roles: [ 'sales_agent' ],
+    roles: [ RolesEnum.SALES_AGENT ],
     profile: {
       phone: '2211778815',
       avatarUrl: null,
@@ -167,7 +168,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: null,
     company: 'Default Company',
-    roles: [ 'host' ],
+    roles: [ RolesEnum.HOST ],
     profile: {
       phone: '2211778817',
       avatarUrl: null,
@@ -197,7 +198,7 @@ const defaultUsers = [
     banReason: null,
     agentPhone: null,
     company: 'Default Company',
-    roles: [ 'guest' ],
+    roles: [ RolesEnum.GUEST ],
     profile: {
       phone: '2211778816',
       avatarUrl: null,

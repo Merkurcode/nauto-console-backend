@@ -8,6 +8,7 @@ import { EntityNotFoundException, ForbiddenActionException } from '@core/excepti
 import { User } from '@core/entities/user.entity';
 import { Email } from '@core/value-objects/email.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
+import { RolesEnum } from '@shared/constants/enums';
 import * as bcrypt from 'bcrypt';
 
 // Mock bcrypt
@@ -66,7 +67,7 @@ describe('AdminChangePasswordCommandHandler', () => {
       const targetUserId = 'target-user-id';
       const newPassword = 'NewP@ssw0rd123';
       const adminUserId = 'admin-user-id';
-      const adminRole = 'root';
+      const adminRole = RolesEnum.ROOT;
 
       const mockUser = {
         id: { getValue: () => targetUserId },
@@ -103,7 +104,7 @@ describe('AdminChangePasswordCommandHandler', () => {
       const targetUserId = 'target-user-id';
       const newPassword = 'NewP@ssw0rd123';
       const adminUserId = 'admin-user-id';
-      const adminRole = 'admin';
+      const adminRole = RolesEnum.ADMIN;
       const companyId = 'same-company-id';
 
       const mockUser = {
@@ -137,7 +138,7 @@ describe('AdminChangePasswordCommandHandler', () => {
         'non-existent-user',
         'NewP@ssw0rd123',
         'admin-id',
-        'root',
+        RolesEnum.ROOT,
         undefined,
       );
 
@@ -159,7 +160,7 @@ describe('AdminChangePasswordCommandHandler', () => {
         'target-user-id',
         'NewP@ssw0rd123',
         'admin-id',
-        'admin',
+        RolesEnum.ADMIN,
         'admin-company-id',
       );
 
@@ -173,7 +174,7 @@ describe('AdminChangePasswordCommandHandler', () => {
         'target-user-id',
         'NewP@ssw0rd123',
         'user-id',
-        'sales_agent',
+        RolesEnum.SALES_AGENT,
         undefined,
       );
 

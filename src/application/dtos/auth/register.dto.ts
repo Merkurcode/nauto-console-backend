@@ -14,6 +14,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
 import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
+import { RolesEnum } from '@shared/constants/enums';
 
 export class ProfileDto {
   @ApiPropertyOptional({
@@ -214,7 +215,7 @@ export class RegisterDto {
 
   @ApiPropertyOptional({
     description: 'User roles',
-    example: ['guest'],
+    example: [RolesEnum.GUEST],
     type: [String],
   })
   @IsArray()

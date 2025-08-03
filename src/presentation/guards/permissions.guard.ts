@@ -5,6 +5,7 @@ import { UserAuthorizationService } from '@core/services/user-authorization.serv
 import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { Email } from '@core/value-objects/email.vo';
+import { RolesEnum } from '@shared/constants/enums';
 
 // Interface for user authorization service compatibility
 interface IUserForAuth {
@@ -70,7 +71,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Check for root access requirement
-    const requiresRoot = this.reflector.get<boolean>('root', context.getHandler());
+    const requiresRoot = this.reflector.get<boolean>(RolesEnum.ROOT, context.getHandler());
     if (requiresRoot) {
       return this.userAuthorizationService.canAccessRootFeatures(userForAuth);
     }
