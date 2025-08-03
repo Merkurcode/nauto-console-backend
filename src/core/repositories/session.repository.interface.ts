@@ -9,6 +9,7 @@ export interface ISessionRepository {
   update(session: Session): Promise<Session>;
   delete(id: string): Promise<void>;
   deleteByUserId(userId: string): Promise<void>;
+  deleteByUserIdExcept(userId: string, excludeSessionToken: string): Promise<void>;
   deleteBySessionToken(sessionToken: string): Promise<void>;
   deleteByRefreshToken(refreshToken: string): Promise<void>;
 }

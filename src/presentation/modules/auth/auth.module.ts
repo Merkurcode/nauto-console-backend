@@ -72,6 +72,8 @@ import { CheckEmailVerificationStatusCommandHandler } from '@application/command
 import { RequestPasswordResetCommandHandler } from '@application/commands/auth/request-password-reset.command';
 import { ResetPasswordCommandHandler } from '@application/commands/auth/reset-password.command';
 import { AdminChangePasswordCommandHandler } from '@application/commands/auth/admin-change-password.command';
+import { ChangePasswordCommandHandler } from '@application/commands/auth/change-password.command';
+import { ChangeEmailCommandHandler } from '@application/commands/auth/change-email.command';
 
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -89,6 +91,8 @@ const commandHandlers = [
   RequestPasswordResetCommandHandler,
   ResetPasswordCommandHandler,
   AdminChangePasswordCommandHandler,
+  ChangePasswordCommandHandler,
+  ChangeEmailCommandHandler,
 ];
 
 @Module({

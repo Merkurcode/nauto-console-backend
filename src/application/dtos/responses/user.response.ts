@@ -20,6 +20,8 @@ export interface IUserDetailResponse extends IUserBaseResponse {
   roles: IUserRoleResponse[];
   createdAt: Date;
   updatedAt: Date;
+  tenantId?: string;
+  companyId?: string;
 }
 
 export interface IUserWithAuthResponse extends IUserBaseResponse {

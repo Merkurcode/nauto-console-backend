@@ -453,9 +453,12 @@ export class UserService {
       throw new EntityNotFoundException('User', userId);
     }
 
-    const role = await this.roleRepository.findById(roleId);
+    let role = await this.roleRepository.findById(roleId);
     if (!role) {
-      throw new EntityNotFoundException('Role', roleId);
+      role = await this.roleRepository.findByName(roleId);
+      if (!role) {
+        throw new EntityNotFoundException('Role', roleId);
+      }
     }
 
     // Get assigning user if provided

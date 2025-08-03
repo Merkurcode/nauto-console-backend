@@ -43,6 +43,8 @@ export class UserMapper {
       roles: user.roles?.map(role => this.toRoleResponse(role)) || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      tenantId: user.getTenantId(),
+      companyId: user.companyId?.getValue(),
     };
   }
 

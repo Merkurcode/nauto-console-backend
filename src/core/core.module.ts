@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DomainEventService } from './services/domain-event.service';
 import { DomainValidationService } from './services/domain-validation.service';
 import { UserAuthorizationService } from './services/user-authorization.service';
+import { UserAccessAuthorizationService } from './services/user-access-authorization.service';
 import { SessionService } from './services/session.service';
 import { UserBanService } from './services/user-ban.service';
 import { ApplicationEventService } from './services/application-event.service';
@@ -13,9 +14,10 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
-import { SESSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { SESSION_REPOSITORY, USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
 import { UserRepository } from '@infrastructure/repositories/user.repository';
+import { CompanyRepository } from '@infrastructure/repositories/company.repository';
 
 /**
  * Core Domain Module
@@ -27,6 +29,7 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
     DomainEventService,
     DomainValidationService,
     UserAuthorizationService,
+    UserAccessAuthorizationService,
     SessionService,
     UserBanService,
     ApplicationEventService,
@@ -45,11 +48,18 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
         new UserRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
     },
+    {
+      provide: COMPANY_REPOSITORY,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new CompanyRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
   ],
   exports: [
     DomainEventService,
     DomainValidationService,
     UserAuthorizationService,
+    UserAccessAuthorizationService,
     SessionService,
     UserBanService,
     ApplicationEventService,

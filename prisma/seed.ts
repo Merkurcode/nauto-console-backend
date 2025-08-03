@@ -27,36 +27,39 @@ function askQuestion(question: string): Promise<string> {
 }
 
 async function main() {
-  // Ask if user wants to reset the entire database
-  const resetDatabase = await askQuestion('¿Quieres eliminar todos los registros de la base de datos y volver a hacer seed? (s/n): ');
-  
-  if (resetDatabase === 's' || resetDatabase === 'si' || resetDatabase === 'y' || resetDatabase === 'yes') {
-    const confirmReset = await askQuestion('¿Estás seguro? Esta acción eliminará TODOS los datos (s/n): ');
+  if (process.env.NODE_ENV === 'development')
+  {
+    // Ask if user wants to reset the entire database
+    const resetDatabase = await askQuestion('¿Quieres eliminar todos los registros de la base de datos y volver a hacer seed? (s/n): ');
     
-    if (confirmReset === 's' || confirmReset === 'si' || confirmReset === 'y' || confirmReset === 'yes') {
-      console.log('Eliminando todos los registros de la base de datos...');
+    if (resetDatabase === 's' || resetDatabase === 'si' || resetDatabase === 'y' || resetDatabase === 'yes') {
+      const confirmReset = await askQuestion('¿Estás seguro? Esta acción eliminará TODOS los datos (s/n): ');
       
-      // Get all model names from Prisma client and delete in reverse order
-      const modelNames = Object.keys(prisma).filter(key => 
-        typeof (prisma as any)[key] === 'object' && 
-        (prisma as any)[key].deleteMany
-      );
-      
-      // Delete all data from all models
-      for (const modelName of modelNames.reverse()) {
-        try {
-          await (prisma as any)[modelName].deleteMany({});
-          console.log(`${modelName} data deleted.`);
-        } catch (error) {
-          console.warn(`Could not delete ${modelName}: ${error}`);
+      if (confirmReset === 's' || confirmReset === 'si' || confirmReset === 'y' || confirmReset === 'yes') {
+        console.log('Eliminando todos los registros de la base de datos...');
+        
+        // Get all model names from Prisma client and delete in reverse order
+        const modelNames = Object.keys(prisma).filter(key => 
+          typeof (prisma as any)[key] === 'object' && 
+          (prisma as any)[key].deleteMany
+        );
+        
+        // Delete all data from all models
+        for (const modelName of modelNames.reverse()) {
+          try {
+            await (prisma as any)[modelName].deleteMany({});
+            console.log(`${modelName} data deleted.`);
+          } catch (error) {
+            console.warn(`Could not delete ${modelName}: ${error}`);
+          }
         }
-      }
 
-      await prisma.role.deleteMany({});
-      
-      console.log('Todos los datos eliminados.');
-    } else {
-      console.log('Eliminación cancelada. Continuando con seed normal...');
+        await prisma.role.deleteMany({});
+        
+        console.log('Todos los datos eliminados.');
+      } else {
+        console.log('Eliminación cancelada. Continuando con seed normal...');
+      }
     }
   }
 
@@ -80,7 +83,7 @@ async function main() {
   // Create AI assistants features
   await aIAssistantsFeaturesSeeder.default(prisma);
 
-  if (process.env.NODE_ENV === 'development') 
+  if (process.env.NODE_ENV === 'development')
   {
     await devSeeder.default(prisma);
   }

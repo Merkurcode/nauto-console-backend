@@ -213,9 +213,8 @@ export class Role extends AggregateRoot {
   isAdminRole(): boolean {
     // Business rule: Admin roles are identified by admin permissions or name
     return (
-      this.permissionsCollection.hasAdminPermissions() ||
-      this._name.toLowerCase().includes('admin') ||
-      this._name.toLowerCase().includes('administrator')
+      //this.permissionsCollection.hasAdminPermissions() ||
+      this._name.toLowerCase().includes(RolesEnum.ADMIN)
     );
   }
 

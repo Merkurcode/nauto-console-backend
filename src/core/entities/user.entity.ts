@@ -409,7 +409,7 @@ export class User extends AggregateRoot {
     }
 
     if (this._roles.length <= 1) {
-      throw new UserCannotRemoveLastRoleException();
+      //throw new UserCannotRemoveLastRoleException();
     }
 
     const roleToRemove = this._roles.find(r => r.id.equals(roleId));
@@ -559,6 +559,27 @@ export class User extends AggregateRoot {
   unbanUser(): void {
     this._bannedUntil = undefined;
     this._banReason = undefined;
+    this._updatedAt = new Date();
+  }
+
+  // Profile and extended data setters
+  setSecondLastName(secondLastName?: SecondLastName): void {
+    this._secondLastName = secondLastName;
+    this._updatedAt = new Date();
+  }
+
+  setAgentPhone(agentPhone?: AgentPhone): void {
+    this._agentPhone = agentPhone;
+    this._updatedAt = new Date();
+  }
+
+  setProfile(profile?: UserProfile): void {
+    this._profile = profile;
+    this._updatedAt = new Date();
+  }
+
+  setAddress(address?: Address): void {
+    this._address = address;
     this._updatedAt = new Date();
   }
 

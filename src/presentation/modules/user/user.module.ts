@@ -4,6 +4,7 @@ import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY } from '@shared/co
 
 // Controllers
 import { UserController } from './user.controller';
+import { UsersController } from './users.controller';
 
 // Repositories
 import { UserRepository } from '@infrastructure/repositories/user.repository';
@@ -21,6 +22,7 @@ import { UserService } from '@core/services/user.service';
 // Query Handlers
 import { GetUserQueryHandler } from '@application/queries/user/get-user.query';
 import { GetUsersQueryHandler } from '@application/queries/user/get-users.query';
+import { GetUserWithAuthorizationQueryHandler } from '@application/queries/user/get-user-with-authorization.query';
 
 // Command Handlers
 import { UpdateUserCommandHandler } from '@application/commands/user/update-user.command';
@@ -29,8 +31,14 @@ import { ActivateUserCommandHandler } from '@application/commands/user/activate-
 import { AssignRoleCommandHandler } from '@application/commands/user/assign-role.command';
 import { RemoveRoleCommandHandler } from '@application/commands/user/remove-role.command';
 import { VerifyPasswordCommandHandler } from '@application/commands/user/verify-password.command';
+import { UpdateUserProfileCommandHandler } from '@application/commands/user/update-user-profile.command';
+import { DeleteUserCommandHandler } from '@application/commands/user/delete-user.command';
 
-const queryHandlers = [GetUserQueryHandler, GetUsersQueryHandler];
+const queryHandlers = [
+  GetUserQueryHandler,
+  GetUsersQueryHandler,
+  GetUserWithAuthorizationQueryHandler,
+];
 
 const commandHandlers = [
   UpdateUserCommandHandler,
@@ -39,11 +47,13 @@ const commandHandlers = [
   AssignRoleCommandHandler,
   RemoveRoleCommandHandler,
   VerifyPasswordCommandHandler,
+  UpdateUserProfileCommandHandler,
+  DeleteUserCommandHandler,
 ];
 
 @Module({
   imports: [CqrsModule, PrismaModule, CoreModule, AuthModule],
-  controllers: [UserController],
+  controllers: [UserController, UsersController],
   providers: [
     // Services
     {
