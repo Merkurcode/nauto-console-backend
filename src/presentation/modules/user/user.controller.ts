@@ -353,13 +353,13 @@ export class UserController {
   }
 
   @Post(':id/roles')
-  @Roles(RolesEnum.ROOT)
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Assign role to user (Root only)',
+    summary: 'Assign role to user (Root/Admin)',
     description:
-      'Assign a role to a specific user\n\n**Required Permissions:** user:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Assign a role to a specific user\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin\n**Restrictions:** Root readonly users cannot perform this operation. Admin users can only assign roles to users in their own company. Roles with system or audit permissions can only be assigned by root users to root users.',
   })
   @ApiParam({
     name: 'companyId',

@@ -12,6 +12,7 @@ import {
   EntityNotFoundException,
   EntityAlreadyExistsException,
   AuthenticationException,
+  BusinessRuleValidationException,
 } from '@core/exceptions/domain-exceptions';
 import { Email } from '@core/value-objects/email.vo';
 import { Password } from '@core/value-objects/password.vo';
@@ -27,6 +28,7 @@ import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@infrastructure/logger/logger.service';
+import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
 export class UserService {
@@ -469,6 +471,24 @@ export class UserService {
       assigningUser,
     );
     roleAssignmentValidation.throwIfInvalid();
+
+    // Additional validation: Admin users can only assign roles to users in their own company
+    if (assigningUser && companyId) {
+      const isAssignerAdmin = assigningUser.rolesCollection.containsByName(RolesEnum.ADMIN);
+      const isAssignerRoot = assigningUser.rolesCollection.containsByName(RolesEnum.ROOT);
+      
+      if (isAssignerAdmin && !isAssignerRoot) {
+        // Admin users can only assign roles to users in their own company
+        if (assigningUser.companyId?.getValue() !== companyId) {
+          throw new BusinessRuleValidationException('Admin users can only assign roles to users in their own company.');
+        }
+        
+        // Target user must also be in the same company
+        if (user.companyId?.getValue() !== companyId) {
+          throw new BusinessRuleValidationException('Cannot assign role to user from different company.');
+        }
+      }
+    }
 
     user.addRole(role);
 

@@ -181,6 +181,20 @@ export class DomainValidationService {
       }
     }
 
+    // Check if role has system or audit permissions - only root can assign these
+    if (assigningUser && this.hasSystemOrAuditPermissions(role)) {
+      const rootUserSpec = new RootLevelUserSpecification();
+      if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
+        result.addError('Only ROOT users can assign roles with system or audit permissions.');
+      }
+      
+      // Additionally, roles with system/audit permissions can only be assigned to root users
+      const rootLevelRoleSpec = new RootLevelRoleSpecification();
+      if (!rootLevelRoleSpec.isSatisfiedBy(role) && !user.rolesCollection.containsByName(RolesEnum.ROOT)) {
+        result.addError('Roles with system or audit permissions can only be assigned to ROOT users.');
+      }
+    }
+
     // Check role compatibility for root level roles
     const rootLevelRoleSpec = new RootLevelRoleSpecification();
     if (rootLevelRoleSpec.isSatisfiedBy(role)) {
@@ -269,6 +283,13 @@ export class DomainValidationService {
     ];
 
     return commonPatterns.some(pattern => pattern.test(password));
+  }
+
+  private hasSystemOrAuditPermissions(role: Role): boolean {
+    return role.permissions.some(permission => {
+      const resource = permission.getResource().toLowerCase();
+      return resource === 'system' || resource === 'audit';
+    });
   }
 }
 
