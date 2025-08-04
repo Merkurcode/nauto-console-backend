@@ -18,7 +18,7 @@ import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
-import { WriteOperation } from '@shared/decorators/write-operation.decorator';
+import { DenyForRootReadOnly } from '@shared/decorators/root-readonly.decorator';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 
@@ -138,8 +138,8 @@ export class AIAssistantController {
   }
 
   @Post('assign')
-  @WriteOperation('ai-assistant')
   @RequirePermissions('ai-assistant:update')
+  @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
   @ApiOperation({
     summary: 'Assign AI assistant to company with features (Root Only)',
@@ -186,8 +186,8 @@ export class AIAssistantController {
   }
 
   @Put('toggle-status')
-  @WriteOperation('ai-assistant')
   @RequirePermissions('ai-assistant:update')
+  @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
   @ApiOperation({
     summary: 'Toggle AI assistant enabled status for company (Root Only)',
@@ -229,8 +229,8 @@ export class AIAssistantController {
   }
 
   @Put('toggle-feature')
-  @WriteOperation('ai-assistant')
   @RequirePermissions('ai-assistant:update')
+  @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
   @ApiOperation({
     summary: 'Toggle AI assistant feature enabled status (Root Only)',
