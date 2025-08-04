@@ -344,6 +344,7 @@ export class UserService {
       }
 
       const isPasswordValid = await this.comparePasswords(passwordStr, user.passwordHash);
+      
       if (!isPasswordValid) {
         return null;
       }

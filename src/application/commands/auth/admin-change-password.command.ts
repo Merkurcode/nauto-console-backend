@@ -17,7 +17,7 @@ export class AdminChangePasswordCommand {
     public readonly targetUserId: string,
     public readonly newPassword: string,
     public readonly adminUserId: string,
-    public readonly adminRole: string,
+    public readonly adminRoles: string[],
     public readonly adminCompanyId?: string,
   ) {}
 }
@@ -36,7 +36,7 @@ export class AdminChangePasswordCommandHandler
   async execute(
     command: AdminChangePasswordCommand,
   ): Promise<{ success: boolean; message: string }> {
-    const { targetUserId, newPassword, adminUserId, adminRole, adminCompanyId } = command;
+    const { targetUserId, newPassword, adminUserId, adminRoles, adminCompanyId } = command;
 
     // Find the target user
     const targetUser = await this.userRepository.findById(targetUserId);
@@ -44,9 +44,9 @@ export class AdminChangePasswordCommandHandler
       throw new EntityNotFoundException('User', targetUserId);
     }
 
-    // Validate authorization based on role and target user role
+    // Validate authorization based on roles and target user role
     await this.validateAuthorization(
-      adminRole,
+      adminRoles,
       adminCompanyId,
       targetUser.companyId?.getValue(),
       targetUser,
@@ -67,7 +67,7 @@ export class AdminChangePasswordCommandHandler
   }
 
   private async validateAuthorization(
-    adminRole: string,
+    adminRoles: string[],
     adminCompanyId: string | undefined,
     targetUserCompanyId: string | undefined,
     targetUser: User,
@@ -75,51 +75,51 @@ export class AdminChangePasswordCommandHandler
     // Check target user roles for security restrictions
     const targetUserRoles = targetUser.roles.map(role => role.name.toLowerCase());
 
-    switch (adminRole) {
-      case RolesEnum.ROOT:
-        // Root can change password of any user EXCEPT other root users
-        // Root CAN change password of root_readonly users
-        if (
-          targetUserRoles.includes(RolesEnum.ROOT) &&
-          !targetUserRoles.includes(RolesEnum.ROOT_READONLY)
-        ) {
-          throw new ForbiddenActionException(
-            'Root users cannot change passwords of other root users for security reasons',
-          );
-        }
-
-        return;
-
-      case RolesEnum.ADMIN:
-        // Admin cannot change passwords of any root or root_readonly users
-        if (
-          targetUserRoles.includes(RolesEnum.ROOT) ||
-          targetUserRoles.includes(RolesEnum.ROOT_READONLY)
-        ) {
-          throw new ForbiddenActionException(
-            'Admin users cannot change passwords of root or root_readonly users',
-          );
-        }
-
-        // Admin can only change password of users in the same company
-        if (!adminCompanyId) {
-          throw new ForbiddenActionException('Admin user must belong to a company');
-        }
-
-        if (!targetUserCompanyId) {
-          throw new ForbiddenActionException('Target user must belong to a company');
-        }
-
-        if (adminCompanyId !== targetUserCompanyId) {
-          throw new ForbiddenActionException(
-            'Admin can only change passwords of users in the same company',
-          );
-        }
-
-        return;
-
-      default:
-        throw new ForbiddenActionException('Insufficient permissions to change user passwords');
+    // Check if user has ROOT role
+    if (adminRoles.includes(RolesEnum.ROOT)) {
+      // Root can change password of any user EXCEPT other root users
+      // Root CAN change password of root_readonly users
+      if (
+        targetUserRoles.includes(RolesEnum.ROOT) &&
+        !targetUserRoles.includes(RolesEnum.ROOT_READONLY)
+      ) {
+        throw new ForbiddenActionException(
+          'Root users cannot change passwords of other root users for security reasons',
+        );
+      }
+      return;
     }
+
+    // Check if user has ADMIN role
+    if (adminRoles.includes(RolesEnum.ADMIN)) {
+      // Admin cannot change passwords of any root or root_readonly users
+      if (
+        targetUserRoles.includes(RolesEnum.ROOT) ||
+        targetUserRoles.includes(RolesEnum.ROOT_READONLY)
+      ) {
+        throw new ForbiddenActionException(
+          'Admin users cannot change passwords of root or root_readonly users',
+        );
+      }
+
+      // Admin can only change password of users in the same company
+      if (!adminCompanyId) {
+        throw new ForbiddenActionException('Admin user must belong to a company');
+      }
+
+      if (!targetUserCompanyId) {
+        throw new ForbiddenActionException('Target user must belong to a company');
+      }
+
+      if (adminCompanyId !== targetUserCompanyId) {
+        throw new ForbiddenActionException(
+          'Admin can only change passwords of users in the same company',
+        );
+      }
+      return;
+    }
+
+    // If no valid role found
+    throw new ForbiddenActionException('Insufficient permissions to change user passwords');
   }
 }

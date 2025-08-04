@@ -35,13 +35,13 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
   async execute(command: ChangeEmailCommand): Promise<{
     message: string;
   }> {
-    const { 
-      currentUserId, 
-      currentUserRoles, 
-      currentUserCompanyId, 
-      newEmail, 
-      currentPassword, 
-      targetUserId, 
+    const {
+      currentUserId,
+      currentUserRoles,
+      currentUserCompanyId,
+      newEmail,
+      currentPassword,
+      targetUserId,
       currentSessionToken,
     } = command;
 
@@ -60,7 +60,7 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
     // Nobody can change a root user's email (including the root user themselves)
     if (targetUser.rolesCollection.containsByName(RolesEnum.ROOT)) {
       throw new BusinessRuleValidationException(
-        'Root users\' emails cannot be changed by any user, including themselves'
+        "Root users' emails cannot be changed by any user, including themselves",
       );
     }
 
@@ -69,22 +69,21 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
       // Only root and admin can change other users' emails
       if (!isRoot && !isAdmin) {
         throw new BusinessRuleValidationException(
-          'Only root and admin users can change other users\' emails'
+          "Only root and admin users can change other users' emails",
         );
       }
-
 
       // Admin can only change emails of users in their company
       if (isAdmin && !isRoot) {
         if (!currentUserCompanyId) {
           throw new BusinessRuleValidationException(
-            'Admin user must belong to a company to change other users\' emails'
+            "Admin user must belong to a company to change other users' emails",
           );
         }
 
         if (targetUser.companyId?.getValue() !== currentUserCompanyId) {
           throw new BusinessRuleValidationException(
-            'Admin users can only change emails of users in their own company'
+            'Admin users can only change emails of users in their own company',
           );
         }
       }
@@ -107,14 +106,18 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
     if (isSelfOperation) {
       // For self operations, revoke all other sessions except current
       await this.sessionService.revokeUserSessionsExcept(actualTargetUserId, currentSessionToken);
+
       return {
-        message: 'Email changed successfully. All other sessions have been logged out for security.',
+        message:
+          'Email changed successfully. All other sessions have been logged out for security.',
       };
     } else {
       // For admin operations, revoke all sessions of the target user
       await this.sessionService.revokeUserSessions(actualTargetUserId, 'global');
+
       return {
-        message: 'User email changed successfully. All user sessions have been logged out for security.',
+        message:
+          'User email changed successfully. All user sessions have been logged out for security.',
       };
     }
   }

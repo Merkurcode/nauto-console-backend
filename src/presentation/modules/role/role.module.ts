@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { ROLE_REPOSITORY, PERMISSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 // Controllers
 import { RoleController } from './role.controller';
@@ -17,10 +17,14 @@ import { CoreModule } from '@core/core.module';
 // Services
 import { RoleService } from '@core/services/role.service';
 import { PermissionService } from '@core/services/permission.service';
+import { PermissionExcludeService } from '@core/services/permission-exclude.service';
 
 // Query Handlers
 import { GetRolesQueryHandler } from '@application/queries/role/get-roles.query';
 import { GetRoleQueryHandler } from '@application/queries/role/get-role.query';
+import { GetAssignablePermissionsQueryHandler } from '@application/queries/permission/get-assignable-permissions.query';
+import { GetPermissionsForTargetRoleQueryHandler } from '@application/queries/permission/get-permissions-for-target-role.query';
+import { GetCurrentUserPermissionsQueryHandler } from '@application/queries/permission/get-current-user-permissions.query';
 
 // Command Handlers
 import { CreateRoleCommandHandler } from '@application/commands/role/create-role.command';
@@ -29,7 +33,13 @@ import { DeleteRoleCommandHandler } from '@application/commands/role/delete-role
 import { AssignPermissionCommandHandler } from '@application/commands/role/assign-permission.command';
 import { RemovePermissionCommandHandler } from '@application/commands/role/remove-permission.command';
 
-const queryHandlers = [GetRolesQueryHandler, GetRoleQueryHandler];
+const queryHandlers = [
+  GetRolesQueryHandler,
+  GetRoleQueryHandler,
+  GetAssignablePermissionsQueryHandler,
+  GetPermissionsForTargetRoleQueryHandler,
+  GetCurrentUserPermissionsQueryHandler,
+];
 
 const commandHandlers = [
   CreateRoleCommandHandler,
@@ -46,22 +56,23 @@ const commandHandlers = [
     // Services
     RoleService,
     PermissionService,
+    PermissionExcludeService,
 
     // Repository tokens
     {
-      provide: ROLE_REPOSITORY,
+      provide: REPOSITORY_TOKENS.ROLE_REPOSITORY,
       useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
         new RoleRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
     },
     {
-      provide: PERMISSION_REPOSITORY,
+      provide: REPOSITORY_TOKENS.PERMISSION_REPOSITORY,
       useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
         new PermissionRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
     },
     {
-      provide: USER_REPOSITORY,
+      provide: REPOSITORY_TOKENS.USER_REPOSITORY,
       useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
         new UserRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
