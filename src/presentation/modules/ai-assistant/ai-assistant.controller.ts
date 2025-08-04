@@ -53,9 +53,9 @@ export class AIAssistantController {
 
   @Get('available')
   @ApiOperation({
-    summary: 'Get all available AI assistants',
+    summary: 'Get all available AI assistants (Public)',
     description:
-      'Retrieves a list of all AI assistants available in the system with their features and descriptions',
+      'Retrieves a list of all AI assistants available in the system with their features and descriptions.\\n\\n**Required Permissions:** None (Public endpoint)\\n**Required Roles:** Any authenticated user',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -91,7 +91,7 @@ export class AIAssistantController {
   @ApiOperation({
     summary: 'Get AI assistants assigned to a company',
     description:
-      'Retrieves all AI assistants that have been assigned to a specific company, including their enabled status and feature configurations',
+      'Retrieves all AI assistants that have been assigned to a specific company, including their enabled status and feature configurations.\\n\\n**Required Permissions:** ai-assistant:read\\n**Required Roles:** Any authenticated user with ai-assistant:read permission',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -121,6 +121,15 @@ export class AIAssistantController {
       },
     ],
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions (requires ai-assistant:read permission)',
+    example: {
+      statusCode: 403,
+      message: 'Insufficient permissions - requires ai-assistant:read permission',
+      error: 'Forbidden',
+    },
+  })
   async getCompanyAssistants(
     @Param('companyId', ParseUUIDPipe) companyId: string,
     @Query() query: GetAvailableAssistantsDto,
@@ -133,9 +142,9 @@ export class AIAssistantController {
   @RequirePermissions('ai-assistant:update')
   @Roles(RolesEnum.ROOT)
   @ApiOperation({
-    summary: 'Assign AI assistant to company with features',
+    summary: 'Assign AI assistant to company with features (Root Only)',
     description:
-      'Assigns an AI assistant to a company with specific feature configurations. Only accessible by root users.',
+      'Assigns an AI assistant to a company with specific feature configurations. Creates a new assignment and configures individual features.\\n\\n**Required Permissions:** ai-assistant:update\\n**Required Roles:** root\\n**Access Level:** Root users only\\n**Write Operation:** Yes (blocked for root_readonly)',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -156,10 +165,10 @@ export class AIAssistantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Insufficient permissions',
+    description: 'Insufficient permissions (requires ai-assistant:update permission and root role)',
     example: {
       statusCode: 403,
-      message: 'Insufficient permissions',
+      message: 'Insufficient permissions - requires ai-assistant:update permission and root role',
       error: 'Forbidden',
     },
   })
@@ -181,9 +190,9 @@ export class AIAssistantController {
   @RequirePermissions('ai-assistant:update')
   @Roles(RolesEnum.ROOT)
   @ApiOperation({
-    summary: 'Toggle AI assistant enabled status for company',
+    summary: 'Toggle AI assistant enabled status for company (Root Only)',
     description:
-      'Enables or disables an AI assistant for a specific company. Only accessible by root users.',
+      'Enables or disables an AI assistant for a specific company. This controls whether the assistant is available for use by the company.\\n\\n**Required Permissions:** ai-assistant:update\\n**Required Roles:** root\\n**Access Level:** Root users only\\n**Write Operation:** Yes (blocked for root_readonly)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -202,6 +211,15 @@ export class AIAssistantController {
       error: 'Not Found',
     },
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions (requires ai-assistant:update permission and root role)',
+    example: {
+      statusCode: 403,
+      message: 'Insufficient permissions - requires ai-assistant:update permission and root role',
+      error: 'Forbidden',
+    },
+  })
   async toggleAssistantStatus(@Body() dto: ToggleAssistantStatusDto) {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
@@ -215,9 +233,9 @@ export class AIAssistantController {
   @RequirePermissions('ai-assistant:update')
   @Roles(RolesEnum.ROOT)
   @ApiOperation({
-    summary: 'Toggle AI assistant feature enabled status',
+    summary: 'Toggle AI assistant feature enabled status (Root Only)',
     description:
-      'Enables or disables a specific feature for an AI assistant assignment. Only accessible by root users.',
+      'Enables or disables a specific feature for an AI assistant assignment. This allows granular control over which capabilities are available for each company-assistant combination.\\n\\n**Required Permissions:** ai-assistant:update\\n**Required Roles:** root\\n**Access Level:** Root users only\\n**Write Operation:** Yes (blocked for root_readonly)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -235,6 +253,15 @@ export class AIAssistantController {
       statusCode: 404,
       message: 'AI assistant assignment or feature not found',
       error: 'Not Found',
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions (requires ai-assistant:update permission and root role)',
+    example: {
+      statusCode: 403,
+      message: 'Insufficient permissions - requires ai-assistant:update permission and root role',
+      error: 'Forbidden',
     },
   })
   async toggleFeatureStatus(@Body() dto: ToggleFeatureStatusDto) {
