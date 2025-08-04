@@ -148,9 +148,7 @@ export class PermissionExcludeService {
    * @param targetRoleName - The role to check permissions for
    * @returns Array of permissions that the target role can receive
    */
-  async getPermissionsForTargetRole(
-    targetRoleName: string,
-  ): Promise<
+  async getPermissionsForTargetRole(targetRoleName: string): Promise<
     Array<{
       id: string;
       name: string;
@@ -174,10 +172,10 @@ export class PermissionExcludeService {
 
     for (const permission of permissions) {
       const excludeRoles = this.parseExcludeRoles(permission.excludeRoles);
-      
+
       // Check if the target role can receive this permission
       const targetCanReceive = !(await this.isRoleExcluded(targetRoleName, excludeRoles));
-      
+
       let excludeReason: string | undefined;
       if (!targetCanReceive) {
         excludeReason = await this.getExcludeReason(targetRoleName, excludeRoles);
@@ -218,8 +216,8 @@ export class PermissionExcludeService {
     }>
   > {
     // Convert to array for uniform processing
-    const roleNames = Array.isArray(currentUserRoleNames) 
-      ? currentUserRoleNames 
+    const roleNames = Array.isArray(currentUserRoleNames)
+      ? currentUserRoleNames
       : [currentUserRoleNames];
 
     // Get all permissions
@@ -229,10 +227,10 @@ export class PermissionExcludeService {
 
     for (const permission of permissions) {
       const excludeRoles = this.parseExcludeRoles(permission.excludeRoles);
-      
+
       // Check if ANY of the user's roles can assign this permission
       let canCurrentUserAssign = false;
-      let excludeReasons: string[] = [];
+      const excludeReasons: string[] = [];
 
       for (const roleName of roleNames) {
         const roleCanAssign = !(await this.isRoleExcluded(roleName, excludeRoles));
@@ -251,9 +249,10 @@ export class PermissionExcludeService {
       let finalCanAssign = canCurrentUserAssign;
 
       if (!canCurrentUserAssign) {
-        excludeReason = excludeReasons.length > 0 
-          ? excludeReasons.join('; ') 
-          : 'All roles are excluded from this permission';
+        excludeReason =
+          excludeReasons.length > 0
+            ? excludeReasons.join('; ')
+            : 'All roles are excluded from this permission';
         finalCanAssign = false;
       }
 
@@ -296,16 +295,20 @@ export class PermissionExcludeService {
     }
 
     if (excludeRoles.includes(PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT)) {
-      const exceptRoles = excludeRoles.filter(role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT);
+      const exceptRoles = excludeRoles.filter(
+        role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT,
+      );
       if (!exceptRoles.includes(roleName)) {
         return `All roles except [${exceptRoles.join(', ')}] are excluded from this permission`;
       }
     }
 
     if (excludeRoles.includes(PERMISSION_EXCLUDE_SYMBOLS.ALLOW_CUSTOM_AND_LISTED)) {
-      const allowedRoles = excludeRoles.filter(role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALLOW_CUSTOM_AND_LISTED);
+      const allowedRoles = excludeRoles.filter(
+        role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALLOW_CUSTOM_AND_LISTED,
+      );
       const role = await this.roleRepository.findByName(roleName);
-      
+
       if (role && role.isDefaultAppRole && !allowedRoles.includes(roleName)) {
         return `Only custom roles and [${allowedRoles.join(', ')}] are allowed for this permission`;
       }
@@ -363,20 +366,25 @@ export class PermissionExcludeService {
 
     // Check if using "all except" pattern
     if (excludeRoles.includes(PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT)) {
-      const exceptRoles = excludeRoles.filter(role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT);
+      const exceptRoles = excludeRoles.filter(
+        role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT,
+      );
+
       return !exceptRoles.includes(roleName); // Exclude if NOT in the exception list
     }
 
     // Check if using "allow custom roles plus listed" pattern
     if (excludeRoles.includes(PERMISSION_EXCLUDE_SYMBOLS.ALLOW_CUSTOM_AND_LISTED)) {
-      const allowedRoles = excludeRoles.filter(role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALLOW_CUSTOM_AND_LISTED);
+      const allowedRoles = excludeRoles.filter(
+        role => role !== PERMISSION_EXCLUDE_SYMBOLS.ALLOW_CUSTOM_AND_LISTED,
+      );
       const role = await this.roleRepository.findByName(roleName);
-      
+
       // Allow if it's a custom role OR if it's in the allowed list
       if (role && !role.isDefaultAppRole) {
         return false; // Custom role is allowed
       }
-      
+
       return !allowedRoles.includes(roleName); // Exclude if NOT in the allowed list
     }
 

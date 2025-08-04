@@ -1,11 +1,12 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Inject } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  constructor(private readonly logger: LoggerService) {
+  constructor(@Inject(LOGGER_SERVICE) private readonly logger: ILogger) {
     this.logger.setContext(LoggingInterceptor.name);
   }
 

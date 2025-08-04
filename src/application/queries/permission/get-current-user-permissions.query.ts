@@ -50,6 +50,7 @@ export class GetCurrentUserPermissionsQueryHandler
       if (a.resource !== b.resource) {
         return a.resource.localeCompare(b.resource);
       }
+
       return a.action.localeCompare(b.action);
     });
   }

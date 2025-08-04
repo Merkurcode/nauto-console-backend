@@ -7,11 +7,11 @@ import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { UserBanService } from '@core/services/user-ban.service';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
-import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
+import { ITokenProvider } from '@core/interfaces/token-provider.interface';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { I18nService } from 'nestjs-i18n';
-import { ROLE_REPOSITORY } from '@shared/constants/tokens';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ROLE_REPOSITORY, TOKEN_PROVIDER, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { v4 as uuidv4 } from 'uuid';
 
 export class LoginCommand implements ICommand {
@@ -30,11 +30,12 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly userBanService: UserBanService,
-    private readonly tokenProvider: TokenProvider,
+    @Inject(TOKEN_PROVIDER)
+    private readonly tokenProvider: ITokenProvider,
     private readonly i18n: I18nService,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
-    @Inject(LoggerService) private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     this.logger.setContext(LoginCommandHandler.name);
   }

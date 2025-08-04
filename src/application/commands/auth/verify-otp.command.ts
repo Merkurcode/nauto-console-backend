@@ -7,10 +7,10 @@ import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
-import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
+import { ITokenProvider } from '@core/interfaces/token-provider.interface';
+import { USER_REPOSITORY, ROLE_REPOSITORY, TOKEN_PROVIDER } from '@shared/constants/tokens';
 import { I18nService } from 'nestjs-i18n';
 import { v4 as uuidv4 } from 'uuid';
-import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
 
 export class VerifyOtpCommand implements ICommand {
   constructor(
@@ -29,7 +29,8 @@ export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand
     private readonly roleRepository: IRoleRepository,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
-    private readonly tokenProvider: TokenProvider,
+    @Inject(TOKEN_PROVIDER)
+    private readonly tokenProvider: ITokenProvider,
     private readonly i18n: I18nService,
   ) {}
 

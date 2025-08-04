@@ -478,8 +478,8 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   }
 
   private mapToModel(record: UserWithRelations): User {
-      // Map roles first
-      const roles = record.roles.map(roleRelation => {
+    // Map roles first
+    const roles = record.roles.map(roleRelation => {
       const roleRecord = roleRelation.role;
 
       // Map permissions
@@ -554,7 +554,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       updatedAt: record.updatedAt,
       companyId: record.companyId || undefined,
     });
-    
+
     return user;
   }
 }

@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import * as bcrypt from 'bcrypt';
 import { Injectable, Inject } from '@nestjs/common';
-import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
+import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { User } from '../entities/user.entity';
 import { IUserRepository } from '../repositories/user.repository.interface';
 import { IRoleRepository } from '../repositories/role.repository.interface';
@@ -27,7 +27,7 @@ import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
@@ -43,7 +43,8 @@ export class UserService {
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
   ) {
     this.logger.setContext(UserService.name);
   }

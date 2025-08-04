@@ -3,15 +3,15 @@ import { Session } from '@core/entities/session.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { ISessionRepository } from '@core/repositories/session.repository.interface';
 import { InvalidSessionException } from '@core/exceptions/domain-exceptions';
-import { SESSION_REPOSITORY } from '@shared/constants/tokens';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { SESSION_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class SessionService {
   constructor(
     @Inject(SESSION_REPOSITORY)
     private readonly sessionRepository: ISessionRepository,
-    @Inject(LoggerService) private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     this.logger.setContext(SessionService.name);
   }

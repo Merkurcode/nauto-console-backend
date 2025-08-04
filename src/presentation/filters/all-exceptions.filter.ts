@@ -7,7 +7,8 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 interface IHttpExceptionResponse {
   message: string | string[];
@@ -17,7 +18,7 @@ interface IHttpExceptionResponse {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  constructor(@Inject(LoggerService) private readonly logger: LoggerService) {
+  constructor(@Inject(LOGGER_SERVICE) private readonly logger: ILogger) {
     this.logger.setContext(AllExceptionsFilter.name);
   }
 

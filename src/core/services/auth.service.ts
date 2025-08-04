@@ -9,6 +9,7 @@ import {
   EMAIL_VERIFICATION_REPOSITORY,
   PASSWORD_RESET_REPOSITORY,
   PASSWORD_RESET_ATTEMPT_REPOSITORY,
+  LOGGER_SERVICE,
 } from '@shared/constants/tokens';
 import { User } from '../entities/user.entity';
 import { Otp } from '../entities/otp.entity';
@@ -33,7 +34,7 @@ import { Email } from '@core/value-objects/email.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { Token } from '@core/value-objects/token.vo';
 import { VerificationCode } from '@core/value-objects/verification-code.vo';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { EmailService } from './email.service';
 import { SessionService } from './session.service';
 
@@ -53,7 +54,7 @@ export class AuthService {
     @Inject(PASSWORD_RESET_ATTEMPT_REPOSITORY)
     private readonly passwordResetAttemptRepository: IPasswordResetAttemptRepository,
     private readonly configService: ConfigService,
-    @Inject(LoggerService) private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
     private readonly emailService: EmailService,
     private readonly sessionService: SessionService,
   ) {

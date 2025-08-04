@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { ConfigService } from '@nestjs/config';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 // Mocks
 import {

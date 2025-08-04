@@ -9,10 +9,12 @@ import {
   Param,
   Request,
   UseGuards,
+  Inject,
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
@@ -70,7 +72,8 @@ import { IJwtPayload } from '@application/dtos/responses/user.response';
 export class AuthController {
   constructor(
     private readonly commandBus: CommandBus,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
     private readonly transactionService: TransactionService,
     private readonly transactionContext: TransactionContextService,
   ) {

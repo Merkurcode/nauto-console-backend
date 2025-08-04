@@ -4,7 +4,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 // JWT-specific token (defined locally to avoid circular dependencies)
 const JWT_USER_REPOSITORY = 'JWT_USER_REPOSITORY';
@@ -15,7 +16,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     @Inject(JWT_USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
   ) {
     logger.setContext(JwtStrategy.name);
     super({

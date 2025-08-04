@@ -5,7 +5,7 @@ import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { UserBanService } from '@core/services/user-ban.service';
-import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
+import { ITokenProvider } from '@core/interfaces/token-provider.interface';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { User } from '@core/entities/user.entity';
@@ -15,8 +15,8 @@ import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
 import { I18nService } from 'nestjs-i18n';
-import { LoggerService } from '@infrastructure/logger/logger.service';
-import { ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { ROLE_REPOSITORY, TOKEN_PROVIDER, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { RolesEnum } from '@shared/constants/enums';
 
 // Mock dependencies
@@ -122,7 +122,7 @@ describe('LoginCommandHandler', () => {
   let handler: LoginCommandHandler;
   let userService: UserService;
   let authService: AuthService;
-  let tokenProvider: TokenProvider;
+  let tokenProvider: ITokenProvider;
   let roleRepository: IRoleRepository;
 
   beforeEach(async () => {
@@ -136,17 +136,17 @@ describe('LoginCommandHandler', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: SessionService, useValue: mockSessionService },
         { provide: UserBanService, useValue: mockUserBanService },
-        { provide: TokenProvider, useValue: mockTokenProvider },
+        { provide: TOKEN_PROVIDER, useValue: mockTokenProvider },
         { provide: ROLE_REPOSITORY, useValue: mockRoleRepository },
         { provide: I18nService, useValue: mockI18nService },
-        { provide: LoggerService, useValue: mockLoggerService },
+        { provide: LOGGER_SERVICE, useValue: mockLoggerService },
       ],
     }).compile();
 
     handler = module.get<LoginCommandHandler>(LoginCommandHandler);
     userService = module.get<UserService>(UserService);
     authService = module.get<AuthService>(AuthService);
-    tokenProvider = module.get<TokenProvider>(TokenProvider);
+    tokenProvider = module.get<ITokenProvider>(TOKEN_PROVIDER);
     roleRepository = module.get<IRoleRepository>(ROLE_REPOSITORY);
 
     // Mock UserMapper if needed

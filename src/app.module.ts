@@ -18,6 +18,7 @@ import { HealthModule } from '@presentation/modules/health/health.module';
 import { CompanyModule } from '@presentation/modules/company/company.module';
 import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assistant.module';
 import { CoreModule } from '@core/core.module';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 // Global providers
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';
@@ -29,7 +30,8 @@ import { UserBanGuard } from '@presentation/guards/user-ban.guard';
 import { SessionGuard } from '@presentation/guards/session.guard';
 import { UserBanService } from '@core/services/user-ban.service';
 import { SessionService } from '@core/services/session.service';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 // Config
 import configuration from '@infrastructure/config/configuration';
@@ -73,8 +75,9 @@ import configuration from '@infrastructure/config/configuration';
     // Feature Modules (AuthModule FIRST for strategy registration)
     AuthModule,
 
-    // Core Domain
+    // Core Domain and Infrastructure
     CoreModule,
+    InfrastructureModule,
 
     // Other Feature Modules
     UserModule,
@@ -115,19 +118,19 @@ import configuration from '@infrastructure/config/configuration';
     },
     {
       provide: APP_GUARD,
-      useFactory: (userBanService: UserBanService, reflector: Reflector, logger: LoggerService) =>
+      useFactory: (userBanService: UserBanService, reflector: Reflector, logger: ILogger) =>
         new UserBanGuard(userBanService, reflector, logger),
-      inject: [UserBanService, Reflector, LoggerService],
+      inject: [UserBanService, Reflector, LOGGER_SERVICE],
     },
     {
       provide: APP_GUARD,
       useFactory: (
         sessionService: SessionService,
         reflector: Reflector,
-        logger: LoggerService,
+        logger: ILogger,
         jwtService: JwtService,
       ) => new SessionGuard(sessionService, reflector, logger, jwtService),
-      inject: [SessionService, Reflector, LoggerService, JwtService],
+      inject: [SessionService, Reflector, LOGGER_SERVICE, JwtService],
     },
   ],
 })

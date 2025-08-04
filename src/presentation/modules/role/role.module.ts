@@ -1,18 +1,12 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+// Repository tokens are provided by InfrastructureModule
 
 // Controllers
 import { RoleController } from './role.controller';
 
-// Repositories
-import { RoleRepository } from '@infrastructure/repositories/role.repository';
-import { PermissionRepository } from '@infrastructure/repositories/permission.repository';
-import { UserRepository } from '@infrastructure/repositories/user.repository';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
-import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CoreModule } from '@core/core.module';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 // Services
 import { RoleService } from '@core/services/role.service';
@@ -50,10 +44,10 @@ const commandHandlers = [
 ];
 
 @Module({
-  imports: [CqrsModule, PrismaModule, CoreModule],
+  imports: [CqrsModule, CoreModule, InfrastructureModule],
   controllers: [RoleController],
   providers: [
-    // Services
+    // Services (from CoreModule)
     RoleService,
     PermissionService,
     PermissionExcludeService,

@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { USER_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { SmsTemplates } from '@shared/services/sms/sms-templates';
 
 export interface ISmsOptions {
@@ -15,7 +15,8 @@ export interface ISmsOptions {
 export class SmsService {
   constructor(
     private readonly configService: ConfigService,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
   ) {

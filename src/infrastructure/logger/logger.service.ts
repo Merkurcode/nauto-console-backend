@@ -6,9 +6,10 @@ import {
   Scope,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable({ scope: Scope.TRANSIENT })
-export class LoggerService implements NestLoggerService {
+export class LoggerService implements NestLoggerService, ILogger {
   private context?: string;
   private static logLevels: LogLevel[] = ['error', 'warn', 'log', 'debug', 'verbose'];
 
@@ -17,7 +18,7 @@ export class LoggerService implements NestLoggerService {
     LoggerService.logLevels = this.getLogLevels(env);
   }
 
-  setContext(context: string): this {
+  setContext(context: string): ILogger {
     this.context = context;
 
     return this;
