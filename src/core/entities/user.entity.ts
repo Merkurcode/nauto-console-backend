@@ -168,8 +168,10 @@ export class User extends AggregateRoot {
     bannedUntil?: Date;
     banReason?: string;
     agentPhone?: string;
+    agentPhoneCountryCode?: string;
     profile?: {
       phone?: string;
+      phoneCountryCode?: string;
       avatarUrl?: string;
       bio?: string;
       birthDate?: string;
@@ -208,10 +210,13 @@ export class User extends AggregateRoot {
     user._lastLoginAt = data.lastLoginAt;
     user._bannedUntil = data.bannedUntil;
     user._banReason = data.banReason;
-    user._agentPhone = data.agentPhone ? new AgentPhone(data.agentPhone) : undefined;
+    user._agentPhone = data.agentPhone
+      ? new AgentPhone(data.agentPhone, data.agentPhoneCountryCode)
+      : undefined;
     user._profile = data.profile
       ? new UserProfile(
           data.profile.phone,
+          data.profile.phoneCountryCode,
           data.profile.avatarUrl,
           data.profile.bio,
           data.profile.birthDate,

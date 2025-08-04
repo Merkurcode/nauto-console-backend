@@ -155,8 +155,10 @@ export class UserService {
       bannedUntil?: Date;
       banReason?: string;
       agentPhone?: string;
+      agentPhoneCountryCode?: string;
       profile?: {
         phone?: string;
+        phoneCountryCode?: string;
         avatarUrl?: string;
         bio?: string;
         birthDate?: string;
@@ -200,10 +202,11 @@ export class UserService {
     const secondLastNameVO = options?.secondLastName
       ? new SecondLastName(options.secondLastName)
       : undefined;
-    const agentPhoneVO = options?.agentPhone ? new AgentPhone(options.agentPhone) : undefined;
+    const agentPhoneVO = options?.agentPhone ? new AgentPhone(options.agentPhone, options.agentPhoneCountryCode) : undefined;
     const profileVO = options?.profile
       ? new UserProfile(
           options.profile.phone,
+          options.profile.phoneCountryCode,
           options.profile.avatarUrl,
           options.profile.bio,
           options.profile.birthDate,

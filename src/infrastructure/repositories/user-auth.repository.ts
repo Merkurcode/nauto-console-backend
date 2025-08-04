@@ -86,7 +86,7 @@ export class UserAuthRepository implements IUserRepository {
     throw new Error('Not implemented in UserAuthRepository');
   }
 
-  async getUserCountryPhoneCode(_userId: string): Promise<string | null> {
+  async getUserPhoneCountryCode(_userId: string): Promise<string | null> {
     throw new Error('Not implemented in UserAuthRepository');
   }
 

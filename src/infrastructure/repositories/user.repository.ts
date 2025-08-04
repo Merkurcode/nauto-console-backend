@@ -227,25 +227,21 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     });
   }
 
-  async getUserCountryPhoneCode(userId: string): Promise<string | null> {
-    return this.executeWithErrorHandling('getUserCountryPhoneCode', async () => {
-      const userWithAddress = await this.client.user.findUnique({
+  async getUserPhoneCountryCode(userId: string): Promise<string | null> {
+    return this.executeWithErrorHandling('getUserPhoneCountryCode', async () => {
+      const userWithProfile = await this.client.user.findUnique({
         where: { id: userId },
         include: {
-          address: {
-            include: {
-              country: true,
-            },
-          },
+          profile: true,
         },
       });
 
-      if (!userWithAddress?.address?.country) {
+      if (!userWithProfile?.profile?.phoneCountryCode) {
         return null;
       }
 
-      // Return phone code without the + sign for SMS API
-      return userWithAddress.address.country.phoneCode.replace('+', '');
+      // Return phone country code directly (without + sign for SMS API)
+      return userWithProfile.profile.phoneCountryCode.replace('+', '');
     });
   }
 
@@ -267,6 +263,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           bannedUntil: user.bannedUntil,
           banReason: user.banReason,
           agentPhone: user.agentPhone?.getValue(),
+          agentPhoneCountryCode: user.agentPhone?.getCountryCode(),
           companyId: user.companyId?.getValue(),
           roles: {
             create: user.roles.map(role => ({
@@ -347,6 +344,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           bannedUntil: user.bannedUntil || null,
           banReason: user.banReason || null,
           agentPhone: user.agentPhone?.getValue() || null,
+          agentPhoneCountryCode: user.agentPhone?.getCountryCode() || null,
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -380,6 +378,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           where: { userId: user.id.getValue() },
           update: {
             phone: user.profile.phone || null,
+            phoneCountryCode: user.profile.phoneCountryCode || null,
             avatarUrl: user.profile.avatarUrl || null,
             bio: user.profile.bio || null,
             birthdate: user.profile.birthDate || null,
@@ -387,6 +386,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           create: {
             userId: user.id.getValue(),
             phone: user.profile.phone || null,
+            phoneCountryCode: user.profile.phoneCountryCode || null,
             avatarUrl: user.profile.avatarUrl || null,
             bio: user.profile.bio || null,
             birthdate: user.profile.birthDate || null,
@@ -531,9 +531,11 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       bannedUntil: record.bannedUntil || undefined,
       banReason: record.banReason || undefined,
       agentPhone: record.agentPhone || undefined,
+      agentPhoneCountryCode: record.agentPhoneCountryCode || undefined,
       profile: record.profile
         ? {
             phone: record.profile.phone || undefined,
+            phoneCountryCode: record.profile.phoneCountryCode || undefined,
             avatarUrl: record.profile.avatarUrl || undefined,
             bio: record.profile.bio || undefined,
             birthDate: record.profile.birthdate || undefined,

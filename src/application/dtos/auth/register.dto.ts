@@ -14,6 +14,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
 import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
+import {
+  PhoneRequiresCountryCode,
+  PhoneCountryCodeRequiresPhone,
+  CountryRequiresState,
+} from '@shared/validators/register-conditional.validator';
 import { RolesEnum } from '@shared/constants/enums';
 
 export class ProfileDto {
@@ -24,6 +29,15 @@ export class ProfileDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @ApiPropertyOptional({
+    description: 'Country code for phone number (e.g., 52 for Mexico)',
+    example: '52',
+    default: '52',
+  })
+  @IsString()
+  @IsOptional()
+  phoneCountryCode?: string;
 
   @ApiPropertyOptional({
     description: 'User avatar URL',
@@ -52,7 +66,7 @@ export class ProfileDto {
 
 export class AddressDto {
   @ApiPropertyOptional({
-    description: 'Country name',
+    description: 'Country name (requires state when provided)',
     example: 'México',
   })
   @IsString()
@@ -61,7 +75,7 @@ export class AddressDto {
   country?: string;
 
   @ApiPropertyOptional({
-    description: 'State name',
+    description: 'State name (required when country is provided)',
     example: 'Puebla',
   })
   @IsString()
@@ -206,12 +220,21 @@ export class RegisterDto {
   agentPhone?: string;
 
   @ApiPropertyOptional({
+    description: 'Country code for agent phone number (e.g., 52 for Mexico)',
+    example: '52',
+    default: '52',
+  })
+  @IsString()
+  @IsOptional()
+  agentPhoneCountryCode?: string;
+
+  @ApiProperty({
     description: 'Company name',
     example: 'Default Company',
   })
   @IsString()
-  @IsOptional()
-  company?: string;
+  @IsNotEmpty()
+  company!: string;
 
   @ApiPropertyOptional({
     description: 'User roles',
@@ -230,6 +253,8 @@ export class RegisterDto {
   @ValidateNested()
   @Type(() => ProfileDto)
   @IsOptional()
+  @PhoneRequiresCountryCode()
+  @PhoneCountryCodeRequiresPhone()
   profile?: ProfileDto;
 
   @ApiPropertyOptional({
@@ -239,5 +264,6 @@ export class RegisterDto {
   @ValidateNested()
   @Type(() => AddressDto)
   @IsOptional()
+  @CountryRequiresState()
   address?: AddressDto;
 }

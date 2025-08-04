@@ -2,13 +2,15 @@ import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions'
 
 export class AgentPhone {
   private readonly _value: string;
+  private readonly _countryCode: string;
 
-  constructor(value: string) {
-    this.validate(value);
+  constructor(value: string, countryCode?: string) {
+    this.validate(value, countryCode);
     this._value = value.trim();
+    this._countryCode = countryCode?.trim() || '52';
   }
 
-  private validate(value: string): void {
+  private validate(value: string, countryCode?: string): void {
     if (!value || value.trim().length === 0) {
       throw new InvalidValueObjectException('Agent phone cannot be empty');
     }
@@ -26,14 +28,26 @@ export class AgentPhone {
     if (!phoneRegex.test(value)) {
       throw new InvalidValueObjectException('Agent phone contains invalid characters');
     }
+
+    if (countryCode && countryCode.trim().length === 0) {
+      throw new InvalidValueObjectException('Country code cannot be empty when provided');
+    }
+
+    if (countryCode && (countryCode.length < 1 || countryCode.length > 5)) {
+      throw new InvalidValueObjectException('Country code must be between 1 and 5 characters');
+    }
   }
 
   getValue(): string {
     return this._value;
   }
 
+  getCountryCode(): string {
+    return this._countryCode;
+  }
+
   equals(other: AgentPhone): boolean {
-    return this._value === other._value;
+    return this._value === other._value && this._countryCode === other._countryCode;
   }
 
   toString(): string {

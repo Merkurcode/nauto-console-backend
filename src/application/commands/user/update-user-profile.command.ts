@@ -112,7 +112,9 @@ export class UpdateUserProfileCommandHandler
 
     // Update agent phone
     if (updateData.agentPhone !== undefined) {
-      const agentPhone = updateData.agentPhone ? new AgentPhone(updateData.agentPhone) : undefined;
+      const agentPhone = updateData.agentPhone
+        ? new AgentPhone(updateData.agentPhone, updateData.agentPhoneCountryCode)
+        : undefined;
       targetUser.setAgentPhone(agentPhone);
       hasChanges = true;
     }
@@ -124,6 +126,9 @@ export class UpdateUserProfileCommandHandler
       // Build new profile with provided values or keep existing ones
       const newProfile = new UserProfile(
         updateData.profile.phone !== undefined ? updateData.profile.phone : currentProfile?.phone,
+        updateData.profile.phoneCountryCode !== undefined
+          ? updateData.profile.phoneCountryCode
+          : currentProfile?.phoneCountryCode,
         updateData.profile.avatarUrl !== undefined
           ? updateData.profile.avatarUrl
           : currentProfile?.avatarUrl,

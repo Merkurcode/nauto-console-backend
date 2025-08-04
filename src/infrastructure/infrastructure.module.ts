@@ -43,7 +43,6 @@ import {
   AI_ASSISTANT_REPOSITORY,
   COMPANY_AI_ASSISTANT_REPOSITORY,
   DATABASE_HEALTH,
-  LOGGER_SERVICE,
   TOKEN_PROVIDER,
 } from '@shared/constants/tokens';
 
@@ -54,8 +53,8 @@ import {
  */
 @Module({
   imports: [
-    LoggerModule, 
-    ConfigModule, 
+    LoggerModule,
+    ConfigModule,
     PrismaModule,
     forwardRef(() => CoreModule),
     JwtModule.registerAsync({

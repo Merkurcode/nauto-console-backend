@@ -28,6 +28,8 @@ import { ToggleAssistantStatusDto } from '@application/dtos/ai-assistant/toggle-
 import { ToggleFeatureStatusDto } from '@application/dtos/ai-assistant/toggle-feature-status.dto';
 
 import {
+  AIAssistantResponse,
+  CompanyAIAssistantResponse,
   IAIAssistantResponse,
   ICompanyAIAssistantResponse,
 } from '@application/dtos/responses/ai-assistant.response';
@@ -50,10 +52,33 @@ export class AIAssistantController {
   ) {}
 
   @Get('available')
-  @ApiOperation({ summary: 'Get all available AI assistants' })
+  @ApiOperation({
+    summary: 'Get all available AI assistants',
+    description:
+      'Retrieves a list of all AI assistants available in the system with their features and descriptions',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Available AI assistants retrieved successfully',
+    type: [AIAssistantResponse],
+    example: [
+      {
+        id: 'b2c3d4e5-f6g7-8901-bcde-f23456789012',
+        name: 'Lily',
+        area: 'Marketing & Branding',
+        description:
+          'AI assistant specialized in marketing strategies, brand management, and customer engagement tactics',
+        available: true,
+        features: [
+          {
+            id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+            keyName: 'BRAND_EXPERT',
+            title: 'Brand Expert',
+            description: 'Provides expert knowledge about brand guidelines',
+          },
+        ],
+      },
+    ],
   })
   async getAvailableAssistants(
     @Query() query: GetAvailableAssistantsDto,
@@ -63,10 +88,38 @@ export class AIAssistantController {
 
   @Get('company/:companyId')
   @RequirePermissions('ai-assistant:read')
-  @ApiOperation({ summary: 'Get AI assistants assigned to a company' })
+  @ApiOperation({
+    summary: 'Get AI assistants assigned to a company',
+    description:
+      'Retrieves all AI assistants that have been assigned to a specific company, including their enabled status and feature configurations',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company AI assistants retrieved successfully',
+    type: [CompanyAIAssistantResponse],
+    example: [
+      {
+        id: 'c3d4e5f6-g7h8-9012-cdef-g34567890123',
+        assistantId: 'b2c3d4e5-f6g7-8901-bcde-f23456789012',
+        enabled: true,
+        assistant: {
+          id: 'b2c3d4e5-f6g7-8901-bcde-f23456789012',
+          name: 'Lily',
+          area: 'Marketing & Branding',
+          description: 'AI assistant specialized in marketing strategies',
+          enabled: true,
+          features: [
+            {
+              id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+              keyName: 'BRAND_EXPERT',
+              title: 'Brand Expert',
+              description: 'Provides expert knowledge about brand guidelines',
+              enabled: true,
+            },
+          ],
+        },
+      },
+    ],
   })
   async getCompanyAssistants(
     @Param('companyId', ParseUUIDPipe) companyId: string,
@@ -79,8 +132,37 @@ export class AIAssistantController {
   @WriteOperation('ai-assistant')
   @RequirePermissions('ai-assistant:update')
   @Roles(RolesEnum.ROOT)
-  @ApiOperation({ summary: 'Assign AI assistant to company with features' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'AI assistant assigned successfully' })
+  @ApiOperation({
+    summary: 'Assign AI assistant to company with features',
+    description:
+      'Assigns an AI assistant to a company with specific feature configurations. Only accessible by root users.',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'AI assistant assigned successfully',
+    example: {
+      message: 'AI assistant successfully assigned to company',
+      assignmentId: 'c3d4e5f6-g7h8-9012-cdef-g34567890123',
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+    example: {
+      statusCode: 400,
+      message: ['companyId must be a UUID', 'aiAssistantId must be a UUID'],
+      error: 'Bad Request',
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions',
+    example: {
+      statusCode: 403,
+      message: 'Insufficient permissions',
+      error: 'Forbidden',
+    },
+  })
   async assignAssistantToCompany(@Body() dto: AssignAssistantToCompanyDto) {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
@@ -98,8 +180,28 @@ export class AIAssistantController {
   @WriteOperation('ai-assistant')
   @RequirePermissions('ai-assistant:update')
   @Roles(RolesEnum.ROOT)
-  @ApiOperation({ summary: 'Toggle AI assistant enabled status for company' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'AI assistant status updated successfully' })
+  @ApiOperation({
+    summary: 'Toggle AI assistant enabled status for company',
+    description:
+      'Enables or disables an AI assistant for a specific company. Only accessible by root users.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'AI assistant status updated successfully',
+    example: {
+      message: 'AI assistant status updated successfully',
+      enabled: false,
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Assignment not found',
+    example: {
+      statusCode: 404,
+      message: 'AI assistant assignment not found for this company',
+      error: 'Not Found',
+    },
+  })
   async toggleAssistantStatus(@Body() dto: ToggleAssistantStatusDto) {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
@@ -112,10 +214,28 @@ export class AIAssistantController {
   @WriteOperation('ai-assistant')
   @RequirePermissions('ai-assistant:update')
   @Roles(RolesEnum.ROOT)
-  @ApiOperation({ summary: 'Toggle AI assistant feature enabled status' })
+  @ApiOperation({
+    summary: 'Toggle AI assistant feature enabled status',
+    description:
+      'Enables or disables a specific feature for an AI assistant assignment. Only accessible by root users.',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'AI assistant feature status updated successfully',
+    example: {
+      message: 'AI assistant feature status updated successfully',
+      featureId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      enabled: true,
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Assignment or feature not found',
+    example: {
+      statusCode: 404,
+      message: 'AI assistant assignment or feature not found',
+      error: 'Not Found',
+    },
   })
   async toggleFeatureStatus(@Body() dto: ToggleFeatureStatusDto) {
     return this.transactionService.executeInTransaction(async () => {
