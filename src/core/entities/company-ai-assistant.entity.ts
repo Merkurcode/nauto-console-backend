@@ -72,6 +72,16 @@ export class CompanyAIAssistant extends AggregateRoot {
     this._updatedAt = new Date();
   }
 
+  public updateEnabled(enabled: boolean): void {
+    this._enabled = enabled;
+    this._updatedAt = new Date();
+  }
+
+  public updateFeatures(features: ICompanyAIAssistantFeature[]): void {
+    this._features = features;
+    this._updatedAt = new Date();
+  }
+
   public updateFeatureStatus(featureId: string, enabled: boolean): void {
     const feature = this._features.find(f => f.featureId === featureId);
     if (feature) {

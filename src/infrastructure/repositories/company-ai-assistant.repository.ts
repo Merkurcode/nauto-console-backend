@@ -62,18 +62,54 @@ export class CompanyAIAssistantRepository implements ICompanyAIAssistantReposito
   }
 
   async update(assignment: CompanyAIAssistant): Promise<CompanyAIAssistant> {
-    const updated = await this.prisma.companyAIAssistant.update({
+    // Get existing features
+    const existingFeatures = await this.prisma.companyAIAssistantFeature.findMany({
+      where: { assignmentId: assignment.id },
+    });
+
+    // Update assignment first
+    await this.prisma.companyAIAssistant.update({
       where: { id: assignment.id },
       data: {
         enabled: assignment.enabled,
         updatedAt: assignment.updatedAt,
       },
+    });
+
+    // Handle features: update existing, create new ones
+    for (const feature of assignment.features) {
+      const existingFeature = existingFeatures.find(ef => ef.featureId === feature.featureId);
+
+      if (existingFeature) {
+        // Update existing feature
+        await this.prisma.companyAIAssistantFeature.update({
+          where: { id: existingFeature.id },
+          data: {
+            enabled: feature.enabled,
+          },
+        });
+      } else {
+        // Create new feature
+        await this.prisma.companyAIAssistantFeature.create({
+          data: {
+            id: feature.id,
+            assignmentId: assignment.id,
+            featureId: feature.featureId,
+            enabled: feature.enabled,
+          },
+        });
+      }
+    }
+
+    // Get the updated assignment with features
+    const updated = await this.prisma.companyAIAssistant.findUnique({
+      where: { id: assignment.id },
       include: {
         features: true,
       },
     });
 
-    return this.mapToModel(updated);
+    return this.mapToModel(updated!);
   }
 
   async delete(id: string): Promise<void> {

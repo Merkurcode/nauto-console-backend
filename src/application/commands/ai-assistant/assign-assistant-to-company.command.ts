@@ -41,11 +41,42 @@ export class AssignAssistantToCompanyCommandHandler
       );
 
     if (existingAssignment) {
-      //throw new Error(`AI Assistant is already assigned to this company`);
-      return existingAssignment;
+      // Update existing assignment
+      existingAssignment.updateEnabled(command.enabled);
+
+      // Update features if provided
+      if (command.features && command.features.length > 0) {
+        // Keep existing features that aren't being updated, and add/update the provided ones
+        const updatedFeatures = [...existingAssignment.features];
+
+        command.features.forEach(newFeature => {
+          const existingFeatureIndex = updatedFeatures.findIndex(
+            f => f.featureId === newFeature.featureId,
+          );
+
+          if (existingFeatureIndex >= 0) {
+            // Update existing feature
+            updatedFeatures[existingFeatureIndex] = {
+              ...updatedFeatures[existingFeatureIndex],
+              enabled: newFeature.enabled,
+            };
+          } else {
+            // Add new feature
+            updatedFeatures.push({
+              id: crypto.randomUUID(),
+              featureId: newFeature.featureId,
+              enabled: newFeature.enabled,
+            });
+          }
+        });
+
+        existingAssignment.updateFeatures(updatedFeatures);
+      }
+
+      return await this.companyAIAssistantRepository.update(existingAssignment);
     }
 
-    // Create assignment
+    // Create new assignment
     const assignment = CompanyAIAssistant.create({
       id: crypto.randomUUID(),
       companyId: command.companyId,
