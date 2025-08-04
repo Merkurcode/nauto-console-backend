@@ -1,5 +1,5 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Inject } from '@nestjs/common';
+import { Inject, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CompanyAIAssistant } from '@core/entities/company-ai-assistant.entity';
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
 import { IAIAssistantRepository } from '@core/repositories/ai-assistant.repository.interface';
@@ -30,7 +30,12 @@ export class AssignAssistantToCompanyCommandHandler
     // Verify assistant exists
     const assistant = await this.aiAssistantRepository.findById(command.aiAssistantId);
     if (!assistant) {
-      throw new Error(`AI Assistant with id ${command.aiAssistantId} not found`);
+      throw new NotFoundException('AI Assistant not found');
+    }
+
+    // Validate feature IDs if provided
+    if (command.features && command.features.length > 0) {
+      await this.validateFeatureIds(command.aiAssistantId, command.features);
     }
 
     // Check if assignment already exists
@@ -90,5 +95,25 @@ export class AssignAssistantToCompanyCommandHandler
     });
 
     return await this.companyAIAssistantRepository.create(assignment);
+  }
+
+  private async validateFeatureIds(
+    aiAssistantId: string,
+    features: AssignAssistantFeatureDto[],
+  ): Promise<void> {
+    // Get all available features for this assistant
+    const assistant = await this.aiAssistantRepository.findByIdWithFeatures(aiAssistantId);
+    if (!assistant) {
+      throw new NotFoundException('AI Assistant not found');
+    }
+
+    const availableFeatureIds = assistant.features.map(f => f.id);
+
+    // Check if all provided feature IDs are valid
+    for (const feature of features) {
+      if (!availableFeatureIds.includes(feature.featureId)) {
+        throw new BadRequestException(`Invalid feature ID provided`);
+      }
+    }
   }
 }
