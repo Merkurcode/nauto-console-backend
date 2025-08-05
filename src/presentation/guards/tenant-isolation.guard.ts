@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TenantResolverService } from '@presentation/services/tenant-resolver.service';
+import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
 export class TenantIsolationGuard implements CanActivate {
@@ -17,8 +18,8 @@ export class TenantIsolationGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Allow super admins to access all tenants
-    if (user.roles?.includes('super-admin')) {
+    // Allow root users to access all tenants
+    if (user.roles?.some(role => role === RolesEnum.ROOT)) {
       return true;
     }
 

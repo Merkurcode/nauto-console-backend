@@ -10,13 +10,17 @@ import {
   UseGuards,
   HttpStatus,
   ParseUUIDPipe,
-  Request,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
+import { User } from '@core/entities/user.entity';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
+import { USER_REPOSITORY } from '@shared/constants/tokens';
 import { CreateCompanyDto } from '@application/dtos/company/create-company.dto';
 import { UpdateCompanyDto } from '@application/dtos/company/update-company.dto';
 import { CompanyResponse } from '@application/dtos/responses/company.response';
@@ -47,6 +51,8 @@ import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operat
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { Public } from '@shared/decorators/public.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 @ApiTags('companies')
 @Controller('companies')
@@ -58,6 +64,8 @@ export class CompanyController {
     private readonly queryBus: QueryBus,
     private readonly transactionService: TransactionService,
     private readonly transactionContext: TransactionContextService,
+    private readonly userAuthorizationService: UserAuthorizationService,
+    @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
   ) {}
 
   private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
@@ -72,6 +80,18 @@ export class CompanyController {
     });
   }
 
+  /**
+   * Helper method to get full user entity from request user info
+   */
+  private async getCurrentUser(userId: string): Promise<User> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new ForbiddenException('Current user not found');
+    }
+    
+return user;
+  }
+
   @Get()
   @ApiOperation({ 
     summary: 'Get companies', 
@@ -83,19 +103,18 @@ export class CompanyController {
     type: [CompanyResponse],
   })
   @RequirePermissions('company:read')
-  async getCompanies(@Request() req: { user: { roles: string[]; tenantId?: string } }): Promise<CompanyResponse[]> {
-    const user = req.user;
-    const isRootUser = user.roles.includes(RolesEnum.ROOT) || user.roles.includes(RolesEnum.ROOT_READONLY);
+  async getCompanies(@CurrentUser() currentUserPayload: IJwtPayload): Promise<CompanyResponse[]> {
+    const currentUser = await this.getCurrentUser(currentUserPayload.sub);
     
-    if (isRootUser) {
+    if (this.userAuthorizationService.canAccessRootFeatures(currentUser)) {
       // Root users can see all companies
       return this.queryBus.execute(new GetCompaniesQuery());
     } else {
       // Other users can only see their own company
-      if (!user.tenantId) {
+      if (!currentUserPayload.tenantId) {
         return []; // No company assigned
       }
-      const companyId = CompanyId.fromString(user.tenantId);
+      const companyId = CompanyId.fromString(currentUserPayload.tenantId);
       const company = await this.queryBus.execute(new GetCompanyQuery(companyId));
       
       return [company];
@@ -247,19 +266,19 @@ export class CompanyController {
   async updateCompany(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
-    @Request() req: { user: { roles: string[]; companyId?: string } },
+    @CurrentUser() currentUserPayload: IJwtPayload,
   ): Promise<CompanyResponse> {
     return this.executeInTransactionWithContext(async () => {
       const companyId = CompanyId.fromString(id);
-      const user = req.user;
+      const currentUser = await this.getCurrentUser(currentUserPayload.sub);
       
       // Authorization check: Admin users can only update their own company
-      const isRootUser = user.roles.includes(RolesEnum.ROOT);
-      const isAdminUser = user.roles.includes(RolesEnum.ADMIN);
+      const isRootUser = this.userAuthorizationService.canAccessRootFeatures(currentUser);
+      const isAdminUser = this.userAuthorizationService.canAccessAdminFeatures(currentUser);
       
       if (isAdminUser && !isRootUser) {
         // Admin users can only update their own company
-        if (!user.companyId || user.companyId !== id) {
+        if (!currentUserPayload.companyId || currentUserPayload.companyId !== id) {
           throw new ForbiddenException('Admin users can only update their own company');
         }
       }

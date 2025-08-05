@@ -24,7 +24,7 @@ export class RootReadOnlyGuard implements CanActivate {
     const user: IJwtPayload = request.user;
 
     // Check if user has root_readonly role
-    if (user.roles && user.roles.includes(RolesEnum.ROOT_READONLY)) {
+    if (user.roles && user.roles.some(role => role === RolesEnum.ROOT_READONLY)) {
       throw new ForbiddenException(
         'Root readonly users cannot perform write operations. This action requires full root privileges.',
       );

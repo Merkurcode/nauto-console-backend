@@ -10,6 +10,8 @@ import {
 } from '@core/exceptions/domain-exceptions';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
 import { ROLE_REPOSITORY, PERMISSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { RolesEnum } from '@shared/constants/enums';
+import { UserAuthorizationService } from './user-authorization.service';
 
 @Injectable()
 export class RoleService {
@@ -20,6 +22,7 @@ export class RoleService {
     private readonly permissionRepository: IPermissionRepository,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async createRole(
@@ -41,8 +44,9 @@ export class RoleService {
       await this.validateHierarchyLevelForCreation(creatorUserId, hierarchyLevel);
     }
 
-    // Validate that hierarchy level is not root level (1) for new roles
-    if (hierarchyLevel === 1) {
+    // Validate that hierarchy level is not root level for new roles
+    const rootLevel = this.userAuthorizationService.getRoleHierarchyLevelByEnum(RolesEnum.ROOT);
+    if (hierarchyLevel === rootLevel) {
       throw new ForbiddenActionException('Cannot create roles with root hierarchy level');
     }
 

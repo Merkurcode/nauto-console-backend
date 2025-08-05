@@ -327,7 +327,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       });
 
       // Update the user with all fields including missing ones
-      const updatedUser = await this.client.user.update({
+      await this.client.user.update({
         where: { id: user.id.getValue() },
         data: {
           email: user.email.getValue(),

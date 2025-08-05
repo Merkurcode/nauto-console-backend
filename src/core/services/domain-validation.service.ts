@@ -88,7 +88,9 @@ export class DomainValidationService {
       result.addError('Role name must be at least 3 characters long.');
     }
 
-    if (role.name.toLowerCase().includes(RolesEnum.ROOT.toLowerCase()) && !rootRoleSpec.isSatisfiedBy(role)) {
+    if ((role.name.toLowerCase() === RolesEnum.ROOT.toLowerCase() || 
+         role.name.toLowerCase() === RolesEnum.ROOT_READONLY.toLowerCase()) && 
+        !rootRoleSpec.isSatisfiedBy(role)) {
       result.addWarning('Role name suggests root privileges but lacks root permissions.');
     }
 
@@ -251,11 +253,12 @@ export class DomainValidationService {
       [RolesEnum.SALES_AGENT, [RolesEnum.GUEST]],
     ]);
 
-    const newRoleName = newRole.name.toLowerCase() as RolesEnum;
-    const conflictList = roleConflicts.get(newRoleName) || [];
+    const newRoleName = newRole.name.toLowerCase();
+    const conflictList = roleConflicts.get(newRoleName as RolesEnum) || [];
 
     for (const existingRole of existingRoles) {
-      if (conflictList.includes(existingRole.name.toLowerCase() as RolesEnum)) {
+      const existingRoleName = existingRole.name.toLowerCase();
+      if (conflictList.includes(existingRoleName as RolesEnum)) {
         conflicts.push(existingRole.name);
       }
     }
