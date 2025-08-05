@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { AssignUserToCompanyDto } from '@application/dtos/company/assign-user-to-company.dto';
@@ -19,17 +21,14 @@ import { UserId } from '@core/value-objects/user-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
-import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operation.decorator';
-import { Roles } from '@shared/decorators/roles.decorator';
-import { RolesEnum } from '@shared/constants/enums';
 
 @ApiTags('company-users')
 @Controller('companies/users')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, PermissionsGuard, RootReadOnlyGuard)
 export class CompanyUsersController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -50,12 +49,12 @@ export class CompanyUsersController {
   }
 
   @Post('assign')
-  @Roles(RolesEnum.ROOT)
-  @WriteOperation('company')
+  @RequirePermissions('company-user:assign')
+  @WriteOperation('company-user')
   @ApiOperation({
-    summary: 'Assign user to company (Root only)',
+    summary: 'Assign user to company',
     description:
-      'Assigns a user to a specific company. Only available to root users.\n\n**Required Permissions:** user:write, company:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Assigns a user to a specific company.\n\n**Required Permissions:** company-user:assign\n**Access Control:** Permission-based authorization\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -68,29 +67,32 @@ export class CompanyUsersController {
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
     description:
-      'User does not have Root role or Root readonly users cannot perform write operations',
+      'User does not have company-user:assign permission or Root readonly users cannot perform write operations',
   })
-  @RequirePermissions('user:write', 'company:write')
   async assignUserToCompany(
     @Body() assignUserDto: AssignUserToCompanyDto,
+    @CurrentUser() currentUser: IJwtPayload,
   ): Promise<{ message: string }> {
     await this.executeInTransactionWithContext(async () => {
       const userId = UserId.fromString(assignUserDto.userId);
       const companyId = CompanyId.fromString(assignUserDto.companyId);
+      const currentUserId = UserId.fromString(currentUser.sub);
 
-      return this.commandBus.execute(new AssignUserToCompanyCommand(userId, companyId));
+      return this.commandBus.execute(
+        new AssignUserToCompanyCommand(userId, companyId, currentUserId),
+      );
     });
 
     return { message: 'User assigned to company successfully' };
   }
 
   @Delete(':userId/company')
-  @Roles(RolesEnum.ROOT)
-  @DeleteOperation('company')
+  @RequirePermissions('company-user:remove')
+  @DeleteOperation('company-user')
   @ApiOperation({
-    summary: 'Remove user from company (Root only)',
+    summary: 'Remove user from company',
     description:
-      'Removes a user from their current company assignment. Only available to root users.\n\n**Required Permissions:** user:delete, company:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Removes a user from their current company assignment.\n\n**Required Permissions:** company-user:remove\n**Access Control:** Permission-based authorization\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -103,16 +105,17 @@ export class CompanyUsersController {
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
     description:
-      'User does not have Root role or Root readonly users cannot perform write operations',
+      'User does not have company-user:remove permission or Root readonly users cannot perform write operations',
   })
-  @RequirePermissions('user:write', 'company:write')
   async removeUserFromCompany(
     @Param('userId', ParseUUIDPipe) userId: string,
+    @CurrentUser() currentUser: IJwtPayload,
   ): Promise<{ message: string }> {
     await this.executeInTransactionWithContext(async () => {
       const userIdVO = UserId.fromString(userId);
+      const currentUserId = UserId.fromString(currentUser.sub);
 
-      return this.commandBus.execute(new RemoveUserFromCompanyCommand(userIdVO));
+      return this.commandBus.execute(new RemoveUserFromCompanyCommand(userIdVO, currentUserId));
     });
 
     return { message: 'User removed from company successfully' };

@@ -138,6 +138,20 @@ export const permissions = [
     action: 'update',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT],
   },
+  {
+    name: 'company-user:assign',
+    description: 'Can assign users to companies',
+    resource: 'company-user',
+    action: 'assign',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN],
+  },
+  {
+    name: 'company-user:remove',
+    description: 'Can remove users from companies',
+    resource: 'company-user',
+    action: 'remove',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN],
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {

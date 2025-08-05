@@ -14,6 +14,7 @@ const rolePermissionsMap = {
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write', 'company:delete',
     'ai-assistant:read', 'ai-assistant:update',
+    'company-user:assign', 'company-user:remove',
   ],
   [RolesEnum.ROOT_READONLY]: [
     'system:read',
@@ -30,6 +31,7 @@ const rolePermissionsMap = {
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write',
     'ai-assistant:read',
+    'company-user:assign', 'company-user:remove'
   ],
   [RolesEnum.MANAGER]: [
     'auth:write',

@@ -100,7 +100,8 @@ export class AssignAssistantToCompanyDto {
   enabled?: boolean = true;
 
   @ApiPropertyOptional({
-    description: 'List of specific features to enable/disable for this assistant. You can specify features by either their ID or keyName.',
+    description:
+      'List of specific features to enable/disable for this assistant. You can specify features by either their ID or keyName.',
     type: [AssignAssistantFeatureDto],
     example: [
       {
