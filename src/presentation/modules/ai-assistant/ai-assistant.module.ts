@@ -4,6 +4,7 @@ import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { AIAssistantController } from './ai-assistant.controller';
 import { AIAssistantMapper } from '@application/mappers/ai-assistant.mapper';
+import { AIAssistantResolverService } from '@application/services/ai-assistant-resolver.service';
 import { GetAvailableAssistantsQueryHandler } from '@application/queries/ai-assistant/get-available-assistants.query';
 import { GetCompanyAssistantsQueryHandler } from '@application/queries/ai-assistant/get-company-assistants.query';
 import { AssignAssistantToCompanyCommandHandler } from '@application/commands/ai-assistant/assign-assistant-to-company.command';
@@ -23,6 +24,9 @@ const queryHandlers = [GetAvailableAssistantsQueryHandler, GetCompanyAssistantsQ
   imports: [CqrsModule, CoreModule, InfrastructureModule],
   controllers: [AIAssistantController],
   providers: [
+    // Services
+    AIAssistantResolverService,
+
     // Mappers
     AIAssistantMapper,
 

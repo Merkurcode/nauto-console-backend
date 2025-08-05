@@ -99,4 +99,17 @@ export class CompanyAIAssistant extends AggregateRoot {
       updatedAt: new Date(),
     });
   }
+
+  // Override toJSON to prevent private fields from being serialized
+  public toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      companyId: this.companyId,
+      aiAssistantId: this.aiAssistantId,
+      enabled: this.enabled,
+      features: this.features,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+  }
 }

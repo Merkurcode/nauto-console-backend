@@ -100,4 +100,18 @@ export class AIAssistant extends AggregateRoot {
       updatedAt: new Date(),
     });
   }
+
+  // Override toJSON to prevent private fields from being serialized
+  public toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      name: this.name,
+      area: this.area,
+      available: this.available,
+      description: this.description,
+      features: this.features,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+  }
 }

@@ -2,12 +2,15 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { CompanyAIAssistant } from '@core/entities/company-ai-assistant.entity';
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
+import { AIAssistantResolverService } from '@application/services/ai-assistant-resolver.service';
 import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 export class ToggleAssistantStatusCommand {
   constructor(
-    public readonly companyId: string,
-    public readonly aiAssistantId: string,
+    public readonly companyId: string | undefined,
+    public readonly companyName: string | undefined,
+    public readonly aiAssistantId: string | undefined,
+    public readonly aiAssistantName: string | undefined,
     public readonly enabled: boolean,
   ) {}
 }
@@ -19,23 +22,45 @@ export class ToggleAssistantStatusCommandHandler
   constructor(
     @Inject(REPOSITORY_TOKENS.COMPANY_AI_ASSISTANT_REPOSITORY)
     private readonly companyAIAssistantRepository: ICompanyAIAssistantRepository,
+    private readonly resolverService: AIAssistantResolverService,
   ) {}
 
   async execute(command: ToggleAssistantStatusCommand): Promise<CompanyAIAssistant> {
-    // Verify assignment exists
-    const assignment = await this.companyAIAssistantRepository.findByCompanyIdAndAssistantId(
+    // Resolve company and AI assistant IDs
+    const resolvedCompanyId = await this.resolverService.resolveCompanyId(
       command.companyId,
+      command.companyName,
+    );
+    const resolvedAIAssistantId = await this.resolverService.resolveAIAssistantId(
       command.aiAssistantId,
+      command.aiAssistantName,
     );
 
-    if (!assignment) {
-      throw new Error(`AI Assistant assignment not found for company`);
+    // Check if assignment exists
+    const existingAssignment =
+      await this.companyAIAssistantRepository.findByCompanyIdAndAssistantId(
+        resolvedCompanyId,
+        resolvedAIAssistantId,
+      );
+
+    if (existingAssignment) {
+      // Update existing assignment
+      return await this.companyAIAssistantRepository.toggleAssistantStatus(
+        resolvedCompanyId,
+        resolvedAIAssistantId,
+        command.enabled,
+      );
     }
 
-    return await this.companyAIAssistantRepository.toggleAssistantStatus(
-      command.companyId,
-      command.aiAssistantId,
-      command.enabled,
-    );
+    // Create new assignment with the desired enabled status
+    const newAssignment = CompanyAIAssistant.create({
+      id: crypto.randomUUID(),
+      companyId: resolvedCompanyId,
+      aiAssistantId: resolvedAIAssistantId,
+      enabled: command.enabled,
+      features: [],
+    });
+
+    return await this.companyAIAssistantRepository.create(newAssignment);
   }
 }

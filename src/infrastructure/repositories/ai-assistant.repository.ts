@@ -56,6 +56,28 @@ export class AIAssistantRepository implements IAIAssistantRepository {
     return assistant ? this.mapToModel(assistant) : null;
   }
 
+  async findByName(name: string): Promise<AIAssistant | null> {
+    const assistant = await this.prisma.aIAssistant.findFirst({
+      where: { name },
+      include: {
+        features: true,
+      },
+    });
+
+    return assistant ? this.mapToModel(assistant) : null;
+  }
+
+  async findByNameWithFeatures(name: string): Promise<AIAssistant | null> {
+    const assistant = await this.prisma.aIAssistant.findFirst({
+      where: { name },
+      include: {
+        features: true,
+      },
+    });
+
+    return assistant ? this.mapToModel(assistant) : null;
+  }
+
   private mapToModel(data: Record<string, unknown>): AIAssistant {
     const props: IAIAssistantProps = {
       id: data.id as string,
