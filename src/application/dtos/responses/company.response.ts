@@ -1,4 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
+
+export interface IAssistantFeatureResponse {
+  id: string;
+  keyName: string;
+  title: any;
+  description: any;
+  enabled: boolean;
+}
+
+export interface IAssistantResponse {
+  id: string;
+  name: string;
+  area: string;
+  description: any;
+  enabled: boolean;
+  features: IAssistantFeatureResponse[];
+}
 
 export interface IAddressResponse {
   country: string;
@@ -20,6 +38,18 @@ export interface ICompanyResponse {
   host: string;
   address: IAddressResponse;
   isActive: boolean;
+  timezone: string;
+  currency: string;
+  language: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  privacyPolicyUrl?: string;
+  industrySector: IndustrySectorEnum;
+  industryOperationChannel: IndustryOperationChannelEnum;
+  parentCompany?: ICompanyResponse;
+  subsidiaries?: ICompanyResponse[];
+  hierarchyLevel?: number;
+  assistants?: IAssistantResponse[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -154,4 +184,155 @@ export class CompanyResponse implements ICompanyResponse {
     description: 'Company last update date',
   })
   updatedAt: Date;
+
+  @ApiProperty({
+    example: 'America/Mexico_City',
+    description: 'Company timezone',
+  })
+  timezone: string;
+
+  @ApiProperty({
+    example: 'MXN',
+    description: 'Company currency',
+  })
+  currency: string;
+
+  @ApiProperty({
+    example: 'es-MX',
+    description: 'Company language',
+  })
+  language: string;
+
+  @ApiProperty({
+    example: 'https://example.com/logo.png',
+    description: 'Company logo URL',
+    required: false,
+  })
+  logoUrl?: string;
+
+  @ApiProperty({
+    example: 'https://example.com',
+    description: 'Company website URL',
+    required: false,
+  })
+  websiteUrl?: string;
+
+  @ApiProperty({
+    example: 'https://example.com/privacy',
+    description: 'Company privacy policy URL',
+    required: false,
+  })
+  privacyPolicyUrl?: string;
+
+  @ApiProperty({
+    type: 'array',
+    description: 'AI assistants assigned to the company',
+    required: false,
+  })
+  assistants?: IAssistantResponse[];
+
+  @ApiProperty({
+    enum: IndustrySectorEnum,
+    example: IndustrySectorEnum.OTHER,
+    description: 'Industry sector of the company',
+  })
+  industrySector: IndustrySectorEnum;
+
+  @ApiProperty({
+    enum: IndustryOperationChannelEnum,
+    example: IndustryOperationChannelEnum.MIXED,
+    description: 'Industry operation channel of the company',
+  })
+  industryOperationChannel: IndustryOperationChannelEnum;
+
+  @ApiProperty({
+    type: () => CompanyResponse,
+    description: 'Parent company information',
+    required: false,
+  })
+  parentCompany?: CompanyResponse;
+
+  @ApiProperty({
+    type: [CompanyResponse],
+    description: 'Subsidiary companies',
+    required: false,
+  })
+  subsidiaries?: CompanyResponse[];
+
+  @ApiProperty({
+    example: 0,
+    description: 'Level in company hierarchy (0 = root company, 1 = first level subsidiary, etc.)',
+    required: false,
+  })
+  hierarchyLevel?: number;
+}
+
+export class AssistantFeatureResponse implements IAssistantFeatureResponse {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Feature unique identifier',
+  })
+  id: string;
+
+  @ApiProperty({
+    example: 'lead_qualification',
+    description: 'Feature key name',
+  })
+  keyName: string;
+
+  @ApiProperty({
+    example: { en: 'Lead Qualification', es: 'Calificación de Leads' },
+    description: 'Feature title in different languages',
+  })
+  title: any;
+
+  @ApiProperty({
+    example: { en: 'Qualify leads automatically', es: 'Califica leads automáticamente' },
+    description: 'Feature description in different languages',
+  })
+  description: any;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether the feature is enabled for this company',
+  })
+  enabled: boolean;
+}
+
+export class AssistantResponse implements IAssistantResponse {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Assistant unique identifier',
+  })
+  id: string;
+
+  @ApiProperty({
+    example: 'Lily',
+    description: 'Assistant name',
+  })
+  name: string;
+
+  @ApiProperty({
+    example: 'BRAND_EXPERT',
+    description: 'Assistant area of expertise',
+  })
+  area: string;
+
+  @ApiProperty({
+    example: { en: 'Brand expertise assistant', es: 'Asistente experto en marca' },
+    description: 'Assistant description in different languages',
+  })
+  description: any;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether the assistant is enabled for this company',
+  })
+  enabled: boolean;
+
+  @ApiProperty({
+    type: [AssistantFeatureResponse],
+    description: 'Features available for this assistant',
+  })
+  features: AssistantFeatureResponse[];
 }
