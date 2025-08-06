@@ -31,6 +31,8 @@ import {
   ResetPasswordDto,
 } from '@application/dtos/auth/password-reset.dto';
 import { AdminChangePasswordDto } from '@application/dtos/requests/auth/admin-change-password.dto';
+import { ChangePasswordDto } from '@application/dtos/auth/change-password.dto';
+import { ChangeEmailDto } from '@application/dtos/auth/change-email.dto';
 
 // Commands
 import { RegisterUserCommand } from '@application/commands/auth/register-user.command';
@@ -44,6 +46,8 @@ import { CheckEmailVerificationStatusCommand } from '@application/commands/auth/
 import { RequestPasswordResetCommand } from '@application/commands/auth/request-password-reset.command';
 import { ResetPasswordCommand } from '@application/commands/auth/reset-password.command';
 import { AdminChangePasswordCommand } from '@application/commands/auth/admin-change-password.command';
+import { ChangePasswordCommand } from '@application/commands/auth/change-password.command';
+import { ChangeEmailCommand } from '@application/commands/auth/change-email.command';
 
 // Guards & Decorators
 import { Public } from '@shared/decorators/public.decorator';
@@ -413,6 +417,80 @@ export class AuthController {
           currentUser.sub,
           currentUser.roles[0], // Primary role
           currentUser.tenantId,
+        ),
+      );
+    });
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change current user password',
+    description: 'Change own password with current password verification. Terminates all other sessions and returns new tokens.\n\n**Required Permissions:** None (Own password)\n**Required Roles:** Any authenticated user'
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Password changed successfully.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' }
+      }
+    }
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data or current password incorrect' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
+  async changePassword(
+    @Body() changePasswordDto: ChangePasswordDto,
+    @CurrentUser() user: IJwtPayload,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new ChangePasswordCommand(
+          user.sub,
+          changePasswordDto.currentPassword,
+          changePasswordDto.newPassword,
+          user.jti, // Current session token
+        ),
+      );
+    });
+  }
+
+  @Post('change-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change user email with role-based access control',
+    description: 'Change user email with role-based authorization. Always requires the target user\'s password for verification:\n\n• **Regular users**: Can only change their own email (requires their own password)\n• **Admin users**: Can change emails of users in their company (requires target user\'s password)\n• **Root users**: Can change any user\'s email (requires target user\'s password)\n\n**⚠️ IMPORTANT RESTRICTION**: Root users\' emails cannot be changed by anyone, including themselves.\n\n**Required Permissions:** None (Role-based access)\n**Required Roles:** Any authenticated user (with role-based restrictions)'
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Email changed successfully.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' }
+      }
+    }
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data, email already in use, or target user password incorrect' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions for the requested operation' })
+  async changeEmail(
+    @Body() changeEmailDto: ChangeEmailDto,
+    @CurrentUser() user: IJwtPayload,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new ChangeEmailCommand(
+          user.sub,
+          user.roles,
+          user.companyId || null,
+          changeEmailDto.newEmail,
+          changeEmailDto.currentPassword,
+          changeEmailDto.targetUserId,
+          user.jti, // Current session token
         ),
       );
     });

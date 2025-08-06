@@ -288,6 +288,7 @@ export class DomainValidationService {
   private hasSystemOrAuditPermissions(role: Role): boolean {
     return role.permissions.some(permission => {
       const resource = permission.getResource().toLowerCase();
+      
       return resource === 'system' || resource === 'audit';
     });
   }

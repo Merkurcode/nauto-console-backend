@@ -133,6 +133,21 @@ export class SessionService {
     }
   }
 
+  async revokeUserSessionsExcept(userId: string, excludeSessionToken: string): Promise<void> {
+    this.logger.debug({
+      message: 'Revoking user sessions except current one',
+      userId,
+      excludeSessionToken: excludeSessionToken.substring(0, 10) + '...',
+    });
+
+    await this.sessionRepository.deleteByUserIdExcept(userId, excludeSessionToken);
+
+    this.logger.log({
+      message: 'All user sessions revoked except current one',
+      userId,
+    });
+  }
+
   async revokeSessionByRefreshToken(refreshToken: string): Promise<void> {
     this.logger.debug({ message: 'Revoking session by refresh token' });
 

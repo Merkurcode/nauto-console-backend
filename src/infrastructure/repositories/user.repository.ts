@@ -329,7 +329,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         },
       });
 
-      // Update the user with new role associations
+      // Update the user with all fields including missing ones
       const updatedUser = await this.client.user.update({
         where: { id: user.id.getValue() },
         data: {
@@ -337,12 +337,16 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           passwordHash: user.passwordHash,
           firstName: user.firstName.getValue(),
           lastName: user.lastName.getValue(),
+          secondLastName: user.secondLastName?.getValue() || null,
           isActive: user.isActive,
           emailVerified: user.emailVerified,
           otpEnabled: user.otpEnabled,
           otpSecret: user.otpSecret,
           lastLoginAt: user.lastLoginAt,
           companyId: user.companyId?.getValue(),
+          bannedUntil: user.bannedUntil || null,
+          banReason: user.banReason || null,
+          agentPhone: user.agentPhone?.getValue() || null,
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -370,7 +374,92 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         },
       });
 
-      return this.mapToModel(updatedUser as UserWithRelations);
+      // Handle profile update/upsert
+      if (user.profile) {
+        await this.client.userProfile.upsert({
+          where: { userId: user.id.getValue() },
+          update: {
+            phone: user.profile.phone || null,
+            avatarUrl: user.profile.avatarUrl || null,
+            bio: user.profile.bio || null,
+            birthdate: user.profile.birthDate || null,
+          },
+          create: {
+            userId: user.id.getValue(),
+            phone: user.profile.phone || null,
+            avatarUrl: user.profile.avatarUrl || null,
+            bio: user.profile.bio || null,
+            birthdate: user.profile.birthDate || null,
+          },
+        });
+      }
+
+      // Handle address update/upsert
+      if (user.address) {
+        // First find country and state IDs
+        const countryRecord = user.address.country
+          ? await this.client.country.findFirst({
+              where: { name: user.address.country },
+            })
+          : null;
+
+        const stateRecord =
+          user.address.state && countryRecord
+            ? await this.client.state.findFirst({
+                where: {
+                  name: user.address.state,
+                  countryId: countryRecord.id,
+                },
+              })
+            : null;
+
+        await this.client.userAddress.upsert({
+          where: { userId: user.id.getValue() },
+          update: {
+            countryId: countryRecord?.id || null,
+            stateId: stateRecord?.id || null,
+            city: user.address.city || null,
+            street: user.address.street || null,
+            exteriorNumber: user.address.exteriorNumber || null,
+            interiorNumber: user.address.interiorNumber || null,
+            postalCode: user.address.postalCode || null,
+          },
+          create: {
+            userId: user.id.getValue(),
+            countryId: countryRecord?.id || null,
+            stateId: stateRecord?.id || null,
+            city: user.address.city || null,
+            street: user.address.street || null,
+            exteriorNumber: user.address.exteriorNumber || null,
+            interiorNumber: user.address.interiorNumber || null,
+            postalCode: user.address.postalCode || null,
+          },
+        });
+      }
+
+      // Fetch the complete updated user with all relations
+      const finalUser = await this.client.user.findUnique({
+        where: { id: user.id.getValue() },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          profile: true,
+          address: true,
+        },
+      });
+
+      return this.mapToModel(finalUser as UserWithRelations);
     });
   }
 

@@ -83,6 +83,17 @@ export class SessionRepository implements ISessionRepository {
     });
   }
 
+  async deleteByUserIdExcept(userId: string, excludeSessionToken: string): Promise<void> {
+    await this.client.sessions.deleteMany({
+      where: {
+        userId,
+        sessionToken: {
+          not: excludeSessionToken,
+        },
+      },
+    });
+  }
+
   async deleteBySessionToken(sessionToken: string): Promise<void> {
     await this.client.sessions.deleteMany({
       where: { sessionToken },

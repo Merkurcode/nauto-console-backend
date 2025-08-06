@@ -26,27 +26,23 @@ import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.dec
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 
 // DTOs
-import { CreateUserDto } from '@application/dtos/user/create-user.dto';
-import { UpdateUserDto } from '@application/dtos/user/update-user.dto';
-import { ChangePasswordDto } from '@application/dtos/user/change-password.dto';
+import { UpdateUserProfileDto } from '@application/dtos/user/update-user-profile.dto';
 import { ActivateUserDto } from '@application/dtos/user/activate-user.dto';
 import { AssignRoleDto } from '@application/dtos/user/assign-role.dto';
 
 // Queries
-import { GetUserQuery } from '@application/queries/user/get-user.query';
 import { GetUsersQuery } from '@application/queries/user/get-users.query';
 
 // Commands
-import { UpdateUserCommand } from '@application/commands/user/update-user.command';
-import { ChangePasswordCommand } from '@application/commands/user/change-password.command';
+import { UpdateUserProfileCommand } from '@application/commands/user/update-user-profile.command';
+import { DeleteUserCommand } from '@application/commands/user/delete-user.command';
 import { ActivateUserCommand } from '@application/commands/user/activate-user.command';
 import { AssignRoleCommand } from '@application/commands/user/assign-role.command';
 import { RemoveRoleCommand } from '@application/commands/user/remove-role.command';
-import { VerifyPasswordCommand } from '@application/commands/user/verify-password.command';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 
 @ApiTags('users')
-@Controller('companies/:companyId/users')
+@Controller('users')
 @UseGuards(RolesGuard, PermissionsGuard)
 @ApiBearerAuth('JWT-auth')
 export class UserController {
@@ -76,82 +72,80 @@ export class UserController {
   @ApiOperation({
     summary: 'Get all users in company (Root/Root-Readonly/Admin)',
     description:
-      'Get all users within a specific company\n\n**Required Permissions:** user:read\n**Required Roles:** root, root_readonly, admin',
+      'Get all users within a specific company. Admin users can only see users from their own company. Response includes user details, roles, tenantId, and companyId.\n\n**Required Permissions:** user:read\n**Required Roles:** root, root_readonly, admin',
   })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all users in the company' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns a list of all users in the company with tenant and company information',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+          email: { type: 'string', example: 'user@example.com' },
+          firstName: { type: 'string', example: 'John' },
+          lastName: { type: 'string', example: 'Doe' },
+          emailVerified: { type: 'boolean', example: true },
+          isActive: { type: 'boolean', example: true },
+          otpEnabled: { type: 'boolean', example: false },
+          lastLoginAt: { type: 'string', format: 'date-time', nullable: true },
+          roles: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+              },
+            },
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          tenantId: {
+            type: 'string',
+            nullable: true,
+            example: '550e8400-e29b-41d4-a716-446655440001',
+          },
+          companyId: {
+            type: 'string',
+            nullable: true,
+            example: '550e8400-e29b-41d4-a716-446655440001',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have required permissions',
   })
-  async getAllUsers(@Param('companyId') companyId: string) {
-    return this.queryBus.execute(new GetUsersQuery(companyId));
-  }
-
-  @Get(':id')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
-  @RequirePermissions('user:read')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Get user by ID (Root/Root-Readonly/Admin)',
-    description:
-      'Get detailed information about a specific user\n\n**Required Permissions:** user:read\n**Required Roles:** root, root_readonly, admin',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Returns user information' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'User does not have required permissions',
-  })
-  async getUserById(@Param('companyId') companyId: string, @Param('id') id: string) {
-    return this.queryBus.execute(new GetUserQuery(id, companyId));
-  }
-
-  @Post()
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
-  @CanWrite('user')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Create new user in company (Root/Root-Readonly/Admin)',
-    description:
-      'Create a new user within a specific company\n\n**Required Permissions:** user:write\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'User created successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'User does not have required permissions',
-  })
-  async createUser(@Param('companyId') companyId: string, @Body() _createUserDto: CreateUserDto) {
-    return this.executeInTransactionWithContext(async () => {
-      // This would normally use a command with company context
-      return { message: 'User created successfully', companyId };
-    });
+  async getAllUsers(@CurrentUser() currentUser: IJwtPayload) {
+    return this.queryBus.execute(new GetUsersQuery(currentUser.companyId!, currentUser.sub));
   }
 
   @Put(':id')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
+  @Roles(
+    RolesEnum.ROOT,
+    RolesEnum.ROOT_READONLY,
+    RolesEnum.ADMIN,
+    RolesEnum.MANAGER,
+    RolesEnum.SALES_AGENT,
+    RolesEnum.HOST,
+    RolesEnum.GUEST,
+  )
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Update user by ID (Root/Root-Readonly/Admin)',
+    summary: 'Update user profile (All roles with restrictions)',
     description:
-      'Update user information within a specific company\n\n**Required Permissions:** user:write\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Update user information with company-based access control:\n\n' +
+      '- **Root/Root-Readonly**: Can edit any user\n' +
+      '- **Admin**: Can edit users from their company and child companies\n' +
+      '- **Manager, Sales Agent, Host, Guest**: Can only edit their own profile\n\n' +
+      '**Required Permissions:** user:write\n' +
+      '**Required Roles:** Any authenticated user\n' +
+      '**Restrictions:** Role-based access control applies',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User updated successfully' })
@@ -162,61 +156,25 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async updateUser(
-    @Param('companyId') companyId: string,
     @Param('id') id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() updateUserDto: UpdateUserProfileDto,
+    @CurrentUser() currentUser: IJwtPayload,
   ) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
-        new UpdateUserCommand(
-          id,
-          updateUserDto.firstName,
-          updateUserDto.lastName,
-          updateUserDto.email,
-          companyId,
-        ),
-      );
-    });
-  }
-
-  @Put('/profile')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update current user profile',
-    description:
-      'Update current authenticated user profile information\n\n**Required Permissions:** None (Own profile)\n**Required Roles:** Any authenticated user',
-  })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Profile updated successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
-  async updateCurrentUserProfile(
-    @CurrentUser() user: IJwtPayload,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    return this.executeInTransactionWithContext(async () => {
-      return this.commandBus.execute(
-        new UpdateUserCommand(
-          user.sub,
-          updateUserDto.firstName,
-          updateUserDto.lastName,
-          updateUserDto.email,
-        ),
+        new UpdateUserProfileCommand(id, currentUser.sub, updateUserDto),
       );
     });
   }
 
   @Delete(':id')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER)
   @CanDelete('user')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Delete user by ID (Root/Root-Readonly/Admin)',
+    summary: 'Delete user by ID (Root/Admin/Manager with hierarchy restrictions)',
     description:
-      'Delete a user from a specific company\n\n**Required Permissions:** user:delete\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Delete a user from a specific company with role hierarchy restrictions\n\n**Required Permissions:** user:delete\n**Required Roles:** root, admin, manager\n**Restrictions:** Root can delete any user. Admin can delete users in their company except root/admin. Manager can delete users below their hierarchy level.',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User deleted successfully' })
@@ -225,112 +183,27 @@ export class UserController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have required permissions',
   })
-  async deleteUser(@Param('companyId') companyId: string, @Param('id') _id: string) {
+  async deleteUser(@Param('id') id: string, @CurrentUser() currentUser: IJwtPayload) {
+    if (process.env.NODE_ENV !== 'development') {
+      // In production, we do not allow deleting users via API
+      throw new Error('User deletion is not allowed in current environment.');
+    }
+
     return this.executeInTransactionWithContext(async () => {
-      // This would normally use a command with company context
-      return { message: 'User deleted successfully', companyId };
-    });
-  }
-
-  @Post(':id/change-password')
-  @Roles(RolesEnum.ROOT)
-  @CanWrite('user')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Change user password (Root only)',
-    description:
-      'Change password for any user (administrative action)\n\n**Required Permissions:** user:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Password changed successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'User does not have required permissions',
-  })
-  async changePassword(
-    @Param('companyId') companyId: string,
-    @Param('id') id: string,
-    @Body() changePasswordDto: ChangePasswordDto,
-  ) {
-    await this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
-        new ChangePasswordCommand(
-          id,
-          changePasswordDto.newPassword,
-          changePasswordDto.currentPassword,
-          companyId,
-        ),
+        new DeleteUserCommand(id, currentUser.sub, currentUser.companyId!),
       );
     });
-
-    return { message: 'Password changed successfully' };
-  }
-
-  @Post('/profile/change-password')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Change current user password',
-    description:
-      'Change own password (requires current password verification)\n\n**Required Permissions:** None (Own password)\n**Required Roles:** Any authenticated user',
-  })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Password changed successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
-  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Current password is incorrect' })
-  async changeCurrentUserPassword(
-    @CurrentUser() user: IJwtPayload,
-    @Body() changePasswordDto: ChangePasswordDto,
-  ) {
-    await this.executeInTransactionWithContext(async () => {
-      return this.commandBus.execute(
-        new ChangePasswordCommand(
-          user.sub,
-          changePasswordDto.newPassword,
-          changePasswordDto.currentPassword,
-        ),
-      );
-    });
-
-    return { message: 'Password changed successfully' };
-  }
-
-  @Post('/profile/verify-password')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Verify current user password',
-    description:
-      'Verify current user password for security operations\n\n**Required Permissions:** None (Own password)\n**Required Roles:** Any authenticated user',
-  })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Password verification result' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
-  async verifyCurrentUserPassword(
-    @CurrentUser() user: IJwtPayload,
-    @Body('password') password: string,
-  ) {
-    const isValid = await this.commandBus.execute(new VerifyPasswordCommand(user.sub, password));
-
-    return { valid: isValid };
   }
 
   @Patch(':id/activate')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Activate or deactivate user (Root/Root-Readonly/Admin)',
+    summary: 'Activate or deactivate user (Root/Admin)',
     description:
-      'Change user activation status\n\n**Required Permissions:** user:write\n**Required Roles:** root, root_readonly, admin\n**Restrictions:** Root readonly users cannot perform this operation',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Change user activation status. Root can activate/deactivate any user. Admin can only activate/deactivate users in their company.\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin\n**Restrictions:** Admin users can only modify users in their own company',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User activation status updated' })
@@ -341,13 +214,18 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async activateUser(
-    @Param('companyId') companyId: string,
     @Param('id') id: string,
     @Body() activateUserDto: ActivateUserDto,
+    @CurrentUser() currentUser: IJwtPayload,
   ) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
-        new ActivateUserCommand(id, activateUserDto.active, companyId),
+        new ActivateUserCommand(
+          id,
+          activateUserDto.active,
+          currentUser.sub,
+          currentUser.companyId!,
+        ),
       );
     });
   }
@@ -359,12 +237,7 @@ export class UserController {
   @ApiOperation({
     summary: 'Assign role to user (Root/Admin)',
     description:
-      'Assign a role to a specific user\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin\n**Restrictions:** Root readonly users cannot perform this operation. Admin users can only assign roles to users in their own company. Roles with system or audit permissions can only be assigned by root users to root users.',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Assign a role to a specific user. Root can assign any role to any user. Admin can only assign roles to users in their company. Root roles cannot be assigned by anyone.\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin\n**Restrictions:** Root roles cannot be assigned. Admin users can only assign roles to users in their own company.',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role assigned successfully' })
@@ -375,31 +248,25 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async assignRoleToUser(
-    @Param('companyId') companyId: string,
     @Param('id') id: string,
     @Body() assignRoleDto: AssignRoleDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
-        new AssignRoleCommand(id, assignRoleDto.roleId, companyId, currentUser.sub),
+        new AssignRoleCommand(id, assignRoleDto.roleId, currentUser.companyId!, currentUser.sub),
       );
     });
   }
 
   @Delete(':id/roles/:roleId')
-  @Roles(RolesEnum.ROOT)
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Remove role from user (Root only)',
+    summary: 'Remove role from user (Root/Admin/Manager)',
     description:
-      'Remove a role from a specific user\\n\\n**Required Permissions:** user:write\\n**Required Roles:** root\\n**Restrictions:** Root readonly users cannot perform this operation',
-  })
-  @ApiParam({
-    name: 'companyId',
-    description: 'Company ID',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Remove a role from a specific user. Root can remove from any user. Admin can remove from users in their company. Manager can remove from users in their company but not superior roles.\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin, manager\n**Restrictions:** Role hierarchy applies',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiParam({
@@ -414,12 +281,14 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async removeRoleFromUser(
-    @Param('companyId') companyId: string,
     @Param('id') id: string,
     @Param('roleId') roleId: string,
+    @CurrentUser() currentUser: IJwtPayload,
   ) {
     return this.executeInTransactionWithContext(async () => {
-      return this.commandBus.execute(new RemoveRoleCommand(id, roleId, companyId));
+      return this.commandBus.execute(
+        new RemoveRoleCommand(id, roleId, currentUser.sub, currentUser.companyId!),
+      );
     });
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
+import { RolesEnum } from '@shared/constants/enums';
 
 // Interface for lightweight user authorization checks
 interface IUserAuthInfo {
@@ -232,5 +233,210 @@ export class UserAuthorizationService {
 
     // Log access to sensitive resources
     return sensitiveResources.includes(resource.toLowerCase());
+  }
+
+  /**
+   * Check if a user can query users from a specific company
+   */
+  canQueryCompanyUsers(user: User, companyId: string): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root users can query any company
+    if (rootUserSpec.isSatisfiedBy(user)) {
+      return true;
+    }
+
+    // Admin users can only query their own company
+    if (adminUserSpec.isSatisfiedBy(user)) {
+      return user.companyId?.getValue() === companyId;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a user can edit another user
+   */
+  canEditUser(currentUser: User, targetUserId: string, targetUserCompanyId?: string): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can edit anyone
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Admin can edit users in their company
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return currentUser.companyId?.getValue() === targetUserCompanyId;
+    }
+
+    // Others can only edit themselves
+    return currentUser.id.getValue() === targetUserId;
+  }
+
+  /**
+   * Check if a user can delete another user
+   */
+  canDeleteUser(currentUser: User, targetUser: User): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can delete anyone
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Check company boundaries for non-root users
+    if (currentUser.companyId?.getValue() !== targetUser.companyId?.getValue()) {
+      return false;
+    }
+
+    // Admin can delete non-admin users in their company
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return !rootUserSpec.isSatisfiedBy(targetUser) && !adminUserSpec.isSatisfiedBy(targetUser);
+    }
+
+    // Manager can delete users below their hierarchy level
+    if (currentUser.rolesCollection.containsByName(RolesEnum.MANAGER)) {
+      return this.isUserBelowInHierarchy(currentUser, targetUser);
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a user can activate/deactivate another user
+   */
+  canActivateUser(currentUser: User, targetUserCompanyId: string): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can activate anyone
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Admin can activate users in their company
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return currentUser.companyId?.getValue() === targetUserCompanyId;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a user can assign roles to another user
+   */
+  canAssignRolesToUser(currentUser: User, targetUserCompanyId: string): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can assign roles to anyone
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Admin can assign roles to users in their company
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return currentUser.companyId?.getValue() === targetUserCompanyId;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a user can remove a role from another user
+   */
+  canRemoveRoleFromUser(currentUser: User, targetUser: User, roleToRemove: Role): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can remove any role from any user
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Check company boundaries for non-root users
+    const currentUserCompanyId = currentUser.companyId?.getValue();
+    const targetUserCompanyId = targetUser.companyId?.getValue();
+
+    if (currentUserCompanyId !== targetUserCompanyId) {
+      return false;
+    }
+
+    // Admin can remove roles from users in their company
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Manager can remove roles from users in their company but not superior roles
+    if (currentUser.rolesCollection.containsByName(RolesEnum.MANAGER)) {
+      // Check if the role being removed is superior to manager
+      const roleHierarchyLevel = this.getRoleHierarchyLevel(roleToRemove.name);
+      const managerLevel = this.getRoleHierarchyLevel(RolesEnum.MANAGER);
+
+      // Manager cannot remove roles that are equal or superior to their level (lower number = higher rank)
+      return roleHierarchyLevel > managerLevel;
+    }
+
+    return false;
+  }
+
+  /**
+   * Helper method to check hierarchy levels
+   */
+  private isUserBelowInHierarchy(currentUser: User, targetUser: User): boolean {
+    const hierarchyOrder = [
+      RolesEnum.ROOT,
+      RolesEnum.ROOT_READONLY,
+      RolesEnum.ADMIN,
+      RolesEnum.MANAGER,
+      RolesEnum.SALES_AGENT,
+      RolesEnum.HOST,
+      RolesEnum.GUEST,
+    ];
+
+    const currentUserLevel = this.getUserHierarchyLevel(currentUser, hierarchyOrder);
+    const targetUserLevel = this.getUserHierarchyLevel(targetUser, hierarchyOrder);
+
+    return targetUserLevel > currentUserLevel;
+  }
+
+  /**
+   * Get user hierarchy level
+   */
+  private getUserHierarchyLevel(user: User, hierarchyOrder: string[]): number {
+    const userRoles = user.rolesCollection.getRoleNames().map(name => name.toLowerCase());
+
+    for (let i = 0; i < hierarchyOrder.length; i++) {
+      if (userRoles.includes(hierarchyOrder[i])) {
+        return i + 1;
+      }
+    }
+
+    return hierarchyOrder.length + 1; // Default to lowest level if no role found
+  }
+
+  /**
+   * Get role hierarchy level by role name (level starts at 1, not 0)
+   */
+  private getRoleHierarchyLevel(roleName: string): number {
+    const hierarchyOrder = [
+      RolesEnum.ROOT,
+      RolesEnum.ROOT_READONLY,
+      RolesEnum.ADMIN,
+      RolesEnum.MANAGER,
+      RolesEnum.SALES_AGENT,
+      RolesEnum.HOST,
+      RolesEnum.GUEST,
+    ];
+
+    const roleIndex = hierarchyOrder.findIndex(
+      role => role.toLowerCase() === roleName.toLowerCase(),
+    );
+
+    return roleIndex !== -1 ? roleIndex + 1 : hierarchyOrder.length + 1;
   }
 }
