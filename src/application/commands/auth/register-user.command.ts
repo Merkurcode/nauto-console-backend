@@ -4,6 +4,7 @@ import { IUserBaseResponse } from '@application/dtos/responses/user.response';
 import { Injectable } from '@nestjs/common';
 import { UserService } from '@core/services/user.service';
 import { UserMapper } from '@application/mappers/user.mapper';
+import { PasswordGenerator } from '@shared/utils/password-generator';
 
 export class RegisterUserCommand implements ICommand {
   constructor(public readonly registerDto: RegisterDto) {}
@@ -17,6 +18,12 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
   async execute(command: RegisterUserCommand): Promise<IUserBaseResponse> {
     const registerDto = command.registerDto;
 
+    // Generate random password if password is null, undefined, or empty
+    let password = registerDto.password;
+    if (!password || password.trim() === '') {
+      password = PasswordGenerator.generateSecurePassword(12);
+    }
+
     // Prepare options for extended user creation
     const options = {
       secondLastName: registerDto.secondLastName,
@@ -25,6 +32,7 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
       bannedUntil: registerDto.bannedUntil ? new Date(registerDto.bannedUntil) : undefined,
       banReason: registerDto.banReason,
       agentPhone: registerDto.agentPhone,
+      agentPhoneCountryCode: registerDto.agentPhoneCountryCode,
       profile: registerDto.profile,
       address: registerDto.address,
       companyName: registerDto.company,
@@ -33,7 +41,7 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
 
     const user = await this.userService.createUserWithExtendedData(
       registerDto.email,
-      registerDto.password,
+      password,
       registerDto.firstName,
       registerDto.lastName,
       options,

@@ -100,7 +100,7 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Register a new user (invitation-based)',
-    description: 'Register a new user in the system through invitation\n\n**Required Permissions:** auth:write\n**Required Roles:** root, admin (users with invitation permissions)\n**Restrictions:** Root readonly users cannot perform this operation. Requires valid invitation token'
+    description: 'Register a new user in the system through invitation\n\n**Required Permissions:** auth:write\n**Required Roles:** root, admin, manager (users with invitation permissions)\n**Restrictions:** Root readonly users cannot perform this operation. Requires valid invitation token'
   })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User successfully registered' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })

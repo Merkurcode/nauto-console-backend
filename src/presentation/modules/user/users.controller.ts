@@ -5,8 +5,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 // Guards & Decorators
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
-import { Roles } from '@shared/decorators/roles.decorator';
-import { RolesEnum } from '@shared/constants/enums';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 

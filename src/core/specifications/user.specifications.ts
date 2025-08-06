@@ -1,4 +1,3 @@
-/* eslint-disable newline-before-return */
 /* eslint-disable prettier/prettier */
 import { Specification } from './specification.base';
 import { User } from '@core/entities/user.entity';
@@ -73,6 +72,7 @@ export class RootLevelUserSpecification extends Specification<User> {
   isSatisfiedBy(user: User): boolean {
     return user.roles.some(role => {
       const roleName = role.name.toLowerCase();
+      
       return roleName === RolesEnum.ROOT.toLowerCase() || 
              roleName === RolesEnum.ROOT_READONLY.toLowerCase();
     });

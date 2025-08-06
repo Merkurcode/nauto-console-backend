@@ -72,6 +72,16 @@ export class CompanyAIAssistant extends AggregateRoot {
     this._updatedAt = new Date();
   }
 
+  public updateEnabled(enabled: boolean): void {
+    this._enabled = enabled;
+    this._updatedAt = new Date();
+  }
+
+  public updateFeatures(features: ICompanyAIAssistantFeature[]): void {
+    this._features = features;
+    this._updatedAt = new Date();
+  }
+
   public updateFeatureStatus(featureId: string, enabled: boolean): void {
     const feature = this._features.find(f => f.featureId === featureId);
     if (feature) {
@@ -88,5 +98,18 @@ export class CompanyAIAssistant extends AggregateRoot {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+  }
+
+  // Override toJSON to prevent private fields from being serialized
+  public toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      companyId: this.companyId,
+      aiAssistantId: this.aiAssistantId,
+      enabled: this.enabled,
+      features: this.features,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
   }
 }

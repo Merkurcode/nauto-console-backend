@@ -170,6 +170,7 @@ model User {
   bannedUntil   DateTime? // por implementar
   banReason     String?   // por implementar
   agentPhone    String?   // se usa para buscar a los agentes de ventas por su número de teléfono en la compañia (tenat-id)
+  agentPhoneCountryCode String? @default("52") // código de país para agentPhone (ej: 52 para México)
 
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   roles         UserRole[]
@@ -191,6 +192,7 @@ model UserProfile {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId    String
   phone     String?
+  phoneCountryCode String? @default("52") // código de país para phone (ej: 52 para México)
   avatarUrl String?
   bio       String?
   birthdate String?

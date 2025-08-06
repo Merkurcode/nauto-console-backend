@@ -38,4 +38,10 @@ export abstract class AggregateRoot {
   hasDomainEvents(): boolean {
     return this._domainEvents.length > 0;
   }
+
+  // Override toJSON to prevent _domainEvents from being serialized
+  public toJSON(): Record<string, unknown> {
+    // Return empty object by default, child classes should override this
+    return {};
+  }
 }

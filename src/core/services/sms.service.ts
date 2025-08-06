@@ -23,14 +23,14 @@ export class SmsService {
     this.logger.setContext(SmsService.name);
   }
 
-  private async getUserCountryPhoneCode(userId: string): Promise<string> {
+  private async getUserPhoneCountryCode(userId: string): Promise<string> {
     try {
-      const phoneCode = await this.userRepository.getUserCountryPhoneCode(userId);
+      const phoneCode = await this.userRepository.getUserPhoneCountryCode(userId);
 
       return phoneCode || '52'; // Default to Mexico if not found
     } catch (error) {
       this.logger.warn({
-        message: 'Failed to get user country phone code',
+        message: 'Failed to get user phone country code',
         userId,
         error: error.message,
       });
@@ -121,7 +121,7 @@ export class SmsService {
         message: 'Getting country code for verification SMS',
         userId,
       });
-      countryCode = await this.getUserCountryPhoneCode(userId);
+      countryCode = await this.getUserPhoneCountryCode(userId);
       this.logger.debug({
         message: 'Country code retrieved for verification SMS',
         userId,
@@ -176,7 +176,7 @@ export class SmsService {
         message: 'Getting country code for welcome SMS',
         userId,
       });
-      countryCode = await this.getUserCountryPhoneCode(userId);
+      countryCode = await this.getUserPhoneCountryCode(userId);
       this.logger.debug({
         message: 'Country code retrieved for welcome SMS',
         userId,
@@ -230,7 +230,7 @@ export class SmsService {
         message: 'Getting country code for welcome SMS without password',
         userId,
       });
-      countryCode = await this.getUserCountryPhoneCode(userId);
+      countryCode = await this.getUserPhoneCountryCode(userId);
       this.logger.debug({
         message: 'Country code retrieved for welcome SMS without password',
         userId,
@@ -278,7 +278,7 @@ export class SmsService {
     // Get user's country phone code from database if userId is provided
     let countryCode = '52'; // Default to Mexico
     if (userId) {
-      countryCode = await this.getUserCountryPhoneCode(userId);
+      countryCode = await this.getUserPhoneCountryCode(userId);
     }
 
     const result = await this.sendSms({
@@ -314,7 +314,7 @@ export class SmsService {
     // Get user's country phone code from database if userId is provided
     let countryCode = '52'; // Default to Mexico
     if (userId) {
-      countryCode = await this.getUserCountryPhoneCode(userId);
+      countryCode = await this.getUserPhoneCountryCode(userId);
     }
 
     const result = await this.sendSms({
@@ -352,7 +352,7 @@ export class SmsService {
     // Get user's country phone code from database if userId is provided
     let countryCode = '52'; // Default to Mexico
     if (userId) {
-      countryCode = await this.getUserCountryPhoneCode(userId);
+      countryCode = await this.getUserPhoneCountryCode(userId);
     }
 
     const result = await this.sendSms({
