@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -12,15 +13,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
+    private readonly logger: LoggerService,
   ) {
+    logger.setContext(JwtStrategy.name);
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: configService.get('jwt.secret') || 'fallback_secret',
     });
   }
 
   async validate(payload: IJwtPayload): Promise<IJwtPayload> {
+    this.logger.debug({
+      message: 'JWT Strategy validating payload',
+      userId: payload.sub,
+      email: payload.email,
+      sessionToken: payload.jti,
+      roles: payload.roles,
+    });
+
     // Check if the user still exists
     const user = await this.userRepository.findById(payload.sub);
 
@@ -29,13 +40,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User no longer active or not found');
     }
 
-    // Return the payload with roles, permissions, and tenant info which will be injected into the request object
-    return {
+    // Return the payload with roles, permissions, tenant info, and session token which will be injected into the request object
+    const result = {
       sub: payload.sub,
       email: payload.email,
+      isActive: user.isActive, // Include isActive from the database user
       roles: payload.roles || [],
       permissions: payload.permissions || [],
       tenantId: payload.tenantId,
+      companyId: payload.companyId,
+      jti: payload.jti, // Include session token from JWT
     };
+
+    this.logger.debug({
+      message: 'JWT Strategy validation successful',
+      userId: result.sub,
+      email: result.email,
+      rolesCount: result.roles?.length || 0,
+      permissionsCount: result.permissions?.length || 0,
+      tenantId: result.tenantId,
+    });
+
+    return result;
   }
 }
