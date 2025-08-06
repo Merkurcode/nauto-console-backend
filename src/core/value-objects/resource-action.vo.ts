@@ -6,6 +6,8 @@ export enum ActionType {
   DELETE = 'delete',
   MANAGE = 'manage',
   UPDATE = 'update',
+  ASSIGN = 'assign',
+  REMOVE = 'remove',
 }
 
 export class ResourceAction {
