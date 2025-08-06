@@ -145,7 +145,7 @@ export class CheckEmailVerificationStatusCommandHandler
   ): Promise<boolean> {
     try {
       const targetCompany = await this.companyRepository.findById(
-        CompanyId.fromString(targetCompanyId)
+        CompanyId.fromString(targetCompanyId),
       );
       if (!targetCompany) {
         return false;
