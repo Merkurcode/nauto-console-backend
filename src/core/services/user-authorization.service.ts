@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
-import { RolesEnum } from '@shared/constants/enums';
+import { RolesEnum, ROLE_HIERARCHY_ORDER, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
 
 // Interface for lightweight user authorization checks
 interface IUserAuthInfo {
@@ -388,26 +388,34 @@ export class UserAuthorizationService {
    * Helper method to check hierarchy levels
    */
   private isUserBelowInHierarchy(currentUser: User, targetUser: User): boolean {
-    const hierarchyOrder = [
-      RolesEnum.ROOT,
-      RolesEnum.ROOT_READONLY,
-      RolesEnum.ADMIN,
-      RolesEnum.MANAGER,
-      RolesEnum.SALES_AGENT,
-      RolesEnum.HOST,
-      RolesEnum.GUEST,
-    ];
-
-    const currentUserLevel = this.getUserHierarchyLevel(currentUser, hierarchyOrder);
-    const targetUserLevel = this.getUserHierarchyLevel(targetUser, hierarchyOrder);
+    const currentUserLevel = this.getUserHierarchyLevel(currentUser);
+    const targetUserLevel = this.getUserHierarchyLevel(targetUser);
 
     return targetUserLevel > currentUserLevel;
   }
 
   /**
+   * Check if current user can manage target user based on role hierarchy
+   * Current user must have equal or higher hierarchy (lower number = higher hierarchy in 1-based system)
+   */
+  public canManageUser(currentUser: User, targetUser: User): boolean {
+    const currentUserLevel = this.getUserHierarchyLevel(currentUser);
+    const targetUserLevel = this.getUserHierarchyLevel(targetUser);
+
+    return currentUserLevel <= targetUserLevel;
+  }
+
+  /**
+   * Get user hierarchy level using the standard role hierarchy
+   */
+  public getUserHierarchyLevel(user: User): number {
+    return this.getUserHierarchyLevelWithOrder(user, ROLE_HIERARCHY_ORDER_STRINGS);
+  }
+
+  /**
    * Get user hierarchy level
    */
-  private getUserHierarchyLevel(user: User, hierarchyOrder: string[]): number {
+  private getUserHierarchyLevelWithOrder(user: User, hierarchyOrder: readonly string[]): number {
     const userRoles = user.rolesCollection.getRoleNames().map(name => name.toLowerCase());
 
     for (let i = 0; i < hierarchyOrder.length; i++) {
@@ -423,15 +431,7 @@ export class UserAuthorizationService {
    * Get role hierarchy level by role name (level starts at 1, not 0)
    */
   private getRoleHierarchyLevel(roleName: string): number {
-    const hierarchyOrder = [
-      RolesEnum.ROOT,
-      RolesEnum.ROOT_READONLY,
-      RolesEnum.ADMIN,
-      RolesEnum.MANAGER,
-      RolesEnum.SALES_AGENT,
-      RolesEnum.HOST,
-      RolesEnum.GUEST,
-    ];
+    const hierarchyOrder = ROLE_HIERARCHY_ORDER_STRINGS;
 
     const roleIndex = hierarchyOrder.findIndex(
       role => role.toLowerCase() === roleName.toLowerCase(),

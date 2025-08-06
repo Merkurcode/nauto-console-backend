@@ -25,7 +25,6 @@ import {
   UserNotEligibleForRoleException,
   UserAlreadyHasRoleException,
   InactiveUserException,
-  UserCannotRemoveLastRoleException,
   InvalidValueObjectException,
 } from '@core/exceptions/domain-exceptions';
 import { CanAssignRoleSpecification } from '@core/specifications/user.specifications';

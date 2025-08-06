@@ -29,3 +29,31 @@ export enum IndustryOperationChannelEnum {
   PHYSICAL = 'PHYSICAL',
   MIXED = 'MIXED',
 }
+
+/**
+ * Role hierarchy order from highest to lowest privilege.
+ * Lower index means higher privilege level.
+ */
+export const ROLE_HIERARCHY_ORDER = [
+  RolesEnum.ROOT,
+  RolesEnum.ROOT_READONLY,
+  RolesEnum.ADMIN,
+  RolesEnum.MANAGER,
+  RolesEnum.SALES_AGENT,
+  RolesEnum.HOST,
+  RolesEnum.GUEST,
+] as const;
+
+/**
+ * Role hierarchy order using string values (for legacy compatibility).
+ * Lower index means higher privilege level.
+ */
+export const ROLE_HIERARCHY_ORDER_STRINGS = [
+  'root',
+  'root_readonly',
+  'admin',
+  'manager',
+  'sales_agent',
+  'host',
+  'guest',
+] as const;
