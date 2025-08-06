@@ -281,7 +281,7 @@ export class UniversalKPIEngine {
     const sql = this.buildOptimizedQuery(query, relevantPartitions);
 
     // 3. Ejecutar consulta
-    const rawResults = await this.prisma.$queryRawUnsafe(sql) as Array<Record<string, unknown>>;
+    const rawResults = (await this.prisma.$queryRawUnsafe(sql)) as Array<Record<string, unknown>>;
 
     // 4. Procesar y formatear resultados
     return this.formatQueryResults(rawResults, query);
@@ -649,10 +649,22 @@ export class UniversalKPIEngine {
       totalRescheduled: parseInt(String(row.total_rescheduled || 0)) || 0,
       totalCompleted: parseInt(String(row.total_completed || 0)) || 0,
       totalNoShow: parseInt(String(row.total_no_show || 0)) || 0,
-      confirmationRate: this.calculateRate(Number(row.total_confirmed || 0), Number(row.total_created || 0)),
-      completionRate: this.calculateRate(Number(row.total_completed || 0), Number(row.total_confirmed || 0)),
-      noShowRate: this.calculateRate(Number(row.total_no_show || 0), Number(row.total_confirmed || 0)),
-      rescheduleRate: this.calculateRate(Number(row.total_rescheduled || 0), Number(row.total_created || 0)),
+      confirmationRate: this.calculateRate(
+        Number(row.total_confirmed || 0),
+        Number(row.total_created || 0),
+      ),
+      completionRate: this.calculateRate(
+        Number(row.total_completed || 0),
+        Number(row.total_confirmed || 0),
+      ),
+      noShowRate: this.calculateRate(
+        Number(row.total_no_show || 0),
+        Number(row.total_confirmed || 0),
+      ),
+      rescheduleRate: this.calculateRate(
+        Number(row.total_rescheduled || 0),
+        Number(row.total_created || 0),
+      ),
       metadata: {
         queryExecutionTime: row.execution_time,
         partitionsQueried: row.partitions_count,
@@ -717,7 +729,7 @@ export class UniversalKPIEngine {
     const startTime = performance.now();
 
     // Ejecutar query personalizada
-    const result = await this.prisma.$queryRawUnsafe(query) as Array<Record<string, unknown>>;
+    const result = (await this.prisma.$queryRawUnsafe(query)) as Array<Record<string, unknown>>;
 
     const executionTime = performance.now() - startTime;
 
