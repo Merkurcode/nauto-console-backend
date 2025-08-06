@@ -5,6 +5,18 @@ import { CompanySchedules } from '@core/entities/company-schedules.entity';
 import { CompanyScheduleId } from '@core/value-objects/company-schedule-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 
+// Prisma record interface for company schedules
+interface IPrismaCompanyScheduleRecord {
+  id: string;
+  dayOfWeek: number;
+  startTime: Date;
+  endTime: Date;
+  isActive: boolean;
+  companyId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class CompanySchedulesRepository implements ICompanySchedulesRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -218,7 +230,7 @@ export class CompanySchedulesRepository implements ICompanySchedulesRepository {
     });
   }
 
-  private toDomain(record: any): CompanySchedules {
+  private toDomain(record: IPrismaCompanyScheduleRecord): CompanySchedules {
     return CompanySchedules.reconstruct(CompanyScheduleId.fromString(record.id), {
       dayOfWeek: record.dayOfWeek,
       startTime: record.startTime,

@@ -5,6 +5,22 @@ import { CompanyEventsCatalog } from '@core/entities/company-events-catalog.enti
 import { CompanyEventId } from '@core/value-objects/company-event-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 
+// Prisma record interface for company events catalog
+interface IPrismaCompanyEventRecord {
+  eventName: string;
+  title: unknown; // Prisma JsonValue type
+  description: unknown; // Prisma JsonValue type
+  iconUrl: string | null;
+  color: string | null;
+  isActive: boolean;
+  isOnline: boolean;
+  isPhysical: boolean;
+  isAppointment: boolean;
+  companyId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class CompanyEventsCatalogRepository implements ICompanyEventsCatalogRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -78,8 +94,8 @@ export class CompanyEventsCatalogRepository implements ICompanyEventsCatalogRepo
 
     const record = await this.prisma.companyEventsCatalog.create({
       data: {
-        title: persistenceData.title as any,
-        description: persistenceData.description as any,
+        title: persistenceData.title as Record<string, string>,
+        description: persistenceData.description as Record<string, string>,
         iconUrl: persistenceData.iconUrl as string,
         color: persistenceData.color as string,
         isActive: persistenceData.isActive as boolean,
@@ -105,8 +121,8 @@ export class CompanyEventsCatalogRepository implements ICompanyEventsCatalogRepo
         },
       },
       data: {
-        title: persistenceData.title as any,
-        description: persistenceData.description as any,
+        title: persistenceData.title as Record<string, string>,
+        description: persistenceData.description as Record<string, string>,
         iconUrl: persistenceData.iconUrl as string,
         color: persistenceData.color as string,
         isActive: persistenceData.isActive as boolean,
@@ -200,12 +216,12 @@ export class CompanyEventsCatalogRepository implements ICompanyEventsCatalogRepo
     });
   }
 
-  private toDomain(record: any): CompanyEventsCatalog {
+  private toDomain(record: IPrismaCompanyEventRecord): CompanyEventsCatalog {
     return CompanyEventsCatalog.reconstruct(
       CompanyEventId.fromString(record.eventName), // Using eventName as unique identifier
       {
-        title: record.title,
-        description: record.description,
+        title: record.title as Record<string, string>,
+        description: record.description as Record<string, string>,
         iconUrl: record.iconUrl,
         color: record.color,
         isActive: record.isActive,

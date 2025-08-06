@@ -24,6 +24,6 @@ export class TransactionContextService {
   clearTransaction(): void {
     // AsyncLocalStorage automatically cleans up when the async context ends
     // No manual cleanup needed, but we can explicitly exit if needed
-    asyncLocalStorage.enterWith(undefined as any);
+    asyncLocalStorage.enterWith(undefined);
   }
 }

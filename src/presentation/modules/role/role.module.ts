@@ -7,6 +7,14 @@ import { RoleController } from './role.controller';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
+// Repository imports
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { RoleRepository } from '@infrastructure/repositories/role.repository';
+import { PermissionRepository } from '@infrastructure/repositories/permission.repository';
+import { UserRepository } from '@infrastructure/repositories/user.repository';
+import { REPOSITORY_TOKENS, USER_REPOSITORY } from '@shared/constants/tokens';
+
 // Services
 import { RoleService } from '@core/services/role.service';
 import { PermissionService } from '@core/services/permission.service';

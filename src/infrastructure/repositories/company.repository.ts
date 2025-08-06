@@ -1,11 +1,46 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import {
+  ICompanyRepository,
+  IAssistantAssignment,
+} from '@core/repositories/company.repository.interface';
 import { Company } from '@core/entities/company.entity';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { Host } from '@core/value-objects/host.vo';
+
+// Prisma company record interface
+interface IPrismaCompanyRecord {
+  id: string;
+  name: string;
+  description: string;
+  businessSector: string;
+  businessUnit: string;
+  host: string;
+  timezone?: string;
+  currency?: string;
+  language?: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  privacyPolicyUrl?: string;
+  industrySector?: string;
+  industryOperationChannel?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  address: {
+    country: string;
+    state: string;
+    city: string;
+    street: string;
+    exteriorNumber: string;
+    interiorNumber?: string;
+    postalCode: string;
+  };
+  parentCompany?: IPrismaCompanyRecord;
+  subsidiaries?: IPrismaCompanyRecord[];
+}
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -133,7 +168,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
 
   async findAllWithAssistants(): Promise<{
     companies: Company[];
-    assistantsMap: Map<string, any[]>;
+    assistantsMap: Map<string, IAssistantAssignment[]>;
   }> {
     return this.executeWithErrorHandling(
       'findAllWithAssistants',
@@ -171,7 +206,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           },
         });
 
-        const assistantsMap = new Map<string, any[]>();
+        const assistantsMap = new Map<string, IAssistantAssignment[]>();
         const companiesData = companies.map(company => {
           // Extract assistants data
           if (company.assistants && company.assistants.length > 0) {
@@ -185,7 +220,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         });
 
         return {
-          companies: companiesData.map(company => this.mapToModel(company as any)),
+          companies: companiesData.map(company => this.mapToModel(company as IPrismaCompanyRecord)),
           assistantsMap,
         };
       },
@@ -195,7 +230,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
 
   async findByIdWithAssistants(
     id: CompanyId,
-  ): Promise<{ company: Company | null; assistants: any[] }> {
+  ): Promise<{ company: Company | null; assistants: IAssistantAssignment[] }> {
     return this.executeWithErrorHandling(
       'findByIdWithAssistants',
       async () => {
@@ -238,7 +273,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         const { assistants: _, ...companyWithoutAssistants } = company;
 
         return {
-          company: this.mapToModel(companyWithoutAssistants as any),
+          company: this.mapToModel(companyWithoutAssistants as IPrismaCompanyRecord),
           assistants,
         };
       },

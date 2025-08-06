@@ -5,8 +5,10 @@ import {
   IAssistantResponse,
 } from '@application/dtos/responses/company.response';
 
+import { IAssistantAssignment } from '@core/repositories/company.repository.interface';
+
 export class CompanyMapper {
-  static toResponse(company: Company, assistants?: any[]): ICompanyResponse {
+  static toResponse(company: Company, assistants?: IAssistantAssignment[]): ICompanyResponse {
     return {
       id: company.id.getValue(),
       name: company.name.getValue(),
@@ -65,26 +67,26 @@ export class CompanyMapper {
 
   static toListResponse(
     companies: Company[],
-    assistantsMap?: Map<string, any[]>,
+    assistantsMap?: Map<string, IAssistantAssignment[]>,
   ): ICompanyResponse[] {
     return companies.map(company =>
       this.toResponse(company, assistantsMap?.get(company.id.getValue())),
     );
   }
 
-  private static mapAssistants(assistants: any[]): IAssistantResponse[] {
+  private static mapAssistants(assistants: IAssistantAssignment[]): IAssistantResponse[] {
     return assistants.map(assignment => ({
       id: assignment.aiAssistant.id,
       name: assignment.aiAssistant.name,
       area: assignment.aiAssistant.area,
-      description: assignment.aiAssistant.description,
+      description: assignment.aiAssistant.description as Record<string, string>,
       enabled: assignment.enabled,
       features:
-        assignment.features?.map((feature: any) => ({
+        assignment.features?.map(feature => ({
           id: feature.aiAssistantFeature.id,
           keyName: feature.aiAssistantFeature.keyName,
-          title: feature.aiAssistantFeature.title,
-          description: feature.aiAssistantFeature.description,
+          title: feature.aiAssistantFeature.title as Record<string, string>,
+          description: feature.aiAssistantFeature.description as Record<string, string>,
           enabled: feature.enabled,
         })) || [],
     }));

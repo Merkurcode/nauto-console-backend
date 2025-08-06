@@ -4,8 +4,8 @@ import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/consta
 export interface IAssistantFeatureResponse {
   id: string;
   keyName: string;
-  title: any;
-  description: any;
+  title: Record<string, string>;
+  description: Record<string, string>;
   enabled: boolean;
 }
 
@@ -13,7 +13,7 @@ export interface IAssistantResponse {
   id: string;
   name: string;
   area: string;
-  description: any;
+  description: Record<string, string>;
   enabled: boolean;
   features: IAssistantFeatureResponse[];
 }
@@ -284,13 +284,13 @@ export class AssistantFeatureResponse implements IAssistantFeatureResponse {
     example: { en: 'Lead Qualification', es: 'Calificación de Leads' },
     description: 'Feature title in different languages',
   })
-  title: any;
+  title: Record<string, string>;
 
   @ApiProperty({
     example: { en: 'Qualify leads automatically', es: 'Califica leads automáticamente' },
     description: 'Feature description in different languages',
   })
-  description: any;
+  description: Record<string, string>;
 
   @ApiProperty({
     example: true,
@@ -322,7 +322,7 @@ export class AssistantResponse implements IAssistantResponse {
     example: { en: 'Brand expertise assistant', es: 'Asistente experto en marca' },
     description: 'Assistant description in different languages',
   })
-  description: any;
+  description: Record<string, string>;
 
   @ApiProperty({
     example: true,

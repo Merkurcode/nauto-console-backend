@@ -188,6 +188,7 @@ export class UserController {
       // In production, we do not allow deleting users via API
       throw new Error('User deletion is not allowed in current environment.');
     }
+
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
         new DeleteUserCommand(id, currentUser.sub, currentUser.companyId!),
