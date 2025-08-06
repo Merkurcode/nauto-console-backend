@@ -36,3 +36,6 @@ export const REPOSITORY_TOKENS = {
 
 // Service injection tokens
 export const THROTTLER_SERVICE = Symbol('ThrottlerService');
+export const LOGGER_SERVICE = Symbol('ILogger');
+export const TOKEN_PROVIDER = Symbol('ITokenProvider');
+export const DATABASE_HEALTH = Symbol('IDatabaseHealth');

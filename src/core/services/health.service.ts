@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { IDatabaseHealth } from '@core/interfaces/database-health.interface';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE, DATABASE_HEALTH } from '@shared/constants/tokens';
 import {
   IHealthResponse,
   IDatabaseHealthResponse,
@@ -9,7 +10,7 @@ import {
   ILivenessResponse,
   IHealthCheckDetail,
   IComprehensiveHealthResponse,
-} from '@application/dtos/responses/health.response';
+} from '@core/interfaces/health.interface';
 import {
   HealthCheckException,
   DatabaseConnectionException,
@@ -24,8 +25,10 @@ import {
 export class HealthService {
   constructor(
     private readonly configService: ConfigService,
-    private readonly prismaService: PrismaService,
-    private readonly logger: LoggerService,
+    @Inject(DATABASE_HEALTH)
+    private readonly databaseHealth: IDatabaseHealth,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
   ) {}
 
   /**
@@ -192,7 +195,7 @@ export class HealthService {
 
   private async checkDatabase(): Promise<void> {
     try {
-      await this.prismaService.$queryRaw`SELECT 1`;
+      await this.databaseHealth.testConnection();
     } catch (error) {
       throw new DatabaseConnectionException(`Database check failed: ${error.message}`);
     }

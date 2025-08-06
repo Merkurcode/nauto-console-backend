@@ -1,18 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '@core/services/auth.service';
 import { User } from '@core/entities/user.entity';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { ITokenProvider } from '@core/interfaces/token-provider.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
-export class TokenProvider {
+export class TokenProvider implements ITokenProvider {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
   ) {
     this.logger.setContext(TokenProvider.name);
   }

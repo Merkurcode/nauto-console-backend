@@ -87,6 +87,7 @@ export class AdminChangePasswordCommandHandler
           'Root users cannot change passwords of other root users for security reasons',
         );
       }
+
       return;
     }
 
@@ -116,6 +117,7 @@ export class AdminChangePasswordCommandHandler
           'Admin can only change passwords of users in the same company',
         );
       }
+
       return;
     }
 

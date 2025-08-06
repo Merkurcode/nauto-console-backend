@@ -1,4 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
+
+// Domain Services - Pure business logic
 import { DomainEventService } from './services/domain-event.service';
 import { DomainValidationService } from './services/domain-validation.service';
 import { UserAuthorizationService } from './services/user-authorization.service';
@@ -9,23 +13,17 @@ import { ApplicationEventService } from './services/application-event.service';
 import { HealthService } from './services/health.service';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
-import { LoggerModule } from '@infrastructure/logger/logger.module';
-import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
-import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
-import { SESSION_REPOSITORY, USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
-import { SessionRepository } from '@infrastructure/repositories/session.repository';
-import { UserRepository } from '@infrastructure/repositories/user.repository';
-import { CompanyRepository } from '@infrastructure/repositories/company.repository';
+import { AuthService } from './services/auth.service';
 
 /**
  * Core Domain Module
- * Contains all domain services and DDD infrastructure
+ * Contains ONLY domain services with pure business logic
+ * No infrastructure dependencies - those are injected via tokens
  */
 @Module({
-  imports: [LoggerModule, ConfigModule, PrismaModule],
+  imports: [ConfigModule, forwardRef(() => InfrastructureModule)],
   providers: [
+    // Pure domain services
     DomainEventService,
     DomainValidationService,
     UserAuthorizationService,
@@ -36,26 +34,10 @@ import { CompanyRepository } from '@infrastructure/repositories/company.reposito
     HealthService,
     EmailService,
     SmsService,
-    {
-      provide: SESSION_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new SessionRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
-    {
-      provide: USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
-    {
-      provide: COMPANY_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new CompanyRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
+    AuthService,
   ],
   exports: [
+    // Export all domain services
     DomainEventService,
     DomainValidationService,
     UserAuthorizationService,
@@ -66,6 +48,7 @@ import { CompanyRepository } from '@infrastructure/repositories/company.reposito
     HealthService,
     EmailService,
     SmsService,
+    AuthService,
   ],
 })
 export class CoreModule {}

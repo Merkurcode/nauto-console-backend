@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import { DomainEventService } from './domain-event.service';
 import {
   UserRegisteredEvent,
@@ -6,7 +6,8 @@ import {
   UserRoleAssignedEvent,
   UserTwoFactorEnabledEvent,
 } from '@core/events/user.events';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { User } from '@core/entities/user.entity';
 
 /**
@@ -17,7 +18,8 @@ import { User } from '@core/entities/user.entity';
 export class ApplicationEventService implements OnModuleInit {
   constructor(
     private readonly domainEventService: DomainEventService,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
   ) {}
 
   onModuleInit() {

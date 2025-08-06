@@ -2,15 +2,15 @@ import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { UserBannedException } from '@core/exceptions/domain-exceptions';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { USER_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class UserBanService {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    @Inject(LoggerService) private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     this.logger.setContext(UserBanService.name);
   }

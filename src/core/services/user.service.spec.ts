@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
-import { EmailProvider } from '@presentation/modules/auth/providers/email.provider';
+import { EmailService } from './email.service';
 import * as bcrypt from 'bcrypt';
 
 // Mocks
@@ -43,10 +43,9 @@ const createMockDomainValidationService = () => ({
   }),
 });
 
-// Mock EmailProvider
-const createMockEmailProvider = () => ({
-  sendEmail: jest.fn().mockResolvedValue(true),
-  sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+// Mock EmailService
+const createMockEmailService = () => ({
+  sendWelcomeEmailWithPassword: jest.fn().mockResolvedValue(true),
 });
 
 describe('UserService', () => {

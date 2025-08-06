@@ -1,19 +1,13 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
+// Repository tokens are provided by InfrastructureModule
 
 // Controllers
 import { UserController } from './user.controller';
 import { UsersController } from './users.controller';
 
-// Repositories
-import { UserRepository } from '@infrastructure/repositories/user.repository';
-import { RoleRepository } from '@infrastructure/repositories/role.repository';
-import { CompanyRepository } from '@infrastructure/repositories/company.repository';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
-import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CoreModule } from '@core/core.module';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { AuthModule } from '@presentation/modules/auth/auth.module';
 
 // Services
@@ -52,34 +46,11 @@ const commandHandlers = [
 ];
 
 @Module({
-  imports: [CqrsModule, PrismaModule, CoreModule, AuthModule],
+  imports: [CqrsModule, CoreModule, InfrastructureModule, AuthModule],
   controllers: [UserController, UsersController],
   providers: [
-    // Services
-    {
-      provide: UserService,
-      useClass: UserService,
-    },
-
-    // Repository tokens
-    {
-      provide: USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
-    {
-      provide: ROLE_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new RoleRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
-    {
-      provide: COMPANY_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new CompanyRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
+    // Services (from CoreModule)
+    UserService,
 
     // Query handlers
     ...queryHandlers,

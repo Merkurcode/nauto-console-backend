@@ -1,11 +1,12 @@
 import { ExceptionFilter, Catch, ArgumentsHost, Inject } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { DomainException } from '@core/exceptions/domain-exceptions';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Catch(DomainException)
 export class DomainExceptionsFilter implements ExceptionFilter {
-  constructor(@Inject(LoggerService) private readonly logger: LoggerService) {
+  constructor(@Inject(LOGGER_SERVICE) private readonly logger: ILogger) {
     this.logger.setContext(DomainExceptionsFilter.name);
   }
 

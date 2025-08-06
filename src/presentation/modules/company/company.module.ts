@@ -1,13 +1,9 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
-import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CoreModule } from '@core/core.module';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { CompanyController } from './company.controller';
 import { CompanyUsersController } from './company-users.controller';
-import { CompanyRepository } from '@infrastructure/repositories/company.repository';
-import { UserRepository } from '@infrastructure/repositories/user.repository';
 import { TenantResolverService } from '@presentation/services/tenant-resolver.service';
 import { CreateCompanyCommandHandler } from '@application/commands/company/create-company.command';
 import { UpdateCompanyCommandHandler } from '@application/commands/company/update-company.command';
@@ -20,7 +16,7 @@ import { GetCompanyByHostQueryHandler } from '@application/queries/company/get-c
 import { GetCompanySubsidiariesQueryHandler } from '@application/queries/company/get-company-subsidiaries.query';
 import { GetRootCompaniesQueryHandler } from '@application/queries/company/get-root-companies.query';
 import { GetCompanyHierarchyQueryHandler } from '@application/queries/company/get-company-hierarchy.query';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+// Repository tokens are provided by InfrastructureModule
 
 const commandHandlers = [
   CreateCompanyCommandHandler,
@@ -40,25 +36,16 @@ const queryHandlers = [
 ];
 
 @Module({
-  imports: [CqrsModule, PrismaModule, CoreModule],
+  imports: [CqrsModule, CoreModule, InfrastructureModule],
   controllers: [CompanyController, CompanyUsersController],
   providers: [
-    {
-      provide: REPOSITORY_TOKENS.COMPANY_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new CompanyRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
-    {
-      provide: REPOSITORY_TOKENS.USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
+    // Services
     TenantResolverService,
+
+    // Command and Query handlers
     ...commandHandlers,
     ...queryHandlers,
   ],
-  exports: [REPOSITORY_TOKENS.COMPANY_REPOSITORY, TenantResolverService],
+  exports: [TenantResolverService],
 })
 export class CompanyModule {}

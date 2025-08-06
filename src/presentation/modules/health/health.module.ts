@@ -6,6 +6,7 @@ import { HealthController } from './health.controller';
 
 // Core Module for domain services
 import { CoreModule } from '@core/core.module';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 // Query Handlers
 import { GetHealthQueryHandler } from '@application/queries/health/get-health.query';
@@ -21,7 +22,7 @@ const queryHandlers = [
 ];
 
 @Module({
-  imports: [CqrsModule, CoreModule],
+  imports: [CqrsModule, CoreModule, InfrastructureModule],
   controllers: [HealthController],
   providers: [
     // Query handlers

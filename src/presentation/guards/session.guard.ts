@@ -1,16 +1,17 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SessionService } from '@core/services/session.service';
 import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { JwtService } from '@nestjs/jwt';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
   constructor(
     private readonly sessionService: SessionService,
     private readonly reflector: Reflector,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
     private readonly jwtService: JwtService,
   ) {
     this.logger.setContext(SessionGuard.name);

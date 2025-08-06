@@ -8,7 +8,7 @@ import { SessionService } from '@core/services/session.service';
 import { UserBanService } from '@core/services/user-ban.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { RefreshToken } from '@core/entities/refresh-token.entity';
 import { User } from '@core/entities/user.entity';
 import { Email } from '@core/value-objects/email.vo';
@@ -18,7 +18,7 @@ import { Token } from '@core/value-objects/token.vo';
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
-import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { USER_REPOSITORY, ROLE_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { RolesEnum } from '@shared/constants/enums';
 
 // Mock UUID generation
@@ -157,7 +157,7 @@ describe('RefreshTokenCommandHandler', () => {
         { provide: UserBanService, useValue: mockUserBanService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: LoggerService, useValue: mockLoggerService },
+        { provide: LOGGER_SERVICE, useValue: mockLoggerService },
       ],
     }).compile();
 

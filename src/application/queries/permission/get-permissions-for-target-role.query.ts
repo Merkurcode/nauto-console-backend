@@ -3,9 +3,7 @@ import { PermissionExcludeService } from '@core/services/permission-exclude.serv
 import { IAssignablePermissionResponse } from '@application/dtos/responses/assignable-permission.response';
 
 export class GetPermissionsForTargetRoleQuery {
-  constructor(
-    public readonly targetRoleName: string,
-  ) {}
+  constructor(public readonly targetRoleName: string) {}
 }
 
 @QueryHandler(GetPermissionsForTargetRoleQuery)
