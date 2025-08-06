@@ -15,6 +15,8 @@ const rolePermissionsMap = {
     'company:read', 'company:write', 'company:delete',
     'ai-assistant:read', 'ai-assistant:update',
     'company-user:assign', 'company-user:remove',
+    'company_schedules:read', 'company_schedules:write', 'company_schedules:delete',
+    'company_events:read', 'company_events:write', 'company_events:delete',
   ],
   [RolesEnum.ROOT_READONLY]: [
     'system:read',
@@ -23,6 +25,8 @@ const rolePermissionsMap = {
     'storage:read', 'storage:manage',
     'company:read',
     'ai-assistant:read',
+    'company_schedules:read',
+    'company_events:read',
   ],
   [RolesEnum.ADMIN]: [
     'auth:write',
@@ -31,7 +35,9 @@ const rolePermissionsMap = {
     'storage:read', 'storage:write', 'storage:delete', 'storage:manage',
     'company:read', 'company:write',
     'ai-assistant:read',
-    'company-user:assign', 'company-user:remove'
+    'company-user:assign', 'company-user:remove',
+    'company_schedules:read', 'company_schedules:write', 'company_schedules:delete',
+    'company_events:read', 'company_events:write', 'company_events:delete',
   ],
   [RolesEnum.MANAGER]: [
     'auth:write',
@@ -40,6 +46,8 @@ const rolePermissionsMap = {
     'storage:manage', 'storage:write', 'storage:read',
     'company:read',
     'ai-assistant:read',
+    'company_schedules:read', 'company_schedules:write', 'company_schedules:delete',
+    'company_events:read', 'company_events:write', 'company_events:delete',
   ],
   [RolesEnum.SALES_AGENT]: [
     'user:read',
@@ -47,6 +55,8 @@ const rolePermissionsMap = {
     'storage:manage', 'storage:write', 'storage:read',
     'company:read',
     'ai-assistant:read',
+    'company_schedules:read',
+    'company_events:read',
   ],
   [RolesEnum.HOST]: [
     'user:read',
@@ -54,10 +64,14 @@ const rolePermissionsMap = {
     'storage:manage', 'storage:write', 'storage:read',
     'company:read',
     'ai-assistant:read',
+    'company_schedules:read',
+    'company_events:read',
   ],
   [RolesEnum.GUEST]: [
     'user:read',
-    'company:read'
+    'company:read',
+    'company_schedules:read',
+    'company_events:read',
   ],
 };
 

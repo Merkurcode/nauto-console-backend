@@ -3,8 +3,10 @@ import { Inject } from '@nestjs/common';
 import { CompanyEventsCatalog } from '@core/entities/company-events-catalog.entity';
 import { ICompanyEventsCatalogRepository } from '@core/repositories/company-events-catalog.repository.interface';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { InvalidInputException } from '@core/exceptions/domain-exceptions';
-import { COMPANY_EVENTS_CATALOG_REPOSITORY } from '@shared/constants/tokens';
+import { InvalidInputException, ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import { COMPANY_EVENTS_CATALOG_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
 
 export class CreateCompanyEventCommand {
   constructor(
@@ -12,6 +14,7 @@ export class CreateCompanyEventCommand {
     public readonly description: Record<string, string>,
     public readonly eventName: string,
     public readonly companyId: string,
+    public readonly currentUserId: string,
     public readonly iconUrl?: string,
     public readonly color?: string,
     public readonly isOnline: boolean = false,
@@ -36,11 +39,26 @@ export class CreateCompanyEventHandler implements ICommandHandler<CreateCompanyE
   constructor(
     @Inject(COMPANY_EVENTS_CATALOG_REPOSITORY)
     private readonly companyEventsRepository: ICompanyEventsCatalogRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async execute(command: CreateCompanyEventCommand): Promise<ICreateCompanyEventResponse> {
     // Validate input
     this.validateCommand(command);
+
+    // Check user authorization
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(
+      command.currentUserId,
+    );
+
+    // Verify user can access this company
+    if (!this.userAuthorizationService.canAccessCompany(currentUser, command.companyId)) {
+      throw new ForbiddenActionException(
+        'You do not have permission to create events for this company',
+      );
+    }
 
     const companyId = CompanyId.fromString(command.companyId);
 

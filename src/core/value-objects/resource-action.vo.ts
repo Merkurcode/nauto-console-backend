@@ -26,8 +26,8 @@ export class ResourceAction {
   }
 
   private isValidResource(resource: string): boolean {
-    // Resource name should be lowercase alphanumeric and cannot be empty
-    return /^[a-z0-9-]+$/.test(resource) && resource.length > 0;
+    // Resource name should be lowercase alphanumeric with hyphens or underscores and cannot be empty
+    return /^[a-z0-9-_]+$/.test(resource) && resource.length > 0;
   }
 
   private parseActionType(action: string): ActionType {

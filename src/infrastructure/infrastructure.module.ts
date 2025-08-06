@@ -24,6 +24,8 @@ import { StateRepository } from './repositories/state.repository';
 import { PermissionRepository } from './repositories/permission.repository';
 import { AIAssistantRepository } from './repositories/ai-assistant.repository';
 import { CompanyAIAssistantRepository } from './repositories/company-ai-assistant.repository';
+import { CompanyEventsCatalogRepository } from './repositories/company-events-catalog.repository';
+import { CompanySchedulesRepository } from './repositories/company-schedules.repository';
 import { TokenProvider } from './auth/token.provider';
 
 // Tokens
@@ -42,6 +44,8 @@ import {
   STATE_REPOSITORY,
   AI_ASSISTANT_REPOSITORY,
   COMPANY_AI_ASSISTANT_REPOSITORY,
+  COMPANY_EVENTS_CATALOG_REPOSITORY,
+  COMPANY_SCHEDULES_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
 } from '@shared/constants/tokens';
@@ -164,6 +168,16 @@ import {
       useFactory: (prisma: PrismaService) => new CompanyAIAssistantRepository(prisma),
       inject: [PrismaService],
     },
+    {
+      provide: COMPANY_EVENTS_CATALOG_REPOSITORY,
+      useFactory: (prisma: PrismaService) => new CompanyEventsCatalogRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: COMPANY_SCHEDULES_REPOSITORY,
+      useFactory: (prisma: PrismaService) => new CompanySchedulesRepository(prisma),
+      inject: [PrismaService],
+    },
 
     // Infrastructure services
     {
@@ -192,6 +206,8 @@ import {
     STATE_REPOSITORY,
     AI_ASSISTANT_REPOSITORY,
     COMPANY_AI_ASSISTANT_REPOSITORY,
+    COMPANY_EVENTS_CATALOG_REPOSITORY,
+    COMPANY_SCHEDULES_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
 

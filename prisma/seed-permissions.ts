@@ -152,6 +152,48 @@ export const permissions = [
     action: 'remove',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN],
   },
+  {
+    name: 'company_schedules:read',
+    description: 'Can read company schedules',
+    resource: 'company_schedules',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'company_schedules:write',
+    description: 'Can create and update company schedules',
+    resource: 'company_schedules',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'company_schedules:delete',
+    description: 'Can delete company schedules',
+    resource: 'company_schedules',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'company_events:read',
+    description: 'Can read company events catalog',
+    resource: 'company_events',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'company_events:write',
+    description: 'Can create and update company events catalog',
+    resource: 'company_events',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'company_events:delete',
+    description: 'Can delete company events catalog',
+    resource: 'company_events',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {

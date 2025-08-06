@@ -29,12 +29,17 @@ export class CompanySchedulesMapper {
   /**
    * Map DTO to Create Command
    */
-  toCreateCommand(dto: CreateCompanyScheduleDto, companyId: string): CreateCompanyScheduleCommand {
+  toCreateCommand(
+    dto: CreateCompanyScheduleDto,
+    companyId: string,
+    currentUserId: string,
+  ): CreateCompanyScheduleCommand {
     return new CreateCompanyScheduleCommand(
       companyId,
       dto.dayOfWeek,
       dto.startTime,
       dto.endTime,
+      currentUserId,
       dto.isActive ?? true,
     );
   }
@@ -42,15 +47,25 @@ export class CompanySchedulesMapper {
   /**
    * Map DTO to Update Command
    */
-  toUpdateCommand(dto: UpdateCompanyScheduleDto, scheduleId: string): UpdateCompanyScheduleCommand {
-    return new UpdateCompanyScheduleCommand(scheduleId, dto.startTime, dto.endTime, dto.isActive);
+  toUpdateCommand(
+    dto: UpdateCompanyScheduleDto,
+    scheduleId: string,
+    currentUserId: string,
+  ): UpdateCompanyScheduleCommand {
+    return new UpdateCompanyScheduleCommand(
+      scheduleId,
+      currentUserId,
+      dto.startTime,
+      dto.endTime,
+      dto.isActive,
+    );
   }
 
   /**
    * Create Delete Command
    */
-  toDeleteCommand(scheduleId: string): DeleteCompanyScheduleCommand {
-    return new DeleteCompanyScheduleCommand(scheduleId);
+  toDeleteCommand(scheduleId: string, currentUserId: string): DeleteCompanyScheduleCommand {
+    return new DeleteCompanyScheduleCommand(scheduleId, currentUserId);
   }
 
   /**

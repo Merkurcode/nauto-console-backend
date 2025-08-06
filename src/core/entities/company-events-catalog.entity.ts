@@ -48,11 +48,19 @@ export class CompanyEventsCatalog {
   }
 
   /**
-   * Standardize event name: lowercase, remove double spaces, replace spaces with underscores
-   * Example: " citas en   eel día  " -> "citas_en_eel_dia"
+   * Standardize event name: lowercase, remove accents, tabs, line breaks, remove double spaces, replace spaces with underscores
+   * Example: " Citas en   el día  " -> "citas_en_el_dia"
+   * Example: "Reunión de équipo" -> "reunion_de_equipo"
+   * Example: "Event\nwith\ttabs" -> "event_with_tabs"
    */
   public static standardizeEventName(eventName: string): string {
-    return eventName
+    // Remove accents and diacritics
+    const normalized = eventName
+      .normalize('NFD') // Decompose accented characters
+      .replace(/[\u0300-\u036f]/g, ''); // Remove diacritical marks
+    
+    return normalized
+      .replace(/[\r\n\t]+/g, ' ') // Replace tabs and line breaks with spaces
       .trim() // Remove leading/trailing spaces
       .toLowerCase() // Convert to lowercase
       .replace(/\s+/g, ' ') // Replace multiple spaces with single space

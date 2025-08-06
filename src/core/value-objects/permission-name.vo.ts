@@ -17,8 +17,8 @@ export class PermissionName {
   }
 
   private isValid(permissionName: string): boolean {
-    // Permission name must be in format 'resource:action'
-    return /^[a-z0-9-]+:[a-z0-9-]+$/.test(permissionName);
+    // Permission name must be in format 'resource:action' (allowing hyphens and underscores)
+    return /^[a-z0-9-_]+:[a-z0-9-_]+$/.test(permissionName);
   }
 
   getValue(): string {

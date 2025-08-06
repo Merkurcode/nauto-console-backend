@@ -1,9 +1,13 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
-import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import { USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
+import {
+  EntityNotFoundException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 
 export class RemoveUserFromCompanyCommand implements ICommand {
@@ -21,6 +25,8 @@ export class RemoveUserFromCompanyCommandHandler
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
+    @Inject(COMPANY_REPOSITORY)
+    private readonly companyRepository: ICompanyRepository,
     private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
@@ -38,17 +44,28 @@ export class RemoveUserFromCompanyCommandHandler
       throw new EntityNotFoundException('User', userId.getValue());
     }
 
-    // Check hierarchy: current user must have equal or higher hierarchy than target user
-    if (!this.userAuthorizationService.canManageUser(currentUser, targetUser)) {
-      throw new ForbiddenException(
-        'Cannot remove user from company. Current user does not have sufficient hierarchy level to manage this user.',
+    // Get current user's company if needed for validation
+    const currentUserCompany = currentUser.companyId
+      ? await this.companyRepository.findById(currentUser.companyId)
+      : null;
+
+    // Use domain service for complete validation (following Clean Architecture)
+    const validationResult = this.userAuthorizationService.canRemoveUserFromCompanyWithValidation(
+      currentUser,
+      targetUser,
+      currentUserCompany,
+    );
+
+    if (!validationResult.canRemove) {
+      throw new ForbiddenActionException(
+        `Cannot remove user from company. ${validationResult.reason}`,
       );
     }
 
-    // Remove user from company
+    // Remove user from company (domain operation)
     targetUser.removeFromCompany();
 
-    // Save the changes
+    // Save the changes (infrastructure operation)
     await this.userRepository.update(targetUser);
   }
 }

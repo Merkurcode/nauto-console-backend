@@ -61,7 +61,26 @@ export class CompanySchedulesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @CanWrite('company_schedules')
-  @ApiOperation({ summary: 'Create a new company schedule' })
+  @ApiOperation({
+    summary: 'Create a new company schedule',
+    description:
+      'Creates a new schedule entry for a specific company and day of the week.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company_schedules:write</code>\n\n' +
+      '👥 **Roles with Write Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Full system access, can create schedules for any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Company administrator, can only create schedules for their assigned company\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Department manager, can only create schedules for their assigned company\n\n' +
+      '**Company Access Validation:**\n' +
+      '- Enforced at command handler level via UserAuthorizationService.canAccessCompany()\n' +
+      '- ROOT users bypass company validation\n' +
+      '- Other roles must have matching companyId with the target company\n' +
+      '- Returns 403 Forbidden if user lacks access to the company\n\n' +
+      '**Schedule Constraints:**\n' +
+      '- Only one schedule per day of week per company\n' +
+      '- Time ranges cannot overlap with existing schedules for the same day\n' +
+      '- Duration must be between 30 minutes and 24 hours\n' +
+      '- Start time must be before end time',
+  })
   @ApiParam({ name: 'companyId', description: 'Company ID' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -77,10 +96,10 @@ export class CompanySchedulesController {
   async createSchedule(
     @Param('companyId') companyId: string,
     @Body() createScheduleDto: CreateCompanyScheduleDto,
-    @CurrentUser() _user: IJwtPayload,
+    @CurrentUser() currentUser: IJwtPayload,
   ): Promise<CompanyScheduleResponseDto> {
     return this.transactionService.executeInTransaction(async () => {
-      const command = this.mapper.toCreateCommand(createScheduleDto, companyId);
+      const command = this.mapper.toCreateCommand(createScheduleDto, companyId, currentUser.sub);
       const result = await this.commandBus.execute(command);
 
       return this.mapper.toCreateResponseDto(result);
@@ -89,7 +108,26 @@ export class CompanySchedulesController {
 
   @Get()
   @CanRead('company_schedules')
-  @ApiOperation({ summary: 'Get all company schedules' })
+  @ApiOperation({
+    summary: 'Get all company schedules',
+    description:
+      'Retrieves a paginated list of all schedules for a specific company.\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company_schedules:read</code>\n\n' +
+      '👥 **Roles with Read Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can view schedules for any company\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code> - Read-only root access, can view schedules for any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only view schedules for their assigned company\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can only view schedules for their assigned company\n' +
+      '- <code style="color: #6c5ce7; background: #f0f3ff; padding: 2px 6px; border-radius: 3px; font-weight: bold;">SALES_AGENT</code> - Can only view schedules for their assigned company\n' +
+      '- <code style="color: #fdcb6e; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">HOST</code> - Can only view schedules for their assigned company\n' +
+      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">GUEST</code> - Basic read access for their assigned company\n\n' +
+      '**Filtering Options:**\n' +
+      '- `isActive` - Filter by active/inactive status\n' +
+      '- `dayOfWeek` - Filter by specific day (0=Sunday, 6=Saturday)\n' +
+      '- `limit` - Number of results per page (1-100)\n' +
+      '- `offset` - Number of results to skip\n\n' +
+      '**Note:** Query operations do NOT enforce company access validation at handler level.',
+  })
   @ApiParam({ name: 'companyId', description: 'Company ID' })
   @ApiQuery({
     name: 'isActive',
@@ -142,7 +180,25 @@ export class CompanySchedulesController {
 
   @Get('weekly')
   @CanRead('company_schedules')
-  @ApiOperation({ summary: 'Get company weekly schedule with summary statistics' })
+  @ApiOperation({
+    summary: 'Get company weekly schedule with summary statistics',
+    description:
+      'Retrieves a complete weekly view of company schedules organized by days.\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company_schedules:read</code>\n\n' +
+      '👥 **Roles with Read Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can view weekly schedules for any company\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code> - Read-only access for any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only view for their assigned company\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can only view for their assigned company\n' +
+      '- <code style="color: #6c5ce7; background: #f0f3ff; padding: 2px 6px; border-radius: 3px; font-weight: bold;">SALES_AGENT</code> - Can only view for their assigned company\n' +
+      '- <code style="color: #fdcb6e; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">HOST</code> - Can only view for their assigned company\n' +
+      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">GUEST</code> - Basic read access for their assigned company\n\n' +
+      '**Response Includes:**\n' +
+      '- Schedules organized by day (0=Sunday to 6=Saturday)\n' +
+      '- Total working hours per week\n' +
+      '- Number of working days\n' +
+      '- Active/inactive schedule count',
+  })
   @ApiParam({ name: 'companyId', description: 'Company ID' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -161,7 +217,26 @@ export class CompanySchedulesController {
 
   @Put(':scheduleId')
   @CanWrite('company_schedules')
-  @ApiOperation({ summary: 'Update a company schedule' })
+  @ApiOperation({
+    summary: 'Update a company schedule',
+    description:
+      'Updates an existing schedule entry. All fields are optional.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company_schedules:write</code>\n\n' +
+      '👥 **Roles with Write Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can update schedules for any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only update schedules for their assigned company\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can only update schedules for their assigned company\n\n' +
+      '**Company Access Validation:**\n' +
+      '- Validated in UpdateCompanyScheduleHandler via UserAuthorizationService\n' +
+      '- Schedule\'s companyId is checked against user\'s access rights\n' +
+      '- ROOT users bypass company validation\n' +
+      '- Returns 403 if user lacks access to the schedule\'s company\n\n' +
+      '**Update Constraints:**\n' +
+      '- Time conflicts are validated if times are changed\n' +
+      '- Start time must be before end time\n' +
+      '- Duration between 30 minutes and 24 hours\n' +
+      '- Cannot create overlapping schedules for the same day',
+  })
   @ApiParam({ name: 'companyId', description: 'Company ID' })
   @ApiParam({ name: 'scheduleId', description: 'Schedule ID to update' })
   @ApiResponse({
@@ -177,10 +252,10 @@ export class CompanySchedulesController {
     @Param('companyId') companyId: string,
     @Param('scheduleId') scheduleId: string,
     @Body() updateScheduleDto: UpdateCompanyScheduleDto,
-    @CurrentUser() _user: IJwtPayload,
+    @CurrentUser() currentUser: IJwtPayload,
   ): Promise<CompanyScheduleResponseDto> {
     return this.transactionService.executeInTransaction(async () => {
-      const command = this.mapper.toUpdateCommand(updateScheduleDto, scheduleId);
+      const command = this.mapper.toUpdateCommand(updateScheduleDto, scheduleId, currentUser.sub);
       const result = await this.commandBus.execute(command);
 
       return this.mapper.toUpdateResponseDto(result);
@@ -190,7 +265,25 @@ export class CompanySchedulesController {
   @Delete(':scheduleId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @CanDelete('company_schedules')
-  @ApiOperation({ summary: 'Delete a company schedule' })
+  @ApiOperation({
+    summary: 'Delete a company schedule',
+    description:
+      'Permanently deletes a specific schedule entry.\n\n' +
+      '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company_schedules:delete</code>\n\n' +
+      '👥 **Roles with Delete Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can delete schedules for any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only delete schedules for their assigned company\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can only delete schedules for their assigned company\n\n' +
+      '**Company Access Validation:**\n' +
+      '- Validated in DeleteCompanyScheduleHandler via UserAuthorizationService\n' +
+      '- Schedule\'s companyId is checked against user\'s access rights\n' +
+      '- ROOT users bypass company validation\n' +
+      '- Returns 403 if user lacks access to the schedule\'s company\n\n' +
+      '**Important Notes:**\n' +
+      '- This is a hard delete - data cannot be recovered\n' +
+      '- Consider setting isActive=false instead for soft delete\n' +
+      '- Schedule history will be lost permanently',
+  })
   @ApiParam({ name: 'companyId', description: 'Company ID' })
   @ApiParam({ name: 'scheduleId', description: 'Schedule ID to delete' })
   @ApiResponse({
@@ -202,10 +295,10 @@ export class CompanySchedulesController {
   async deleteSchedule(
     @Param('companyId') companyId: string,
     @Param('scheduleId') scheduleId: string,
-    @CurrentUser() _user: IJwtPayload,
+    @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
     return this.transactionService.executeInTransaction(async () => {
-      const command = this.mapper.toDeleteCommand(scheduleId);
+      const command = this.mapper.toDeleteCommand(scheduleId, user.sub);
       await this.commandBus.execute(command);
     });
   }

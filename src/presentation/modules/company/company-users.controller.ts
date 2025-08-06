@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   HttpStatus,
+  HttpCode,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
@@ -49,15 +50,16 @@ export class CompanyUsersController {
   }
 
   @Post('assign')
+  @HttpCode(HttpStatus.CREATED)
   @RequirePermissions('company-user:assign')
   @WriteOperation('company-user')
   @ApiOperation({
     summary: 'Assign user to company',
     description:
-      'Assigns a user to a specific company.\n\n**Required Permissions:** company-user:assign\n**Access Control:** Permission-based authorization\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Assigns a user to a specific company.\n\n**Required Permissions:** company-user:assign\n**Access Control:** Permission-based authorization with hierarchical restrictions\n**Security Rules:**\n- Root users can assign users to any company\n- Admin users can only assign users to their own company or subsidiary companies\n- Users must have sufficient hierarchy level to manage the target user\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: HttpStatus.CREATED,
     description: 'User assigned to company successfully',
   })
   @ApiResponse({
@@ -67,7 +69,7 @@ export class CompanyUsersController {
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
     description:
-      'User does not have company-user:assign permission or Root readonly users cannot perform write operations',
+      'User does not have company-user:assign permission, insufficient hierarchy level, admin trying to assign to unauthorized company, or Root readonly users cannot perform write operations',
   })
   async assignUserToCompany(
     @Body() assignUserDto: AssignUserToCompanyDto,
@@ -87,15 +89,16 @@ export class CompanyUsersController {
   }
 
   @Delete(':userId/company')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('company-user:remove')
   @DeleteOperation('company-user')
   @ApiOperation({
     summary: 'Remove user from company',
     description:
-      'Removes a user from their current company assignment.\n\n**Required Permissions:** company-user:remove\n**Access Control:** Permission-based authorization\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Removes a user from their current company assignment.\n\n**Required Permissions:** company-user:remove\n**Access Control:** Permission-based authorization with hierarchical restrictions\n**Security Rules:**\n- Root users can remove users from any company\n- Admin users can only remove users from their own company or subsidiary companies\n- Users must have sufficient hierarchy level to manage the target user\n**Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: HttpStatus.NO_CONTENT,
     description: 'User removed from company successfully',
   })
   @ApiResponse({
@@ -105,19 +108,17 @@ export class CompanyUsersController {
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
     description:
-      'User does not have company-user:remove permission or Root readonly users cannot perform write operations',
+      'User does not have company-user:remove permission, insufficient hierarchy level, admin trying to remove from unauthorized company, or Root readonly users cannot perform write operations',
   })
   async removeUserFromCompany(
     @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() currentUser: IJwtPayload,
-  ): Promise<{ message: string }> {
+  ): Promise<void> {
     await this.executeInTransactionWithContext(async () => {
       const userIdVO = UserId.fromString(userId);
       const currentUserId = UserId.fromString(currentUser.sub);
 
       return this.commandBus.execute(new RemoveUserFromCompanyCommand(userIdVO, currentUserId));
     });
-
-    return { message: 'User removed from company successfully' };
   }
 }

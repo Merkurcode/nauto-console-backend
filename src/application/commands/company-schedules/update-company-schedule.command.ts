@@ -1,13 +1,20 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { CompanyScheduleId } from '@core/value-objects/company-schedule-id.vo';
-import { EntityNotFoundException, InvalidInputException } from '@core/exceptions/domain-exceptions';
-import { COMPANY_SCHEDULES_REPOSITORY } from '@shared/constants/tokens';
+import {
+  EntityNotFoundException,
+  InvalidInputException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
+import { COMPANY_SCHEDULES_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 
 export class UpdateCompanyScheduleCommand {
   constructor(
     public readonly scheduleId: string,
+    public readonly currentUserId: string,
     public readonly startTime?: Date,
     public readonly endTime?: Date,
     public readonly isActive?: boolean,
@@ -30,6 +37,9 @@ export class UpdateCompanyScheduleHandler implements ICommandHandler<UpdateCompa
   constructor(
     @Inject(COMPANY_SCHEDULES_REPOSITORY)
     private readonly companySchedulesRepository: ICompanySchedulesRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async execute(command: UpdateCompanyScheduleCommand): Promise<IUpdateCompanyScheduleResponse> {
@@ -43,6 +53,21 @@ export class UpdateCompanyScheduleHandler implements ICommandHandler<UpdateCompa
 
     if (!existingSchedule) {
       throw new EntityNotFoundException('CompanySchedules', command.scheduleId);
+    }
+
+    // Validate company access using domain service
+    const currentUser = await this.userRepository.findById(command.currentUserId);
+    if (!currentUser) {
+      throw new EntityNotFoundException('User', command.currentUserId);
+    }
+
+    if (
+      !this.userAuthorizationService.canAccessCompany(
+        currentUser,
+        existingSchedule.companyId.getValue(),
+      )
+    ) {
+      throw new ForbiddenActionException('You can only update schedules for your assigned company');
     }
 
     // Prepare new time values

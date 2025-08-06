@@ -17,6 +17,8 @@ import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { HealthModule } from '@presentation/modules/health/health.module';
 import { CompanyModule } from '@presentation/modules/company/company.module';
 import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assistant.module';
+import { CompanyEventsCatalogModule } from '@presentation/modules/company-events-catalog/company-events-catalog.module';
+import { CompanySchedulesModule } from '@presentation/modules/company-schedules/company-schedules.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
@@ -87,6 +89,8 @@ import configuration from '@infrastructure/config/configuration';
     HealthModule,
     CompanyModule,
     AIAssistantModule,
+    CompanyEventsCatalogModule,
+    CompanySchedulesModule,
   ],
   controllers: [],
   providers: [

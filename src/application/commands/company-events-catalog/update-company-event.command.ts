@@ -2,13 +2,16 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { ICompanyEventsCatalogRepository } from '@core/repositories/company-events-catalog.repository.interface';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { EntityNotFoundException, InvalidInputException } from '@core/exceptions/domain-exceptions';
-import { COMPANY_EVENTS_CATALOG_REPOSITORY } from '@shared/constants/tokens';
+import { EntityNotFoundException, InvalidInputException, ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import { COMPANY_EVENTS_CATALOG_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
 
 export class UpdateCompanyEventCommand {
   constructor(
     public readonly eventName: string,
     public readonly companyId: string,
+    public readonly currentUserId: string,
     public readonly title?: Record<string, string>,
     public readonly description?: Record<string, string>,
     public readonly iconUrl?: string,
@@ -35,11 +38,26 @@ export class UpdateCompanyEventHandler implements ICommandHandler<UpdateCompanyE
   constructor(
     @Inject(COMPANY_EVENTS_CATALOG_REPOSITORY)
     private readonly companyEventsRepository: ICompanyEventsCatalogRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async execute(command: UpdateCompanyEventCommand): Promise<IUpdateCompanyEventResponse> {
     // Validate input
     this.validateCommand(command);
+
+    // Check user authorization
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(
+      command.currentUserId,
+    );
+
+    // Verify user can access this company
+    if (!this.userAuthorizationService.canAccessCompany(currentUser, command.companyId)) {
+      throw new ForbiddenActionException(
+        'You do not have permission to update events for this company',
+      );
+    }
 
     const companyId = CompanyId.fromString(command.companyId);
 

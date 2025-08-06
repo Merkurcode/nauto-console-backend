@@ -50,7 +50,7 @@ export class User extends AggregateRoot {
   private _address?: Address;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
-  private _companyId?: CompanyId;
+  private _companyId?: CompanyId | null;
 
   private constructor(
     id: UserId,
@@ -60,7 +60,7 @@ export class User extends AggregateRoot {
     lastName: LastName,
     isActive: boolean = true,
     createdAt?: Date,
-    companyId?: CompanyId,
+    companyId?: CompanyId | null,
   ) {
     super();
     this._id = id;
@@ -83,7 +83,7 @@ export class User extends AggregateRoot {
     passwordHash: string,
     firstName: FirstName,
     lastName: LastName,
-    companyId?: CompanyId,
+    companyId?: CompanyId | null,
   ): User {
     const userId = UserId.create();
     const user = new User(
@@ -302,7 +302,7 @@ export class User extends AggregateRoot {
     return this._updatedAt;
   }
 
-  get companyId(): CompanyId | undefined {
+  get companyId(): CompanyId | null | undefined {
     return this._companyId;
   }
 
@@ -533,7 +533,7 @@ export class User extends AggregateRoot {
       return;
     }
 
-    this._companyId = undefined;
+    this._companyId = null;
     this._updatedAt = new Date();
   }
 

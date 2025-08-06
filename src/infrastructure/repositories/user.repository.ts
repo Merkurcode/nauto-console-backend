@@ -264,7 +264,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           banReason: user.banReason,
           agentPhone: user.agentPhone?.getValue(),
           agentPhoneCountryCode: user.agentPhone?.getCountryCode(),
-          companyId: user.companyId?.getValue(),
+          companyId: user.companyId?.getValue() || null,
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -340,7 +340,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           otpEnabled: user.otpEnabled,
           otpSecret: user.otpSecret,
           lastLoginAt: user.lastLoginAt,
-          companyId: user.companyId?.getValue(),
+          companyId: user.companyId?.getValue() || null,
           bannedUntil: user.bannedUntil || null,
           banReason: user.banReason || null,
           agentPhone: user.agentPhone?.getValue() || null,

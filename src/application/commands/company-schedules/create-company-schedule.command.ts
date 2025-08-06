@@ -2,9 +2,15 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { CompanySchedules } from '@core/entities/company-schedules.entity';
 import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { InvalidInputException } from '@core/exceptions/domain-exceptions';
-import { COMPANY_SCHEDULES_REPOSITORY } from '@shared/constants/tokens';
+import {
+  InvalidInputException,
+  EntityNotFoundException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
+import { COMPANY_SCHEDULES_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 
 export class CreateCompanyScheduleCommand {
   constructor(
@@ -12,6 +18,7 @@ export class CreateCompanyScheduleCommand {
     public readonly dayOfWeek: number, // 0=Sunday, 1=Monday, ..., 6=Saturday
     public readonly startTime: Date, // Time only (hour and minutes)
     public readonly endTime: Date, // Time only (hour and minutes)
+    public readonly currentUserId: string, // User making the request
     public readonly isActive: boolean = true,
   ) {}
 }
@@ -32,11 +39,24 @@ export class CreateCompanyScheduleHandler implements ICommandHandler<CreateCompa
   constructor(
     @Inject(COMPANY_SCHEDULES_REPOSITORY)
     private readonly companySchedulesRepository: ICompanySchedulesRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async execute(command: CreateCompanyScheduleCommand): Promise<ICreateCompanyScheduleResponse> {
     // Validate input
     this.validateCommand(command);
+
+    // Validate company access using domain service
+    const currentUser = await this.userRepository.findById(command.currentUserId);
+    if (!currentUser) {
+      throw new EntityNotFoundException('User', command.currentUserId);
+    }
+
+    if (!this.userAuthorizationService.canAccessCompany(currentUser, command.companyId)) {
+      throw new ForbiddenActionException('You can only create schedules for your assigned company');
+    }
 
     const companyId = CompanyId.fromString(command.companyId);
 

@@ -5,6 +5,7 @@ import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import { Company } from '@core/entities/company.entity';
 
 // Interface for lightweight user authorization checks
 interface IUserAuthInfo {
@@ -473,5 +474,276 @@ export class UserAuthorizationService {
    */
   public getRoleHierarchyLevelByEnum(role: RolesEnum): number {
     return this.getRoleHierarchyLevel(role);
+  }
+
+  /**
+   * Check if a user can assign another user to a specific company
+   * Root can assign users to any company
+   * Admin can only assign users to companies where admin's company is parent of the target company
+   */
+  public canAssignUserToCompany(currentUser: User, targetCompanyId: string): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can assign users to any company
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Admin can only assign to companies where their company is parent
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      const currentUserCompanyId = currentUser.companyId?.getValue();
+
+      // Admin must have a company
+      if (!currentUserCompanyId) {
+        return false;
+      }
+
+      // Admin can assign to their own company
+      if (currentUserCompanyId === targetCompanyId) {
+        return true;
+      }
+
+      // For now, we'll need to check this at the command handler level
+      // since we need to load the company entities to check hierarchy
+      return true; // Will be validated in command handler
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a user can remove another user from their current company
+   * Root can remove users from any company
+   * Admin can only remove users from their own company or subsidiary companies
+   */
+  public canRemoveUserFromCompany(currentUser: User, targetUser: User): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Root can remove users from any company
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return true;
+    }
+
+    // Admin can only remove from companies where their company is parent
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      const currentUserCompanyId = currentUser.companyId?.getValue();
+
+      // Admin must have a company
+      if (!currentUserCompanyId) {
+        return false;
+      }
+
+      // Admin can remove from their own company
+      const targetUserCompanyId = targetUser.companyId?.getValue();
+      if (currentUserCompanyId === targetUserCompanyId) {
+        return true;
+      }
+
+      // For subsidiary check, we need company entities at command handler level
+      return true; // Will be validated in command handler
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a user can access a specific company's resources
+   * Root users can access any company
+   * Other users can only access their assigned company
+   */
+  public canAccessCompany(user: User, companyId: string): boolean {
+    const rootUserSpec = new RootLevelUserSpecification();
+
+    // Root users can access any company
+    if (rootUserSpec.isSatisfiedBy(user)) {
+      return true;
+    }
+
+    // Other users can only access their assigned company
+    const userCompanyId = user.companyId?.getValue();
+
+    return userCompanyId === companyId;
+  }
+
+  /**
+   * Complete validation for assigning a user to a company with hierarchy checks
+   * Encapsulates all business rules for user-company assignment
+   */
+  public canAssignUserToCompanyWithValidation(
+    currentUser: User,
+    targetUser: User,
+    targetCompany: Company,
+    currentUserCompany?: Company,
+  ): { canAssign: boolean; reason?: string } {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Check hierarchy: current user must have equal or higher hierarchy than target user
+    if (!this.canManageUser(currentUser, targetUser)) {
+      return {
+        canAssign: false,
+        reason: 'Current user does not have sufficient hierarchy level to manage this user.',
+      };
+    }
+
+    // Check basic company assignment authorization
+    if (!this.canAssignUserToCompany(currentUser, targetCompany.id.getValue())) {
+      return {
+        canAssign: false,
+        reason: 'Current user does not have permission to assign users to this company.',
+      };
+    }
+
+    // Root users can assign to any company
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return { canAssign: true };
+    }
+
+    // Additional validation for admin users: check company hierarchy
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return this.validateAdminCompanyAssignment(
+        currentUser,
+        targetUser,
+        targetCompany,
+        currentUserCompany,
+      );
+    }
+
+    return { canAssign: true };
+  }
+
+  /**
+   * Validate company assignment rules for admin users
+   */
+  private validateAdminCompanyAssignment(
+    currentUser: User,
+    targetUser: User,
+    targetCompany: Company,
+    currentUserCompany?: Company,
+  ): { canAssign: boolean; reason?: string } {
+    if (!currentUserCompany) {
+      return {
+        canAssign: false,
+        reason: 'Admin user must belong to a company to assign users.',
+      };
+    }
+
+    const adminCompanyId = currentUserCompany.id.getValue();
+    const targetCompanyId = targetCompany.id.getValue();
+    const targetUserCurrentCompanyId = targetUser.companyId?.getValue();
+
+    // Validate target user's current company: must be admin's company or subsidiary
+    if (targetUserCurrentCompanyId) {
+      if (
+        adminCompanyId !== targetUserCurrentCompanyId &&
+        !this.isCompanyInHierarchy(targetUserCurrentCompanyId, currentUserCompany)
+      ) {
+        return {
+          canAssign: false,
+          reason:
+            'Admin can only move users that belong to their own company or subsidiary companies.',
+        };
+      }
+    }
+
+    // Validate target company: must be admin's company or subsidiary
+    if (
+      adminCompanyId !== targetCompanyId &&
+      !targetCompany.isSubsidiaryOf(currentUserCompany.id)
+    ) {
+      return {
+        canAssign: false,
+        reason: 'Admin can only assign users to their own company or subsidiary companies.',
+      };
+    }
+
+    return { canAssign: true };
+  }
+
+  /**
+   * Helper method to check if a company is in the hierarchy of another company
+   */
+  private isCompanyInHierarchy(_companyId: string, _parentCompany: Company): boolean {
+    // This method should check if the companyId belongs to a subsidiary of parentCompany
+    // Implementation depends on how Company entity handles subsidiaries
+    return false; // Placeholder - should be implemented based on Company entity structure
+  }
+
+  /**
+   * Complete validation for removing a user from their company with hierarchy checks
+   * Encapsulates all business rules for user-company removal
+   */
+  public canRemoveUserFromCompanyWithValidation(
+    currentUser: User,
+    targetUser: User,
+    currentUserCompany?: Company,
+  ): { canRemove: boolean; reason?: string } {
+    const rootUserSpec = new RootLevelUserSpecification();
+    const adminUserSpec = new AdminUserSpecification();
+
+    // Check hierarchy: current user must have equal or higher hierarchy than target user
+    if (!this.canManageUser(currentUser, targetUser)) {
+      return {
+        canRemove: false,
+        reason: 'Current user does not have sufficient hierarchy level to manage this user.',
+      };
+    }
+
+    // Check basic company removal authorization
+    if (!this.canRemoveUserFromCompany(currentUser, targetUser)) {
+      return {
+        canRemove: false,
+        reason: 'Current user does not have permission to remove users from this company.',
+      };
+    }
+
+    // Root users can remove from any company
+    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+      return { canRemove: true };
+    }
+
+    // Additional validation for admin users: check company hierarchy
+    if (adminUserSpec.isSatisfiedBy(currentUser)) {
+      return this.validateAdminCompanyRemoval(currentUser, targetUser, currentUserCompany);
+    }
+
+    return { canRemove: true };
+  }
+
+  /**
+   * Validate company removal rules for admin users
+   */
+  private validateAdminCompanyRemoval(
+    currentUser: User,
+    targetUser: User,
+    currentUserCompany?: Company,
+  ): { canRemove: boolean; reason?: string } {
+    if (!currentUserCompany) {
+      return {
+        canRemove: false,
+        reason: 'Admin user must belong to a company to remove users.',
+      };
+    }
+
+    const adminCompanyId = currentUserCompany.id.getValue();
+    const targetUserCurrentCompanyId = targetUser.companyId?.getValue();
+
+    // Validate target user's current company: must be admin's company or subsidiary
+    if (targetUserCurrentCompanyId) {
+      if (
+        adminCompanyId !== targetUserCurrentCompanyId &&
+        !this.isCompanyInHierarchy(targetUserCurrentCompanyId, currentUserCompany)
+      ) {
+        return {
+          canRemove: false,
+          reason:
+            'Admin can only remove users that belong to their own company or subsidiary companies.',
+        };
+      }
+    }
+
+    return { canRemove: true };
   }
 }
