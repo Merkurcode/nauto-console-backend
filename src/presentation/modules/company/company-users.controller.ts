@@ -56,7 +56,13 @@ export class CompanyUsersController {
   @ApiOperation({
     summary: 'Assign user to company',
     description:
-      'Assigns a user to a specific company.\n\n**Required Permissions:** company-user:assign\n**Access Control:** Permission-based authorization with hierarchical restrictions\n**Security Rules:**\n- Root users can assign users to any company\n- Admin users can only assign users to their own company or subsidiary companies\n- Users must have sufficient hierarchy level to manage the target user\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Assigns a user to a specific company.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company-user:assign</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can assign users to any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can assign users to their company/subsidiaries\n\n' +
+      '🛡️ **Security:** Hierarchical restrictions - must have sufficient level to manage target user\n\n' +
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -95,7 +101,13 @@ export class CompanyUsersController {
   @ApiOperation({
     summary: 'Remove user from company',
     description:
-      'Removes a user from their current company assignment.\n\n**Required Permissions:** company-user:remove\n**Access Control:** Permission-based authorization with hierarchical restrictions\n**Security Rules:**\n- Root users can remove users from any company\n- Admin users can only remove users from their own company or subsidiary companies\n- Users must have sufficient hierarchy level to manage the target user\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Removes a user from their current company assignment.\n\n' +
+      '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company-user:remove</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can remove users from any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can remove users from their company/subsidiaries\n\n' +
+      '🛡️ **Security:** Users must have sufficient hierarchy level to manage the target user\n\n' +
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,

@@ -30,7 +30,9 @@ export class HealthController {
   @ApiOperation({
     summary: 'Health check endpoint',
     description:
-      'Basic health check for the application\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
+      'Basic health check for the application\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -56,7 +58,9 @@ export class HealthController {
   @ApiOperation({
     summary: 'Database health check',
     description:
-      'Detailed health check including database connectivity\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
+      'Detailed health check including database connectivity\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -84,7 +88,9 @@ export class HealthController {
   @ApiOperation({
     summary: 'Readiness probe for Kubernetes',
     description:
-      'Kubernetes readiness probe endpoint\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
+      'Kubernetes readiness probe endpoint\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -118,7 +124,9 @@ export class HealthController {
   @ApiOperation({
     summary: 'Liveness probe for Kubernetes',
     description:
-      'Kubernetes liveness probe endpoint\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
+      'Kubernetes liveness probe endpoint\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,

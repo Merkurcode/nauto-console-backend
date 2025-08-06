@@ -31,8 +31,8 @@ export class UsersController {
       '- **Root/Root-Readonly**: Can access any user\n' +
       '- **Admin**: Can access users from their company and child companies\n' +
       '- **Manager, Sales Agent, Host, Guest**: Can only access their own profile\n\n' +
-      '**Required Permissions:** user:read\n' +
-      '**Required Roles:** Any authenticated role',
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns user information' })

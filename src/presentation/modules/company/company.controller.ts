@@ -95,7 +95,9 @@ return user;
   @Get()
   @ApiOperation({ 
     summary: 'Get companies', 
-    description: 'Root users can see all companies, other users can only see their own company\n\n**Required Permissions:** company:read\n**Required Roles:** Any authenticated user'
+    description: 'Root users can see all companies, other users can only see their own company\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -126,7 +128,9 @@ return user;
   @ApiOperation({
     summary: 'Get company by host (Public)',
     description:
-      'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** None (Public endpoint)',
+      'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -147,7 +151,11 @@ return user;
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
   @ApiOperation({ 
     summary: 'Get root companies', 
-    description: 'Get all companies that have no parent company (root level)\n\n**Required Permissions:** company:read\n**Required Roles:** root, root_readonly'
+    description: 'Get all companies that have no parent company (root level)\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -162,7 +170,9 @@ return user;
   @Get(':id')
   @ApiOperation({ 
     summary: 'Get company by ID (All authenticated users)',
-    description: 'Get detailed information about a specific company\n\n**Required Permissions:** company:read\n**Required Roles:** Any authenticated user'
+    description: 'Get detailed information about a specific company\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -186,7 +196,10 @@ return user;
   @ApiOperation({
     summary: 'Create a new company (Root only)',
     description:
-      'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.\n\n**Required Permissions:** company:write\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:write</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -244,7 +257,12 @@ return user;
   @WriteOperation('company')
   @ApiOperation({ 
     summary: 'Update company (Root and Admin)', 
-    description: 'Root users can update any company, Admin users can only update their own company\n\n**Required Permissions:** company:write\n**Required Roles:** root, admin\n**Restrictions:** Root readonly users cannot perform this operation. Admin users can only update their own company'
+    description: 'Root users can update any company, Admin users can only update their own company\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can update any company\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only update their own company\n\n' +
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -329,7 +347,10 @@ return user;
   @DeleteOperation('company')
   @ApiOperation({ 
     summary: 'Delete company (Root only)',
-    description: 'Delete a company from the system\n\n**Required Permissions:** company:delete\n**Required Roles:** root\n**Restrictions:** Root readonly users cannot perform this operation'
+    description: 'Delete a company from the system\n\n' +
+      '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:delete</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation'
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
@@ -355,7 +376,12 @@ return this.commandBus.execute(new DeleteCompanyCommand(companyId));
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @ApiOperation({ 
     summary: 'Get company subsidiaries', 
-    description: 'Get all direct subsidiaries of a company\n\n**Required Permissions:** company:read\n**Required Roles:** root, root_readonly, admin'
+    description: 'Get all direct subsidiaries of a company\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -373,7 +399,12 @@ return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
   @ApiOperation({ 
     summary: 'Get company hierarchy', 
-    description: 'Get the complete hierarchy tree for a company including all subsidiaries\n\n**Required Permissions:** company:read\n**Required Roles:** root, root_readonly, admin'
+    description: 'Get the complete hierarchy tree for a company including all subsidiaries\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>'
   })
   @ApiResponse({
     status: HttpStatus.OK,

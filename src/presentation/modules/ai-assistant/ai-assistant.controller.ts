@@ -54,7 +54,9 @@ export class AIAssistantController {
   @ApiOperation({
     summary: 'Get all available AI assistants (Public)',
     description:
-      'Retrieves a list of all AI assistants available in the system with their features and descriptions.\n\n**Required Permissions:** None (Public endpoint)\n**Required Roles:** Any authenticated user',
+      'Retrieves a list of all AI assistants available in the system with their features and descriptions.\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -96,7 +98,9 @@ export class AIAssistantController {
   @ApiOperation({
     summary: 'Get AI assistants assigned to a company',
     description:
-      'Retrieves all AI assistants that have been assigned to a specific company, including their enabled status and feature configurations. You can specify the company by either its ID (UUID) or name.\n\n**Examples:**\n- By ID: `/api/ai-assistants/company/a1b2c3d4-e5f6-7890-abcd-ef1234567890`\n- By Name: `/api/ai-assistants/company/Acme Corp`\n\n**Required Permissions:** ai-assistant:read\n**Required Roles:** Any authenticated user with ai-assistant:read permission',
+      'Retrieves all AI assistants that have been assigned to a specific company, including their enabled status and feature configurations. You can specify the company by either its ID (UUID) or name.\n\n**Examples:**\n- By ID: `/api/ai-assistants/company/a1b2c3d4-e5f6-7890-abcd-ef1234567890`\n- By Name: `/api/ai-assistants/company/Acme Corp`\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ai-assistant:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user with ai-assistant:read permission</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -149,7 +153,11 @@ export class AIAssistantController {
   @ApiOperation({
     summary: 'Assign AI assistant to company with features (Root Only)',
     description:
-      'Assigns an AI assistant to a company with specific feature configurations. Creates a new assignment and configures individual features. You can specify companies, assistants, and features by either their IDs or names.\n\n**Required Permissions:** ai-assistant:update\n**Required Roles:** root\n**Access Level:** Root users only\n**Write Operation:** Yes (blocked for root_readonly)',
+      'Assigns an AI assistant to a company with specific feature configurations. Creates a new assignment and configures individual features. You can specify companies, assistants, and features by either their IDs or names.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ai-assistant:update</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '🎯 **Access Level:** Root users only\n\n' +
+      '⚠️ **Write Operation:** Yes (blocked for root_readonly)',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -199,7 +207,11 @@ export class AIAssistantController {
   @ApiOperation({
     summary: 'Toggle AI assistant enabled status for company (Root Only)',
     description:
-      'Enables or disables an AI assistant for a specific company. If the assignment does not exist, it will be created with the specified enabled status. You can specify companies and assistants by either their IDs or names. This controls whether the assistant is available for use by the company.\n\n**Required Permissions:** ai-assistant:update\n**Required Roles:** root\n**Access Level:** Root users only\n**Write Operation:** Yes (blocked for root_readonly)',
+      'Enables or disables an AI assistant for a specific company. If the assignment does not exist, it will be created with the specified enabled status. You can specify companies and assistants by either their IDs or names. This controls whether the assistant is available for use by the company.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ai-assistant:update</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '🎯 **Access Level:** Root users only\n\n' +
+      '⚠️ **Write Operation:** Yes (blocked for root_readonly)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -256,7 +268,11 @@ export class AIAssistantController {
   @ApiOperation({
     summary: 'Toggle AI assistant feature enabled status (Root Only)',
     description:
-      'Enables or disables a specific feature for an AI assistant assignment. If the assignment does not exist, it will be created with the assistant enabled and the specified feature configured. You can specify companies, assistants, and features by either their IDs or names. This allows granular control over which capabilities are available for each company-assistant combination.\n\n**Required Permissions:** ai-assistant:update\n**Required Roles:** root\n**Access Level:** Root users only\n**Write Operation:** Yes (blocked for root_readonly)',
+      'Enables or disables a specific feature for an AI assistant assignment. If the assignment does not exist, it will be created with the assistant enabled and the specified feature configured. You can specify companies, assistants, and features by either their IDs or names. This allows granular control over which capabilities are available for each company-assistant combination.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ai-assistant:update</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '🎯 **Access Level:** Root users only\n\n' +
+      '⚠️ **Write Operation:** Yes (blocked for root_readonly)',
   })
   @ApiResponse({
     status: HttpStatus.OK,

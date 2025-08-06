@@ -63,7 +63,9 @@ export class StorageController {
   @ApiOperation({
     summary: 'Upload a file',
     description:
-      'Upload a file to the storage system\n\n**Required Permissions:** file:write\n**Required Roles:** Any authenticated user',
+      'Upload a file to the storage system\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:write</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -109,7 +111,9 @@ export class StorageController {
   @ApiOperation({
     summary: 'Get file by ID',
     description:
-      'Retrieve file information and content by ID\n\n**Required Permissions:** file:read\n**Required Roles:** Any authenticated user (with ownership/access restrictions)',
+      'Retrieve file information and content by ID\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (with ownership/access restrictions)',
   })
   @ApiParam({ name: 'id', description: 'File ID' })
   async getFile(
@@ -124,7 +128,9 @@ export class StorageController {
   @ApiOperation({
     summary: 'Get all files for the current user',
     description:
-      'Get all files owned by the current user\n\n**Required Permissions:** file:read\n**Required Roles:** Any authenticated user',
+      'Get all files owned by the current user\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   async getUserFiles(@CurrentUser() user: IJwtPayload): Promise<FileResponseDto[]> {
     return this.queryBus.execute(new GetUserFilesQuery(user.sub));
@@ -135,7 +141,10 @@ export class StorageController {
   @ApiOperation({
     summary: 'Delete a file',
     description:
-      'Delete a file from the storage system\n\n**Required Permissions:** file:delete\n**Required Roles:** Any authenticated user (own files only)\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Delete a file from the storage system\n\n' +
+      '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:delete</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (own files only)\n\n' +
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiParam({ name: 'id', description: 'File ID' })
   async deleteFile(@Param('id') id: string, @CurrentUser() user: IJwtPayload): Promise<void> {
@@ -149,7 +158,10 @@ export class StorageController {
   @ApiOperation({
     summary: 'Update file access (public/private)',
     description:
-      'Change file visibility between public and private\n\n**Required Permissions:** file:write\n**Required Roles:** Any authenticated user (own files only)\n**Restrictions:** Root readonly users cannot perform this operation',
+      'Change file visibility between public and private\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:write</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (own files only)\n\n' +
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation',
   })
   async updateFileAccess(
     @Body() updateFileAccessDto: UpdateFileAccessDto,

@@ -72,7 +72,12 @@ export class UserController {
   @ApiOperation({
     summary: 'Get all users in company (Root/Root-Readonly/Admin)',
     description:
-      'Get all users within a specific company. Admin users can only see users from their own company. Response includes user details, roles, tenantId, and companyId.\n\n**Required Permissions:** user:read\n**Required Roles:** root, root_readonly, admin',
+      'Get all users within a specific company. Admin users can only see users from their own company. Response includes user details, roles, tenantId, and companyId.\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:read</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -143,9 +148,9 @@ export class UserController {
       '- **Root/Root-Readonly**: Can edit any user\n' +
       '- **Admin**: Can edit users from their company and child companies\n' +
       '- **Manager, Sales Agent, Host, Guest**: Can only edit their own profile\n\n' +
-      '**Required Permissions:** user:write\n' +
-      '**Required Roles:** Any authenticated user\n' +
-      '**Restrictions:** Role-based access control applies',
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:write</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>\n\n' +
+      '⚠️ **Restrictions:** Role-based access control applies',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User updated successfully' })
@@ -174,7 +179,13 @@ export class UserController {
   @ApiOperation({
     summary: 'Delete user by ID (Root/Admin/Manager with hierarchy restrictions)',
     description:
-      'Delete a user from a specific company with role hierarchy restrictions\n\n**Required Permissions:** user:delete\n**Required Roles:** root, admin, manager\n**Restrictions:** Root can delete any user. Admin can delete users in their company except root/admin. Manager can delete users below their hierarchy level.',
+      'Delete a user from a specific company with role hierarchy restrictions\n\n' +
+      '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:delete</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code>\n\n' +
+      '⚠️ **Restrictions:** Root can delete any user. Admin can delete users in their company except root/admin. Manager can delete users below their hierarchy level.',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User deleted successfully' })
@@ -203,7 +214,12 @@ export class UserController {
   @ApiOperation({
     summary: 'Activate or deactivate user (Root/Admin)',
     description:
-      'Change user activation status. Root can activate/deactivate any user. Admin can only activate/deactivate users in their company.\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin\n**Restrictions:** Admin users can only modify users in their own company',
+      'Change user activation status. Root can activate/deactivate any user. Admin can only activate/deactivate users in their company.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n\n' +
+      '⚠️ **Restrictions:** Admin users can only modify users in their own company',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User activation status updated' })
@@ -237,7 +253,12 @@ export class UserController {
   @ApiOperation({
     summary: 'Assign role to user (Root/Admin)',
     description:
-      'Assign a role to a specific user. Root can assign any role to any user. Admin can only assign roles to users in their company. Root roles cannot be assigned by anyone.\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin\n**Restrictions:** Root roles cannot be assigned. Admin users can only assign roles to users in their own company.',
+      'Assign a role to a specific user. Root can assign any role to any user. Admin can only assign roles to users in their company. Root roles cannot be assigned by anyone.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n\n' +
+      '⚠️ **Restrictions:** Root roles cannot be assigned. Admin users can only assign roles to users in their own company.',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role assigned successfully' })
@@ -266,7 +287,13 @@ export class UserController {
   @ApiOperation({
     summary: 'Remove role from user (Root/Admin/Manager)',
     description:
-      'Remove a role from a specific user. Root can remove from any user. Admin can remove from users in their company. Manager can remove from users in their company but not superior roles.\n\n**Required Permissions:** user:write\n**Required Roles:** root, admin, manager\n**Restrictions:** Role hierarchy applies',
+      'Remove a role from a specific user. Root can remove from any user. Admin can remove from users in their company. Manager can remove from users in their company but not superior roles.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code>\n\n' +
+      '⚠️ **Restrictions:** Role hierarchy applies',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiParam({

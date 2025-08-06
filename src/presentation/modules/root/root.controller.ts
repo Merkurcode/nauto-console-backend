@@ -23,7 +23,9 @@ export class RootController {
   @RequiresResourceAction('system', 'read')
   @ApiOperation({ 
     summary: 'Get system information',
-    description: 'Get basic system information and status\n\n**Required Permissions:** system:read\n**Required Roles:** root'
+    description: 'Get basic system information and status\n\n' +
+      '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">system:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>'
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns system information' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have required permissions' })
@@ -43,7 +45,9 @@ export class RootController {
   @RequiresResourceAction('audit', 'read')
   @ApiOperation({ 
     summary: 'Get audit logs (Requires specific permission)',
-    description: 'Get system audit logs for security monitoring\n\n**Required Permissions:** audit:read\n**Required Roles:** root'
+    description: 'Get system audit logs for security monitoring\n\n' +
+      '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">audit:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>'
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns audit logs' })
   @ApiResponse({
