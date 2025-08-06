@@ -7,6 +7,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -29,10 +30,17 @@ import { IJwtPayload } from '@application/dtos/responses/user.response';
 // DTOs
 import { CreateRoleDto } from '@application/dtos/role/create-role.dto';
 import { UpdateRoleDto } from '@application/dtos/role/update-role.dto';
+import { GetAssignablePermissionsDto } from '@application/dtos/permission/get-assignable-permissions.dto';
+import { IAssignablePermissionResponse } from '@application/dtos/responses/assignable-permission.response';
+import { ICurrentUserPermissionResponse } from '@application/dtos/responses/current-user-permission.response';
+import { CurrentUserPermissionResponse } from '@application/dtos/responses/current-user-permission-swagger.response';
 
 // Queries
 import { GetRolesQuery } from '@application/queries/role/get-roles.query';
 import { GetRoleQuery } from '@application/queries/role/get-role.query';
+import { GetAssignablePermissionsQuery } from '@application/queries/permission/get-assignable-permissions.query';
+import { GetPermissionsForTargetRoleQuery } from '@application/queries/permission/get-permissions-for-target-role.query';
+import { GetCurrentUserPermissionsQuery } from '@application/queries/permission/get-current-user-permissions.query';
 
 // Commands
 import { CreateRoleCommand } from '@application/commands/role/create-role.command';
@@ -88,6 +96,159 @@ export class RoleController {
   })
   async getAllRoles() {
     return this.queryBus.execute(new GetRolesQuery());
+  }
+
+  @Get('permissions/assignable')
+  @Roles(
+    RolesEnum.ROOT,
+    RolesEnum.ADMIN,
+    RolesEnum.MANAGER,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get assignable permissions for current user role',
+    description: 'Get list of permissions that the current user can assign to roles, filtered by exclude rules\n\n**Required Permissions:** role:read\n**Required Roles:** root, admin, manager'
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Returns permissions with assignability status and exclude reasons',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+          name: { type: 'string', example: 'user:read' },
+          description: { type: 'string', example: 'Read user information' },
+          resource: { type: 'string', example: 'user' },
+          action: { type: 'string', example: 'read' },
+          canAssign: { type: 'boolean', example: true },
+          excludeReason: { type: 'string', example: 'Role \'guest\' is specifically excluded from this permission', nullable: true }
+        }
+      },
+      example: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          name: 'user:read',
+          description: 'Read user information',
+          resource: 'user',
+          action: 'read',
+          canAssign: true
+        },
+        {
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          name: 'user:write',
+          description: 'Create and update user information',
+          resource: 'user',
+          action: 'write',
+          canAssign: false,
+          excludeReason: 'Role \'manager\' is specifically excluded from this permission'
+        }
+      ]
+    }
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async getAssignablePermissions(
+    @CurrentUser() currentUser: IJwtPayload,
+    @Query() query: GetAssignablePermissionsDto,
+  ): Promise<IAssignablePermissionResponse[]> {
+    // Use all user roles to determine combined permissions
+    return this.queryBus.execute(
+      new GetAssignablePermissionsQuery(currentUser.roles, query.targetRoleName)
+    );
+  }
+
+  @Get('permissions/assignable-to/:targetRoleName')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get permissions that a specific role can have',
+    description: 'Get list of all permissions showing which ones can be assigned to the specified target role based on exclude rules. This endpoint focuses on the target role\'s restrictions, not the current user\'s permissions.\n\n**Required Permissions:** role:read\n**Required Roles:** Any authenticated user'
+  })
+  @ApiParam({
+    name: 'targetRoleName', 
+    description: 'Name of the target role to check permissions for', 
+    example: 'admin'
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Returns permissions that can be assigned to the target role',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+          name: { type: 'string', example: 'user:read' },
+          description: { type: 'string', example: 'Read user information' },
+          resource: { type: 'string', example: 'user' },
+          action: { type: 'string', example: 'read' },
+          canAssign: { type: 'boolean', example: true },
+          excludeReason: { type: 'string', example: 'Target role \'guest\' is excluded from this permission', nullable: true }
+        }
+      },
+      example: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          name: 'user:read',
+          description: 'Read user information',
+          resource: 'user',
+          action: 'read',
+          canAssign: true
+        },
+        {
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          name: 'company:delete',
+          description: 'Delete company information',
+          resource: 'company',
+          action: 'delete',
+          canAssign: false,
+          excludeReason: 'Target role \'manager\' is excluded from this permission'
+        }
+      ]
+    }
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Target role not found',
+  })
+  async getAssignablePermissionsToRole(
+    @CurrentUser() currentUser: IJwtPayload,
+    @Param('targetRoleName') targetRoleName: string,
+  ): Promise<IAssignablePermissionResponse[]> {
+    // Check permissions that can be assigned to the specific target role
+    return this.queryBus.execute(
+      new GetPermissionsForTargetRoleQuery(targetRoleName)
+    );
+  }
+
+  @Get('permissions/current')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get current user permissions',
+    description: 'Get all permissions that the current authenticated user has based on their roles\n\n**Required Permissions:** None (authenticated user)\n**Required Roles:** Any authenticated user'
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Returns all permissions granted to the current user',
+    type: [CurrentUserPermissionResponse]
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'User not authenticated',
+  })
+  async getCurrentUserPermissions(
+    @CurrentUser() currentUser: IJwtPayload,
+  ): Promise<ICurrentUserPermissionResponse[]> {
+    return this.queryBus.execute(
+      new GetCurrentUserPermissionsQuery(currentUser.sub)
+    );
   }
 
   @Get(':id')

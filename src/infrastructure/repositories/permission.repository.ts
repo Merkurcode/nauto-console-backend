@@ -59,6 +59,16 @@ export class PermissionRepository
     });
   }
 
+  async findAllOrderByName(): Promise<Permission[]> {
+    return this.executeWithErrorHandling('findAllOrderByName', async () => {
+      const permissionRecords = await this.client.permission.findMany({
+        orderBy: { name: 'asc' },
+      });
+
+      return permissionRecords.map(record => this.mapToModel(record));
+    });
+  }
+
   async findByResource(resource: string): Promise<Permission[]> {
     return this.executeWithErrorHandling('findByResource', async () => {
       const permissionRecords = await this.client.permission.findMany({
@@ -123,6 +133,7 @@ export class PermissionRepository
       id: record.id,
       resourceAction,
       description: record.description,
+      excludeRoles: record.excludeRoles as string | null,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

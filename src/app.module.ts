@@ -16,6 +16,7 @@ import { RootModule } from '@presentation/modules/root/root.module';
 import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { HealthModule } from '@presentation/modules/health/health.module';
 import { CompanyModule } from '@presentation/modules/company/company.module';
+import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assistant.module';
 import { CoreModule } from '@core/core.module';
 
 // Global providers
@@ -82,6 +83,7 @@ import configuration from '@infrastructure/config/configuration';
     StorageModule,
     HealthModule,
     CompanyModule,
+    AIAssistantModule,
   ],
   controllers: [],
   providers: [

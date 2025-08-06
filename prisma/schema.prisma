@@ -242,6 +242,7 @@ model Permission {
   description String
   resource    String
   action      String
+  excludeRoles Json?   // Array of role names that cannot have this permission, or '*' for all roles, '**' for custom roles
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

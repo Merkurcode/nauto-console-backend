@@ -12,6 +12,8 @@ export const COMPANY_REPOSITORY = Symbol('CompanyRepository');
 export const SESSION_REPOSITORY = Symbol('SessionRepository');
 export const COUNTRY_REPOSITORY = Symbol('CountryRepository');
 export const STATE_REPOSITORY = Symbol('StateRepository');
+export const AI_ASSISTANT_REPOSITORY = Symbol('AIAssistantRepository');
+export const COMPANY_AI_ASSISTANT_REPOSITORY = Symbol('CompanyAIAssistantRepository');
 
 // Repository tokens object
 export const REPOSITORY_TOKENS = {
@@ -28,6 +30,8 @@ export const REPOSITORY_TOKENS = {
   SESSION_REPOSITORY,
   COUNTRY_REPOSITORY,
   STATE_REPOSITORY,
+  AI_ASSISTANT_REPOSITORY,
+  COMPANY_AI_ASSISTANT_REPOSITORY,
 } as const;
 
 // Service injection tokens

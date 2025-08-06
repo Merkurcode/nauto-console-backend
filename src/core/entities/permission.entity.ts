@@ -8,6 +8,7 @@ export class Permission {
   private readonly _name: PermissionName;
   private _description: string;
   private readonly _resourceAction: ResourceAction;
+  private _excludeRoles: string | null; // JSON string of excluded role names
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -40,6 +41,7 @@ export class Permission {
     id: string;
     resourceAction: ResourceAction;
     description: string;
+    excludeRoles?: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): Permission {
@@ -51,6 +53,7 @@ export class Permission {
     );
 
     permission._updatedAt = data.updatedAt;
+    permission._excludeRoles = data.excludeRoles || null;
 
     return permission;
   }
@@ -78,6 +81,10 @@ export class Permission {
 
   get updatedAt(): Date {
     return this._updatedAt;
+  }
+
+  get excludeRoles(): string | null {
+    return this._excludeRoles;
   }
 
   // Business methods

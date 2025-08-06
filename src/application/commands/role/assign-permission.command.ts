@@ -1,10 +1,12 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RoleService } from '@core/services/role.service';
+import { PermissionExcludeService } from '@core/services/permission-exclude.service';
 import { RoleDetailResponse } from '@application/dtos/responses/role.response';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
+import { IPermissionRepository } from '@core/repositories/permission.repository.interface';
 import { Inject } from '@nestjs/common';
 import { RoleMapper } from '@application/mappers/role.mapper';
-import { ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 export class AssignPermissionCommand {
   constructor(
@@ -19,18 +21,39 @@ export class AssignPermissionCommandHandler
 {
   constructor(
     private readonly roleService: RoleService,
-    @Inject(ROLE_REPOSITORY)
+    private readonly permissionExcludeService: PermissionExcludeService,
+    @Inject(REPOSITORY_TOKENS.ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
+    @Inject(REPOSITORY_TOKENS.PERMISSION_REPOSITORY)
+    private readonly permissionRepository: IPermissionRepository,
   ) {}
 
   async execute(command: AssignPermissionCommand): Promise<RoleDetailResponse> {
     const { roleId, permissionId } = command;
 
+    // Get role to validate exclude rules - using Prisma directly for simplicity
+    const role = await this.roleRepository.findById(roleId);
+    if (!role) {
+      throw new Error('Role not found');
+    }
+
+    // Get permission name from repository
+    const permission = await this.permissionRepository.findById(permissionId);
+    if (!permission) {
+      throw new Error('Permission not found');
+    }
+
+    // Validate permission exclude rules
+    await this.permissionExcludeService.validateRolePermissionAssignment(
+      role.name,
+      permission.getStringName(),
+    );
+
     // Assign the permission to the role
-    const role = await this.roleService.assignPermissionToRole(roleId, permissionId);
+    const updatedRoleEntity = await this.roleService.assignPermissionToRole(roleId, permissionId);
 
     // Fetch the updated role with permissions
-    const updatedRole = await this.roleRepository.findById(role.id.getValue());
+    const updatedRole = await this.roleRepository.findById(updatedRoleEntity.id.getValue());
 
     if (!updatedRole) {
       throw new Error('Role not found after update');
