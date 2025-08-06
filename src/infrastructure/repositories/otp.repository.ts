@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Otp } from '@core/entities/otp.entity';
 import { IOtpRepository } from '@core/repositories/otp.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { ConfigService } from '@nestjs/config';
 import { Otp as PrismaOtp } from '@prisma/client';
 import { BaseRepository } from './base.repository';
@@ -11,14 +12,19 @@ import { UserId } from '@core/value-objects/user-id.vo';
 export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
   ) {
     super();
   }
 
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
   async findById(id: string): Promise<Otp | null> {
     return this.executeWithErrorHandling('findById', async () => {
-      const otpRecord = await this.prisma.otp.findUnique({
+      const otpRecord = await this.client.otp.findUnique({
         where: { id },
       });
 
@@ -32,7 +38,7 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
 
   async findByUserId(userId: string): Promise<Otp | null> {
     return this.executeWithErrorHandling('findByUserId', async () => {
-      const otpRecord = await this.prisma.otp.findFirst({
+      const otpRecord = await this.client.otp.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       });
@@ -47,7 +53,7 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
 
   async create(otp: Otp): Promise<Otp> {
     return this.executeWithErrorHandling('create', async () => {
-      const createdOtp = await this.prisma.otp.create({
+      const createdOtp = await this.client.otp.create({
         data: {
           id: otp.id,
           userId: otp.userId.getValue(),
@@ -64,7 +70,7 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
 
   async update(otp: Otp): Promise<Otp> {
     return this.executeWithErrorHandling('update', async () => {
-      const updatedOtp = await this.prisma.otp.update({
+      const updatedOtp = await this.client.otp.update({
         where: { id: otp.id },
         data: {
           secret: otp.secret,
@@ -81,7 +87,7 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
     return this.executeWithErrorHandling(
       'delete',
       async () => {
-        await this.prisma.otp.delete({
+        await this.client.otp.delete({
           where: { id },
         });
 

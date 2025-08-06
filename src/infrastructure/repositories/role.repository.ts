@@ -3,6 +3,7 @@ import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import {
   Role as PrismaRole,
   RolePermission as PrismaRolePermission,
@@ -20,12 +21,19 @@ type RoleWithPermissions = PrismaRole & {
 
 @Injectable()
 export class RoleRepository extends BaseRepository<Role> implements IRoleRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
   }
 
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
   async findById(id: string): Promise<Role | null> {
-    const roleRecord = await this.prisma.role.findUnique({
+    const roleRecord = await this.client.role.findUnique({
       where: { id },
       include: {
         permissions: {
@@ -44,7 +52,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
   }
 
   async findByName(name: string): Promise<Role | null> {
-    const roleRecord = await this.prisma.role.findUnique({
+    const roleRecord = await this.client.role.findUnique({
       where: { name },
       include: {
         permissions: {
@@ -63,7 +71,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
   }
 
   async findAll(): Promise<Role[]> {
-    const roleRecords = await this.prisma.role.findMany({
+    const roleRecords = await this.client.role.findMany({
       include: {
         permissions: {
           include: {
@@ -77,7 +85,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
   }
 
   async findDefaultRole(): Promise<Role | null> {
-    const roleRecord = await this.prisma.role.findFirst({
+    const roleRecord = await this.client.role.findFirst({
       where: { isDefault: true },
       include: {
         permissions: {
@@ -96,7 +104,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
   }
 
   async create(role: Role): Promise<Role> {
-    const createdRole = await this.prisma.role.create({
+    const createdRole = await this.client.role.create({
       data: {
         id: role.id.getValue(),
         name: role.name,
@@ -127,14 +135,14 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
 
   async update(role: Role): Promise<Role> {
     // First delete all permission associations to recreate them
-    await this.prisma.rolePermission.deleteMany({
+    await this.client.rolePermission.deleteMany({
       where: {
         roleId: role.id.getValue(),
       },
     });
 
     // Update the role with new permission associations
-    const updatedRole = await this.prisma.role.update({
+    const updatedRole = await this.client.role.update({
       where: { id: role.id.getValue() },
       data: {
         name: role.name,
@@ -165,7 +173,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
 
   async delete(id: string): Promise<boolean> {
     try {
-      await this.prisma.role.delete({
+      await this.client.role.delete({
         where: { id },
       });
 

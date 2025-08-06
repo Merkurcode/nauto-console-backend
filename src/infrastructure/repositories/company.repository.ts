@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { Company } from '@core/entities/company.entity';
 import { CompanyId } from '@core/value-objects/company-id.vo';
@@ -9,15 +10,22 @@ import { BaseRepository } from './base.repository';
 
 @Injectable()
 export class CompanyRepository extends BaseRepository<Company> implements ICompanyRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
   }
 
   async findById(id: CompanyId): Promise<Company | null> {
     return this.executeWithErrorHandling(
       'findById',
       async () => {
-        const company = await this.prisma.company.findUnique({
+        const company = await this.client.company.findUnique({
           where: { id: id.getValue() },
           include: {
             address: true,
@@ -44,7 +52,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findByName',
       async () => {
-        const company = await this.prisma.company.findUnique({
+        const company = await this.client.company.findUnique({
           where: { name: name.getValue() },
           include: {
             address: true,
@@ -71,7 +79,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findByHost',
       async () => {
-        const company = await this.prisma.company.findUnique({
+        const company = await this.client.company.findUnique({
           where: { host: host.getValue() },
           include: {
             address: true,
@@ -98,7 +106,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findAll',
       async () => {
-        const companies = await this.prisma.company.findMany({
+        const companies = await this.client.company.findMany({
           include: {
             address: true,
             parentCompany: {
@@ -130,7 +138,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findAllWithAssistants',
       async () => {
-        const companies = await this.prisma.company.findMany({
+        const companies = await this.client.company.findMany({
           include: {
             address: true,
             parentCompany: {
@@ -171,7 +179,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           }
 
           // Return company without assistants to avoid circular references in entity
-          const { assistants, ...companyWithoutAssistants } = company;
+          const { assistants: _assistants, ...companyWithoutAssistants } = company;
 
           return companyWithoutAssistants;
         });
@@ -191,7 +199,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findByIdWithAssistants',
       async () => {
-        const company = await this.prisma.company.findUnique({
+        const company = await this.client.company.findUnique({
           where: { id: id.getValue() },
           include: {
             address: true,
@@ -242,7 +250,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'save',
       async () => {
-        const createdCompany = await this.prisma.company.create({
+        const createdCompany = await this.client.company.create({
           data: {
             id: company.id.getValue(),
             name: company.name.getValue(),
@@ -299,7 +307,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'update',
       async () => {
-        const updatedCompany = await this.prisma.company.update({
+        const updatedCompany = await this.client.company.update({
           where: { id: company.id.getValue() },
           data: {
             name: company.name.getValue(),
@@ -355,7 +363,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'delete',
       async () => {
-        await this.prisma.company.delete({
+        await this.client.company.delete({
           where: { id: id.getValue() },
         });
       },
@@ -367,7 +375,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'exists',
       async () => {
-        const count = await this.prisma.company.count({
+        const count = await this.client.company.count({
           where: { id: id.getValue() },
         });
 
@@ -381,7 +389,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'existsByName',
       async () => {
-        const count = await this.prisma.company.count({
+        const count = await this.client.company.count({
           where: { name: name.getValue() },
         });
 
@@ -395,7 +403,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'existsByHost',
       async () => {
-        const count = await this.prisma.company.count({
+        const count = await this.client.company.count({
           where: { host: host.getValue() },
         });
 
@@ -602,7 +610,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findSubsidiaries',
       async () => {
-        const companies = await this.prisma.company.findMany({
+        const companies = await this.client.company.findMany({
           where: { parentCompanyId: parentId.getValue() },
           include: {
             address: true,
@@ -629,7 +637,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'findRootCompanies',
       async () => {
-        const companies = await this.prisma.company.findMany({
+        const companies = await this.client.company.findMany({
           where: { parentCompanyId: null },
           include: {
             address: true,
@@ -660,7 +668,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     return this.executeWithErrorHandling(
       'countSubsidiaries',
       async () => {
-        return await this.prisma.company.count({
+        return await this.client.company.count({
           where: { parentCompanyId: parentId.getValue() },
         });
       },

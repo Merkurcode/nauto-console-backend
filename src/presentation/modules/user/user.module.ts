@@ -10,6 +10,8 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
 import { RoleRepository } from '@infrastructure/repositories/role.repository';
 import { CompanyRepository } from '@infrastructure/repositories/company.repository';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CoreModule } from '@core/core.module';
 import { AuthModule } from '@presentation/modules/auth/auth.module';
 
@@ -52,15 +54,21 @@ const commandHandlers = [
     // Repository tokens
     {
       provide: USER_REPOSITORY,
-      useClass: UserRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new UserRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: ROLE_REPOSITORY,
-      useClass: RoleRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new RoleRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: COMPANY_REPOSITORY,
-      useClass: CompanyRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new CompanyRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
 
     // Query handlers

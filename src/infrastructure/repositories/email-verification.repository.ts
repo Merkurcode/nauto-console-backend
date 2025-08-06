@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EmailVerification } from '@core/entities/email-verification.entity';
 import { IEmailVerificationRepository } from '@core/repositories/email-verification.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { BaseRepository } from './base.repository';
 import { Email } from '@core/value-objects/email.vo';
 import { VerificationCode } from '@core/value-objects/verification-code.vo';
@@ -12,13 +13,20 @@ export class EmailVerificationRepository
   extends BaseRepository<EmailVerification>
   implements IEmailVerificationRepository
 {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
     super();
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
   }
 
   async findById(id: string): Promise<EmailVerification | null> {
     return this.executeWithErrorHandling('findById', async () => {
-      const record = await this.prisma.emailVerification.findUnique({
+      const record = await this.client.emailVerification.findUnique({
         where: { id },
       });
 
@@ -28,7 +36,7 @@ export class EmailVerificationRepository
 
   async findByEmail(email: string): Promise<EmailVerification | null> {
     return this.executeWithErrorHandling('findByEmail', async () => {
-      const record = await this.prisma.emailVerification.findFirst({
+      const record = await this.client.emailVerification.findFirst({
         where: { email },
         orderBy: { createdAt: 'desc' },
       });
@@ -39,7 +47,7 @@ export class EmailVerificationRepository
 
   async findByEmailAndCode(email: string, code: string): Promise<EmailVerification | null> {
     return this.executeWithErrorHandling('findByEmailAndCode', async () => {
-      const record = await this.prisma.emailVerification.findFirst({
+      const record = await this.client.emailVerification.findFirst({
         where: {
           email,
           code,
@@ -53,7 +61,7 @@ export class EmailVerificationRepository
 
   async create(emailVerification: EmailVerification): Promise<EmailVerification> {
     return this.executeWithErrorHandling('create', async () => {
-      await this.prisma.emailVerification.create({
+      await this.client.emailVerification.create({
         data: {
           id: emailVerification.id,
           email: emailVerification.email.getValue(),
@@ -70,7 +78,7 @@ export class EmailVerificationRepository
 
   async update(emailVerification: EmailVerification): Promise<EmailVerification> {
     return this.executeWithErrorHandling('update', async () => {
-      await this.prisma.emailVerification.update({
+      await this.client.emailVerification.update({
         where: { id: emailVerification.id },
         data: {
           email: emailVerification.email.getValue(),
@@ -88,7 +96,7 @@ export class EmailVerificationRepository
     return this.executeWithErrorHandling(
       'delete',
       async () => {
-        await this.prisma.emailVerification.delete({
+        await this.client.emailVerification.delete({
           where: { id },
         });
 
@@ -102,7 +110,7 @@ export class EmailVerificationRepository
     return this.executeWithErrorHandling(
       'deleteByEmail',
       async () => {
-        await this.prisma.emailVerification.deleteMany({
+        await this.client.emailVerification.deleteMany({
           where: { email },
         });
 

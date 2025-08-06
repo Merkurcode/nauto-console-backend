@@ -11,6 +11,8 @@ import { SmsService } from './services/sms.service';
 import { LoggerModule } from '@infrastructure/logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { SESSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 import { SessionRepository } from '@infrastructure/repositories/session.repository';
 import { UserRepository } from '@infrastructure/repositories/user.repository';
@@ -33,11 +35,15 @@ import { UserRepository } from '@infrastructure/repositories/user.repository';
     SmsService,
     {
       provide: SESSION_REPOSITORY,
-      useClass: SessionRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new SessionRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: USER_REPOSITORY,
-      useClass: UserRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new UserRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
   ],
   exports: [

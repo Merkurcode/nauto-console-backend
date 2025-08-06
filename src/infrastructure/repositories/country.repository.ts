@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { ICountryRepository } from '@core/repositories/country.repository.interface';
 import { Country } from '@core/entities/country.entity';
 import { LoggerService } from '@infrastructure/logger/logger.service';
@@ -8,14 +9,19 @@ import { LoggerService } from '@infrastructure/logger/logger.service';
 export class CountryRepository implements ICountryRepository {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
     private readonly logger: LoggerService,
   ) {
     this.logger.setContext(CountryRepository.name);
   }
 
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
   async findById(id: string): Promise<Country | null> {
     try {
-      const country = await this.prisma.country.findUnique({
+      const country = await this.client.country.findUnique({
         where: { id },
       });
 
@@ -36,7 +42,7 @@ export class CountryRepository implements ICountryRepository {
 
   async findByName(name: string): Promise<Country | null> {
     try {
-      const country = await this.prisma.country.findUnique({
+      const country = await this.client.country.findUnique({
         where: { name },
       });
 
@@ -57,7 +63,7 @@ export class CountryRepository implements ICountryRepository {
 
   async findAll(): Promise<Country[]> {
     try {
-      const countries = await this.prisma.country.findMany({
+      const countries = await this.client.country.findMany({
         orderBy: { name: 'asc' },
       });
 
@@ -73,7 +79,7 @@ export class CountryRepository implements ICountryRepository {
 
   async create(country: Country): Promise<Country> {
     try {
-      const createdCountry = await this.prisma.country.create({
+      const createdCountry = await this.client.country.create({
         data: {
           id: country.id.getValue(),
           name: country.name,
@@ -102,7 +108,7 @@ export class CountryRepository implements ICountryRepository {
 
   async update(country: Country): Promise<Country> {
     try {
-      const updatedCountry = await this.prisma.country.update({
+      const updatedCountry = await this.client.country.update({
         where: { id: country.id.getValue() },
         data: {
           name: country.name,
@@ -132,7 +138,7 @@ export class CountryRepository implements ICountryRepository {
 
   async delete(id: string): Promise<void> {
     try {
-      await this.prisma.country.delete({
+      await this.client.country.delete({
         where: { id },
       });
 

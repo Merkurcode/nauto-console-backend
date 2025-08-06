@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { IStateRepository } from '@core/repositories/state.repository.interface';
 import { State } from '@core/entities/state.entity';
 import { LoggerService } from '@infrastructure/logger/logger.service';
@@ -8,14 +9,19 @@ import { LoggerService } from '@infrastructure/logger/logger.service';
 export class StateRepository implements IStateRepository {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
     private readonly logger: LoggerService,
   ) {
     this.logger.setContext(StateRepository.name);
   }
 
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
   async findById(id: string): Promise<State | null> {
     try {
-      const state = await this.prisma.state.findUnique({
+      const state = await this.client.state.findUnique({
         where: { id },
       });
 
@@ -36,7 +42,7 @@ export class StateRepository implements IStateRepository {
 
   async findByName(name: string): Promise<State | null> {
     try {
-      const state = await this.prisma.state.findFirst({
+      const state = await this.client.state.findFirst({
         where: { name },
       });
 
@@ -57,7 +63,7 @@ export class StateRepository implements IStateRepository {
 
   async findByNameAndCountry(name: string, countryId: string): Promise<State | null> {
     try {
-      const state = await this.prisma.state.findFirst({
+      const state = await this.client.state.findFirst({
         where: {
           name,
           countryId,
@@ -82,7 +88,7 @@ export class StateRepository implements IStateRepository {
 
   async findByCountryId(countryId: string): Promise<State[]> {
     try {
-      const states = await this.prisma.state.findMany({
+      const states = await this.client.state.findMany({
         where: { countryId },
         orderBy: { name: 'asc' },
       });
@@ -100,7 +106,7 @@ export class StateRepository implements IStateRepository {
 
   async findAll(): Promise<State[]> {
     try {
-      const states = await this.prisma.state.findMany({
+      const states = await this.client.state.findMany({
         orderBy: { name: 'asc' },
       });
 
@@ -116,7 +122,7 @@ export class StateRepository implements IStateRepository {
 
   async create(state: State): Promise<State> {
     try {
-      const createdState = await this.prisma.state.create({
+      const createdState = await this.client.state.create({
         data: {
           id: state.id.getValue(),
           name: state.name,
@@ -145,7 +151,7 @@ export class StateRepository implements IStateRepository {
 
   async update(state: State): Promise<State> {
     try {
-      const updatedState = await this.prisma.state.update({
+      const updatedState = await this.client.state.update({
         where: { id: state.id.getValue() },
         data: {
           name: state.name,
@@ -173,7 +179,7 @@ export class StateRepository implements IStateRepository {
 
   async delete(id: string): Promise<void> {
     try {
-      await this.prisma.state.delete({
+      await this.client.state.delete({
         where: { id },
       });
 

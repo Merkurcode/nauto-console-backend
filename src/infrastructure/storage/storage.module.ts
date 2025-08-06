@@ -4,6 +4,8 @@ import { StorageService } from '@core/services/storage.service';
 import { MinioStorageProvider } from './providers/minio.provider';
 import { S3StorageProvider } from './providers/s3.provider';
 import { FileRepository } from '../repositories/file.repository';
+import { PrismaService } from '../database/prisma/prisma.service';
+import { TransactionContextService } from '../database/prisma/transaction-context.service';
 import storageConfig from '../config/storage.config';
 import { MulterModule } from '@nestjs/platform-express';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
@@ -18,10 +20,11 @@ import { FILE_REPOSITORY } from '@shared/constants/tokens';
     }),
   ],
   providers: [
-    FileRepository,
     {
       provide: FILE_REPOSITORY,
-      useExisting: FileRepository,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new FileRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
     },
     StorageService,
     MinioStorageProvider,
