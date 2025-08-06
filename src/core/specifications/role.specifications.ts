@@ -23,11 +23,34 @@ export class AdminRoleSpecification extends Specification<Role> {
 }
 
 /**
- * Specification to check if a role is a superadmin role
+ * Specification to check if a role is a root role
  */
-export class SuperAdminRoleSpecification extends Specification<Role> {
+export class RootRoleSpecification extends Specification<Role> {
   isSatisfiedBy(role: Role): boolean {
-    return role.name.toLowerCase() === RolesEnum.SUPERADMIN.toLowerCase();
+    return role.name.toLowerCase() === RolesEnum.ROOT.toLowerCase();
+  }
+}
+
+/**
+ * Specification to check if a role is a root readonly role
+ */
+export class RootReadOnlyRoleSpecification extends Specification<Role> {
+  isSatisfiedBy(role: Role): boolean {
+    return role.name.toLowerCase() === RolesEnum.ROOT_READONLY.toLowerCase();
+  }
+}
+
+/**
+ * Specification to check if a role is any root level role (root or root_readonly)
+ */
+export class RootLevelRoleSpecification extends Specification<Role> {
+  isSatisfiedBy(role: Role): boolean {
+    const roleName = role.name.toLowerCase();
+
+    return (
+      roleName === RolesEnum.ROOT.toLowerCase() ||
+      roleName === RolesEnum.ROOT_READONLY.toLowerCase()
+    );
   }
 }
 
@@ -81,21 +104,21 @@ export class CanAssignPermissionToRoleSpecification extends Specification<Role> 
     }
 
     // Additional business rules can be added here
-    // For example: certain permissions might require admin roles
-    if (this.isSystemAdminPermission(this.permission) && !role.isAdminRole()) {
+    // For example: certain permissions might require root level roles
+    if (this.isSystemCriticalPermission(this.permission) && !role.isRootLevelRole()) {
       return false;
     }
 
     return true;
   }
 
-  private isSystemAdminPermission(permission: Permission): boolean {
-    // Business rule: System admin permissions require admin roles
-    const adminResources = ['user', 'role', 'permission', 'system'];
+  private isSystemCriticalPermission(permission: Permission): boolean {
+    // Business rule: System critical permissions require root level roles
+    const criticalResources = ['user', 'role', 'permission', 'system', 'company'];
     const criticalActions = ['delete', 'create', 'update'];
 
     return (
-      adminResources.includes(permission.getResource().toLowerCase()) &&
+      criticalResources.includes(permission.getResource().toLowerCase()) &&
       criticalActions.includes(permission.getAction().toLowerCase())
     );
   }
@@ -120,8 +143,9 @@ export class HasMinimumPermissionsSpecification extends Specification<Role> {
 export class BasicUserRoleSpecification extends Specification<Role> {
   isSatisfiedBy(role: Role): boolean {
     return (
-      !role.isAdminRole() &&
-      !role.isDefault &&
+      !role.isRootLevelRole() && // Not root or root_readonly
+      !role.isAdminRole() && // Not admin
+      !role.isDefault && // Not default role (guest)
       role.permissions.length > 0 &&
       role.permissions.length <= 10 // Basic roles shouldn't have too many permissions
     );

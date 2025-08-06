@@ -127,8 +127,8 @@ export class PermissionsCollection {
    * Check if collection has admin permissions
    */
   hasAdminPermissions(): boolean {
-    const adminResources = ['user', 'role', 'permission', 'system'];
-    const criticalActions = ['create', 'update', 'delete'];
+    const adminResources = ['user', 'role', 'permission'];
+    const criticalActions = ['write', 'delete'];
 
     return this._permissions.some(p => {
       const resource = p.getResource().toLowerCase();
