@@ -1,14 +1,14 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { VerifyEmailDto } from '@application/dtos/auth/email-verification.dto';
 import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '@core/services/auth.service';
+import { SessionService } from '@core/services/session.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { IAuthTokenResponse } from '@application/dtos/responses/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
+import { TokenProvider } from '@presentation/modules/auth/providers/token.provider';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
 
 export class VerifyEmailCommand implements ICommand {
@@ -22,8 +22,8 @@ export class VerifyEmailCommandHandler
 {
   constructor(
     private readonly authService: AuthService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    private readonly sessionService: SessionService,
+    private readonly tokenProvider: TokenProvider,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
     @Inject(ROLE_REPOSITORY)
@@ -61,24 +61,24 @@ export class VerifyEmailCommandHandler
       }
     }
 
-    // 4. Generate JWT tokens
-    const payload = {
-      sub: user.id.getValue(),
-      email: user.email.getValue(),
-      emailVerified: user.emailVerified,
-      roles: user.roles.map(role => role.name),
-      permissions: Array.from(userPermissions),
-    };
+    // 4. Generate session token and JWT tokens
+    const sessionToken = uuidv4();
+    const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
+      user,
+      Array.from(userPermissions),
+      sessionToken,
+    );
 
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('JWT_SECRET'),
-      expiresIn: this.configService.get('JWT_ACCESS_EXPIRATION'),
-    });
+    // 5. Register the session
+    await this.sessionService.createSession(
+      user.id.getValue(),
+      sessionToken,
+      refreshToken,
+      null, // userAgent not available in email verification
+      '?', // ipAddress not available in email verification
+    );
 
-    const refreshToken = uuidv4();
-    await this.authService.createRefreshToken(user.id.getValue(), refreshToken);
-
-    // 5. Return tokens and user information
+    // 6. Return tokens and user information
     return {
       accessToken,
       refreshToken,

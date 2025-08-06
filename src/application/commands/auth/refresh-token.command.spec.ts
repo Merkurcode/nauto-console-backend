@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RefreshTokenCommand, RefreshTokenCommandHandler } from './refresh-token.command';
 import { AuthService } from '@core/services/auth.service';
+import { SessionService } from '@core/services/session.service';
+import { UserBanService } from '@core/services/user-ban.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { LoggerService } from '@infrastructure/logger/logger.service';
@@ -64,6 +66,17 @@ const mockLoggerService = {
   verbose: jest.fn(),
 };
 
+// Mock SessionService
+const mockSessionService = {
+  validateRefreshToken: jest.fn(),
+  refreshSession: jest.fn(),
+};
+
+// Mock UserBanService
+const mockUserBanService = {
+  validateUserNotBanned: jest.fn(),
+};
+
 // Create test data
 const createTestUser = (): User => {
   const user = User.create(
@@ -79,6 +92,7 @@ const createTestUser = (): User => {
     name: 'user',
     description: 'Regular user role',
     isDefault: true,
+    isDefaultAppRole: false,
     permissions: [],
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -138,6 +152,8 @@ describe('RefreshTokenCommandHandler', () => {
         { provide: USER_REPOSITORY, useValue: mockUserRepository },
         { provide: ROLE_REPOSITORY, useValue: mockRoleRepository },
         { provide: AuthService, useValue: mockAuthService },
+        { provide: SessionService, useValue: mockSessionService },
+        { provide: UserBanService, useValue: mockUserBanService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: LoggerService, useValue: mockLoggerService },
@@ -262,6 +278,7 @@ describe('RefreshTokenCommandHandler', () => {
       name: 'admin',
       description: 'Administrator role',
       isDefault: false,
+      isDefaultAppRole: false,
       permissions: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -290,6 +307,7 @@ describe('RefreshTokenCommandHandler', () => {
       name: 'admin',
       description: 'Administrator role',
       isDefault: false,
+      isDefaultAppRole: false,
       permissions: [adminPermission],
       createdAt: new Date(),
       updatedAt: new Date(),

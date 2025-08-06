@@ -9,6 +9,14 @@ export class RequestPasswordResetDto {
   @IsEmail()
   @IsNotEmpty()
   email!: string;
+
+  @ApiProperty({
+    description: 'Captcha token for security validation',
+    example: '03AGdBq26...',
+  })
+  @IsString()
+  @IsNotEmpty()
+  captchaToken!: string;
 }
 
 export class ResetPasswordDto {

@@ -6,6 +6,8 @@ import { BusinessSector } from '@core/value-objects/business-sector.vo';
 import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
+import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
+import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
 
 export class UpdateCompanyCommand implements ICommand {
   constructor(
@@ -16,6 +18,15 @@ export class UpdateCompanyCommand implements ICommand {
     public readonly businessUnit?: BusinessUnit,
     public readonly address?: Address,
     public readonly host?: Host,
+    public readonly timezone?: string,
+    public readonly currency?: string,
+    public readonly language?: string,
+    public readonly logoUrl?: string,
+    public readonly websiteUrl?: string,
+    public readonly privacyPolicyUrl?: string,
+    public readonly industrySector?: IndustrySector,
+    public readonly industryOperationChannel?: IndustryOperationChannel,
+    public readonly parentCompanyId?: CompanyId,
   ) {}
 }
 
@@ -33,7 +44,24 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
   ) {}
 
   async execute(command: UpdateCompanyCommand): Promise<ICompanyResponse> {
-    const { id, name, description, businessSector, businessUnit, address, host } = command;
+    const {
+      id,
+      name,
+      description,
+      businessSector,
+      businessUnit,
+      address,
+      host,
+      timezone,
+      currency,
+      language,
+      logoUrl,
+      websiteUrl,
+      privacyPolicyUrl,
+      industrySector,
+      industryOperationChannel,
+      parentCompanyId,
+    } = command;
 
     // Find existing company
     const company = await this.companyRepository.findById(id);
@@ -57,8 +85,38 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
       }
     }
 
+    // Handle parent company update
+    if (parentCompanyId !== undefined) {
+      if (parentCompanyId === null) {
+        // Remove parent company
+        company.removeFromParent();
+      } else {
+        // Set new parent company
+        const parentCompany = await this.companyRepository.findById(parentCompanyId);
+        if (!parentCompany) {
+          throw new NotFoundException('Parent company not found');
+        }
+        company.setParentCompany(parentCompany);
+      }
+    }
+
     // Update company
-    company.updateCompanyInfo(name, description, businessSector, businessUnit, address, host);
+    company.updateCompanyInfo(
+      name,
+      description,
+      businessSector,
+      businessUnit,
+      address,
+      host,
+      industrySector,
+      industryOperationChannel,
+      timezone,
+      currency,
+      language,
+      logoUrl,
+      websiteUrl,
+      privacyPolicyUrl,
+    );
 
     // Save updated company
     const updatedCompany = await this.companyRepository.update(company);

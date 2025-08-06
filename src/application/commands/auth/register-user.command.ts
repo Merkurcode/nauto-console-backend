@@ -15,9 +15,34 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
   constructor(private readonly userService: UserService) {}
 
   async execute(command: RegisterUserCommand): Promise<IUserBaseResponse> {
-    const { email, password, firstName, lastName } = command.registerDto;
+    const registerDto = command.registerDto;
 
-    const user = await this.userService.createUser(email, password, firstName, lastName);
+    // Prepare options for extended user creation
+    const options = {
+      secondLastName: registerDto.secondLastName,
+      isActive: registerDto.isActive,
+      emailVerified: registerDto.emailVerified,
+      bannedUntil: registerDto.bannedUntil ? new Date(registerDto.bannedUntil) : undefined,
+      banReason: registerDto.banReason,
+      agentPhone: registerDto.agentPhone,
+      profile: registerDto.profile,
+      address: registerDto.address,
+      companyName: registerDto.company,
+      roles: registerDto.roles,
+    };
+
+    const user = await this.userService.createUserWithExtendedData(
+      registerDto.email,
+      registerDto.password,
+      registerDto.firstName,
+      registerDto.lastName,
+      options,
+    );
+
+    // Check if user creation was successful
+    if (!user) {
+      throw new Error('Failed to create user - user creation returned null');
+    }
 
     // Use the mapper to convert to response DTO
     return UserMapper.toBaseResponse(user);
