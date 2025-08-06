@@ -10,6 +10,8 @@ import {
   RolePermission as PrismaRolePermission,
   Role as PrismaRole,
   Permission as PrismaPermission,
+  UserProfile as PrismaUserProfile,
+  UserAddress as PrismaUserAddress,
 } from '@prisma/client';
 import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
 import { BaseRepository } from './base.repository';
@@ -23,6 +25,8 @@ type UserWithRelations = PrismaUser & {
       })[];
     };
   })[];
+  profile?: PrismaUserProfile | null;
+  address?: PrismaUserAddress | null;
 };
 
 @Injectable()
@@ -51,6 +55,8 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
         },
       });
 
@@ -76,6 +82,8 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
         },
       });
 
@@ -105,6 +113,42 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
+        },
+      });
+
+      if (!userRecord) {
+        return null;
+      }
+
+      return this.mapToModel(userRecord as UserWithRelations);
+    });
+  }
+
+  async findByAgentPhoneAndCompany(agentPhone: string, companyId: string): Promise<User | null> {
+    return this.executeWithErrorHandling('findByAgentPhoneAndCompany', async () => {
+      const userRecord = await this.prisma.user.findFirst({
+        where: {
+          agentPhone,
+          companyId,
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          profile: true,
+          address: true,
         },
       });
 
@@ -133,6 +177,8 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
         },
       });
 
@@ -164,10 +210,34 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
         },
       });
 
       return userRecords.map(record => this.mapToModel(record as UserWithRelations));
+    });
+  }
+
+  async getUserCountryPhoneCode(userId: string): Promise<string | null> {
+    return this.executeWithErrorHandling('getUserCountryPhoneCode', async () => {
+      const userWithAddress = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          address: {
+            include: {
+              country: true,
+            },
+          },
+        },
+      });
+
+      if (!userWithAddress?.address?.country) {
+        return null;
+      }
+
+      // Return phone code without the + sign for SMS API
+      return userWithAddress.address.country.phoneCode.replace('+', '');
     });
   }
 
@@ -180,11 +250,15 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           passwordHash: user.passwordHash,
           firstName: user.firstName.getValue(),
           lastName: user.lastName.getValue(),
+          secondLastName: user.secondLastName?.getValue(),
           isActive: user.isActive,
           emailVerified: user.emailVerified,
           otpEnabled: user.otpEnabled,
           otpSecret: user.otpSecret,
           lastLoginAt: user.lastLoginAt,
+          bannedUntil: user.bannedUntil,
+          banReason: user.banReason,
+          agentPhone: user.agentPhone?.getValue(),
           companyId: user.companyId?.getValue(),
           roles: {
             create: user.roles.map(role => ({
@@ -193,6 +267,27 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             })),
           },
+          profile: user.profile
+            ? {
+                create: {
+                  phone: user.profile.phone,
+                  avatarUrl: user.profile.avatarUrl,
+                  bio: user.profile.bio,
+                  birthdate: user.profile.birthDate,
+                },
+              }
+            : undefined,
+          address: user.address
+            ? {
+                create: {
+                  city: user.address.city,
+                  street: user.address.street,
+                  exteriorNumber: user.address.exteriorNumber,
+                  interiorNumber: user.address.interiorNumber,
+                  postalCode: user.address.postalCode,
+                },
+              }
+            : undefined,
         },
         include: {
           roles: {
@@ -208,6 +303,8 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
         },
       });
 
@@ -260,6 +357,8 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
           },
+          profile: true,
+          address: true,
         },
       });
 
@@ -311,6 +410,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         name: roleRecord.name,
         description: roleRecord.description,
         isDefault: roleRecord.isDefault,
+        isDefaultAppRole: roleRecord.isDefaultAppRole,
         permissions,
         createdAt: roleRecord.createdAt,
         updatedAt: roleRecord.updatedAt,
@@ -323,12 +423,35 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       passwordHash: record.passwordHash,
       firstName: record.firstName,
       lastName: record.lastName,
+      secondLastName: record.secondLastName || undefined,
       isActive: record.isActive,
       emailVerified: record.emailVerified,
       otpEnabled: record.otpEnabled,
       otpSecret: record.otpSecret || undefined,
       roles,
       lastLoginAt: record.lastLoginAt || undefined,
+      bannedUntil: record.bannedUntil || undefined,
+      banReason: record.banReason || undefined,
+      agentPhone: record.agentPhone || undefined,
+      profile: record.profile
+        ? {
+            phone: record.profile.phone || undefined,
+            avatarUrl: record.profile.avatarUrl || undefined,
+            bio: record.profile.bio || undefined,
+            birthDate: record.profile.birthdate || undefined,
+          }
+        : undefined,
+      address: record.address
+        ? {
+            country: 'México', // Default since we're not storing country/state properly yet
+            state: 'Unknown',
+            city: record.address.city || '',
+            street: record.address.street || '',
+            exteriorNumber: record.address.exteriorNumber || '',
+            interiorNumber: record.address.interiorNumber || undefined,
+            postalCode: record.address.postalCode || '',
+          }
+        : undefined,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       companyId: record.companyId || undefined,
