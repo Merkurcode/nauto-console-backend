@@ -1,7 +1,8 @@
 /* eslint-disable prettier/prettier */
 import { SetMetadata } from '@nestjs/common';
+import { RolesEnum } from '@shared/constants/enums';
 
-export const ROOT_READONLY_KEY = 'root_readonly';
+export const ROOT_READONLY_KEY = RolesEnum.ROOT_READONLY;
 
 /**
  * Decorator to mark endpoints that should deny write operations for root_readonly users

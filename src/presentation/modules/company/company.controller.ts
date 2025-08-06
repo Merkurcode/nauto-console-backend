@@ -85,7 +85,7 @@ export class CompanyController {
   @RequirePermissions('company:read')
   async getCompanies(@Request() req: { user: { roles: string[]; tenantId?: string } }): Promise<CompanyResponse[]> {
     const user = req.user;
-    const isRootUser = user.roles.includes('root') || user.roles.includes('root_readonly');
+    const isRootUser = user.roles.includes(RolesEnum.ROOT) || user.roles.includes(RolesEnum.ROOT_READONLY);
     
     if (isRootUser) {
       // Root users can see all companies
@@ -254,8 +254,8 @@ export class CompanyController {
       const user = req.user;
       
       // Authorization check: Admin users can only update their own company
-      const isRootUser = user.roles.includes('root');
-      const isAdminUser = user.roles.includes('admin');
+      const isRootUser = user.roles.includes(RolesEnum.ROOT);
+      const isAdminUser = user.roles.includes(RolesEnum.ADMIN);
       
       if (isAdminUser && !isRootUser) {
         // Admin users can only update their own company

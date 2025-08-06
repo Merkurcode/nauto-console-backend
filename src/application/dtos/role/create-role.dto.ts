@@ -9,11 +9,12 @@ import {
   Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { RolesEnum } from '@shared/constants/enums';
 
 export class CreateRoleDto {
   @ApiProperty({
     description: 'Role name',
-    example: 'root',
+    example: RolesEnum.ROOT,
   })
   @IsString()
   @IsNotEmpty()

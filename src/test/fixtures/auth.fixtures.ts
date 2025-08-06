@@ -2,6 +2,8 @@
  * Authentication test fixtures
  */
 
+import { RolesEnum } from '@shared/constants/enums';
+
 export const authFixtures = {
   users: {
     validUser: () => ({
@@ -29,9 +31,9 @@ export const authFixtures = {
       isActive: true,
       lastLoginAt: new Date(),
       twoFactorEnabled: false,
-      roles: [{ id: '1', name: 'admin', description: 'Administrator', permissions: [] }],
+      roles: [{ id: '1', name: RolesEnum.ADMIN, description: 'Administrator', permissions: [] }],
       getPermissions: () => ['user:read', 'user:write', 'user:delete', 'role:read', 'role:write'],
-      getRoleNames: () => ['admin'],
+      getRoleNames: () => [RolesEnum.ADMIN],
       hasPermission: () => true,
       hasRole: () => true,
       updateLastLogin: jest.fn(),

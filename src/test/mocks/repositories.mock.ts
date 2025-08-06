@@ -3,6 +3,7 @@
  */
 
 import { userFixture, adminFixture } from '../fixtures/user.fixtures';
+import { RolesEnum } from '@shared/constants/enums';
 
 // Mock User Repository
 export const mockUserRepository = {
@@ -52,7 +53,7 @@ export const mockRoleRepository = {
     if (id === '1') {
       return Promise.resolve({
         id: '1',
-        name: 'admin',
+        name: RolesEnum.ADMIN,
         description: 'Administrator role',
         isDefault: false,
         permissions: [
@@ -75,10 +76,10 @@ export const mockRoleRepository = {
   }),
 
   findByName: jest.fn().mockImplementation(name => {
-    if (name === 'admin') {
+    if (name === RolesEnum.ADMIN) {
       return Promise.resolve({
         id: '1',
-        name: 'admin',
+        name: RolesEnum.ADMIN,
         description: 'Administrator role',
         isDefault: false,
         permissions: [
@@ -111,7 +112,7 @@ export const mockRoleRepository = {
   findAll: jest.fn().mockResolvedValue([
     {
       id: '1',
-      name: 'admin',
+      name: RolesEnum.ADMIN,
       description: 'Administrator role',
       isDefault: false,
       permissions: [
@@ -142,7 +143,7 @@ export const mockRoleRepository = {
       id === '1'
         ? {
             id: '1',
-            name: 'admin',
+            name: RolesEnum.ADMIN,
             description: 'Administrator role',
             isDefault: false,
             permissions: [

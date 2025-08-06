@@ -8,6 +8,7 @@ import { UserId } from '@core/value-objects/user-id.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { Permission } from '@core/entities/permission.entity';
 import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
+import { RolesEnum } from '@shared/constants/enums';
 
 describe('UserAuthorizationService - Role Hierarchy Tests', () => {
   let service: UserAuthorizationService;
@@ -32,30 +33,30 @@ describe('UserAuthorizationService - Role Hierarchy Tests', () => {
     service = module.get<UserAuthorizationService>(UserAuthorizationService);
 
     // Create test roles - Root should have system-level permissions, not admin business permissions
-    rootRole = createRoleWithPermissions('root', 'Root role', [
+    rootRole = createRoleWithPermissions(RolesEnum.ROOT, 'Root role', [
       'system:read', 'system:write', 'system:delete', 'system:manage',
       'company:read', 'company:write'
     ]);
 
-    rootReadonlyRole = createRoleWithPermissions('root_readonly', 'Root readonly role', [
+    rootReadonlyRole = createRoleWithPermissions(RolesEnum.ROOT_READONLY, 'Root readonly role', [
       'user:read', 'role:read', 'company:read', 'system:read'
     ]);
 
-    adminRole = createRoleWithPermissions('admin', 'Admin role', [
+    adminRole = createRoleWithPermissions(RolesEnum.ADMIN, 'Admin role', [
       'user:read', 'user:write', 'user:delete',  // Admin permissions that trigger hasAdminPermissions()
       'role:read',
       'company:read'
     ]);
 
-    managerRole = createRoleWithPermissions('manager', 'Manager role', [
+    managerRole = createRoleWithPermissions(RolesEnum.MANAGER, 'Manager role', [
       'user:read', 'company:read'
     ]);
 
-    salesAgentRole = createRoleWithPermissions('sales_agent', 'Sales agent role', [
+    salesAgentRole = createRoleWithPermissions(RolesEnum.SALES_AGENT, 'Sales agent role', [
       'company:read'
     ]);
 
-    guestRole = createRoleWithPermissions('guest', 'Guest role', [], true);
+    guestRole = createRoleWithPermissions(RolesEnum.GUEST, 'Guest role', [], true);
 
     // Create test users with different roles
     rootUser = createUserWithRoles('root@test.com', [rootRole]);

@@ -7,7 +7,6 @@ const asyncLocalStorage = new AsyncLocalStorage<TransactionClient>();
 
 @Injectable()
 export class TransactionContextService {
-  
   setTransactionClient(client: TransactionClient): void {
     // Store the transaction client in the current async context
     asyncLocalStorage.enterWith(client);

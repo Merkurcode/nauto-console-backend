@@ -2,6 +2,7 @@ import { Role } from '@core/entities/role.entity';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { PermissionsCollection } from './permissions.collection';
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
+import { RolesEnum } from '@shared/constants/enums';
 
 /**
  * Value Object collection for managing roles
@@ -150,58 +151,58 @@ export class RolesCollection {
    * Get the highest privilege level in the collection
    */
   getHighestPrivilegeLevel():
-    | 'guest'
-    | 'host'
-    | 'sales_agent'
-    | 'manager'
-    | 'admin'
-    | 'root_readonly'
-    | 'root' {
+    | RolesEnum.GUEST
+    | RolesEnum.HOST
+    | RolesEnum.SALES_AGENT
+    | RolesEnum.MANAGER
+    | RolesEnum.ADMIN
+    | RolesEnum.ROOT_READONLY
+    | RolesEnum.ROOT {
     // Check for root privileges (highest level)
-    if (this.containsByName('root')) {
-      return 'root';
+    if (this.containsByName(RolesEnum.ROOT)) {
+      return RolesEnum.ROOT;
     }
 
     // Check for root readonly privileges
-    if (this.containsByName('root_readonly')) {
-      return 'root_readonly';
+    if (this.containsByName(RolesEnum.ROOT_READONLY)) {
+      return RolesEnum.ROOT_READONLY;
     }
 
     // Check for admin privileges
-    if (this.containsByName('admin')) {
-      return 'admin';
+    if (this.containsByName(RolesEnum.ADMIN)) {
+      return RolesEnum.ADMIN;
     }
 
     // Check for manager privileges
-    if (this.containsByName('manager')) {
-      return 'manager';
+    if (this.containsByName(RolesEnum.MANAGER)) {
+      return RolesEnum.MANAGER;
     }
 
     // Check for sales agent privileges
-    if (this.containsByName('sales_agent')) {
-      return 'sales_agent';
+    if (this.containsByName(RolesEnum.SALES_AGENT)) {
+      return RolesEnum.SALES_AGENT;
     }
 
     // Check for host privileges
-    if (this.containsByName('host')) {
-      return 'host';
+    if (this.containsByName(RolesEnum.HOST)) {
+      return RolesEnum.HOST;
     }
 
-    return 'guest';
+    return RolesEnum.GUEST;
   }
 
   /**
    * Check if collection has root privileges
    */
   hasRootPrivileges(): boolean {
-    return this.containsByName('root');
+    return this.containsByName(RolesEnum.ROOT);
   }
 
   /**
    * Check if collection has root readonly privileges
    */
   hasRootReadOnlyPrivileges(): boolean {
-    return this.containsByName('root_readonly');
+    return this.containsByName(RolesEnum.ROOT_READONLY);
   }
 
   /**

@@ -9,6 +9,7 @@ import {
 } from '@core/exceptions/domain-exceptions';
 import { CanAssignPermissionToRoleSpecification } from '@core/specifications/role.specifications';
 import { PermissionsCollection } from '@core/value-objects/collections/permissions.collection';
+import { RolesEnum } from '@shared/constants/enums';
 
 export class Role extends AggregateRoot {
   private readonly _id: RoleId;
@@ -220,12 +221,12 @@ export class Role extends AggregateRoot {
 
   isRootRole(): boolean {
     // Business rule: Root role is the highest privilege level
-    return this._name.toLowerCase() === 'root';
+    return this._name.toLowerCase() === RolesEnum.ROOT;
   }
 
   isRootReadOnlyRole(): boolean {
     // Business rule: Root readonly role has full read access but no write operations
-    return this._name.toLowerCase() === 'root_readonly';
+    return this._name.toLowerCase() === RolesEnum.ROOT_READONLY;
   }
 
   isRootLevelRole(): boolean {
