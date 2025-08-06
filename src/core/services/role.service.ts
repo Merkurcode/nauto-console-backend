@@ -2,13 +2,14 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Role } from '../entities/role.entity';
 import { IRoleRepository } from '../repositories/role.repository.interface';
 import { IPermissionRepository } from '../repositories/permission.repository.interface';
+import { IUserRepository } from '../repositories/user.repository.interface';
 import {
   EntityNotFoundException,
   EntityAlreadyExistsException,
   ForbiddenActionException,
 } from '@core/exceptions/domain-exceptions';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
-import { ROLE_REPOSITORY, PERMISSION_REPOSITORY } from '@shared/constants/tokens';
+import { ROLE_REPOSITORY, PERMISSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 
 @Injectable()
 export class RoleService {
@@ -17,18 +18,32 @@ export class RoleService {
     private readonly roleRepository: IRoleRepository,
     @Inject(PERMISSION_REPOSITORY)
     private readonly permissionRepository: IPermissionRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
   ) {}
 
   async createRole(
     name: string,
     description: string,
+    hierarchyLevel: number,
     isDefault: boolean = false,
     isDefaultAppRole: boolean = false,
+    creatorUserId?: string,
   ): Promise<Role> {
     // Check if a role already exists
     const existingRole = await this.roleRepository.findByName(name);
     if (existingRole) {
       throw new EntityAlreadyExistsException('Role', 'name');
+    }
+
+    // Validate hierarchy level restrictions if creator is specified
+    if (creatorUserId) {
+      await this.validateHierarchyLevelForCreation(creatorUserId, hierarchyLevel);
+    }
+
+    // Validate that hierarchy level is not root level (1) for new roles
+    if (hierarchyLevel === 1) {
+      throw new ForbiddenActionException('Cannot create roles with root hierarchy level');
     }
 
     // If this is a default role, unset any existing default role
@@ -40,7 +55,7 @@ export class RoleService {
       }
     }
 
-    const role = Role.create(name, description, isDefault, isDefaultAppRole);
+    const role = Role.create(name, description, hierarchyLevel, isDefault, isDefaultAppRole);
 
     return this.roleRepository.create(role);
   }
@@ -134,5 +149,50 @@ export class RoleService {
     }
 
     return this.roleRepository.delete(id);
+  }
+
+  private async validateHierarchyLevelForCreation(
+    creatorUserId: string,
+    targetHierarchyLevel: number,
+  ): Promise<void> {
+    const creator = await this.userRepository.findById(creatorUserId);
+    if (!creator) {
+      throw new EntityNotFoundException('User', creatorUserId);
+    }
+
+    // Get creator's highest role (lowest hierarchy level number)
+    const creatorRoles = creator.roles;
+    if (!creatorRoles || creatorRoles.length === 0) {
+      throw new ForbiddenActionException('User has no roles assigned');
+    }
+
+    const creatorHighestRole = creatorRoles.reduce((highest, current) =>
+      current.hierarchyLevel < highest.hierarchyLevel ? current : highest,
+    );
+
+    // Validate that creator can create roles with the target hierarchy level
+    if (!creatorHighestRole.canCreateRoleWithLevel(targetHierarchyLevel)) {
+      throw new ForbiddenActionException(
+        `Cannot create role with hierarchy level ${targetHierarchyLevel}. ` +
+          `Your highest role (${creatorHighestRole.name}) can only create roles with hierarchy level ${creatorHighestRole.hierarchyLevel} or higher.`,
+      );
+    }
+  }
+
+  async getUserHighestRole(userId: string): Promise<Role> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new EntityNotFoundException('User', userId);
+    }
+
+    const userRoles = user.roles;
+    if (!userRoles || userRoles.length === 0) {
+      throw new EntityNotFoundException('User has no roles assigned');
+    }
+
+    // Return role with lowest hierarchy level (highest privilege)
+    return userRoles.reduce((highest, current) =>
+      current.hierarchyLevel < highest.hierarchyLevel ? current : highest,
+    );
   }
 }

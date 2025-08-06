@@ -14,6 +14,7 @@ export class Role extends AggregateRoot {
   private readonly _id: RoleId;
   private _name: string;
   private _description: string;
+  private _hierarchyLevel: number;
   private _permissions: Permission[];
   private _isDefault: boolean;
   private _isDefaultAppRole: boolean;
@@ -24,6 +25,7 @@ export class Role extends AggregateRoot {
     id: RoleId,
     name: string,
     description: string,
+    hierarchyLevel: number = 5,
     isDefault: boolean = false,
     isDefaultAppRole: boolean = false,
     createdAt?: Date,
@@ -31,10 +33,12 @@ export class Role extends AggregateRoot {
     super();
     this.validateName(name);
     this.validateDescription(description);
+    this.validateHierarchyLevel(hierarchyLevel);
 
     this._id = id;
     this._name = name;
     this._description = description;
+    this._hierarchyLevel = hierarchyLevel;
     this._permissions = [];
     this._isDefault = isDefault;
     this._isDefaultAppRole = isDefaultAppRole;
@@ -46,10 +50,18 @@ export class Role extends AggregateRoot {
   static create(
     name: string,
     description: string,
+    hierarchyLevel: number = 5,
     isDefault: boolean = false,
     isDefaultAppRole: boolean = false,
   ): Role {
-    return new Role(RoleId.create(), name, description, isDefault, isDefaultAppRole);
+    return new Role(
+      RoleId.create(),
+      name,
+      description,
+      hierarchyLevel,
+      isDefault,
+      isDefaultAppRole,
+    );
   }
 
   // Factory method for reconstituting from persistence
@@ -57,6 +69,7 @@ export class Role extends AggregateRoot {
     id: string;
     name: string;
     description: string;
+    hierarchyLevel: number;
     permissions: Permission[];
     isDefault: boolean;
     isDefaultAppRole: boolean;
@@ -67,6 +80,7 @@ export class Role extends AggregateRoot {
       RoleId.fromString(data.id),
       data.name,
       data.description,
+      data.hierarchyLevel,
       data.isDefault,
       data.isDefaultAppRole,
       data.createdAt,
@@ -89,6 +103,10 @@ export class Role extends AggregateRoot {
 
   get description(): string {
     return this._description;
+  }
+
+  get hierarchyLevel(): number {
+    return this._hierarchyLevel;
   }
 
   get permissions(): Permission[] {
@@ -138,7 +156,7 @@ export class Role extends AggregateRoot {
     this._updatedAt = new Date();
   }
 
-  updateDetails(name?: string, description?: string): void {
+  updateDetails(name?: string, description?: string, hierarchyLevel?: number): void {
     let hasChanges = false;
 
     if (name && name !== this._name) {
@@ -150,6 +168,12 @@ export class Role extends AggregateRoot {
     if (description && description !== this._description) {
       this.validateDescription(description);
       this._description = description;
+      hasChanges = true;
+    }
+
+    if (hierarchyLevel !== undefined && hierarchyLevel !== this._hierarchyLevel) {
+      this.validateHierarchyLevel(hierarchyLevel);
+      this._hierarchyLevel = hierarchyLevel;
       hasChanges = true;
     }
 
@@ -214,6 +238,64 @@ export class Role extends AggregateRoot {
     return this.isRootLevelRole();
   }
 
+  // Hierarchy-related business methods
+  canCreateRoleWithLevel(targetHierarchyLevel: number): boolean {
+    // Business rule: Can only create roles with hierarchy level >= own level (lower or equal privilege)
+    // Cannot create root level roles (level 1)
+    return targetHierarchyLevel >= this._hierarchyLevel && targetHierarchyLevel > 1;
+  }
+
+  hasHigherHierarchyThan(otherRole: Role): boolean {
+    // Business rule: Lower number = higher hierarchy
+    return this._hierarchyLevel < otherRole._hierarchyLevel;
+  }
+
+  hasLowerHierarchyThan(otherRole: Role): boolean {
+    // Business rule: Higher number = lower hierarchy
+    return this._hierarchyLevel > otherRole._hierarchyLevel;
+  }
+
+  hasSameHierarchyAs(otherRole: Role): boolean {
+    return this._hierarchyLevel === otherRole._hierarchyLevel;
+  }
+
+  isRootHierarchy(): boolean {
+    return this._hierarchyLevel === 1;
+  }
+
+  isAdminHierarchy(): boolean {
+    return this._hierarchyLevel === 2;
+  }
+
+  isManagerHierarchy(): boolean {
+    return this._hierarchyLevel === 3;
+  }
+
+  isSalesAgentOrHostHierarchy(): boolean {
+    return this._hierarchyLevel === 4;
+  }
+
+  isGuestHierarchy(): boolean {
+    return this._hierarchyLevel === 5;
+  }
+
+  getHierarchyLevelName(): string {
+    switch (this._hierarchyLevel) {
+      case 1:
+        return 'Root';
+      case 2:
+        return 'Admin';
+      case 3:
+        return 'Manager';
+      case 4:
+        return 'Sales Agent/Host';
+      case 5:
+        return 'Guest';
+      default:
+        return 'Unknown';
+    }
+  }
+
   canBeDeleted(): boolean {
     // Business rule: Default roles and system roles cannot be deleted
     return !this._isDefault && !this._isDefaultAppRole;
@@ -247,6 +329,12 @@ export class Role extends AggregateRoot {
 
     if (description.length > 500) {
       throw new InvalidValueObjectException('Role description cannot exceed 500 characters');
+    }
+  }
+
+  private validateHierarchyLevel(hierarchyLevel: number): void {
+    if (!Number.isInteger(hierarchyLevel) || hierarchyLevel < 1 || hierarchyLevel > 5) {
+      throw new InvalidValueObjectException('Role hierarchy level must be between 1 and 5');
     }
   }
 }

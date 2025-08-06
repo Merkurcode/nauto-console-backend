@@ -10,9 +10,11 @@ export class CreateRoleCommand {
   constructor(
     public readonly name: string,
     public readonly description: string,
+    public readonly hierarchyLevel: number,
     public readonly isDefault?: boolean,
     public readonly permissionIds?: string[],
     public readonly isDefaultAppRole?: boolean,
+    public readonly creatorUserId?: string,
   ) {}
 }
 
@@ -27,10 +29,18 @@ export class CreateRoleCommandHandler
   ) {}
 
   async execute(command: CreateRoleCommand): Promise<RoleDetailResponse> {
-    const { name, description, isDefault, permissionIds, isDefaultAppRole } = command;
+    const { name, description, hierarchyLevel, isDefault, permissionIds, isDefaultAppRole, creatorUserId } =
+      command;
 
     // Create the role first
-    const role = await this.roleService.createRole(name, description, isDefault, isDefaultAppRole);
+    const role = await this.roleService.createRole(
+      name,
+      description,
+      hierarchyLevel,
+      isDefault,
+      isDefaultAppRole,
+      creatorUserId,
+    );
 
     // If permission IDs are provided, assign them to the role
     if (permissionIds && permissionIds.length > 0) {

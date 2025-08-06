@@ -101,6 +101,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
         id: role.id.getValue(),
         name: role.name,
         description: role.description,
+        hierarchyLevel: role.hierarchyLevel,
         isDefault: role.isDefault,
         isDefaultAppRole: role.isDefaultAppRole,
         permissions: {
@@ -138,6 +139,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
       data: {
         name: role.name,
         description: role.description,
+        hierarchyLevel: role.hierarchyLevel,
         isDefault: role.isDefault,
         isDefaultAppRole: role.isDefaultAppRole,
         permissions: {
@@ -198,6 +200,7 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
       id: record.id,
       name: record.name,
       description: record.description,
+      hierarchyLevel: record.hierarchyLevel,
       isDefault: record.isDefault,
       isDefaultAppRole: record.isDefaultAppRole,
       permissions,
