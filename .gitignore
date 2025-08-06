@@ -38,8 +38,11 @@ lerna-debug.log*
 .env
 .env.local
 .env.development
-.env.test
 .env.production
+.env.staging
+.env.test
+.env.dev
+.env.prod
 
 # Docker volumes
 /postgres_data
@@ -52,3 +55,4 @@ lerna-debug.log*
 CLAUDE.md
 NOTES.txt
 *.ps1
+*.bat
