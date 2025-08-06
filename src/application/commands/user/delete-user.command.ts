@@ -26,11 +26,8 @@ export class DeleteUserCommandHandler
   async execute(command: DeleteUserCommand): Promise<{ message: string; companyId: string }> {
     const { targetUserId, currentUserId, companyId } = command;
 
-    // Get current user for authorization check
-    const currentUser = await this.userRepository.findById(currentUserId);
-    if (!currentUser) {
-      throw new ForbiddenException('Current user not found');
-    }
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
 
     // Get target user
     const targetUser = await this.userRepository.findById(targetUserId);

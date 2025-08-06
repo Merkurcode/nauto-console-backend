@@ -2,6 +2,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
 import { UserService } from '@core/services/user.service';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { User } from '@core/entities/user.entity';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
@@ -29,6 +30,7 @@ export class AdminChangePasswordCommandHandler
   constructor(
     private readonly authService: AuthService,
     private readonly userService: UserService,
+    private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
   ) {}
@@ -36,7 +38,10 @@ export class AdminChangePasswordCommandHandler
   async execute(
     command: AdminChangePasswordCommand,
   ): Promise<{ success: boolean; message: string }> {
-    const { targetUserId, newPassword, adminUserId, adminRoles, adminCompanyId } = command;
+    const { targetUserId, newPassword, adminUserId, adminCompanyId } = command;
+
+    // Get admin user using centralized method
+    const adminUser = await this.userAuthorizationService.getCurrentUserSafely(adminUserId);
 
     // Find the target user
     const targetUser = await this.userRepository.findById(targetUserId);
@@ -44,9 +49,9 @@ export class AdminChangePasswordCommandHandler
       throw new EntityNotFoundException('User', targetUserId);
     }
 
-    // Validate authorization based on roles and target user role
+    // Validate authorization using centralized method
     await this.validateAuthorization(
-      adminRoles,
+      adminUser,
       adminCompanyId,
       targetUser.companyId?.getValue(),
       targetUser,
@@ -67,21 +72,18 @@ export class AdminChangePasswordCommandHandler
   }
 
   private async validateAuthorization(
-    adminRoles: string[],
+    adminUser: User,
     adminCompanyId: string | undefined,
     targetUserCompanyId: string | undefined,
     targetUser: User,
   ): Promise<void> {
-    // Check target user roles for security restrictions
-    const targetUserRoles = targetUser.roles.map(role => role.name.toLowerCase());
-
     // Check if user has ROOT role
-    if (adminRoles.includes(RolesEnum.ROOT)) {
+    if (this.userAuthorizationService.canAccessRootFeatures(adminUser)) {
       // Root can change password of any user EXCEPT other root users
       // Root CAN change password of root_readonly users
       if (
-        targetUserRoles.includes(RolesEnum.ROOT) &&
-        !targetUserRoles.includes(RolesEnum.ROOT_READONLY)
+        targetUser.rolesCollection.containsByName(RolesEnum.ROOT) &&
+        !targetUser.rolesCollection.containsByName(RolesEnum.ROOT_READONLY)
       ) {
         throw new ForbiddenActionException(
           'Root users cannot change passwords of other root users for security reasons',
@@ -92,11 +94,11 @@ export class AdminChangePasswordCommandHandler
     }
 
     // Check if user has ADMIN role
-    if (adminRoles.includes(RolesEnum.ADMIN)) {
+    if (this.userAuthorizationService.canAccessAdminFeatures(adminUser)) {
       // Admin cannot change passwords of any root or root_readonly users
       if (
-        targetUserRoles.includes(RolesEnum.ROOT) ||
-        targetUserRoles.includes(RolesEnum.ROOT_READONLY)
+        targetUser.rolesCollection.containsByName(RolesEnum.ROOT) ||
+        targetUser.rolesCollection.containsByName(RolesEnum.ROOT_READONLY)
       ) {
         throw new ForbiddenActionException(
           'Admin users cannot change passwords of root or root_readonly users',

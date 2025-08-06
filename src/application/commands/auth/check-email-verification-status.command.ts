@@ -1,10 +1,13 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Injectable, ForbiddenException, NotFoundException, Inject, Logger } from '@nestjs/common';
+import { Injectable, ForbiddenException, Inject, Logger } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
-import { RolesEnum } from '@shared/constants/enums';
+import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
 import { Email } from '@core/value-objects/email.vo';
+import { User } from '@core/entities/user.entity';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 import { USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 
 export class CheckEmailVerificationStatusCommand implements ICommand {
@@ -25,22 +28,26 @@ export class CheckEmailVerificationStatusCommandHandler
 
   constructor(
     private readonly authService: AuthService,
+    private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     @Inject(COMPANY_REPOSITORY) private readonly companyRepository: ICompanyRepository,
   ) {}
 
   async execute(command: CheckEmailVerificationStatusCommand): Promise<boolean> {
-    const { email, currentUserId, currentUserRoles, currentUserCompanyId } = command;
+    const { email, currentUserId, currentUserCompanyId } = command;
 
     // Validate email format
     const emailValueObject = new Email(email);
 
-    // Security checks based on role hierarchy
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
+    // Security checks using authorization service
     await this.validateAccess(
       emailValueObject.getValue(),
-      currentUserId,
-      currentUserRoles,
+      currentUser,
       currentUserCompanyId,
+      currentUserId,
     );
 
     // Check if the email is verified
@@ -49,12 +56,12 @@ export class CheckEmailVerificationStatusCommandHandler
 
   private async validateAccess(
     email: string,
-    currentUserId: string,
-    currentUserRoles: string[],
+    currentUser: User,
     currentUserCompanyId: string | null,
+    currentUserId: string,
   ): Promise<void> {
     // Rule 1: Root role can check any email
-    if (currentUserRoles.includes(RolesEnum.ROOT)) {
+    if (this.userAuthorizationService.canAccessRootFeatures(currentUser)) {
       return;
     }
 
@@ -65,7 +72,7 @@ export class CheckEmailVerificationStatusCommandHandler
     // (We don't want to leak information about email existence)
 
     // Rule 2: Admin can check emails within their company and subsidiary companies
-    if (currentUserRoles.includes(RolesEnum.ADMIN)) {
+    if (this.userAuthorizationService.canAccessAdminFeatures(currentUser)) {
       // If target user exists, check if they belong to the same company
       if (targetUser && currentUserCompanyId) {
         if (targetUser.companyId?.getValue() === currentUserCompanyId) {
@@ -90,8 +97,7 @@ export class CheckEmailVerificationStatusCommandHandler
       }
 
       // If no target user found, only allow if checking their own email
-      const currentUser = await this.userRepository.findById(currentUserId);
-      if (currentUser && currentUser.email.getValue() === email) {
+      if (currentUser.email.getValue() === email) {
         return;
       }
 
@@ -101,7 +107,10 @@ export class CheckEmailVerificationStatusCommandHandler
     }
 
     // Rule 3: Manager can check emails within their company
-    if (currentUserRoles.includes(RolesEnum.MANAGER)) {
+    const currentUserLevel = this.userAuthorizationService.getUserHierarchyLevel(currentUser);
+    const managerLevel = ROLE_HIERARCHY_ORDER_STRINGS.indexOf(RolesEnum.MANAGER) + 1;
+
+    if (currentUserLevel <= managerLevel) {
       // If target user exists, check if they belong to the same company
       if (targetUser && currentUserCompanyId) {
         if (targetUser.companyId?.getValue() === currentUserCompanyId) {
@@ -115,8 +124,7 @@ export class CheckEmailVerificationStatusCommandHandler
       }
 
       // If no target user found, only allow if checking their own email
-      const currentUser = await this.userRepository.findById(currentUserId);
-      if (currentUser && currentUser.email.getValue() === email) {
+      if (currentUser.email.getValue() === email) {
         return;
       }
 
@@ -126,11 +134,6 @@ export class CheckEmailVerificationStatusCommandHandler
     }
 
     // Rule 4: Other roles can only check their own email
-    const currentUser = await this.userRepository.findById(currentUserId);
-    if (!currentUser) {
-      throw new NotFoundException('Current user not found');
-    }
-
     if (currentUser.email.getValue() !== email) {
       throw new ForbiddenException('You can only check your own email verification status');
     }
@@ -141,15 +144,15 @@ export class CheckEmailVerificationStatusCommandHandler
     targetCompanyId: string,
   ): Promise<boolean> {
     try {
-      const targetCompany = await this.companyRepository.findById({
-        getValue: () => targetCompanyId,
-      } as any);
+      const targetCompany = await this.companyRepository.findById(
+        CompanyId.fromString(targetCompanyId)
+      );
       if (!targetCompany) {
         return false;
       }
 
       // Check if the target company's parent is the current user's company
-      return targetCompany.isSubsidiaryOf({ getValue: () => parentCompanyId } as any);
+      return targetCompany.isSubsidiaryOf(CompanyId.fromString(parentCompanyId));
     } catch (error) {
       this.logger.error('Error checking subsidiary relationship', {
         error: error.message,

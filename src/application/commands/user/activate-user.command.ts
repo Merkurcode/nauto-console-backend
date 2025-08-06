@@ -30,11 +30,8 @@ export class ActivateUserCommandHandler
   async execute(command: ActivateUserCommand): Promise<IUserBaseResponse> {
     const { targetUserId, active, currentUserId } = command;
 
-    // Get current user for authorization check
-    const currentUser = await this.userRepository.findById(currentUserId);
-    if (!currentUser) {
-      throw new ForbiddenException('Current user not found');
-    }
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
 
     // Get target user to get their company ID
     const targetUser = await this.userRepository.findById(targetUserId);

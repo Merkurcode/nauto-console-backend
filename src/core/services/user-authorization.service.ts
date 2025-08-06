@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
-import { RolesEnum, ROLE_HIERARCHY_ORDER, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
+import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
+import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 
 // Interface for lightweight user authorization checks
 interface IUserAuthInfo {
@@ -28,6 +31,31 @@ import {
  */
 @Injectable()
 export class UserAuthorizationService {
+  constructor(
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+  ) {}
+
+  /**
+   * Get current user safely with proper error handling
+   * Centralizes the common pattern of fetching and validating current user
+   */
+  public async getCurrentUserSafely(userId: string): Promise<User> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new EntityNotFoundException('Current User', userId);
+    }
+
+    return user;
+  }
+
+  /**
+   * Check if current user can access target user in the same company
+   */
+  public canAccessUserInSameCompany(currentUser: User, targetUser: User): boolean {
+    return currentUser.companyId?.getValue() === targetUser.companyId?.getValue();
+  }
+
   /**
    * Check if a user can access admin features (admin is now a regular role)
    */
@@ -54,9 +82,9 @@ export class UserAuthorizationService {
     }
 
     // For lightweight checks, use permission-based approach
-    if ('hasPermission' in user && typeof user.hasPermission === 'function') {
-      return user.hasPermission('root:access');
-    }
+    //if ('hasPermission' in user && typeof user.hasPermission === 'function') {
+    //  return user.hasPermission('root:access');
+    //}
 
     // For full User entities, use specifications
     const activeUserSpec = new ActiveUserSpecification();
@@ -419,7 +447,7 @@ export class UserAuthorizationService {
     const userRoles = user.rolesCollection.getRoleNames().map(name => name.toLowerCase());
 
     for (let i = 0; i < hierarchyOrder.length; i++) {
-      if (userRoles.includes(hierarchyOrder[i])) {
+      if (userRoles.some(role => role === hierarchyOrder[i])) {
         return i + 1;
       }
     }
@@ -430,7 +458,7 @@ export class UserAuthorizationService {
   /**
    * Get role hierarchy level by role name (level starts at 1, not 0)
    */
-  private getRoleHierarchyLevel(roleName: string): number {
+  public getRoleHierarchyLevel(roleName: string): number {
     const hierarchyOrder = ROLE_HIERARCHY_ORDER_STRINGS;
 
     const roleIndex = hierarchyOrder.findIndex(
@@ -438,5 +466,12 @@ export class UserAuthorizationService {
     );
 
     return roleIndex !== -1 ? roleIndex + 1 : hierarchyOrder.length + 1;
+  }
+
+  /**
+   * Get role hierarchy level by role enum (level starts at 1, not 0)
+   */
+  public getRoleHierarchyLevelByEnum(role: RolesEnum): number {
+    return this.getRoleHierarchyLevel(role);
   }
 }

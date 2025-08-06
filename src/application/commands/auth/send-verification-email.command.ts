@@ -4,12 +4,15 @@ import { Injectable, Inject, Logger, ForbiddenException, ConflictException } fro
 import { AuthService } from '@core/services/auth.service';
 import { EmailService } from '@core/services/email.service';
 import { SmsService } from '@core/services/sms.service';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { Email } from '@core/value-objects/email.vo';
-import { RolesEnum } from '@shared/constants/enums';
+import { User } from '@core/entities/user.entity';
+import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 
 export class SendVerificationEmailCommand implements ICommand {
   constructor(
@@ -31,6 +34,7 @@ export class SendVerificationEmailCommandHandler
     private readonly authService: AuthService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
+    private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
     @Inject(COMPANY_REPOSITORY)
@@ -39,7 +43,10 @@ export class SendVerificationEmailCommandHandler
 
   async execute(command: SendVerificationEmailCommand): Promise<{ message: string }> {
     const { email, phoneNumber } = command.dto;
-    const { currentUserId, currentUserRoles, currentUserCompanyId } = command;
+    const { currentUserId, currentUserCompanyId } = command;
+
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
 
     // Validate email format using value object
     const _emailVO = new Email(email);
@@ -56,7 +63,7 @@ export class SendVerificationEmailCommandHandler
     }
 
     // SECURITY: Validate access permissions
-    await this.validateAccess(email, currentUserId, currentUserRoles, currentUserCompanyId);
+    await this.validateAccess(email, currentUser, currentUserCompanyId);
 
     // Generate a verification code
     const code = await this.authService.generateEmailVerificationCode(email);
@@ -109,12 +116,11 @@ export class SendVerificationEmailCommandHandler
 
   private async validateAccess(
     email: string,
-    currentUserId: string,
-    currentUserRoles: string[],
+    currentUser: User,
     currentUserCompanyId: string | null,
   ): Promise<void> {
     // Rule 1: Root role can send verification to any email
-    if (currentUserRoles.includes(RolesEnum.ROOT)) {
+    if (this.userAuthorizationService.canAccessRootFeatures(currentUser)) {
       return;
     }
 
@@ -125,7 +131,7 @@ export class SendVerificationEmailCommandHandler
     }
 
     // Rule 2: Admin can send to emails within their company and subsidiary companies
-    if (currentUserRoles.includes(RolesEnum.ADMIN)) {
+    if (this.userAuthorizationService.canAccessAdminFeatures(currentUser)) {
       if (currentUserCompanyId && targetUser.companyId) {
         // Check if target user is in the same company
         if (targetUser.companyId.getValue() === currentUserCompanyId) {
@@ -143,7 +149,7 @@ export class SendVerificationEmailCommandHandler
       }
 
       // Admin can also send to their own email
-      if (targetUser.id.getValue() === currentUserId) {
+      if (targetUser.id.getValue() === currentUser.id.getValue()) {
         return;
       }
 
@@ -153,7 +159,10 @@ export class SendVerificationEmailCommandHandler
     }
 
     // Rule 3: Manager can send to emails within their company
-    if (currentUserRoles.includes(RolesEnum.MANAGER)) {
+    const currentUserLevel = this.userAuthorizationService.getUserHierarchyLevel(currentUser);
+    const managerLevel = ROLE_HIERARCHY_ORDER_STRINGS.indexOf(RolesEnum.MANAGER) + 1; // +1 because hierarchy is 1-based
+
+    if (currentUserLevel <= managerLevel) {
       if (currentUserCompanyId && targetUser.companyId) {
         if (targetUser.companyId.getValue() === currentUserCompanyId) {
           return;
@@ -161,7 +170,7 @@ export class SendVerificationEmailCommandHandler
       }
 
       // Manager can also send to their own email
-      if (targetUser.id.getValue() === currentUserId) {
+      if (targetUser.id.getValue() === currentUser.id.getValue()) {
         return;
       }
 
@@ -171,7 +180,7 @@ export class SendVerificationEmailCommandHandler
     }
 
     // Rule 4: Other roles can only send verification to their own email
-    if (targetUser.id.getValue() !== currentUserId) {
+    if (targetUser.id.getValue() !== currentUser.id.getValue()) {
       throw new ForbiddenException('You can only send verification emails to your own email');
     }
   }
@@ -181,15 +190,15 @@ export class SendVerificationEmailCommandHandler
     targetCompanyId: string,
   ): Promise<boolean> {
     try {
-      const targetCompany = await this.companyRepository.findById({
-        getValue: () => targetCompanyId,
-      } as any);
+      const targetCompany = await this.companyRepository.findById(
+        CompanyId.fromString(targetCompanyId)
+      );
       if (!targetCompany) {
         return false;
       }
 
       // Check if the target company's parent is the current user's company
-      return targetCompany.isSubsidiaryOf({ getValue: () => parentCompanyId } as any);
+      return targetCompany.isSubsidiaryOf(CompanyId.fromString(parentCompanyId));
     } catch (error) {
       this.logger.error('Error checking subsidiary relationship', {
         error: error.message,

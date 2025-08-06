@@ -36,27 +36,27 @@ describe('UserAuthorizationService - Role Hierarchy Tests', () => {
     rootRole = createRoleWithPermissions(RolesEnum.ROOT, 'Root role', [
       'system:read', 'system:write', 'system:delete', 'system:manage',
       'company:read', 'company:write'
-    ]);
+    ], 1);
 
     rootReadonlyRole = createRoleWithPermissions(RolesEnum.ROOT_READONLY, 'Root readonly role', [
       'user:read', 'role:read', 'company:read', 'system:read'
-    ]);
+    ], 2);
 
     adminRole = createRoleWithPermissions(RolesEnum.ADMIN, 'Admin role', [
       'user:read', 'user:write', 'user:delete',  // Admin permissions that trigger hasAdminPermissions()
       'role:read',
       'company:read'
-    ]);
+    ], 3);
 
     managerRole = createRoleWithPermissions(RolesEnum.MANAGER, 'Manager role', [
       'user:read', 'company:read'
-    ]);
+    ], 4);
 
     salesAgentRole = createRoleWithPermissions(RolesEnum.SALES_AGENT, 'Sales agent role', [
       'company:read'
-    ]);
+    ], 5);
 
-    guestRole = createRoleWithPermissions(RolesEnum.GUEST, 'Guest role', [], true);
+    guestRole = createRoleWithPermissions(RolesEnum.GUEST, 'Guest role', [], 6, true);
 
     // Create test users with different roles
     rootUser = createUserWithRoles('root@test.com', [rootRole]);
@@ -166,7 +166,7 @@ describe('UserAuthorizationService - Role Hierarchy Tests', () => {
       const adminWithDeletePerm = createUserWithRoles('admin_delete@test.com', [
         createRoleWithPermissions('admin_with_delete', 'Admin with delete', [
           'role:delete', 'user:read', 'company:read'
-        ])
+        ], 3)
       ]);
       expect(service.canDeleteRole(adminWithDeletePerm, managerRole)).toBe(true);
     });
@@ -287,8 +287,8 @@ describe('UserAuthorizationService - Role Hierarchy Tests', () => {
   });
 
   // Helper functions
-  function createRoleWithPermissions(name: string, description: string, permissionNames: string[], isDefault: boolean = false): Role {
-    const role = Role.create(name, description, isDefault);
+  function createRoleWithPermissions(name: string, description: string, permissionNames: string[], hierarchyLevel: number, isDefault: boolean = false): Role {
+    const role = Role.create(name, description, hierarchyLevel, isDefault);
     
     permissionNames.forEach(permName => {
       const [resource, action] = permName.split(':');

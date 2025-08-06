@@ -29,7 +29,7 @@ export class RootAssignmentGuard implements CanActivate {
       // For now, we'll implement basic validation
 
       // Only ROOT can assign ROOT or ROOT_READONLY roles
-      if (user.roles && !user.roles.includes(RolesEnum.ROOT)) {
+      if (user.roles && !user.roles.some(role => role === RolesEnum.ROOT)) {
         // Additional validation would be needed here to check if roleId is actually ROOT/ROOT_READONLY
         // This is a simplified implementation
         return true; // Allow for now, actual validation would be in the service layer

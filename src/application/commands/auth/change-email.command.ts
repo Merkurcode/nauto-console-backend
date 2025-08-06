@@ -1,6 +1,7 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UserService } from '@core/services/user.service';
 import { SessionService } from '@core/services/session.service';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import {
   AuthenticationException,
   BusinessRuleValidationException,
@@ -28,6 +29,7 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
   constructor(
     private readonly userService: UserService,
     private readonly sessionService: SessionService,
+    private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
   ) {}
@@ -37,7 +39,6 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
   }> {
     const {
       currentUserId,
-      currentUserRoles,
       currentUserCompanyId,
       newEmail,
       currentPassword,
@@ -45,10 +46,13 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
       currentSessionToken,
     } = command;
 
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
     // Determine the target user ID
     const actualTargetUserId = targetUserId || currentUserId;
-    const isRoot = currentUserRoles.includes(RolesEnum.ROOT);
-    const isAdmin = currentUserRoles.includes(RolesEnum.ADMIN);
+    const isRoot = this.userAuthorizationService.canAccessRootFeatures(currentUser);
+    const isAdmin = this.userAuthorizationService.canAccessAdminFeatures(currentUser);
     const isSelfOperation = actualTargetUserId === currentUserId;
 
     // Get target user to validate root restriction

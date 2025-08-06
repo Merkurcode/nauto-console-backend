@@ -9,7 +9,7 @@ import {
 } from '@core/exceptions/domain-exceptions';
 import { CanAssignPermissionToRoleSpecification } from '@core/specifications/role.specifications';
 import { PermissionsCollection } from '@core/value-objects/collections/permissions.collection';
-import { RolesEnum } from '@shared/constants/enums';
+import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
 
 export class Role extends AggregateRoot {
   private readonly _id: RoleId;
@@ -214,7 +214,7 @@ export class Role extends AggregateRoot {
     // Business rule: Admin roles are identified by admin permissions or name
     return (
       //this.permissionsCollection.hasAdminPermissions() ||
-      this._name.toLowerCase().includes(RolesEnum.ADMIN)
+      this._name.toLowerCase() === RolesEnum.ADMIN.toLowerCase()
     );
   }
 
@@ -260,40 +260,39 @@ export class Role extends AggregateRoot {
   }
 
   isRootHierarchy(): boolean {
-    return this._hierarchyLevel === 1;
+    return this._hierarchyLevel === this._getRoleHierarchyLevel(RolesEnum.ROOT);
   }
 
   isAdminHierarchy(): boolean {
-    return this._hierarchyLevel === 2;
+    return this._hierarchyLevel === this._getRoleHierarchyLevel(RolesEnum.ADMIN);
   }
 
   isManagerHierarchy(): boolean {
-    return this._hierarchyLevel === 3;
+    return this._hierarchyLevel === this._getRoleHierarchyLevel(RolesEnum.MANAGER);
   }
 
   isSalesAgentOrHostHierarchy(): boolean {
-    return this._hierarchyLevel === 4;
+    const salesAgentLevel = this._getRoleHierarchyLevel(RolesEnum.SALES_AGENT);
+    const hostLevel = this._getRoleHierarchyLevel(RolesEnum.HOST);
+
+    return this._hierarchyLevel === salesAgentLevel || this._hierarchyLevel === hostLevel;
   }
 
   isGuestHierarchy(): boolean {
-    return this._hierarchyLevel === 5;
+    return this._hierarchyLevel === this._getRoleHierarchyLevel(RolesEnum.GUEST);
   }
 
   getHierarchyLevelName(): string {
-    switch (this._hierarchyLevel) {
-      case 1:
-        return 'Root';
-      case 2:
-        return 'Admin';
-      case 3:
-        return 'Manager';
-      case 4:
-        return 'Sales Agent/Host';
-      case 5:
-        return 'Guest';
-      default:
-        return 'Unknown';
-    }
+    // Map hierarchy levels to user-friendly names
+    const levelNames: Record<number, string> = {
+      [this._getRoleHierarchyLevel(RolesEnum.ROOT)]: 'Root',
+      [this._getRoleHierarchyLevel(RolesEnum.ADMIN)]: 'Admin',
+      [this._getRoleHierarchyLevel(RolesEnum.MANAGER)]: 'Manager',
+      [this._getRoleHierarchyLevel(RolesEnum.SALES_AGENT)]: 'Sales Agent/Host', // Both sales_agent and host are level 4
+      [this._getRoleHierarchyLevel(RolesEnum.GUEST)]: 'Guest',
+    };
+
+    return levelNames[this._hierarchyLevel] || 'Unknown';
   }
 
   canBeDeleted(): boolean {
@@ -333,8 +332,18 @@ export class Role extends AggregateRoot {
   }
 
   private validateHierarchyLevel(hierarchyLevel: number): void {
-    if (!Number.isInteger(hierarchyLevel) || hierarchyLevel < 1 || hierarchyLevel > 5) {
-      throw new InvalidValueObjectException('Role hierarchy level must be between 1 and 5');
+    if (!Number.isInteger(hierarchyLevel) || hierarchyLevel < 1) {
+      throw new InvalidValueObjectException('Role hierarchy level must be a positive integer');
     }
+  }
+
+  /**
+   * Get hierarchy level for a specific role using global constants
+   * Note: This is a static helper method to avoid service dependencies in entities
+   */
+  private _getRoleHierarchyLevel(role: RolesEnum): number {
+    const roleIndex = ROLE_HIERARCHY_ORDER_STRINGS.indexOf(role);
+
+    return roleIndex !== -1 ? roleIndex + 1 : ROLE_HIERARCHY_ORDER_STRINGS.length + 1; // 1-based indexing
   }
 }

@@ -39,7 +39,9 @@ export class AuthGuard implements CanActivate {
     // Check roles if required
     if (requiredRoles && requiredRoles.length > 0) {
       const userRoles = user.roles || [];
-      const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
+      const hasRequiredRole = requiredRoles.some(role =>
+        userRoles.some(userRole => userRole === role),
+      );
 
       if (!hasRequiredRole) {
         throw new ForbiddenException(
