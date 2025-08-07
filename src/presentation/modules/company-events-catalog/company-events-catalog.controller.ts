@@ -44,10 +44,11 @@ import { CompanyEventsCatalogMapper } from '@application/mappers/company-events-
 
 // JWT Payload
 import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('company-events-catalog')
 @Controller('companies/:companyId/events-catalog')
-@UseGuards(RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiBearerAuth('JWT-auth')
 export class CompanyEventsCatalogController {
   constructor(

@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nauto-console-config
+  namespace: nauto-console
+  labels:
+    app.kubernetes.io/name: nauto-console
+    app.kubernetes.io/component: configuration
+data:
+  # Application Configuration
+  NODE_ENV: "production"
+  PORT: "3000"
+  HOST: "0.0.0.0"
+  
+  # Performance Tuning for 1M users
+  NODE_MAX_OLD_SPACE_SIZE: "4096"
+  UV_THREADPOOL_SIZE: "128"
+  NODE_OPTIONS: "--max-old-space-size=4096 --optimize-for-size --gc-interval=100"
+  
+  # Database Configuration (optimized for high scale)
+  DATABASE_CONNECTION_LIMIT: "100"
+  DATABASE_POOL_TIMEOUT: "10"
+  DATABASE_QUERY_TIMEOUT: "30000"
+  DATABASE_READ_POOL_SIZE: "60"
+  DATABASE_WRITE_POOL_SIZE: "40"
+  
+  # Redis Configuration
+  REDIS_MAX_RETRIES_PER_REQUEST: "3"
+  REDIS_RETRY_DELAY_ON_FAILOVER: "1000"
+  REDIS_CONNECT_TIMEOUT: "10000"
+  REDIS_COMMAND_TIMEOUT: "5000"
+  REDIS_LAZYCONNECT: "true"
+  
+  # Rate Limiting Configuration
+  RATE_LIMIT_GLOBAL_MAX: "1000000"    # 1M requests
+  RATE_LIMIT_GLOBAL_WINDOW: "60000"   # Per minute
+  RATE_LIMIT_USER_MAX: "1000"         # Per user
+  RATE_LIMIT_USER_WINDOW: "60000"     # Per minute
+  RATE_LIMIT_IP_MAX: "10000"          # Per IP
+  RATE_LIMIT_IP_WINDOW: "60000"       # Per minute
+  
+  # Session Configuration
+  SESSION_TTL: "3600"                 # 1 hour
+  MAX_SESSIONS_PER_USER: "10"
+  SESSION_CLEANUP_INTERVAL: "300000"  # 5 minutes
+  SESSION_CLEANUP_BATCH_SIZE: "1000"
+  SESSION_METRICS_INTERVAL: "60000"   # 1 minute
+  
+  # Audit Log Configuration
+  AUDIT_BATCH_SIZE: "1000"
+  AUDIT_PROCESS_INTERVAL: "1000"      # 1 second
+  AUDIT_MAX_STREAM_LENGTH: "1000000"  # 1M entries
+  AUDIT_RATE_LIMIT_PER_USER: "100"
+  AUDIT_RATE_LIMIT_WINDOW: "60000"    # 1 minute
+  
+  # Circuit Breaker Configuration
+  CIRCUIT_BREAKER_FAILURE_THRESHOLD: "50"     # 50% failure rate
+  CIRCUIT_BREAKER_RECOVERY_TIMEOUT: "60000"   # 1 minute
+  CIRCUIT_BREAKER_MONITORING_PERIOD: "300000" # 5 minutes
+  CIRCUIT_BREAKER_MIN_THROUGHPUT: "10"
+  CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS: "5"
+  
+  # Health Check Configuration
+  HEALTH_CHECK_INTERVAL: "60000"      # 1 minute
+  HEALTH_CHECK_TIMEOUT: "5000"        # 5 seconds
+  
+  # Monitoring Configuration
+  ENABLE_METRICS: "true"
+  METRICS_PORT: "9090"
+  ENABLE_TRACING: "true"
+  ENABLE_PERFORMANCE_MONITORING: "true"
+  
+  # Security Configuration
+  CORS_ENABLED: "true"
+  CORS_ORIGIN: "*"
+  HELMET_ENABLED: "true"
+  RATE_LIMITING_ENABLED: "true"
+  
+  # Logging Configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  ENABLE_REQUEST_LOGGING: "true"
+  ENABLE_ERROR_TRACKING: "true"
+  
+  # Feature Flags
+  ENABLE_DISTRIBUTED_CACHING: "true"
+  ENABLE_DISTRIBUTED_RATE_LIMITING: "true"
+  ENABLE_DISTRIBUTED_SESSIONS: "true"
+  ENABLE_CIRCUIT_BREAKERS: "true"
+  ENABLE_AUDIT_STREAMING: "true"
+  ENABLE_WORKER_MONITORING: "true"
+  
+  # Scaling Configuration
+  HORIZONTAL_SCALING_ENABLED: "true"
+  LOAD_BALANCING_STRATEGY: "round_robin"
+  STICKY_SESSIONS: "false"
+  
+  # Resource Limits
+  MAX_REQUEST_SIZE: "50mb"
+  MAX_CONCURRENT_REQUESTS: "10000"
+  REQUEST_TIMEOUT: "30000"             # 30 seconds
+  
+  # Container Configuration
+  RUN_MIGRATIONS: "false"              # Only run on init containers
+  GENERATE_PRISMA_CLIENT: "false"      # Pre-built in image

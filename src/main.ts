@@ -11,6 +11,19 @@ import { useContainer } from 'class-validator';
 
 async function bootstrap() {
   // =========================================================================
+  // MEMORY CONFIGURATION (must be set before app creation)
+  // =========================================================================
+  const maxOldSpaceSize = process.env.NODE_MAX_OLD_SPACE_SIZE;
+  const maxSemiSpaceSize = process.env.NODE_MAX_SEMI_SPACE_SIZE;
+
+  if (maxOldSpaceSize) {
+    console.warn(`Memory limit configured: ${maxOldSpaceSize}MB max heap`);
+  }
+  if (maxSemiSpaceSize) {
+    console.warn(`Semi space configured: ${maxSemiSpaceSize}MB`);
+  }
+
+  // =========================================================================
   // APPLICATION SETUP
   // =========================================================================
   const app = await NestFactory.create(AppModule);
@@ -1210,9 +1223,76 @@ async function bootstrap() {
 }
 
 // =========================================================================
+// GRACEFUL SHUTDOWN HANDLERS
+// =========================================================================
+let app: any = null;
+
+// Handle graceful shutdown on SIGTERM (Kubernetes, Docker, PM2)
+process.on('SIGTERM', async () => {
+  console.warn('SIGTERM signal received: closing HTTP server gracefully');
+
+  if (app) {
+    try {
+      // Give ongoing requests 10 seconds to complete
+      const shutdownTimeout = setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000);
+
+      // Close NestJS application
+      await app.close();
+      clearTimeout(shutdownTimeout);
+
+      console.warn('HTTP server closed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during graceful shutdown:', error);
+      process.exit(1);
+    }
+  } else {
+    process.exit(0);
+  }
+});
+
+// Handle graceful shutdown on SIGINT (Ctrl+C)
+process.on('SIGINT', async () => {
+  console.warn('\nSIGINT signal received: closing HTTP server gracefully');
+
+  if (app) {
+    try {
+      await app.close();
+      console.warn('HTTP server closed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during graceful shutdown:', error);
+      process.exit(1);
+    }
+  } else {
+    process.exit(0);
+  }
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', error => {
+  console.error('Uncaught Exception:', error);
+  // Log the error but keep the process running
+  // In production, you might want to restart the process
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Log the error but keep the process running
+});
+
+// =========================================================================
 // APPLICATION BOOTSTRAP
 // =========================================================================
-bootstrap().catch(err => {
-  console.error('Error starting application:', err);
-  process.exit(1);
-});
+bootstrap()
+  .then(nestApp => {
+    app = nestApp; // Store app reference for graceful shutdown
+  })
+  .catch(err => {
+    console.error('Error starting application:', err);
+    process.exit(1);
+  });

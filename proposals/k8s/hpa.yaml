@@ -1,0 +1,140 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nauto-console-api-hpa
+  namespace: nauto-console
+  labels:
+    app.kubernetes.io/name: nauto-console
+    app.kubernetes.io/component: autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nauto-console-api
+  
+  # Scaling limits for 1M+ concurrent users
+  minReplicas: 10      # Minimum 10 pods always running
+  maxReplicas: 200     # Maximum 200 pods (can handle ~1M users with proper resources)
+  
+  # Scaling behavior configuration
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60      # Wait 60s before scaling up again
+      policies:
+      - type: Percent
+        value: 100                        # Can scale up by 100% (double) at once
+        periodSeconds: 60
+      - type: Pods
+        value: 20                         # Can add up to 20 pods at once
+        periodSeconds: 60
+      selectPolicy: Max                   # Use the policy that allows more aggressive scaling
+    
+    scaleDown:
+      stabilizationWindowSeconds: 300     # Wait 5 minutes before scaling down
+      policies:
+      - type: Percent
+        value: 25                         # Scale down by max 25% at once
+        periodSeconds: 60
+      - type: Pods
+        value: 10                         # Remove max 10 pods at once
+        periodSeconds: 60
+      selectPolicy: Min                   # Use the policy that is more conservative
+  
+  # Metrics for scaling decisions
+  metrics:
+  # CPU utilization target
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70            # Target 70% CPU utilization
+  
+  # Memory utilization target
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80            # Target 80% memory utilization
+  
+  # Custom metric: requests per second per pod
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"              # Target 1000 RPS per pod
+  
+  # Custom metric: active connections per pod
+  - type: Pods
+    pods:
+      metric:
+        name: active_connections
+      target:
+        type: AverageValue
+        averageValue: "5000"              # Target 5000 active connections per pod
+  
+  # Custom metric: response time
+  - type: Pods
+    pods:
+      metric:
+        name: http_request_duration_p95
+      target:
+        type: AverageValue
+        averageValue: "500m"              # Target P95 response time < 500ms
+
+---
+# Vertical Pod Autoscaler for right-sizing resources
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: nauto-console-api-vpa
+  namespace: nauto-console
+  labels:
+    app.kubernetes.io/name: nauto-console
+    app.kubernetes.io/component: autoscaling
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nauto-console-api
+  
+  updatePolicy:
+    updateMode: "Off"                     # Don't auto-update, just provide recommendations
+  
+  resourcePolicy:
+    containerPolicies:
+    - containerName: api
+      minAllowed:
+        cpu: 500m
+        memory: 1Gi
+      maxAllowed:
+        cpu: 8000m                        # Max 8 CPU cores
+        memory: 16Gi                      # Max 16GB RAM
+      controlledResources:
+      - cpu
+      - memory
+
+---
+# Pod Disruption Budget to ensure availability during updates/failures
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nauto-console-api-pdb
+  namespace: nauto-console
+  labels:
+    app.kubernetes.io/name: nauto-console
+    app.kubernetes.io/component: availability
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nauto-console
+      app.kubernetes.io/component: api
+  
+  # Ensure at least 70% of pods are available during disruptions
+  minAvailable: 70%
+  
+  # Alternative: max 30% can be unavailable
+  # maxUnavailable: 30%

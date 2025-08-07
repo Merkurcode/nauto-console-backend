@@ -11,6 +11,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
@@ -35,9 +36,12 @@ import { GetUserFilesQuery } from '@application/queries/storage/get-user-files.q
 import { UpdateFileAccessDto } from '@application/dtos/storage/update-file-access.dto';
 import { FileResponseDto } from '@application/dtos/responses/file.response';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('storage')
 @Controller('storage')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 export class StorageController {
   constructor(
     private readonly commandBus: CommandBus,

@@ -13,10 +13,11 @@ import { GetUserWithAuthorizationQuery } from '@application/queries/user/get-use
 
 // DTOs
 import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('users')
 @Controller('users')
-@UseGuards(RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiBearerAuth('JWT-auth')
 export class UsersController {
   constructor(private readonly queryBus: QueryBus) {}

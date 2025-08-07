@@ -239,11 +239,12 @@ export class SessionService {
       )[0];
 
       if (oldestSession) {
-        await this.revokeSession(oldestSession.id.getValue());
+        await this.revokeSession(oldestSession.sessionToken);
         this.logger.log({
           message: 'Oldest session revoked to make room for new session',
           userId,
           revokedSessionId: oldestSession.id.getValue(),
+          revokedSessionToken: oldestSession.sessionToken.substring(0, 10) + '...',
         });
       }
     }

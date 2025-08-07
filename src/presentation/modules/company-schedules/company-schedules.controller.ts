@@ -45,10 +45,11 @@ import { CompanySchedulesMapper } from '@application/mappers/company-schedules.m
 
 // JWT Payload
 import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('company-schedules')
 @Controller('companies/:companyId/schedules')
-@UseGuards(RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiBearerAuth('JWT-auth')
 export class CompanySchedulesController {
   constructor(

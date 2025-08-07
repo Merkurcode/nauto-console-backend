@@ -41,10 +41,11 @@ import { AssignRoleCommand } from '@application/commands/user/assign-role.comman
 import { RemoveRoleCommand } from '@application/commands/user/remove-role.command';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { UserDeletionPolicyService } from '@core/services/user-deletion-policy.service';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('users')
 @Controller('users')
-@UseGuards(RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiBearerAuth('JWT-auth')
 export class UserController {
   constructor(

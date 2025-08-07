@@ -26,5 +26,5 @@
       "@shared/*": ["src/shared/*"]
     }
   },
-  "exclude": ["**/*.spec.ts", "**/*.test.ts", "test/**/*"]
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "test/**/*", "proposals/**/*"]
 }

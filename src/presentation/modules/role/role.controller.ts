@@ -48,10 +48,11 @@ import { UpdateRoleCommand } from '@application/commands/role/update-role.comman
 import { DeleteRoleCommand } from '@application/commands/role/delete-role.command';
 import { AssignPermissionCommand } from '@application/commands/role/assign-permission.command';
 import { RemovePermissionCommand } from '@application/commands/role/remove-permission.command';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('roles')
 @Controller('roles')
-@UseGuards(RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @RequirePermissions('role:read')
 @ApiBearerAuth('JWT-auth')
 export class RoleController {
