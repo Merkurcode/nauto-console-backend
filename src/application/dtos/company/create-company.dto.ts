@@ -97,24 +97,6 @@ export class CreateCompanyDto {
   description: string;
 
   @ApiProperty({
-    example: 'Technology',
-    description: 'Business sector',
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Length(1, 100)
-  businessSector: string;
-
-  @ApiProperty({
-    example: 'Software Development',
-    description: 'Business unit',
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Length(1, 100)
-  businessUnit: string;
-
-  @ApiProperty({
     example: 'acme-corp.com',
     description: 'Company host domain',
   })

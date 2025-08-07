@@ -253,8 +253,6 @@ const defaultCompanies = [
     isActive: true,
     name: 'Default Company',
     description: 'Default company for seed data',
-    businessSector: 'Technology',
-    businessUnit: 'Software Development',
     host: 'default-company.local',
     address: {
       country: 'United States',
@@ -265,6 +263,9 @@ const defaultCompanies = [
       interiorNumber: 'Suite 100',
       postalCode: '94105',
     },
+    industrySector: "OTHER",
+    industryOperationChannel: "MIXED",
+    parentCompanyId: null,
     language: 'es-MX',
     timezone: 'America/Mexico_City',
     currency: 'MXN',
@@ -323,8 +324,6 @@ export default async function main(prisma: PrismaClient) {
         update: {
           name: companyData.name,
           description: companyData.description,
-          businessSector: companyData.businessSector,
-          businessUnit: companyData.businessUnit,
           host: companyData.host,
           isActive: companyData.isActive,
           address: {
@@ -357,8 +356,6 @@ export default async function main(prisma: PrismaClient) {
         create: {
           name: companyData.name,
           description: companyData.description,
-          businessSector: companyData.businessSector,
-          businessUnit: companyData.businessUnit,
           host: companyData.host,
           isActive: companyData.isActive,
           address: {

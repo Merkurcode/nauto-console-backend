@@ -1,8 +1,6 @@
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { CompanyDescription } from '@core/value-objects/company-description.vo';
-import { BusinessSector } from '@core/value-objects/business-sector.vo';
-import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
@@ -19,8 +17,6 @@ export class Company extends AggregateRoot {
   private readonly _id: CompanyId;
   private _name: CompanyName;
   private _description: CompanyDescription;
-  private _businessSector: BusinessSector;
-  private _businessUnit: BusinessUnit;
   private _address: Address;
   private _host: Host;
   private _isActive: boolean;
@@ -41,8 +37,6 @@ export class Company extends AggregateRoot {
     id: CompanyId,
     name: CompanyName,
     description: CompanyDescription,
-    businessSector: BusinessSector,
-    businessUnit: BusinessUnit,
     address: Address,
     host: Host,
     industrySector: IndustrySector,
@@ -61,8 +55,6 @@ export class Company extends AggregateRoot {
     this._id = id;
     this._name = name;
     this._description = description;
-    this._businessSector = businessSector;
-    this._businessUnit = businessUnit;
     this._address = address;
     this._host = host;
     this._industrySector = industrySector;
@@ -88,8 +80,6 @@ export class Company extends AggregateRoot {
   static create(
     name: CompanyName,
     description: CompanyDescription,
-    businessSector: BusinessSector,
-    businessUnit: BusinessUnit,
     address: Address,
     host: Host,
     timezone?: string,
@@ -107,8 +97,6 @@ export class Company extends AggregateRoot {
       companyId,
       name,
       description,
-      businessSector,
-      businessUnit,
       address,
       host,
       industrySector || IndustrySector.create('OTHER'),
@@ -125,13 +113,7 @@ export class Company extends AggregateRoot {
     );
 
     company.addDomainEvent(
-      new CompanyCreatedEvent(
-        companyId,
-        name.getValue(),
-        description.getValue(),
-        businessSector.getValue(),
-        businessUnit.getValue(),
-      ),
+      new CompanyCreatedEvent(companyId, name.getValue(), description.getValue()),
     );
 
     return company;
@@ -141,8 +123,6 @@ export class Company extends AggregateRoot {
     id: string;
     name: string;
     description: string;
-    businessSector: string;
-    businessUnit: string;
     address: {
       country: string;
       state: string;
@@ -181,8 +161,6 @@ export class Company extends AggregateRoot {
       CompanyId.fromString(data.id),
       new CompanyName(data.name),
       new CompanyDescription(data.description),
-      new BusinessSector(data.businessSector),
-      new BusinessUnit(data.businessUnit),
       address,
       new Host(data.host),
       data.industrySector
@@ -222,14 +200,6 @@ export class Company extends AggregateRoot {
 
   get description(): CompanyDescription {
     return this._description;
-  }
-
-  get businessSector(): BusinessSector {
-    return this._businessSector;
-  }
-
-  get businessUnit(): BusinessUnit {
-    return this._businessUnit;
   }
 
   get address(): Address {
@@ -295,8 +265,6 @@ export class Company extends AggregateRoot {
   updateCompanyInfo(
     name?: CompanyName,
     description?: CompanyDescription,
-    businessSector?: BusinessSector,
-    businessUnit?: BusinessUnit,
     address?: Address,
     host?: Host,
     industrySector?: IndustrySector,
@@ -321,16 +289,6 @@ export class Company extends AggregateRoot {
 
     if (description && !this._description.equals(description)) {
       this._description = description;
-      hasChanges = true;
-    }
-
-    if (businessSector && !this._businessSector.equals(businessSector)) {
-      this._businessSector = businessSector;
-      hasChanges = true;
-    }
-
-    if (businessUnit && !this._businessUnit.equals(businessUnit)) {
-      this._businessUnit = businessUnit;
       hasChanges = true;
     }
 
@@ -390,13 +348,7 @@ export class Company extends AggregateRoot {
     if (hasChanges) {
       this._updatedAt = new Date();
       this.addDomainEvent(
-        new CompanyUpdatedEvent(
-          this._id,
-          this._name.getValue(),
-          this._description.getValue(),
-          this._businessSector.getValue(),
-          this._businessUnit.getValue(),
-        ),
+        new CompanyUpdatedEvent(this._id, this._name.getValue(), this._description.getValue()),
       );
     }
   }

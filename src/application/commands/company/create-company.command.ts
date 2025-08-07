@@ -1,8 +1,6 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { CompanyDescription } from '@core/value-objects/company-description.vo';
-import { BusinessSector } from '@core/value-objects/business-sector.vo';
-import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
@@ -13,8 +11,6 @@ export class CreateCompanyCommand implements ICommand {
   constructor(
     public readonly name: CompanyName,
     public readonly description: CompanyDescription,
-    public readonly businessSector: BusinessSector,
-    public readonly businessUnit: BusinessUnit,
     public readonly address: Address,
     public readonly host: Host,
     public readonly timezone?: string,
@@ -47,8 +43,6 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
     const {
       name,
       description,
-      businessSector,
-      businessUnit,
       address,
       host,
       timezone,
@@ -87,8 +81,6 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
     const company = Company.create(
       name,
       description,
-      businessSector,
-      businessUnit,
       address,
       host,
       timezone,

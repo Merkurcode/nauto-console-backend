@@ -6,8 +6,6 @@ export class CompanyCreatedEvent extends DomainEvent {
     public readonly companyId: CompanyId,
     public readonly name: string,
     public readonly description: string,
-    public readonly businessSector: string,
-    public readonly businessUnit: string,
   ) {
     super();
   }
@@ -22,8 +20,6 @@ export class CompanyUpdatedEvent extends DomainEvent {
     public readonly companyId: CompanyId,
     public readonly name: string,
     public readonly description: string,
-    public readonly businessSector: string,
-    public readonly businessUnit: string,
   ) {
     super();
   }

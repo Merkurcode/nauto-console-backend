@@ -105,26 +105,6 @@ export class UpdateCompanyDto {
   description?: string;
 
   @ApiProperty({
-    example: 'Technology',
-    description: 'Business sector',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  @Length(1, 100)
-  businessSector?: string;
-
-  @ApiProperty({
-    example: 'Software Development',
-    description: 'Business unit',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  @Length(1, 100)
-  businessUnit?: string;
-
-  @ApiProperty({
     example: 'acme-corp.com',
     description: 'Company host domain',
     required: false,

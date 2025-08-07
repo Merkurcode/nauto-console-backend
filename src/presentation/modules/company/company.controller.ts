@@ -36,8 +36,6 @@ import { GetCompanyHierarchyQuery } from '@application/queries/company/get-compa
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { CompanyDescription } from '@core/value-objects/company-description.vo';
-import { BusinessSector } from '@core/value-objects/business-sector.vo';
-import { BusinessUnit } from '@core/value-objects/business-unit.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
@@ -220,13 +218,11 @@ return user;
   })
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
     return this.executeInTransactionWithContext(async () => {
-      const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
+      const { name, description, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
 
       const command = new CreateCompanyCommand(
         new CompanyName(name),
         new CompanyDescription(description),
-        new BusinessSector(businessSector),
-        new BusinessUnit(businessUnit),
         new Address(
           address.country,
           address.state,
@@ -301,14 +297,12 @@ return user;
         }
       }
       
-      const { name, description, businessSector, businessUnit, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
+      const { name, description, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
 
       const command = new UpdateCompanyCommand(
         companyId,
         name ? new CompanyName(name) : undefined,
         description ? new CompanyDescription(description) : undefined,
-        businessSector ? new BusinessSector(businessSector) : undefined,
-        businessUnit ? new BusinessUnit(businessUnit) : undefined,
         address &&
         address.country &&
         address.state &&

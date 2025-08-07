@@ -33,8 +33,6 @@ export interface ICompanyResponse {
   id: string;
   name: string;
   description: string;
-  businessSector: string;
-  businessUnit: string;
   host: string;
   address: IAddressResponse;
   isActive: boolean;
@@ -142,18 +140,6 @@ export class CompanyResponse implements ICompanyResponse {
     description: 'Company description',
   })
   description: string;
-
-  @ApiProperty({
-    example: 'Technology',
-    description: 'Business sector',
-  })
-  businessSector: string;
-
-  @ApiProperty({
-    example: 'Software Development',
-    description: 'Business unit',
-  })
-  businessUnit: string;
 
   @ApiProperty({
     example: 'acme-corp.com',

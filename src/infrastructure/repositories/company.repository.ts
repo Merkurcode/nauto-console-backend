@@ -15,8 +15,6 @@ interface IPrismaCompanyRecord {
   id: string;
   name: string;
   description: string;
-  businessSector: string;
-  businessUnit: string;
   host: string;
   timezone?: string;
   currency?: string;
@@ -290,8 +288,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             id: company.id.getValue(),
             name: company.name.getValue(),
             description: company.description.getValue(),
-            businessSector: company.businessSector.getValue(),
-            businessUnit: company.businessUnit.getValue(),
             host: company.host.getValue(),
             timezone: company.timezone,
             currency: company.currency,
@@ -347,8 +343,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           data: {
             name: company.name.getValue(),
             description: company.description.getValue(),
-            businessSector: company.businessSector.getValue(),
-            businessUnit: company.businessUnit.getValue(),
             host: company.host.getValue(),
             timezone: company.timezone,
             currency: company.currency,
@@ -452,8 +446,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     id: string;
     name: string;
     description: string;
-    businessSector: string;
-    businessUnit: string;
     host: string;
     timezone?: string;
     currency?: string;
@@ -479,8 +471,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       id: string;
       name: string;
       description: string;
-      businessSector: string;
-      businessUnit: string;
       host: string;
       timezone?: string;
       currency?: string;
@@ -507,8 +497,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       id: string;
       name: string;
       description: string;
-      businessSector: string;
-      businessUnit: string;
       host: string;
       timezone?: string;
       currency?: string;
@@ -539,8 +527,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         id: data.parentCompany.id,
         name: data.parentCompany.name,
         description: data.parentCompany.description,
-        businessSector: data.parentCompany.businessSector,
-        businessUnit: data.parentCompany.businessUnit,
         host: data.parentCompany.host,
         timezone: data.parentCompany.timezone,
         currency: data.parentCompany.currency,
@@ -577,8 +563,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           id: sub.id,
           name: sub.name,
           description: sub.description,
-          businessSector: sub.businessSector,
-          businessUnit: sub.businessUnit,
           host: sub.host,
           timezone: sub.timezone,
           currency: sub.currency,
@@ -610,8 +594,6 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       id: data.id,
       name: data.name,
       description: data.description,
-      businessSector: data.businessSector,
-      businessUnit: data.businessUnit,
       host: data.host,
       timezone: data.timezone,
       currency: data.currency,

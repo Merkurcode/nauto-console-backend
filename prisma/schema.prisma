@@ -349,8 +349,6 @@ model Company {
   id            String    @id @default(uuid())
   name          String    @unique
   description   String
-  businessSector String
-  businessUnit  String
   host          String    @unique
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
