@@ -7,6 +7,8 @@ import { LoggerModule } from './logger/logger.module';
 import { PrismaModule } from './database/prisma/prisma.module';
 import { PrismaService } from './database/prisma/prisma.service';
 import { TransactionContextService } from './database/prisma/transaction-context.service';
+import { TransactionService } from './database/prisma/transaction.service';
+import { TransactionManagerAdapter } from './database/prisma/transaction-manager.adapter';
 import { DatabaseHealthProvider } from './database/database-health.provider';
 
 // Repository implementations
@@ -26,7 +28,9 @@ import { AIAssistantRepository } from './repositories/ai-assistant.repository';
 import { CompanyAIAssistantRepository } from './repositories/company-ai-assistant.repository';
 import { CompanyEventsCatalogRepository } from './repositories/company-events-catalog.repository';
 import { CompanySchedulesRepository } from './repositories/company-schedules.repository';
+import { AuditLogRepository } from './repositories/audit-log.repository';
 import { TokenProvider } from './auth/token.provider';
+import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
 // Tokens
 import {
@@ -46,8 +50,10 @@ import {
   COMPANY_AI_ASSISTANT_REPOSITORY,
   COMPANY_EVENTS_CATALOG_REPOSITORY,
   COMPANY_SCHEDULES_REPOSITORY,
+  AUDIT_LOG_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
+  TRANSACTION_MANAGER,
 } from '@shared/constants/tokens';
 
 /**
@@ -82,9 +88,12 @@ import {
     },
     {
       provide: USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        businessConfigService: BusinessConfigurationService,
+      ) => new UserRepository(prisma, transactionContext, businessConfigService),
+      inject: [PrismaService, TransactionContextService, BusinessConfigurationService],
     },
     {
       provide: COMPANY_REPOSITORY,
@@ -178,6 +187,15 @@ import {
       useFactory: (prisma: PrismaService) => new CompanySchedulesRepository(prisma),
       inject: [PrismaService],
     },
+    {
+      provide: AUDIT_LOG_REPOSITORY,
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: LoggerService,
+      ) => new AuditLogRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LoggerService],
+    },
 
     // Infrastructure services
     {
@@ -188,6 +206,12 @@ import {
     {
       provide: TOKEN_PROVIDER,
       useClass: TokenProvider,
+    },
+    {
+      provide: TRANSACTION_MANAGER,
+      useFactory: (transactionService: TransactionService) =>
+        new TransactionManagerAdapter(transactionService),
+      inject: [TransactionService],
     },
   ],
   exports: [
@@ -208,8 +232,10 @@ import {
     COMPANY_AI_ASSISTANT_REPOSITORY,
     COMPANY_EVENTS_CATALOG_REPOSITORY,
     COMPANY_SCHEDULES_REPOSITORY,
+    AUDIT_LOG_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
+    TRANSACTION_MANAGER,
 
     // Export modules for re-use
     PrismaModule,

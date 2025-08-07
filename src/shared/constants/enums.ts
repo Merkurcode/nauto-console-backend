@@ -30,6 +30,21 @@ export enum IndustryOperationChannelEnum {
   MIXED = 'MIXED',
 }
 
+export enum LogoutScope {
+  LOCAL = 'local',
+  GLOBAL = 'global',
+}
+
+export enum ActionType {
+  READ = 'read',
+  WRITE = 'write',
+  DELETE = 'delete',
+  MANAGE = 'manage',
+  UPDATE = 'update',
+  ASSIGN = 'assign',
+  REMOVE = 'remove',
+}
+
 /**
  * Role hierarchy order from highest to lowest privilege.
  * Lower index means higher privilege level.

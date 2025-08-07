@@ -37,6 +37,7 @@ import { VerificationCode } from '@core/value-objects/verification-code.vo';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { EmailService } from './email.service';
 import { SessionService } from './session.service';
+import { BusinessConfigurationService } from './business-configuration.service';
 
 @Injectable()
 export class AuthService {
@@ -57,16 +58,21 @@ export class AuthService {
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
     private readonly emailService: EmailService,
     private readonly sessionService: SessionService,
+    private readonly businessConfigService: BusinessConfigurationService,
   ) {
     this.logger.setContext(AuthService.name);
   }
 
   private get otpConfig() {
+    const otpConfig = this.businessConfigService.getOtpConfig();
+
     return {
       secret: this.configService.get<string>('otp.secret'),
-      expiration: this.configService.get<number>('otp.expiration', 5),
+      expiration: otpConfig.expirationMinutes,
       step: this.configService.get<number>('otp.step', 30),
       digits: this.configService.get<number>('otp.digits', 6),
+      maxAttempts: otpConfig.maxAttempts,
+      secretLength: otpConfig.secretLength,
     };
   }
 
@@ -461,8 +467,9 @@ export class AuthService {
    * @throws ValidationException if rate limit exceeded
    */
   private async checkPasswordResetRateLimit(email: string, ipAddress?: string): Promise<void> {
-    const maxAttemptsPerEmail = 3;
-    const maxAttemptsPerIp = 10;
+    const rateLimitConfig = this.businessConfigService.getRateLimitingConfig();
+    const maxAttemptsPerEmail = rateLimitConfig.maxAttemptsPerEmail;
+    const maxAttemptsPerIp = rateLimitConfig.maxAttemptsPerIp;
 
     // Check email-based rate limit (3 attempts per day)
     const emailAttemptCount = await this.passwordResetAttemptRepository.countByEmailToday(email);

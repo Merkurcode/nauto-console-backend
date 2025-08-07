@@ -3,7 +3,10 @@ import { Inject } from '@nestjs/common';
 import { CompanyEventsCatalog } from '@core/entities/company-events-catalog.entity';
 import { ICompanyEventsCatalogRepository } from '@core/repositories/company-events-catalog.repository.interface';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { InvalidInputException, ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import {
+  InvalidInputException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
 import { COMPANY_EVENTS_CATALOG_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';

@@ -9,7 +9,8 @@ import {
   RolePermission as PrismaRolePermission,
   Permission as PrismaPermission,
 } from '@prisma/client';
-import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
+import { ResourceAction } from '@core/value-objects/resource-action.vo';
+import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
 
 // Define a type for Role with its related permissions

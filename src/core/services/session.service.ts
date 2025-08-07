@@ -5,6 +5,7 @@ import { ISessionRepository } from '@core/repositories/session.repository.interf
 import { InvalidSessionException } from '@core/exceptions/domain-exceptions';
 import { SESSION_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { BusinessConfigurationService } from './business-configuration.service';
 
 @Injectable()
 export class SessionService {
@@ -12,6 +13,7 @@ export class SessionService {
     @Inject(SESSION_REPOSITORY)
     private readonly sessionRepository: ISessionRepository,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    private readonly businessConfigService: BusinessConfigurationService,
   ) {
     this.logger.setContext(SessionService.name);
   }
@@ -29,6 +31,9 @@ export class SessionService {
       ipAddress,
       userAgent,
     });
+
+    // Check and enforce maximum active sessions
+    await this.enforceMaxActiveSessions(userId);
 
     const session = Session.create(
       UserId.fromString(userId),
@@ -198,5 +203,90 @@ export class SessionService {
     });
 
     return newSession;
+  }
+
+  /**
+   * Enforces maximum active sessions per user
+   * Business Rule: Limit concurrent sessions for security
+   * Special case: -1 means unlimited sessions allowed
+   */
+  private async enforceMaxActiveSessions(userId: string): Promise<void> {
+    const sessionConfig = this.businessConfigService.getSessionConfig();
+
+    // -1 means unlimited sessions
+    if (sessionConfig.maxActiveSessions === -1) {
+      this.logger.debug({
+        message: 'Unlimited sessions allowed for user',
+        userId,
+      });
+
+      return;
+    }
+
+    const activeSessions = await this.sessionRepository.findByUserId(userId);
+
+    if (activeSessions.length >= sessionConfig.maxActiveSessions) {
+      this.logger.warn({
+        message: 'Maximum active sessions reached, removing oldest session',
+        userId,
+        maxSessions: sessionConfig.maxActiveSessions,
+        currentSessions: activeSessions.length,
+      });
+
+      // Remove the oldest session
+      const oldestSession = activeSessions.sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+      )[0];
+
+      if (oldestSession) {
+        await this.revokeSession(oldestSession.id.getValue());
+        this.logger.log({
+          message: 'Oldest session revoked to make room for new session',
+          userId,
+          revokedSessionId: oldestSession.id.getValue(),
+        });
+      }
+    }
+  }
+
+  /**
+   * Checks if a session has expired due to inactivity
+   * Business Rule: Sessions expire after configured inactivity timeout
+   * Special case: -1 means sessions never expire due to inactivity
+   */
+  async isSessionExpired(session: Session): Promise<boolean> {
+    const sessionConfig = this.businessConfigService.getSessionConfig();
+
+    // -1 means sessions never expire
+    if (sessionConfig.inactivityTimeoutMinutes === -1) {
+      return false;
+    }
+
+    const lastActivity = session.updatedAt || session.createdAt;
+    const inactivityMinutes = (Date.now() - lastActivity.getTime()) / (1000 * 60);
+
+    return inactivityMinutes > sessionConfig.inactivityTimeoutMinutes;
+  }
+
+  /**
+   * Extends session if activity-based extension is enabled
+   * Business Rule: Active sessions can be automatically extended
+   */
+  async extendSessionIfActive(sessionId: string): Promise<void> {
+    const sessionConfig = this.businessConfigService.getSessionConfig();
+
+    if (sessionConfig.extendOnActivity) {
+      const session = await this.sessionRepository.findById(sessionId);
+      if (session && !(await this.isSessionExpired(session))) {
+        session.updateActivity();
+        await this.sessionRepository.update(session);
+
+        this.logger.debug({
+          message: 'Session extended due to activity',
+          sessionId,
+          userId: session.userId.getValue(),
+        });
+      }
+    }
   }
 }

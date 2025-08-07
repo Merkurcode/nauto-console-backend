@@ -228,9 +228,9 @@ export class CompanySchedulesController {
       '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can only update schedules for their assigned company\n\n' +
       '**Company Access Validation:**\n' +
       '- Validated in UpdateCompanyScheduleHandler via UserAuthorizationService\n' +
-      '- Schedule\'s companyId is checked against user\'s access rights\n' +
+      "- Schedule's companyId is checked against user's access rights\n" +
       '- ROOT users bypass company validation\n' +
-      '- Returns 403 if user lacks access to the schedule\'s company\n\n' +
+      "- Returns 403 if user lacks access to the schedule's company\n\n" +
       '**Update Constraints:**\n' +
       '- Time conflicts are validated if times are changed\n' +
       '- Start time must be before end time\n' +
@@ -276,9 +276,9 @@ export class CompanySchedulesController {
       '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can only delete schedules for their assigned company\n\n' +
       '**Company Access Validation:**\n' +
       '- Validated in DeleteCompanyScheduleHandler via UserAuthorizationService\n' +
-      '- Schedule\'s companyId is checked against user\'s access rights\n' +
+      "- Schedule's companyId is checked against user's access rights\n" +
       '- ROOT users bypass company validation\n' +
-      '- Returns 403 if user lacks access to the schedule\'s company\n\n' +
+      "- Returns 403 if user lacks access to the schedule's company\n\n" +
       '**Important Notes:**\n' +
       '- This is a hard delete - data cannot be recovered\n' +
       '- Consider setting isActive=false instead for soft delete\n' +

@@ -1,9 +1,10 @@
-import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { RolesEnum } from '@shared/constants/enums';
 import { CompanyId } from '@core/value-objects/company-id.vo';
+import { ForbiddenActionException } from '@core/exceptions/domain-exceptions';
 
 /**
  * Domain service for user access authorization
@@ -29,19 +30,29 @@ export class UserAccessAuthorizationService {
     const targetUserCompanyId = targetUser.companyId?.getValue();
 
     if (!currentUserCompanyId) {
-      throw new ForbiddenException('Current user must belong to a company');
+      throw new ForbiddenActionException(
+        'Current user must belong to a company',
+        'access_user',
+        'user',
+      );
     }
 
     if (!targetUserCompanyId) {
-      throw new ForbiddenException('Target user must belong to a company');
+      throw new ForbiddenActionException(
+        'Target user must belong to a company',
+        'access_user',
+        'user',
+      );
     }
 
     // Admin users can ONLY access their company and child companies
     if (this.hasAdminAccess(currentUser)) {
       const hasAccess = await this.canAccessCompanyUser(currentUserCompanyId, targetUserCompanyId);
       if (!hasAccess) {
-        throw new ForbiddenException(
+        throw new ForbiddenActionException(
           `Admin users can only access users from their company or child companies.`,
+          'access_user',
+          'company_user',
         );
       }
 
@@ -53,7 +64,11 @@ export class UserAccessAuthorizationService {
     const targetUserId = targetUser.id.getValue();
 
     if (currentUserId !== targetUserId) {
-      throw new ForbiddenException('You can only access your own profile');
+      throw new ForbiddenActionException(
+        'You can only access your own profile',
+        'access_user',
+        'user_profile',
+      );
     }
   }
 

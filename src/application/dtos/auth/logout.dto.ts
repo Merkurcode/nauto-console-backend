@@ -1,10 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
+import { LogoutScope } from '@shared/constants/enums';
 
-export enum LogoutScope {
-  LOCAL = 'local',
-  GLOBAL = 'global',
-}
+export { LogoutScope };
 
 export class LogoutDto {
   @ApiProperty({

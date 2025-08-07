@@ -7,6 +7,7 @@ import { IStorageProvider, IStorageFile } from '@core/services/storage.service';
 import { File } from '@core/entities/file.entity';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
+import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
 @Injectable()
 export class MinioStorageProvider implements IStorageProvider {
@@ -17,6 +18,7 @@ export class MinioStorageProvider implements IStorageProvider {
   constructor(
     private readonly configService: ConfigService,
     @Inject(FILE_REPOSITORY) private readonly fileRepository: IFileRepository,
+    private readonly businessConfigService: BusinessConfigurationService,
   ) {
     const minioConfig = this.configService.get('storage.minio');
     this.publicBucket = minioConfig.publicBucket;
@@ -64,6 +66,9 @@ export class MinioStorageProvider implements IStorageProvider {
   }
 
   async upload(file: IStorageFile, userId?: string): Promise<File> {
+    // Validate file type and size
+    this.validateFile(file);
+
     const filename = `${uuidv4()}${path.extname(file.originalname)}`;
     const isPublic = this.isPublicFile(file.mimetype);
     const bucket = isPublic ? this.publicBucket : this.privateBucket;
@@ -86,7 +91,8 @@ export class MinioStorageProvider implements IStorageProvider {
   }
 
   async getSignedUrl(file: File): Promise<string> {
-    const expiry = 24 * 60 * 60; // 24 hours in seconds
+    const fileConfig = this.businessConfigService.getFileStorageConfig();
+    const expiry = fileConfig.urlExpirationHours * 60 * 60; // Convert hours to seconds
 
     return this.minioClient.presignedGetObject(file.bucket, file.path, expiry);
   }
@@ -98,5 +104,24 @@ export class MinioStorageProvider implements IStorageProvider {
   private isPublicFile(mimeType: string): boolean {
     // Consider images and PDFs as public by default
     return mimeType.startsWith('image/') || mimeType === 'application/pdf';
+  }
+
+  private validateFile(file: IStorageFile): void {
+    const fileConfig = this.businessConfigService.getFileStorageConfig();
+
+    // Validate file size
+    if (file.size > fileConfig.maxFileSize) {
+      throw new Error(
+        `File size exceeds maximum allowed size of ${fileConfig.maxFileSize / (1024 * 1024)}MB`,
+      );
+    }
+
+    // Validate file type
+    const extension = path.extname(file.originalname).toLowerCase().substring(1);
+    if (!fileConfig.allowedFileTypes.includes(extension)) {
+      throw new Error(
+        `File type '${extension}' is not allowed. Allowed types: ${fileConfig.allowedFileTypes.join(', ')}`,
+      );
+    }
   }
 }

@@ -4,7 +4,8 @@ import { IPermissionRepository } from '@core/repositories/permission.repository.
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { Permission as PrismaPermission } from '@prisma/client';
-import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
+import { ResourceAction } from '@core/value-objects/resource-action.vo';
+import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
 
 @Injectable()

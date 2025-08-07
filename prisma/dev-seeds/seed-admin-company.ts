@@ -215,6 +215,36 @@ const defaultUsers = [
       postalCode: '72000',
     },
   },
+  // unverified user (para demostrar el flujo de verificación automática)
+  {
+    email: 'unverified@test.com',
+    password: '12345678',
+    firstName: 'Unverified',
+    lastName: 'User',
+    secondLastName: 'Test',
+    isActive: true,
+    emailVerified: false, // 👈 Este usuario NO está verificado
+    bannedUntil: null,
+    banReason: null,
+    agentPhone: null,
+    company: 'Default Company',
+    roles: [ RolesEnum.GUEST ],
+    profile: {
+      phone: '2211778820',
+      avatarUrl: null,
+      bio: 'Unverified user profile for testing',
+      birthDate: '1990-08-01',
+    },
+    address: {
+      country: 'México',
+      state: 'Puebla',
+      city: 'Puebla',
+      street: 'Calle 5 de Mayo',
+      exteriorNumber: '130',
+      interiorNumber: null,
+      postalCode: '72000',
+    },
+  },
 ];
 
 // Default companies
@@ -244,9 +274,11 @@ const defaultCompanies = [
   },
 ];
 
-// Helper function to hash password
+// Helper function to hash password using the same configuration as the app
 async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
+  // Use the same salt rounds as configured in the app (PASSWORD_SALT_ROUNDS=12)
+  const saltRounds = 12;
+  const salt = await bcrypt.genSalt(saltRounds);
   return bcrypt.hash(password, salt);
 }
 
@@ -274,8 +306,10 @@ export default async function main(prisma: PrismaClient) {
     
     if (confirmDelete === 's' || confirmDelete === 'si' || confirmDelete === 'y' || confirmDelete === 'yes') {
       console.log('Eliminando usuarios existentes...');
+      // También eliminamos las verificaciones de email
+      await prisma.emailVerification.deleteMany({});
       await prisma.user.deleteMany({});
-      console.log('Usuarios eliminados.');
+      console.log('Usuarios y verificaciones de email eliminados.');
     } else {
       console.log('Eliminación cancelada.');
     }
@@ -469,5 +503,44 @@ export default async function main(prisma: PrismaClient) {
     });
 
     console.log(`User: ${user.firstName} (${user.roles.join(', ')}) created...`);
+    
+    // Create EmailVerification record if user is marked as emailVerified
+    if (user.emailVerified) {
+      console.log(`Creating email verification record for ${user.email}...`);
+      
+      // Check if verification already exists for this email
+      const existingVerification = await prisma.emailVerification.findFirst({
+        where: { email: user.email }
+      });
+      
+      if (!existingVerification) {
+        await prisma.emailVerification.create({
+          data: {
+            email: user.email,
+            code: '000000', // Dummy code for seed data
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+            verifiedAt: new Date(), // Mark as already verified
+          },
+        });
+        
+        console.log(`✅ Email verification record created for ${user.email}`);
+      } else {
+        // Update existing verification to be verified
+        await prisma.emailVerification.update({
+          where: { id: existingVerification.id },
+          data: {
+            verifiedAt: new Date(), // Mark as verified
+            code: '000000', // Dummy code
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          }
+        });
+        
+        console.log(`✅ Email verification updated for ${user.email}`);
+      }
+    } else {
+      console.log(`⏸️ Skipping email verification for ${user.email} (emailVerified: false)`);
+    }
   }
+  
+  console.log('\n🎉 All users and email verifications created successfully!');
 }

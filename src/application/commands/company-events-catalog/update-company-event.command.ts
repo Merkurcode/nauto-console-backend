@@ -2,7 +2,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { ICompanyEventsCatalogRepository } from '@core/repositories/company-events-catalog.repository.interface';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { EntityNotFoundException, InvalidInputException, ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import {
+  EntityNotFoundException,
+  InvalidInputException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
 import { COMPANY_EVENTS_CATALOG_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';

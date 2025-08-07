@@ -1,4 +1,4 @@
-import { Module, DynamicModule } from '@nestjs/common';
+import { Module, DynamicModule, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { StorageService } from '@core/services/storage.service';
 import { MinioStorageProvider } from './providers/minio.provider';
@@ -9,6 +9,7 @@ import { TransactionContextService } from '../database/prisma/transaction-contex
 import storageConfig from '../config/storage.config';
 import { MulterModule } from '@nestjs/platform-express';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
+import { CoreModule } from '@core/core.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { FILE_REPOSITORY } from '@shared/constants/tokens';
         fileSize: 10 * 1024 * 1024, // 10MB
       },
     }),
+    forwardRef(() => CoreModule),
   ],
   providers: [
     {

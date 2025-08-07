@@ -16,6 +16,7 @@ export const AI_ASSISTANT_REPOSITORY = Symbol('AIAssistantRepository');
 export const COMPANY_AI_ASSISTANT_REPOSITORY = Symbol('CompanyAIAssistantRepository');
 export const COMPANY_EVENTS_CATALOG_REPOSITORY = Symbol('CompanyEventsCatalogRepository');
 export const COMPANY_SCHEDULES_REPOSITORY = Symbol('CompanySchedulesRepository');
+export const AUDIT_LOG_REPOSITORY = Symbol('AuditLogRepository');
 
 // Repository tokens object
 export const REPOSITORY_TOKENS = {
@@ -36,6 +37,7 @@ export const REPOSITORY_TOKENS = {
   COMPANY_AI_ASSISTANT_REPOSITORY,
   COMPANY_EVENTS_CATALOG_REPOSITORY,
   COMPANY_SCHEDULES_REPOSITORY,
+  AUDIT_LOG_REPOSITORY,
 } as const;
 
 // Service injection tokens
@@ -43,3 +45,5 @@ export const THROTTLER_SERVICE = Symbol('ThrottlerService');
 export const LOGGER_SERVICE = Symbol('ILogger');
 export const TOKEN_PROVIDER = Symbol('ITokenProvider');
 export const DATABASE_HEALTH = Symbol('IDatabaseHealth');
+export const AUDIT_LOG_SERVICE = Symbol('AuditLogService');
+export const TRANSACTION_MANAGER = Symbol('TransactionManager');

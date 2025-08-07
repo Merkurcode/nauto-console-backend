@@ -40,6 +40,7 @@ import { ActivateUserCommand } from '@application/commands/user/activate-user.co
 import { AssignRoleCommand } from '@application/commands/user/assign-role.command';
 import { RemoveRoleCommand } from '@application/commands/user/remove-role.command';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { UserDeletionPolicyService } from '@core/services/user-deletion-policy.service';
 
 @ApiTags('users')
 @Controller('users')
@@ -51,6 +52,7 @@ export class UserController {
     private readonly commandBus: CommandBus,
     private readonly transactionService: TransactionService,
     private readonly transactionContext: TransactionContextService,
+    private readonly userDeletionPolicyService: UserDeletionPolicyService,
   ) {}
 
   private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
@@ -195,10 +197,8 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async deleteUser(@Param('id') id: string, @CurrentUser() currentUser: IJwtPayload) {
-    if (process.env.NODE_ENV !== 'development') {
-      // In production, we do not allow deleting users via API
-      throw new Error('User deletion is not allowed in current environment.');
-    }
+    // Check if user deletion is allowed in current environment
+    this.userDeletionPolicyService.enforceUserDeletionPolicy();
 
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(

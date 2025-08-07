@@ -3,6 +3,7 @@ import { Inject } from '@nestjs/common';
 import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
+import { ScheduleValidationService } from '@core/services/schedule-validation.service';
 import { CompanyScheduleId } from '@core/value-objects/company-schedule-id.vo';
 import {
   EntityNotFoundException,
@@ -40,11 +41,16 @@ export class UpdateCompanyScheduleHandler implements ICommandHandler<UpdateCompa
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
     private readonly userAuthorizationService: UserAuthorizationService,
+    private readonly scheduleValidationService: ScheduleValidationService,
   ) {}
 
   async execute(command: UpdateCompanyScheduleCommand): Promise<IUpdateCompanyScheduleResponse> {
-    // Validate input
-    this.validateCommand(command);
+    // Validate input using domain service
+    this.scheduleValidationService.validateScheduleUpdate(
+      command.scheduleId,
+      command.startTime,
+      command.endTime,
+    );
 
     const scheduleId = CompanyScheduleId.fromString(command.scheduleId);
 
@@ -76,9 +82,7 @@ export class UpdateCompanyScheduleHandler implements ICommandHandler<UpdateCompa
 
     // Validate time range if times are being updated
     if (command.startTime !== undefined || command.endTime !== undefined) {
-      if (newStartTime >= newEndTime) {
-        throw new InvalidInputException('Start time must be before end time');
-      }
+      this.scheduleValidationService.validateScheduleDuration(newStartTime, newEndTime);
 
       // Check for time conflicts with other schedules
       const hasConflict = await this.companySchedulesRepository.hasTimeConflict(
@@ -126,30 +130,5 @@ export class UpdateCompanyScheduleHandler implements ICommandHandler<UpdateCompa
       isActive: updatedSchedule.isActive,
       updatedAt: updatedSchedule.updatedAt,
     };
-  }
-
-  private validateCommand(command: UpdateCompanyScheduleCommand): void {
-    if (!command.scheduleId || command.scheduleId.trim().length === 0) {
-      throw new InvalidInputException('Schedule ID is required');
-    }
-
-    // Validate time range if both times are provided
-    if (command.startTime && command.endTime) {
-      if (command.startTime >= command.endTime) {
-        throw new InvalidInputException('Start time must be before end time');
-      }
-
-      // Validate duration
-      const diffMs = command.endTime.getTime() - command.startTime.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-
-      if (diffHours > 24) {
-        throw new InvalidInputException('Schedule duration cannot exceed 24 hours');
-      }
-
-      if (diffHours < 0.5) {
-        throw new InvalidInputException('Schedule duration must be at least 30 minutes');
-      }
-    }
   }
 }

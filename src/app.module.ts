@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
+import { ScheduleModule } from '@nestjs/schedule';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Reflector, APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
@@ -25,15 +26,18 @@ import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 // Global providers
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
+import { AuditLogInterceptor } from '@presentation/interceptors/audit-log.interceptor';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
-import { DomainExceptionsFilter } from '@presentation/filters/domain-exceptions.filter';
+import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { UserBanGuard } from '@presentation/guards/user-ban.guard';
 import { SessionGuard } from '@presentation/guards/session.guard';
+import { ThrottlerGuard } from '@presentation/guards/throttler.guard';
 import { UserBanService } from '@core/services/user-ban.service';
 import { SessionService } from '@core/services/session.service';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ThrottlerService } from '@infrastructure/services/throttler.service';
+import { LOGGER_SERVICE, THROTTLER_SERVICE } from '@shared/constants/tokens';
 
 // Config
 import configuration from '@infrastructure/config/configuration';
@@ -61,6 +65,9 @@ import configuration from '@infrastructure/config/configuration';
 
     // CQRS
     CqrsModule,
+
+    // Scheduling (for automatic cleanup)
+    ScheduleModule.forRoot(),
 
     // JWT Module (Global)
     JwtModule.registerAsync({
@@ -97,6 +104,10 @@ import configuration from '@infrastructure/config/configuration';
     // Global interceptors
     {
       provide: APP_INTERCEPTOR,
+      useClass: AuditLogInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
     },
     {
@@ -107,7 +118,7 @@ import configuration from '@infrastructure/config/configuration';
     // Global filters
     {
       provide: APP_FILTER,
-      useClass: DomainExceptionsFilter,
+      useClass: DomainExceptionFilter,
     },
     {
       provide: APP_FILTER,
@@ -135,6 +146,15 @@ import configuration from '@infrastructure/config/configuration';
         jwtService: JwtService,
       ) => new SessionGuard(sessionService, reflector, logger, jwtService),
       inject: [SessionService, Reflector, LOGGER_SERVICE, JwtService],
+    },
+    {
+      provide: APP_GUARD,
+      useFactory: (
+        reflector: Reflector,
+        throttlerService: ThrottlerService,
+        configService: ConfigService,
+      ) => new ThrottlerGuard(reflector, throttlerService, configService),
+      inject: [Reflector, THROTTLER_SERVICE, ConfigService],
     },
   ],
 })

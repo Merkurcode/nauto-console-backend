@@ -58,7 +58,7 @@ export class CompanyEventsCatalog {
     const normalized = eventName
       .normalize('NFD') // Decompose accented characters
       .replace(/[\u0300-\u036f]/g, ''); // Remove diacritical marks
-    
+
     return normalized
       .replace(/[\r\n\t]+/g, ' ') // Replace tabs and line breaks with spaces
       .trim() // Remove leading/trailing spaces

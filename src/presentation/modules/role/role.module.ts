@@ -19,6 +19,7 @@ import { REPOSITORY_TOKENS, USER_REPOSITORY } from '@shared/constants/tokens';
 import { RoleService } from '@core/services/role.service';
 import { PermissionService } from '@core/services/permission.service';
 import { PermissionExcludeService } from '@core/services/permission-exclude.service';
+import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
 // Query Handlers
 import { GetRolesQueryHandler } from '@application/queries/role/get-roles.query';
@@ -74,9 +75,12 @@ const commandHandlers = [
     },
     {
       provide: REPOSITORY_TOKENS.USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        businessConfigService: BusinessConfigurationService,
+      ) => new UserRepository(prisma, transactionContext, businessConfigService),
+      inject: [PrismaService, TransactionContextService, BusinessConfigurationService],
     },
     {
       provide: USER_REPOSITORY,

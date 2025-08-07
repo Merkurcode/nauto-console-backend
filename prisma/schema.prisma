@@ -210,6 +210,7 @@ model User {
   profile       UserProfile?
   address       UserAddress?
   sessions      Sessions[]
+  auditLogs     AuditLog[]
   
   @@index([companyId])
   @@unique([agentPhone, companyId])
@@ -423,4 +424,26 @@ model File {
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  level     String   // info, warn, error, debug, critical
+  type      String   // auth, user, role, permission, company, system, api, database, security, exception, transaction
+  action    String   // create, read, update, delete, login, logout, register, verify, reset, assign, revoke, access, error, exception, etc.
+  message   String
+  userId    String?
+  metadata  Json     // Comprehensive metadata including request details, session info, etc.
+  timestamp DateTime @default(now())
+  context   String   // system, auth, security, api, exception, transaction, etc.
+  
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([level, timestamp])
+  @@index([type, timestamp])
+  @@index([userId, timestamp])
+  @@index([context, timestamp])
+  @@index([timestamp])
+  @@index([level, type])
+  @@map("AuditLog")
 }

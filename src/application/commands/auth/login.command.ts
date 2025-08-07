@@ -2,17 +2,10 @@ import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { LoginDto } from '@application/dtos/auth/login.dto';
 import { AuthResponse } from '@application/dtos/responses/user.response';
 import { UnauthorizedException, Injectable, Inject } from '@nestjs/common';
-import { UserService } from '@core/services/user.service';
-import { AuthService } from '@core/services/auth.service';
-import { SessionService } from '@core/services/session.service';
-import { UserBanService } from '@core/services/user-ban.service';
-import { IRoleRepository } from '@core/repositories/role.repository.interface';
-import { ITokenProvider } from '@core/interfaces/token-provider.interface';
-import { UserMapper } from '@application/mappers/user.mapper';
+import { AuthenticationValidationService } from '@core/services/authentication-validation.service';
 import { I18nService } from 'nestjs-i18n';
-import { ROLE_REPOSITORY, TOKEN_PROVIDER, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { v4 as uuidv4 } from 'uuid';
 
 export class LoginCommand implements ICommand {
   constructor(
@@ -26,127 +19,65 @@ export class LoginCommand implements ICommand {
 @CommandHandler(LoginCommand)
 export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
   constructor(
-    private readonly userService: UserService,
-    private readonly authService: AuthService,
-    private readonly sessionService: SessionService,
-    private readonly userBanService: UserBanService,
-    @Inject(TOKEN_PROVIDER)
-    private readonly tokenProvider: ITokenProvider,
+    private readonly authValidationService: AuthenticationValidationService,
     private readonly i18n: I18nService,
-    @Inject(ROLE_REPOSITORY)
-    private readonly roleRepository: IRoleRepository,
-    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
   ) {
     this.logger.setContext(LoginCommandHandler.name);
   }
 
   async execute(command: LoginCommand): Promise<AuthResponse> {
-    const { email } = command.loginDto;
+    const { email, password } = command.loginDto;
     const { userAgent, ipAddress } = command;
 
-    this.logger.log({ message: 'Login attempt', email, ipAddress, userAgent });
+    this.logger.log({
+      message: 'Login attempt',
+      email,
+      ipAddress,
+      userAgent,
+    });
 
-    // Validate credentials
-    const user = await this.userService.validateCredentials(email, command.loginDto.password);
-    if (!user) {
-      this.logger.warn({ message: 'Login failed - invalid credentials', email });
+    // Delegate all validation and flow logic to the authentication service
+    const loginResult = await this.authValidationService.validateLoginFlow(
+      email,
+      password,
+      userAgent,
+      ipAddress,
+    );
+
+    // Handle different outcomes
+    if (!loginResult.success) {
       throw new UnauthorizedException(this.i18n.t('common.auth.login.failed'));
     }
 
-    // Check if user is banned
-    this.userBanService.validateUserNotBanned(user);
-
-    this.logger.debug({
-      message: 'Credentials validated successfully',
-      userId: user.id.getValue(),
-      email,
-    });
-
-    // Update last login
-    await this.authService.updateLastLogin(user.id.getValue());
-
-    // Check if email is verified (disabled by default)
-    const emailVerificationEnabled = false; // TODO: Make this configurable
-    const isEmailVerified = await this.authService.isEmailVerified(email);
-
-    // If email verification is required and not verified, prompt user to verify first
-    if (emailVerificationEnabled && !isEmailVerified) {
-      this.logger.debug({
-        message: 'Login requires email verification',
-        userId: user.id.getValue(),
-        email,
-      });
-
+    // Handle multi-step authentication flows
+    if (loginResult.nextStep === 'email_verification') {
       return {
         requiresEmailVerification: true,
-        userId: user.id.getValue(),
-        email: user.email.getValue(),
+        userId: loginResult.userId!,
+        email: loginResult.email!,
         message: this.i18n.t('common.auth.verification.email_sent'),
       };
     }
 
-    // Check if OTP is enabled
-    if (user.otpEnabled) {
-      this.logger.debug({
-        message: 'Login requires 2FA verification',
-        userId: user.id.getValue(),
-        email,
-      });
-
+    if (loginResult.nextStep === 'otp_required') {
       return {
         requiresOtp: true,
-        userId: user.id.getValue(),
+        userId: loginResult.userId!,
         message: this.i18n.t('common.auth.2fa.enabled'),
       };
     }
 
-    // Collect all permissions from all user roles
-    const userPermissions = new Set<string>();
-    for (const role of user.roles) {
-      const roleWithPermissions = await this.roleRepository.findById(role.id.getValue());
-      if (roleWithPermissions && roleWithPermissions.permissions) {
-        roleWithPermissions.permissions.forEach(permission => {
-          userPermissions.add(permission.getStringName());
-        });
-      }
+    // Complete authentication
+    if (loginResult.nextStep === 'complete' && loginResult.authResponse) {
+      return {
+        ...loginResult.authResponse,
+        message: this.i18n.t('common.auth.login.success'),
+      };
     }
 
-    this.logger.debug({
-      message: 'User permissions collected',
-      userId: user.id.getValue(),
-      roles: user.roles.map(r => r.name),
-      permissionsCount: userPermissions.size,
-    });
-
-    // Generate session token and JWT tokens
-    const sessionToken = uuidv4();
-    const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
-      user,
-      Array.from(userPermissions),
-      sessionToken,
-    );
-
-    // Register the session
-    await this.sessionService.createSession(
-      user.id.getValue(),
-      sessionToken,
-      refreshToken,
-      userAgent || null,
-      ipAddress || '?',
-    );
-
-    this.logger.log({
-      message: 'Login successful',
-      userId: user.id.getValue(),
-      email,
-      sessionToken,
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-      user: UserMapper.toAuthResponse(user),
-      message: this.i18n.t('common.auth.login.success'),
-    };
+    // This should never happen with proper validation service implementation
+    throw new UnauthorizedException(this.i18n.t('common.auth.login.failed'));
   }
 }

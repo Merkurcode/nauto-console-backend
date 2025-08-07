@@ -4,6 +4,7 @@ import { CompanySchedules } from '@core/entities/company-schedules.entity';
 import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
+import { ScheduleValidationService } from '@core/services/schedule-validation.service';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import {
   InvalidInputException,
@@ -42,11 +43,17 @@ export class CreateCompanyScheduleHandler implements ICommandHandler<CreateCompa
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
     private readonly userAuthorizationService: UserAuthorizationService,
+    private readonly scheduleValidationService: ScheduleValidationService,
   ) {}
 
   async execute(command: CreateCompanyScheduleCommand): Promise<ICreateCompanyScheduleResponse> {
-    // Validate input
-    this.validateCommand(command);
+    // Validate input using domain service
+    this.scheduleValidationService.validateScheduleCreation(
+      command.companyId,
+      command.dayOfWeek,
+      command.startTime,
+      command.endTime,
+    );
 
     // Validate company access using domain service
     const currentUser = await this.userRepository.findById(command.currentUserId);
@@ -68,7 +75,7 @@ export class CreateCompanyScheduleHandler implements ICommandHandler<CreateCompa
 
     if (existingSchedule) {
       throw new InvalidInputException(
-        `Schedule for ${this.getDayName(command.dayOfWeek)} already exists for this company`,
+        `Schedule for ${this.scheduleValidationService.getDayName(command.dayOfWeek)} already exists for this company`,
       );
     }
 
@@ -82,7 +89,7 @@ export class CreateCompanyScheduleHandler implements ICommandHandler<CreateCompa
 
     if (hasConflict) {
       throw new InvalidInputException(
-        `Time conflict detected with existing schedule for ${this.getDayName(command.dayOfWeek)}`,
+        `Time conflict detected with existing schedule for ${this.scheduleValidationService.getDayName(command.dayOfWeek)}`,
       );
     }
 
@@ -113,41 +120,5 @@ export class CreateCompanyScheduleHandler implements ICommandHandler<CreateCompa
       isActive: savedSchedule.isActive,
       createdAt: savedSchedule.createdAt,
     };
-  }
-
-  private validateCommand(command: CreateCompanyScheduleCommand): void {
-    if (!command.companyId || command.companyId.trim().length === 0) {
-      throw new InvalidInputException('Company ID is required');
-    }
-
-    if (command.dayOfWeek < 0 || command.dayOfWeek > 6) {
-      throw new InvalidInputException('Day of week must be between 0 (Sunday) and 6 (Saturday)');
-    }
-
-    if (!command.startTime || !command.endTime) {
-      throw new InvalidInputException('Start time and end time are required');
-    }
-
-    if (command.startTime >= command.endTime) {
-      throw new InvalidInputException('Start time must be before end time');
-    }
-
-    // Validate that it's a reasonable time range (not more than 24 hours)
-    const diffMs = command.endTime.getTime() - command.startTime.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
-
-    if (diffHours > 24) {
-      throw new InvalidInputException('Schedule duration cannot exceed 24 hours');
-    }
-
-    if (diffHours < 0.5) {
-      throw new InvalidInputException('Schedule duration must be at least 30 minutes');
-    }
-  }
-
-  private getDayName(dayOfWeek: number): string {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-    return days[dayOfWeek];
   }
 }

@@ -25,24 +25,27 @@ export abstract class BaseRepository<T> {
     error: unknown,
     returnValue: R | null = null,
   ): R | null {
+    // Always log errors to console if logger is not available
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorDetails = {
+      message: `Repository operation failed`,
+      operation,
+      errorMessage,
+      entityType: this.constructor.name.replace('Repository', ''),
+      errorType: error?.constructor?.name || 'Unknown',
+    };
+
     if (this.logger) {
       if (error instanceof Error) {
-        this.logger.error(
-          {
-            message: `Repository operation failed`,
-            operation,
-            errorMessage: error.message,
-            entityType: this.constructor.name.replace('Repository', ''),
-          },
-          error.stack,
-        );
+        this.logger.error(errorDetails, error.stack);
       } else {
-        this.logger.error({
-          message: `Repository operation failed`,
-          operation,
-          error: String(error),
-          entityType: this.constructor.name.replace('Repository', ''),
-        });
+        this.logger.error(errorDetails);
+      }
+    } else {
+      // Fallback to console if logger not available
+      console.error('[REPOSITORY ERROR]', errorDetails);
+      if (error instanceof Error && error.stack) {
+        console.error('[STACK TRACE]', error.stack);
       }
     }
 
@@ -89,7 +92,12 @@ export abstract class BaseRepository<T> {
 
       return result;
     } catch (error) {
-      return this.handleError<R>(operation, error, fallbackValue);
+      // Log the error but DON'T swallow it - let it propagate
+      this.handleError<R>(operation, error, fallbackValue);
+
+      // Re-throw the error so the caller knows something went wrong
+      // This is critical for authentication flows
+      throw error;
     }
   }
 }

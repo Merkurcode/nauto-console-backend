@@ -14,8 +14,10 @@ import {
   UserProfile as PrismaUserProfile,
   UserAddress as PrismaUserAddress,
 } from '@prisma/client';
-import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
+import { ResourceAction } from '@core/value-objects/resource-action.vo';
+import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
+import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
 // Define a type for User with its relations (roles with nested permissions)
 type UserWithRelations = PrismaUser & {
@@ -35,6 +37,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    private readonly businessConfigService: BusinessConfigurationService,
   ) {
     super();
   }
@@ -541,22 +544,40 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             birthDate: record.profile.birthdate || undefined,
           }
         : undefined,
-      address: record.address
-        ? {
-            country: 'México', // Default since we're not storing country/state properly yet
-            state: 'Unknown',
-            city: record.address.city || '',
-            street: record.address.street || '',
-            exteriorNumber: record.address.exteriorNumber || '',
-            interiorNumber: record.address.interiorNumber || undefined,
-            postalCode: record.address.postalCode || '',
-          }
-        : undefined,
+      address:
+        record.address && this.hasValidAddressData(record.address)
+          ? {
+              country: this.businessConfigService.getAddressDefaults().defaultCountry || 'Unknown',
+              state: this.businessConfigService.getAddressDefaults().defaultState || 'Unknown',
+              city: record.address.city || '',
+              street: record.address.street || '',
+              exteriorNumber: record.address.exteriorNumber || '',
+              interiorNumber: record.address.interiorNumber || undefined,
+              postalCode: record.address.postalCode || '',
+            }
+          : undefined,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       companyId: record.companyId || undefined,
     });
 
     return user;
+  }
+
+  /**
+   * Check if address data is valid for creating Address value object
+   */
+  private hasValidAddressData(address: any): boolean {
+    // Check if the address has the minimum required fields
+    const defaults = this.businessConfigService.getAddressDefaults();
+    const hasCountry = defaults.defaultCountry && defaults.defaultCountry.trim() !== '';
+    const hasState = defaults.defaultState && defaults.defaultState.trim() !== '';
+    const hasCity = address.city && address.city.trim() !== '';
+    const hasStreet = address.street && address.street.trim() !== '';
+    const hasExteriorNumber = address.exteriorNumber && address.exteriorNumber.trim() !== '';
+    const hasPostalCode = address.postalCode && address.postalCode.trim() !== '';
+
+    // Return true only if we have all required fields
+    return hasCountry && hasState && hasCity && hasStreet && hasExteriorNumber && hasPostalCode;
   }
 }

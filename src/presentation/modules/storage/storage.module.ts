@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { StorageController } from './storage.controller';
 import { StorageModule as InfrastructureStorageModule } from '../../../infrastructure/storage/storage.module';
+import { CoreModule } from '@core/core.module';
 
 // Commands
 import { UploadFileCommandHandler } from '@application/commands/storage/upload-file.command';
@@ -24,7 +25,7 @@ const CommandHandlers = [
 const QueryHandlers = [GetFileQueryHandler, GetUserFilesQueryHandler];
 
 @Module({
-  imports: [CqrsModule, InfrastructureStorageModule.register({ global: true })],
+  imports: [CqrsModule, InfrastructureStorageModule.register({ global: true }), CoreModule],
   controllers: [StorageController],
   providers: [...CommandHandlers, ...QueryHandlers, FileMapper],
 })

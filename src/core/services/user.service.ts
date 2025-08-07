@@ -28,6 +28,7 @@ import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { AuthFailureReason, IAuthValidationResult } from '@core/enums/auth-failure-reason.enum';
 import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
@@ -337,31 +338,164 @@ export class UserService {
     return savedUser;
   }
 
-  async validateCredentials(emailStr: string, passwordStr: string): Promise<User | null> {
+  async validateCredentials(emailStr: string, passwordStr: string): Promise<IAuthValidationResult> {
+    // Input validation
+    if (!emailStr || typeof emailStr !== 'string' || emailStr.trim() === '') {
+      return {
+        success: false,
+        failureReason: AuthFailureReason.INVALID_EMAIL_FORMAT,
+        message: 'Email is required',
+      };
+    }
+
+    if (!passwordStr || typeof passwordStr !== 'string' || passwordStr.trim() === '') {
+      return {
+        success: false,
+        failureReason: AuthFailureReason.INVALID_PASSWORD,
+        message: 'Password is required',
+      };
+    }
+
     try {
       // Validate email format
-      const email = new Email(emailStr);
-
-      const user = await this.userRepository.findByEmail(email.getValue());
-      if (!user || !user.isActive) {
-        return null;
+      let email: Email;
+      try {
+        email = new Email(emailStr.trim());
+      } catch (error) {
+        return {
+          success: false,
+          failureReason: AuthFailureReason.INVALID_EMAIL_FORMAT,
+          message: 'Invalid email format',
+          details: {
+            systemError: error instanceof Error ? error.message : String(error),
+          },
+        };
       }
 
-      const isPasswordValid = await this.comparePasswords(passwordStr, user.passwordHash);
+      // Attempt to find user with comprehensive error handling
+      let user;
+      try {
+        user = await this.userRepository.findByEmail(email.getValue());
+      } catch (repositoryError) {
+        const errorMessage = repositoryError instanceof Error ? repositoryError.message : String(repositoryError);
+        const errorType = repositoryError?.constructor?.name || 'Unknown';
+        
+        this.logger.error({
+          message: 'Repository error during user lookup',
+          email: emailStr,
+          error: errorMessage,
+          errorType,
+          stack: repositoryError instanceof Error ? repositoryError.stack : undefined,
+        });
+
+        return {
+          success: false,
+          failureReason: AuthFailureReason.SYSTEM_ERROR,
+          message: 'Database error during authentication',
+          details: {
+            systemError: `Repository error: ${errorMessage}`,
+            errorType,
+          },
+        };
+      }
+      
+      if (!user) {
+        return {
+          success: false,
+          failureReason: AuthFailureReason.USER_NOT_FOUND,
+          message: 'User not found',
+        };
+      }
+      
+      // Check if user is inactive
+      if (!user.isActive) {
+        return {
+          success: false,
+          failureReason: AuthFailureReason.USER_INACTIVE,
+          message: 'User account is deactivated',
+        };
+      }
+
+      // Check if user is banned with comprehensive ban validation
+      if (user.bannedUntil) {
+        const now = new Date();
+        if (user.bannedUntil > now) {
+          return {
+            success: false,
+            failureReason: AuthFailureReason.USER_BANNED,
+            message: `Account is banned until ${user.bannedUntil.toISOString()}`,
+            details: {
+              bannedUntil: user.bannedUntil,
+              banReason: user.banReason || 'No reason provided',
+            },
+          };
+        }
+        // If ban has expired, we could optionally clear it here
+        // but we'll leave that for a separate cleanup process
+      }
+
+      // Validate password with error handling
+      let isPasswordValid: boolean;
+      try {
+        isPasswordValid = await this.comparePasswords(passwordStr, user.passwordHash);
+      } catch (passwordError) {
+        const errorMessage = passwordError instanceof Error ? passwordError.message : String(passwordError);
+        
+        this.logger.error({
+          message: 'Password comparison error',
+          email: emailStr,
+          error: errorMessage,
+          userId: user.id.getValue(),
+        });
+
+        return {
+          success: false,
+          failureReason: AuthFailureReason.SYSTEM_ERROR,
+          message: 'Password validation error',
+          details: {
+            systemError: `Password comparison failed: ${errorMessage}`,
+            errorType: passwordError?.constructor?.name || 'Unknown',
+          },
+        };
+      }
       
       if (!isPasswordValid) {
-        return null;
+        return {
+          success: false,
+          failureReason: AuthFailureReason.INVALID_PASSWORD,
+          message: 'Invalid password',
+        };
       }
 
-      return user;
+      // All validations passed
+      return {
+        success: true,
+        user,
+        message: 'Credentials validated successfully',
+      };
+
     } catch (error) {
-      if (error instanceof EntityNotFoundException) {
-        // Handle user not found error
-        return null;
-      }
-
-      // If email is invalid, return null instead of throwing
-      return null;
+      // Catch-all for any unexpected errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorType = error?.constructor?.name || 'Unknown';
+      
+      this.logger.error({
+        message: 'Unexpected system error in validateCredentials',
+        email: emailStr,
+        error: errorMessage,
+        errorType: errorType,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      
+      return {
+        success: false,
+        failureReason: AuthFailureReason.SYSTEM_ERROR,
+        message: 'Unexpected system error during authentication',
+        details: {
+          systemError: errorMessage,
+          errorType: errorType,
+        },
+      };
     }
   }
 

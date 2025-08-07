@@ -1,14 +1,5 @@
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
-
-export enum ActionType {
-  READ = 'read',
-  WRITE = 'write',
-  DELETE = 'delete',
-  MANAGE = 'manage',
-  UPDATE = 'update',
-  ASSIGN = 'assign',
-  REMOVE = 'remove',
-}
+import { ActionType } from '@shared/constants/enums';
 
 export class ResourceAction {
   private readonly resource: string;

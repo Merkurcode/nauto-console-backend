@@ -13,7 +13,8 @@ import {
   UserProfile as PrismaUserProfile,
   UserAddress as PrismaUserAddress,
 } from '@prisma/client';
-import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
+import { ResourceAction } from '@core/value-objects/resource-action.vo';
+import { ActionType } from '@shared/constants/enums';
 
 // Define a type for User with its relations (roles with nested permissions)
 type UserWithRelations = PrismaUser & {

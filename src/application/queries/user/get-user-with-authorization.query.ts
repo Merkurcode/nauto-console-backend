@@ -1,10 +1,11 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { NotFoundException, Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IUserDetailResponse } from '@application/dtos/responses/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { UserAccessAuthorizationService } from '@core/services/user-access-authorization.service';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 
 export class GetUserWithAuthorizationQuery implements IQuery {
   constructor(
@@ -34,11 +35,11 @@ export class GetUserWithAuthorizationQueryHandler
     ]);
 
     if (!targetUser) {
-      throw new NotFoundException(`User with ID "${targetUserId}" not found`);
+      throw new EntityNotFoundException('User', targetUserId);
     }
 
     if (!currentUser) {
-      throw new ForbiddenException('Current user not found');
+      throw new EntityNotFoundException('Current User', currentUserId);
     }
 
     // Check authorization using domain service

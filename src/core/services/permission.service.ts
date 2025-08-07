@@ -5,7 +5,8 @@ import {
   EntityNotFoundException,
   EntityAlreadyExistsException,
 } from '@core/exceptions/domain-exceptions';
-import { ResourceAction, ActionType } from '@core/value-objects/resource-action.vo';
+import { ResourceAction } from '@core/value-objects/resource-action.vo';
+import { ActionType } from '@shared/constants/enums';
 import { PERMISSION_REPOSITORY } from '@shared/constants/tokens';
 
 @Injectable()

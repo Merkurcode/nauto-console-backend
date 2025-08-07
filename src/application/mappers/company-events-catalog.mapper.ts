@@ -28,7 +28,11 @@ export class CompanyEventsCatalogMapper {
   /**
    * Map DTO to Create Command
    */
-  toCreateCommand(dto: CreateCompanyEventDto, companyId: string, currentUserId: string): CreateCompanyEventCommand {
+  toCreateCommand(
+    dto: CreateCompanyEventDto,
+    companyId: string,
+    currentUserId: string,
+  ): CreateCompanyEventCommand {
     return new CreateCompanyEventCommand(
       dto.title,
       dto.description,
@@ -71,7 +75,11 @@ export class CompanyEventsCatalogMapper {
   /**
    * Create Delete Command
    */
-  toDeleteCommand(eventName: string, companyId: string, currentUserId: string): DeleteCompanyEventCommand {
+  toDeleteCommand(
+    eventName: string,
+    companyId: string,
+    currentUserId: string,
+  ): DeleteCompanyEventCommand {
     return new DeleteCompanyEventCommand(eventName, companyId, currentUserId);
   }
 

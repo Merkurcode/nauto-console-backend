@@ -4,7 +4,11 @@ import { ICompanySchedulesRepository } from '@core/repositories/company-schedule
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { CompanyScheduleId } from '@core/value-objects/company-schedule-id.vo';
-import { EntityNotFoundException, InvalidInputException, ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import {
+  EntityNotFoundException,
+  InvalidInputException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
 import { COMPANY_SCHEDULES_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 
 export class DeleteCompanyScheduleCommand {

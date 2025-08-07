@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CqrsModule } from '@nestjs/cqrs';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 // Domain Services - Pure business logic
@@ -14,6 +15,19 @@ import { HealthService } from './services/health.service';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
 import { AuthService } from './services/auth.service';
+import { UserService } from './services/user.service';
+import { SessionValidationService } from './services/session-validation.service';
+import { ScheduleValidationService } from './services/schedule-validation.service';
+import { UserDeletionPolicyService } from './services/user-deletion-policy.service';
+import { PermissionCollectionService } from './services/permission-collection.service';
+import { RequestContextService } from './services/request-context.service';
+import { BusinessConfigurationService } from './services/business-configuration.service';
+import { AuditLogService } from './services/audit-log.service';
+import { AuditLogQueueService } from './services/audit-log-queue.service';
+import { AuditLogCleanupService } from './services/audit-log-cleanup.service';
+import { AuditTransactionService } from './services/audit-transaction.service';
+import { AuthenticationValidationService } from './services/authentication-validation.service';
+import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
 
 /**
  * Core Domain Module
@@ -21,7 +35,7 @@ import { AuthService } from './services/auth.service';
  * No infrastructure dependencies - those are injected via tokens
  */
 @Module({
-  imports: [ConfigModule, forwardRef(() => InfrastructureModule)],
+  imports: [ConfigModule, CqrsModule, forwardRef(() => InfrastructureModule)],
   providers: [
     // Pure domain services
     DomainEventService,
@@ -35,6 +49,23 @@ import { AuthService } from './services/auth.service';
     EmailService,
     SmsService,
     AuthService,
+    UserService,
+    // New domain services for Clean Architecture compliance
+    SessionValidationService,
+    ScheduleValidationService,
+    UserDeletionPolicyService,
+    PermissionCollectionService,
+    RequestContextService,
+    BusinessConfigurationService,
+    // Audit logging services
+    {
+      provide: AUDIT_LOG_SERVICE,
+      useClass: AuditLogService,
+    },
+    AuditLogQueueService,
+    AuditLogCleanupService,
+    AuditTransactionService,
+    AuthenticationValidationService,
   ],
   exports: [
     // Export all domain services
@@ -49,6 +80,20 @@ import { AuthService } from './services/auth.service';
     EmailService,
     SmsService,
     AuthService,
+    UserService,
+    // New domain services for Clean Architecture compliance
+    SessionValidationService,
+    ScheduleValidationService,
+    UserDeletionPolicyService,
+    PermissionCollectionService,
+    RequestContextService,
+    BusinessConfigurationService,
+    // Audit logging services
+    AUDIT_LOG_SERVICE,
+    AuditLogQueueService,
+    AuditLogCleanupService,
+    AuditTransactionService,
+    AuthenticationValidationService,
   ],
 })
 export class CoreModule {}
