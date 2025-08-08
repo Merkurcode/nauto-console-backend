@@ -7,7 +7,6 @@ import {
   BusinessRuleValidationException,
   EntityNotFoundException,
 } from '@core/exceptions/domain-exceptions';
-import { RolesEnum } from '@shared/constants/enums';
 import { Inject } from '@nestjs/common';
 import { USER_REPOSITORY } from '@shared/constants/tokens';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
@@ -15,8 +14,6 @@ import { IUserRepository } from '@core/repositories/user.repository.interface';
 export class ChangeEmailCommand {
   constructor(
     public readonly currentUserId: string,
-    public readonly currentUserRoles: string[],
-    public readonly currentUserCompanyId: string | null,
     public readonly newEmail: string,
     public readonly currentPassword: string,
     public readonly targetUserId: string | undefined,
@@ -37,22 +34,13 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
   async execute(command: ChangeEmailCommand): Promise<{
     message: string;
   }> {
-    const {
-      currentUserId,
-      currentUserCompanyId,
-      newEmail,
-      currentPassword,
-      targetUserId,
-      currentSessionToken,
-    } = command;
+    const { currentUserId, newEmail, currentPassword, targetUserId, currentSessionToken } = command;
 
     // Get current user using centralized method
     const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
 
     // Determine the target user ID
     const actualTargetUserId = targetUserId || currentUserId;
-    const isRoot = this.userAuthorizationService.canAccessRootFeatures(currentUser);
-    const isAdmin = this.userAuthorizationService.canAccessAdminFeatures(currentUser);
     const isSelfOperation = actualTargetUserId === currentUserId;
 
     // Get target user to validate root restriction
@@ -61,36 +49,16 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
       throw new EntityNotFoundException('User', actualTargetUserId);
     }
 
-    // Nobody can change a root user's email (including the root user themselves)
-    if (targetUser.rolesCollection.containsByName(RolesEnum.ROOT)) {
-      throw new BusinessRuleValidationException(
-        "Root users' emails cannot be changed by any user, including themselves",
+    // Use centralized authorization service for email change validation
+    try {
+      this.userAuthorizationService.canChangeUserEmail(
+        currentUser,
+        actualTargetUserId,
+        targetUser.companyId?.getValue(),
       );
-    }
-
-    // Authorization checks
-    if (!isSelfOperation) {
-      // Only root and admin can change other users' emails
-      if (!isRoot && !isAdmin) {
-        throw new BusinessRuleValidationException(
-          "Only root and admin users can change other users' emails",
-        );
-      }
-
-      // Admin can only change emails of users in their company
-      if (isAdmin && !isRoot) {
-        if (!currentUserCompanyId) {
-          throw new BusinessRuleValidationException(
-            "Admin user must belong to a company to change other users' emails",
-          );
-        }
-
-        if (targetUser.companyId?.getValue() !== currentUserCompanyId) {
-          throw new BusinessRuleValidationException(
-            'Admin users can only change emails of users in their own company',
-          );
-        }
-      }
+    } catch (error) {
+      // Convert domain exception to business rule validation exception
+      throw new BusinessRuleValidationException(error.message);
     }
 
     // Password verification - always required for the target user

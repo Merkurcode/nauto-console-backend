@@ -37,6 +37,7 @@ export class User extends AggregateRoot {
   private _firstName: FirstName;
   private _lastName: LastName;
   private _secondLastName?: SecondLastName;
+  private _alias?: string; // Bot user alias (for bot identification)
   private _isActive: boolean;
   private _emailVerified: boolean;
   private _otpEnabled: boolean;
@@ -61,6 +62,7 @@ export class User extends AggregateRoot {
     isActive: boolean = true,
     createdAt?: Date,
     companyId?: CompanyId | null,
+    alias?: string,
   ) {
     super();
     this._id = id;
@@ -68,6 +70,7 @@ export class User extends AggregateRoot {
     this._passwordHash = passwordHash;
     this._firstName = firstName;
     this._lastName = lastName;
+    this._alias = alias;
     this._isActive = isActive;
     this._emailVerified = false;
     this._otpEnabled = false;
@@ -84,6 +87,7 @@ export class User extends AggregateRoot {
     firstName: FirstName,
     lastName: LastName,
     companyId?: CompanyId | null,
+    alias?: string,
   ): User {
     const userId = UserId.create();
     const user = new User(
@@ -95,6 +99,7 @@ export class User extends AggregateRoot {
       true,
       undefined,
       companyId,
+      alias,
     );
 
     user.addDomainEvent(
@@ -158,6 +163,7 @@ export class User extends AggregateRoot {
     firstName: string;
     lastName: string;
     secondLastName?: string;
+    alias?: string;
     isActive: boolean;
     emailVerified?: boolean;
     otpEnabled: boolean;
@@ -183,6 +189,7 @@ export class User extends AggregateRoot {
       exteriorNumber: string;
       interiorNumber?: string;
       postalCode: string;
+      googleMapsUrl?: string;
     };
     createdAt: Date;
     updatedAt: Date;
@@ -197,6 +204,7 @@ export class User extends AggregateRoot {
       data.isActive,
       data.createdAt,
       data.companyId ? CompanyId.fromString(data.companyId) : undefined,
+      data.alias,
     );
 
     user._secondLastName = data.secondLastName
@@ -230,6 +238,7 @@ export class User extends AggregateRoot {
           data.address.exteriorNumber,
           data.address.postalCode,
           data.address.interiorNumber,
+          data.address.googleMapsUrl,
         )
       : undefined;
     user._updatedAt = data.updatedAt;
@@ -256,6 +265,10 @@ export class User extends AggregateRoot {
 
   get lastName(): LastName {
     return this._lastName;
+  }
+
+  get alias(): string | undefined {
+    return this._alias;
   }
 
   get isActive(): boolean {

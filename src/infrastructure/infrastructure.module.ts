@@ -29,6 +29,7 @@ import { CompanyAIAssistantRepository } from './repositories/company-ai-assistan
 import { CompanyEventsCatalogRepository } from './repositories/company-events-catalog.repository';
 import { CompanySchedulesRepository } from './repositories/company-schedules.repository';
 import { AuditLogRepository } from './repositories/audit-log.repository';
+import { BotTokenRepository } from './repositories/bot-token.repository';
 import { TokenProvider } from './auth/token.provider';
 import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
@@ -51,6 +52,7 @@ import {
   COMPANY_EVENTS_CATALOG_REPOSITORY,
   COMPANY_SCHEDULES_REPOSITORY,
   AUDIT_LOG_REPOSITORY,
+  BOT_TOKEN_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
@@ -73,6 +75,7 @@ import {
         secret: configService.get<string>('jwt.secret'),
         signOptions: {
           expiresIn: configService.get<string>('jwt.accessExpiration'),
+          algorithm: configService.get('JWT_ALGORITHM', 'HS512'),
         },
       }),
       inject: [ConfigService],
@@ -196,6 +199,11 @@ import {
       ) => new AuditLogRepository(prisma, transactionContext, logger),
       inject: [PrismaService, TransactionContextService, LoggerService],
     },
+    {
+      provide: BOT_TOKEN_REPOSITORY,
+      useFactory: (prisma: PrismaService) => new BotTokenRepository(prisma),
+      inject: [PrismaService],
+    },
 
     // Infrastructure services
     {
@@ -233,6 +241,7 @@ import {
     COMPANY_EVENTS_CATALOG_REPOSITORY,
     COMPANY_SCHEDULES_REPOSITORY,
     AUDIT_LOG_REPOSITORY,
+    BOT_TOKEN_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,

@@ -6,6 +6,8 @@ import { PERMISSION_EXCLUDE_SYMBOLS } from '../src/shared/constants/permission-e
 // Map of role names to permissions they should have
 const rolePermissionsMap = {
   [RolesEnum.ROOT]: [
+    'sensitive:operations',
+    'root:access',
     'system:read',
     'audit:read',
     'auth:write',
@@ -17,8 +19,11 @@ const rolePermissionsMap = {
     'company-user:assign', 'company-user:remove',
     'company_schedules:read', 'company_schedules:write', 'company_schedules:delete',
     'company_events:read', 'company_events:write', 'company_events:delete',
+    'bot:read', 'bot:write', 'bot:delete',
   ],
   [RolesEnum.ROOT_READONLY]: [
+    'sensitive:operations',
+    'root:access',
     'system:read',
     'user:read',
     'role:read',
@@ -29,6 +34,7 @@ const rolePermissionsMap = {
     'company_events:read',
   ],
   [RolesEnum.ADMIN]: [
+    'sensitive:operations',
     'auth:write',
     'user:read', 'user:write', 'user:delete',
     'role:read',
@@ -40,6 +46,7 @@ const rolePermissionsMap = {
     'company_events:read', 'company_events:write', 'company_events:delete',
   ],
   [RolesEnum.MANAGER]: [
+    'sensitive:operations',
     'auth:write',
     'user:read', 'user:write', 'user:delete',
     'role:read',
@@ -50,6 +57,7 @@ const rolePermissionsMap = {
     'company_events:read', 'company_events:write', 'company_events:delete',
   ],
   [RolesEnum.SALES_AGENT]: [
+    'sensitive:operations',
     'user:read',
     'role:read',
     'storage:manage', 'storage:write', 'storage:read',
@@ -59,6 +67,7 @@ const rolePermissionsMap = {
     'company_events:read',
   ],
   [RolesEnum.HOST]: [
+    'sensitive:operations',
     'user:read',
     'role:read',
     'storage:manage', 'storage:write', 'storage:read',
@@ -68,6 +77,7 @@ const rolePermissionsMap = {
     'company_events:read',
   ],
   [RolesEnum.GUEST]: [
+    'sensitive:operations',
     'user:read',
     'company:read',
     'company_schedules:read',

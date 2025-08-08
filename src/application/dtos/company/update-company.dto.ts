@@ -81,6 +81,15 @@ export class UpdateAddressDto {
   @IsOptional()
   @Length(1, 10)
   postalCode?: string;
+
+  @ApiProperty({
+    example: 'https://maps.google.com/?q=123+Main+Street,Los+Angeles,CA',
+    description: 'Google Maps URL for the address',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  googleMapsUrl?: string;
 }
 
 export class UpdateCompanyDto {

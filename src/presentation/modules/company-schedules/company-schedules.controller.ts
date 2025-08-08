@@ -46,6 +46,7 @@ import { CompanySchedulesMapper } from '@application/mappers/company-schedules.m
 // JWT Payload
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('company-schedules')
 @Controller('companies/:companyId/schedules')
@@ -60,6 +61,7 @@ export class CompanySchedulesController {
   ) {}
 
   @Post()
+  @NoBots()
   @HttpCode(HttpStatus.CREATED)
   @CanWrite('company_schedules')
   @ApiOperation({
@@ -217,6 +219,7 @@ export class CompanySchedulesController {
   }
 
   @Put(':scheduleId')
+  @NoBots()
   @CanWrite('company_schedules')
   @ApiOperation({
     summary: 'Update a company schedule',
@@ -264,6 +267,7 @@ export class CompanySchedulesController {
   }
 
   @Delete(':scheduleId')
+  @NoBots()
   @HttpCode(HttpStatus.NO_CONTENT)
   @CanDelete('company_schedules')
   @ApiOperation({

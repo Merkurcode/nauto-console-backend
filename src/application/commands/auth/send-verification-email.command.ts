@@ -11,7 +11,6 @@ import { USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { Email } from '@core/value-objects/email.vo';
 import { User } from '@core/entities/user.entity';
-import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 
 export class SendVerificationEmailCommand implements ICommand {
@@ -119,69 +118,17 @@ export class SendVerificationEmailCommandHandler
     currentUser: User,
     currentUserCompanyId: string | null,
   ): Promise<void> {
-    // Rule 1: Root role can send verification to any email
-    if (this.userAuthorizationService.canAccessRootFeatures(currentUser)) {
-      return;
-    }
+    // Use centralized authorization service for email verification permission
+    const canSend = this.userAuthorizationService.canSendEmailVerification(
+      currentUser,
+      email,
+      currentUserCompanyId,
+    );
 
-    // Find the target user by email
-    const targetUser = await this.userRepository.findByEmail(email);
-    if (!targetUser) {
-      throw new EntityNotFoundException('User with this email is not registered', email);
-    }
-
-    // Rule 2: Admin can send to emails within their company and subsidiary companies
-    if (this.userAuthorizationService.canAccessAdminFeatures(currentUser)) {
-      if (currentUserCompanyId && targetUser.companyId) {
-        // Check if target user is in the same company
-        if (targetUser.companyId.getValue() === currentUserCompanyId) {
-          return;
-        }
-
-        // Check if target user's company is a subsidiary of current user's company
-        const targetCompany = await this.companyRepository.findById(targetUser.companyId);
-        if (
-          targetCompany &&
-          (await this.isSubsidiaryCompany(currentUserCompanyId, targetCompany.id.getValue()))
-        ) {
-          return;
-        }
-      }
-
-      // Admin can also send to their own email
-      if (targetUser.id.getValue() === currentUser.id.getValue()) {
-        return;
-      }
-
+    if (!canSend) {
       throw new ForbiddenException(
-        'You can only send verification emails to users within your company, subsidiary companies, or your own email',
+        'You do not have permission to send verification emails to this email address',
       );
-    }
-
-    // Rule 3: Manager can send to emails within their company
-    const currentUserLevel = this.userAuthorizationService.getUserHierarchyLevel(currentUser);
-    const managerLevel = ROLE_HIERARCHY_ORDER_STRINGS.indexOf(RolesEnum.MANAGER) + 1; // +1 because hierarchy is 1-based
-
-    if (currentUserLevel <= managerLevel) {
-      if (currentUserCompanyId && targetUser.companyId) {
-        if (targetUser.companyId.getValue() === currentUserCompanyId) {
-          return;
-        }
-      }
-
-      // Manager can also send to their own email
-      if (targetUser.id.getValue() === currentUser.id.getValue()) {
-        return;
-      }
-
-      throw new ForbiddenException(
-        'You can only send verification emails to users within your company or your own email',
-      );
-    }
-
-    // Rule 4: Other roles can only send verification to their own email
-    if (targetUser.id.getValue() !== currentUser.id.getValue()) {
-      throw new ForbiddenException('You can only send verification emails to your own email');
     }
   }
 

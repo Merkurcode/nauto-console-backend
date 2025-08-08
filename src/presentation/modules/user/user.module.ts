@@ -4,7 +4,6 @@ import { CqrsModule } from '@nestjs/cqrs';
 
 // Controllers
 import { UserController } from './user.controller';
-import { UsersController } from './users.controller';
 
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
@@ -47,7 +46,7 @@ const commandHandlers = [
 
 @Module({
   imports: [CqrsModule, CoreModule, InfrastructureModule, AuthModule],
-  controllers: [UserController, UsersController],
+  controllers: [UserController],
   providers: [
     // Services (from CoreModule)
     UserService,

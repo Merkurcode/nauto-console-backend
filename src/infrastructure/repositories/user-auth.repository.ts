@@ -79,6 +79,10 @@ export class UserAuthRepository implements IUserRepository {
     throw new Error('Not implemented in UserAuthRepository');
   }
 
+  async findByAlias(_alias: string): Promise<User | null> {
+    throw new Error('Not implemented in UserAuthRepository');
+  }
+
   async findByAgentPhoneAndCompany(_agentPhone: string, _companyId: string): Promise<User | null> {
     throw new Error('Not implemented in UserAuthRepository');
   }

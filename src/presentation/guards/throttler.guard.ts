@@ -15,6 +15,13 @@ export class ThrottlerGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<Request>();
+
+    // Check if this is a BOT request (set by BotOptimizationGuard)
+    if (request.skipThrottling || request.isBotRequest) {
+      return true;
+    }
+
     // Check if we should skip throttling for this handler
     const skipThrottle = this.reflector.getAllAndOverride<boolean>(SKIP_THROTTLE_KEY, [
       context.getHandler(),
@@ -39,8 +46,6 @@ export class ThrottlerGuard implements CanActivate {
       const limit = this.configService.get<number>('throttler.limit');
       throttleLimit = ThrottleLimit.create(ttl, limit);
     }
-
-    const request = context.switchToHttp().getRequest<Request>();
 
     // Check if user agent should be ignored
     const ignoreUserAgents = this.configService.get<string[]>('throttler.ignoreUserAgents');

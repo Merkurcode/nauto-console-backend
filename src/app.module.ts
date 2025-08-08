@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -20,6 +20,7 @@ import { CompanyModule } from '@presentation/modules/company/company.module';
 import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assistant.module';
 import { CompanyEventsCatalogModule } from '@presentation/modules/company-events-catalog/company-events-catalog.module';
 import { CompanySchedulesModule } from '@presentation/modules/company-schedules/company-schedules.module';
+import { BotModule } from '@presentation/modules/bot/bot.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
@@ -27,14 +28,20 @@ import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
 import { AuditLogInterceptor } from '@presentation/interceptors/audit-log.interceptor';
+import { RequestIntegrityMiddleware } from '@presentation/middleware/request-integrity.middleware';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { UserBanGuard } from '@presentation/guards/user-ban.guard';
 import { SessionGuard } from '@presentation/guards/session.guard';
+import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guard';
+import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
+import { TenantIsolationGuard } from '@presentation/guards/tenant-isolation.guard';
 import { ThrottlerGuard } from '@presentation/guards/throttler.guard';
 import { UserBanService } from '@core/services/user-ban.service';
 import { SessionService } from '@core/services/session.service';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
+import { TenantResolverService } from '@presentation/services/tenant-resolver.service';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { ThrottlerService } from '@infrastructure/services/throttler.service';
 import { LOGGER_SERVICE, THROTTLER_SERVICE } from '@shared/constants/tokens';
@@ -77,6 +84,7 @@ import configuration from '@infrastructure/config/configuration';
         secret: configService.get('jwt.secret'),
         signOptions: {
           expiresIn: configService.get('jwt.accessExpiration', '15m'),
+          algorithm: configService.get('JWT_ALGORITHM', 'HS512'),
         },
       }),
     }),
@@ -98,6 +106,7 @@ import configuration from '@infrastructure/config/configuration';
     AIAssistantModule,
     CompanyEventsCatalogModule,
     CompanySchedulesModule,
+    BotModule,
   ],
   controllers: [],
   providers: [
@@ -149,6 +158,34 @@ import configuration from '@infrastructure/config/configuration';
     },
     {
       provide: APP_GUARD,
+      useFactory: (reflector: Reflector, logger: ILogger) =>
+        new BotOptimizationGuard(reflector, logger),
+      inject: [Reflector, LOGGER_SERVICE],
+    },
+    {
+      provide: APP_GUARD,
+      useFactory: (reflector: Reflector, logger: ILogger) =>
+        new BotRestrictionsGuard(reflector, logger),
+      inject: [Reflector, LOGGER_SERVICE],
+    },
+    {
+      provide: APP_GUARD,
+      useFactory: (
+        reflector: Reflector,
+        tenantResolverService: TenantResolverService,
+        userAuthorizationService: UserAuthorizationService,
+        logger: ILogger,
+      ) =>
+        new TenantIsolationGuard(
+          reflector,
+          tenantResolverService,
+          userAuthorizationService,
+          logger,
+        ),
+      inject: [Reflector, TenantResolverService, UserAuthorizationService, LOGGER_SERVICE],
+    },
+    {
+      provide: APP_GUARD,
       useFactory: (
         reflector: Reflector,
         throttlerService: ThrottlerService,
@@ -158,4 +195,8 @@ import configuration from '@infrastructure/config/configuration';
     },
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIntegrityMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

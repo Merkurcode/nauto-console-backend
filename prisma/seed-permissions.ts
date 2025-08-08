@@ -27,6 +27,20 @@ export const permissions = [
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ROOT_READONLY],
   },
   {
+    name: 'root:access',
+    description: 'Can access root-level features and functionality',
+    resource: 'root',
+    action: 'access',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ROOT_READONLY],
+  },
+  {
+    name: 'sensitive:operations',
+    description: 'Can perform sensitive operations that require 2FA',
+    resource: 'sensitive',
+    action: 'operations',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
     name: 'auth:write',
     description: 'Can register users and perform authentication operations',
     resource: 'auth',
@@ -193,6 +207,27 @@ export const permissions = [
     resource: 'company_events',
     action: 'delete',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'bot:read',
+    description: 'Can read BOT tokens and information',
+    resource: 'bot',
+    action: 'read',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT],
+  },
+  {
+    name: 'bot:write',
+    description: 'Can create and generate BOT tokens',
+    resource: 'bot',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT],
+  },
+  {
+    name: 'bot:delete',
+    description: 'Can delete and revoke BOT tokens',
+    resource: 'bot',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT],
   },
 ];
 

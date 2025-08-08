@@ -11,14 +11,16 @@ import {
   RootLevelUserSpecification,
 } from '@core/specifications/user.specifications';
 import {
-  DefaultRoleSpecification,
   RootRoleSpecification,
   RootReadOnlyRoleSpecification,
   RootLevelRoleSpecification,
-  HasMinimumPermissionsSpecification,
 } from '@core/specifications/role.specifications';
 import { BusinessRuleValidationException } from '@core/exceptions/domain-exceptions';
 import { RolesEnum } from '@shared/constants/enums';
+import { 
+  MIN_ROLE_NAME_LENGTH,
+  SYSTEM_HELPERS
+} from '@shared/constants/system-constants';
 
 /**
  * Domain Validation Service for complex business rule validation
@@ -65,29 +67,14 @@ export class DomainValidationService {
   validateRole(role: Role): ValidationResult {
     const result = new ValidationResult();
 
-    // Check minimum permissions for non-default roles
-    const defaultRoleSpec = new DefaultRoleSpecification();
-    const minPermissionsSpec = new HasMinimumPermissionsSpecification(1);
-
-    if (!defaultRoleSpec.isSatisfiedBy(role) && !minPermissionsSpec.isSatisfiedBy(role)) {
-      result.addError('Non-default roles must have at least one permission.');
-    }
-
-    // Root roles should have substantial permissions
-    const rootRoleSpec = new RootLevelRoleSpecification();
-    const minRootPermissionsSpec = new HasMinimumPermissionsSpecification(10);
-
-    if (rootRoleSpec.isSatisfiedBy(role) && !minRootPermissionsSpec.isSatisfiedBy(role)) {
-      result.addWarning(
-        'Root level roles should have at least 10 permissions for proper functionality.',
-      );
-    }
+    // Removed arbitrary permission limits - roles can have any number of permissions
 
     // Validate role name conventions
-    if (role.name.length < 3) {
+    if (role.name.length < MIN_ROLE_NAME_LENGTH) {
       result.addError('Role name must be at least 3 characters long.');
     }
 
+    const rootRoleSpec = new RootRoleSpecification();
     if ((role.name.toLowerCase() === RolesEnum.ROOT.toLowerCase() || 
          role.name.toLowerCase() === RolesEnum.ROOT_READONLY.toLowerCase()) && 
         !rootRoleSpec.isSatisfiedBy(role)) {
@@ -103,20 +90,22 @@ export class DomainValidationService {
   validatePermissionAssignment(role: Role, permission: Permission): ValidationResult {
     const result = new ValidationResult();
 
-    // Check for conflicting permissions
-    const conflictingPermissions = this.findConflictingPermissions(role, permission);
-    if (conflictingPermissions.length > 0) {
-      result.addWarning(
-        `Permission may conflict with existing permissions: ${conflictingPermissions.join(', ')}`,
-      );
-    }
-
-    // Validate permission scope
-    if (this.isSystemCriticalPermission(permission)) {
+    // Validate permission scope - system-critical permissions require root level roles
+    if (SYSTEM_HELPERS.isSystemCriticalPermission(permission.getResource(), permission.getAction())) {
       const rootRoleSpec = new RootLevelRoleSpecification();
       if (!rootRoleSpec.isSatisfiedBy(role)) {
         result.addError('System-critical permissions can only be assigned to root level roles.');
       }
+    }
+
+    // Check if permission already exists in the role
+    const permissionName = permission.getPermissionName();
+    const hasPermission = role.permissions.some(existingPermission => 
+      existingPermission.getPermissionName() === permissionName
+    );
+    
+    if (hasPermission) {
+      result.addWarning(`Permission '${permissionName}' is already assigned to this role.`);
     }
 
     return result;
@@ -144,7 +133,7 @@ export class DomainValidationService {
     }
 
     // Check for common patterns
-    if (this.hasCommonPatterns(password)) {
+    if (SYSTEM_HELPERS.hasCommonPatterns(password)) {
       result.addWarning('Password contains common patterns that may reduce security.');
     }
 
@@ -180,6 +169,15 @@ export class DomainValidationService {
       const rootUserSpec = new RootLevelUserSpecification();
       if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
         result.addError('Only ROOT users can assign ROOT_READONLY role.');
+      }
+    }
+
+    // Check BOT role assignment restrictions
+    if (role.name === RolesEnum.BOT && assigningUser) {
+      // Only ROOT users can assign BOT role
+      const rootUserSpec = new RootLevelUserSpecification();
+      if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
+        result.addError('Only ROOT users can assign BOT role.');
       }
     }
 
@@ -220,79 +218,68 @@ export class DomainValidationService {
   }
 
   // Private helper methods
-  private findConflictingPermissions(role: Role, newPermission: Permission): string[] {
-    const conflicts: string[] = [];
-
-    // Define permission conflicts (in a real app, this might come from configuration)
-    const conflictRules = new Map([
-      ['user:delete', ['user:create', 'user:update']], // Deletion might conflict with creation/update workflows
-      ['system:shutdown', ['system:startup']], // System state conflicts
-    ]);
-
-    const newPermissionName = newPermission.getPermissionName();
-    const conflictList = conflictRules.get(newPermissionName) || [];
-
-    for (const existingPermission of role.permissions) {
-      if (conflictList.includes(existingPermission.getPermissionName())) {
-        conflicts.push(existingPermission.getPermissionName());
-      }
-    }
-
-    return conflicts;
-  }
 
   private findConflictingRoles(existingRoles: Role[], newRole: Role): string[] {
     const conflicts: string[] = [];
-
-    // Define role conflicts
-    const roleConflicts = new Map([
-      [RolesEnum.ROOT, [RolesEnum.GUEST, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT]],
-      [RolesEnum.ROOT_READONLY, [RolesEnum.GUEST, RolesEnum.ADMIN, RolesEnum.MANAGER, RolesEnum.SALES_AGENT]],
-      [RolesEnum.ADMIN, [RolesEnum.GUEST, RolesEnum.SALES_AGENT]],
-      [RolesEnum.MANAGER, [RolesEnum.GUEST, RolesEnum.SALES_AGENT]],
-      [RolesEnum.SALES_AGENT, [RolesEnum.GUEST]],
-    ]);
-
     const newRoleName = newRole.name.toLowerCase();
-    const conflictList = roleConflicts.get(newRoleName as RolesEnum) || [];
+
+    // Reglas simples y claras de conflictos de roles:
+    // 1. ROOT es incompatible con todos los demás roles, EXCEPTO BOT
+    // 2. BOT es incompatible con todos excepto ROOT
+    // 3. Todos los demás roles se pueden mezclar sin problema
 
     for (const existingRole of existingRoles) {
       const existingRoleName = existingRole.name.toLowerCase();
-      if (conflictList.includes(existingRoleName as RolesEnum)) {
+
+      // Si el nuevo rol es ROOT, es incompatible con cualquier rol excepto BOT
+      if (newRoleName === RolesEnum.ROOT && existingRoleName !== RolesEnum.ROOT && existingRoleName !== RolesEnum.BOT) {
+        conflicts.push(existingRole.name);
+      }
+      // Si el nuevo rol es BOT, es incompatible con todos excepto ROOT
+      else if (newRoleName === RolesEnum.BOT && existingRoleName !== RolesEnum.ROOT && existingRoleName !== RolesEnum.BOT) {
+        conflicts.push(existingRole.name);
+      }
+      // Si ya existe ROOT, cualquier nuevo rol (excepto ROOT y BOT) es incompatible
+      else if (existingRoleName === RolesEnum.ROOT && newRoleName !== RolesEnum.ROOT && newRoleName !== RolesEnum.BOT) {
+        conflicts.push(existingRole.name);
+      }
+      // Si ya existe BOT, cualquier nuevo rol (excepto ROOT y BOT) es incompatible
+      else if (existingRoleName === RolesEnum.BOT && newRoleName !== RolesEnum.ROOT && newRoleName !== RolesEnum.BOT) {
         conflicts.push(existingRole.name);
       }
     }
 
+    // Extensión futura: Agregar conflictos personalizados aquí si es necesario
+    const customConflicts = this.getCustomRoleConflicts(newRoleName, existingRoles);
+    conflicts.push(...customConflicts);
+
     return conflicts;
   }
 
-  private isSystemCriticalPermission(permission: Permission): boolean {
-    const criticalActions = ['delete', 'shutdown', 'configure'];
-    const criticalResources = ['system', 'database', 'security'];
+  /**
+   * Método para agregar conflictos personalizados en el futuro
+   * Facilita la extensión sin modificar la lógica principal
+   */
+  private getCustomRoleConflicts(_newRoleName: string, _existingRoles: Role[]): string[] {
+    const customConflicts: string[] = [];
 
-    return (
-      criticalActions.includes(permission.getAction().toLowerCase()) ||
-      criticalResources.includes(permission.getResource().toLowerCase())
-    );
+    // Ejemplo de como agregar conflictos específicos en el futuro:
+    // if (newRoleName === 'custom_role_1') {
+    //   for (const existingRole of existingRoles) {
+    //     if (existingRole.name === 'custom_role_2') {
+    //       customConflicts.push(existingRole.name);
+    //     }
+    //   }
+    // }
+
+    return customConflicts;
   }
 
-  private hasCommonPatterns(password: string): boolean {
-    const commonPatterns = [
-      /123/, // Sequential numbers
-      /abc/i, // Sequential letters
-      /password/i, // Common word
-      /qwerty/i, // Keyboard pattern
-      /(.)\1{2,}/, // Repeated characters
-    ];
-
-    return commonPatterns.some(pattern => pattern.test(password));
-  }
+  // Functions moved to SYSTEM_HELPERS in system-constants.ts
 
   private hasSystemOrAuditPermissions(role: Role): boolean {
     return role.permissions.some(permission => {
-      const resource = permission.getResource().toLowerCase();
-      
-      return resource === 'system' || resource === 'audit';
+      return SYSTEM_HELPERS.isSystemOrAuditResource(permission.getResource());
     });
   }
 }

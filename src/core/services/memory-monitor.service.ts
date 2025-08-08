@@ -389,7 +389,7 @@ export class MemoryMonitorService implements OnModuleInit, OnModuleDestroy {
         clearTimeout(timeoutId);
         timeoutId = null;
       }
-    } catch (error) {
+    } catch (_error) {
       this.mutexAcquired = false;
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -511,7 +511,7 @@ export class MemoryMonitorService implements OnModuleInit, OnModuleDestroy {
           setTimeout(() => reject(new Error('Cleanup mutex timeout')), MUTEX_TIMEOUT),
         ),
       ]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Emergency cleanup aborted due to mutex timeout');
 
       return;

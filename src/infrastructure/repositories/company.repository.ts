@@ -212,7 +212,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           }
 
           // Return company without assistants to avoid circular references in entity
-          const { assistants: _assistants, ...companyWithoutAssistants } = company;
+          const { assistants: _, ...companyWithoutAssistants } = company;
 
           return companyWithoutAssistants;
         });
@@ -647,6 +647,50 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         return companies.map(company => this.mapToModel(company));
       },
       [],
+    );
+  }
+
+  async findAssistantsByCompanyId(companyId: CompanyId): Promise<{
+    assistantsMap: Map<string, IAssistantAssignment[]>;
+  }> {
+    return this.executeWithErrorHandling(
+      'findAssistantsByCompanyId',
+      async () => {
+        const companyWithAssistants = await this.client.company.findUnique({
+          where: { id: companyId.getValue() },
+          include: {
+            assistants: {
+              include: {
+                aiAssistant: true,
+                features: {
+                  include: {
+                    aiAssistantFeature: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const assistantsMap = new Map<string, IAssistantAssignment[]>();
+
+        if (companyWithAssistants?.assistants) {
+          const assignments: IAssistantAssignment[] = companyWithAssistants.assistants.map(
+            assignment => ({
+              aiAssistant: assignment.aiAssistant,
+              enabled: assignment.enabled,
+              features: assignment.features.map(ef => ({
+                aiAssistantFeature: ef.aiAssistantFeature,
+                enabled: ef.enabled,
+              })),
+            }),
+          );
+          assistantsMap.set(companyId.getValue(), assignments);
+        }
+
+        return { assistantsMap };
+      },
+      { assistantsMap: new Map() },
     );
   }
 

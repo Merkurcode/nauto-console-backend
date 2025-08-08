@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import { UserAuthorizationService } from './user-authorization.service';
 import { COMPANY_REPOSITORY } from '@shared/constants/tokens';
-import { RolesEnum } from '@shared/constants/enums';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { ForbiddenActionException } from '@core/exceptions/domain-exceptions';
 
@@ -15,6 +15,7 @@ export class UserAccessAuthorizationService {
   constructor(
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepository: ICompanyRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   /**
@@ -76,17 +77,14 @@ export class UserAccessAuthorizationService {
    * Check if user has root-level access
    */
   private hasRootAccess(user: User): boolean {
-    return (
-      user.rolesCollection.containsByName(RolesEnum.ROOT) ||
-      user.rolesCollection.containsByName(RolesEnum.ROOT_READONLY)
-    );
+    return this.userAuthorizationService.canAccessRootFeatures(user);
   }
 
   /**
    * Check if user has admin-level access
    */
   private hasAdminAccess(user: User): boolean {
-    return user.rolesCollection.containsByName(RolesEnum.ADMIN);
+    return this.userAuthorizationService.canAccessAdminFeatures(user);
   }
 
   /**

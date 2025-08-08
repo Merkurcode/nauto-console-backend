@@ -262,6 +262,7 @@ const defaultCompanies = [
       exteriorNumber: '123',
       interiorNumber: 'Suite 100',
       postalCode: '94105',
+      googleMapsUrl: 'https://maps.google.com/?q=Market+Street+123+Suite+100,San+Francisco,California,United+States',
     },
     industrySector: "OTHER",
     industryOperationChannel: "MIXED",

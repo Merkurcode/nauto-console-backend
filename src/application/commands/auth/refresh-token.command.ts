@@ -1,7 +1,7 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RefreshTokenDto } from '@application/dtos/auth/refresh-token.dto';
 import { IAuthRefreshTokenResponse } from '@application/dtos/responses/user.response';
-import { UnauthorizedException, Injectable, Inject } from '@nestjs/common';
+import { UnauthorizedException, Injectable, Inject, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
@@ -9,6 +9,7 @@ import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { UserBanService } from '@core/services/user-ban.service';
+import { RolesEnum } from '@shared/constants/enums';
 import { v4 as uuidv4 } from 'uuid';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
 
@@ -44,6 +45,12 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     const user = await this.userRepository.findById(token.userId.getValue());
     if (!user) {
       throw new UnauthorizedException();
+    }
+
+    // Check if user is BOT - BOTs cannot use refresh tokens
+    const isBotUser = user.roles.some(role => role.name === RolesEnum.BOT);
+    if (isBotUser) {
+      throw new ForbiddenException('BOT users cannot use refresh token functionality');
     }
 
     // Check if user is banned
@@ -87,6 +94,7 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get('jwt.secret'),
       expiresIn: this.configService.get('jwt.accessExpiration'),
+      algorithm: this.configService.get('JWT_ALGORITHM', 'HS512'),
     });
 
     // Create new refresh token entry

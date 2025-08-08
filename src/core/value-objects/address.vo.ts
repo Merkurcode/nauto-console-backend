@@ -8,6 +8,7 @@ export class Address {
   private readonly _exteriorNumber: string;
   private readonly _interiorNumber?: string;
   private readonly _postalCode: string;
+  private readonly _googleMapsUrl?: string;
 
   constructor(
     country: string,
@@ -17,8 +18,9 @@ export class Address {
     exteriorNumber: string,
     postalCode: string,
     interiorNumber?: string,
+    googleMapsUrl?: string,
   ) {
-    this.validate(country, state, city, street, exteriorNumber, postalCode);
+    this.validate(country, state, city, street, exteriorNumber, postalCode, googleMapsUrl);
 
     this._country = country.trim();
     this._state = state.trim();
@@ -27,6 +29,7 @@ export class Address {
     this._exteriorNumber = exteriorNumber.trim();
     this._interiorNumber = interiorNumber?.trim();
     this._postalCode = postalCode.trim();
+    this._googleMapsUrl = googleMapsUrl?.trim();
   }
 
   private validate(
@@ -36,6 +39,7 @@ export class Address {
     street: string,
     exteriorNumber: string,
     postalCode: string,
+    googleMapsUrl?: string,
   ): void {
     if (!country || country.trim().length === 0) {
       throw new InvalidValueObjectException('Country cannot be empty');
@@ -84,6 +88,19 @@ export class Address {
     if (postalCode.length > 10) {
       throw new InvalidValueObjectException('Postal code is too long');
     }
+
+    // Optional Google Maps URL validation
+    if (googleMapsUrl && googleMapsUrl.trim().length > 0) {
+      if (googleMapsUrl.length > 500) {
+        throw new InvalidValueObjectException('Google Maps URL is too long');
+      }
+
+      // Basic URL validation for Google Maps
+      const urlPattern = /^https?:\/\/.+/i;
+      if (!urlPattern.test(googleMapsUrl)) {
+        throw new InvalidValueObjectException('Google Maps URL must be a valid URL');
+      }
+    }
   }
 
   get country(): string {
@@ -114,6 +131,10 @@ export class Address {
     return this._postalCode;
   }
 
+  get googleMapsUrl(): string | undefined {
+    return this._googleMapsUrl;
+  }
+
   getFullAddress(): string {
     const interior = this._interiorNumber ? ` Int. ${this._interiorNumber}` : '';
 
@@ -128,7 +149,8 @@ export class Address {
       this._street === other._street &&
       this._exteriorNumber === other._exteriorNumber &&
       this._interiorNumber === other._interiorNumber &&
-      this._postalCode === other._postalCode
+      this._postalCode === other._postalCode &&
+      this._googleMapsUrl === other._googleMapsUrl
     );
   }
 }

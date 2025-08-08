@@ -49,10 +49,12 @@ import { DeleteRoleCommand } from '@application/commands/role/delete-role.comman
 import { AssignPermissionCommand } from '@application/commands/role/assign-permission.command';
 import { RemovePermissionCommand } from '@application/commands/role/remove-permission.command';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('roles')
 @Controller('roles')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@NoBots()
 @RequirePermissions('role:read')
 @ApiBearerAuth('JWT-auth')
 export class RoleController {

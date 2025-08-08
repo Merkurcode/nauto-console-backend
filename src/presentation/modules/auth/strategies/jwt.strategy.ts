@@ -7,6 +7,8 @@ import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { SessionService } from '@core/services/session.service';
+import { BotSessionValidationService } from '@core/services/bot-session-validation.service';
+import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';
 
 // JWT-specific token (defined locally to avoid circular dependencies)
 const JWT_USER_REPOSITORY = 'JWT_USER_REPOSITORY';
@@ -20,6 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
     private readonly sessionService: SessionService,
+    private readonly botSessionValidationService: BotSessionValidationService,
   ) {
     logger.setContext(JwtStrategy.name);
     // Security: Validate JWT secret is properly configured - no fallback allowed
@@ -46,13 +49,24 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
+      ignoreExpiration: true, // Permitir tokens sin expiración (BOT tokens)
       secretOrKey: jwtSecret,
     });
   }
 
   async validate(payload: IJwtPayload): Promise<IJwtPayload> {
     const validationStartTime = Date.now();
+
+    // Verificar si es un token BOT
+    const isBotToken = payload.permissions?.includes(BOT_SPECIAL_PERMISSIONS.ALL_ACCESS);
+
+    // Security: Validar expiración manualmente solo para tokens NO-BOT
+    if (!isBotToken && payload.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp < now) {
+        throw new UnauthorizedException('Token has expired');
+      }
+    }
 
     // Security: Sanitize sensitive information in debug logs
     this.logger.debug({
@@ -64,6 +78,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       sessionTokenPrefix: payload.jti ? payload.jti.substring(0, 8) + '***' : 'undefined',
       rolesCount: payload.roles?.length || 0,
       hasPermissions: Array.isArray(payload.permissions) && payload.permissions.length > 0,
+      isBotToken, // Log si es token BOT
     });
 
     let user;
@@ -93,7 +108,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Enhanced Session Validation - validate that the session exists and is active
-    if (payload.jti) {
+    // Skip session validation for BOT tokens
+    if (payload.jti && !isBotToken) {
       try {
         await this.sessionService.validateSessionToken(payload.jti);
 
@@ -113,6 +129,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           error: error instanceof Error ? error.message : String(error),
         });
         throw new UnauthorizedException('Session is invalid or expired');
+      }
+    } else if (isBotToken && payload.jti && payload.tokenId) {
+      // BOT tokens have their own session validation mechanism
+      try {
+        await this.botSessionValidationService.validateBotSession(payload.jti, payload.tokenId);
+
+        this.logger.debug({
+          message: 'BOT session validated successfully',
+          userId: payload.sub,
+          tokenId: payload.tokenId?.substring(0, 8) + '***',
+          sessionTokenId: payload.jti?.substring(0, 8) + '***',
+        });
+      } catch (error) {
+        this.logger.warn({
+          message: 'BOT session validation failed',
+          userId: payload.sub,
+          tokenId: payload.tokenId?.substring(0, 8) + '***',
+          sessionTokenId: payload.jti?.substring(0, 8) + '***',
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw new UnauthorizedException('BOT session is invalid or token has been revoked');
       }
     }
 

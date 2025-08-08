@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -8,6 +9,7 @@ import * as basicAuth from 'express-basic-auth';
 import helmet from 'helmet';
 import { LoggerService } from '@infrastructure/logger/logger.service';
 import { useContainer } from 'class-validator';
+import { join } from 'path';
 
 async function bootstrap() {
   // =========================================================================
@@ -26,7 +28,7 @@ async function bootstrap() {
   // =========================================================================
   // APPLICATION SETUP
   // =========================================================================
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   const logger = await app.resolve(LoggerService);
 
@@ -36,6 +38,68 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // =========================================================================
+  // STATIC FILES AND DYNAMIC CONFIG
+  // =========================================================================
+  // Serve static files from public directory
+  app.useStaticAssets(join(__dirname, '..', 'public'));
+
+  // Serve dynamic configuration script
+  app.use('/swagger/config.js', (req, res) => {
+    const serverSecret = configService.get<string>('SERVER_INTEGRITY_SECRET', '');
+    const botSecret = configService.get<string>('BOT_INTEGRITY_SECRET', '');
+
+    // Escape quotes to prevent injection
+    const escapedServerSecret = serverSecret.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const escapedBotSecret = botSecret.replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+    const configScript = `
+// Auto-configuration script for Swagger signature
+console.log('🔧 Loading Swagger configuration from server...');
+
+// Auto-configure localStorage with values from server .env
+const config = {
+  serverSecret: '${escapedServerSecret}',
+  botSecret: '${escapedBotSecret}',
+  secretType: 'server' // default
+};
+
+// Only set if values exist and are not empty
+if (config.serverSecret && config.serverSecret.length > 0) {
+  localStorage.setItem('swagger-server-secret', config.serverSecret);
+  console.log('✅ Server secret configured (' + config.serverSecret.length + ' chars)');
+} else {
+  console.warn('⚠️ SERVER_INTEGRITY_SECRET not found in .env');
+}
+
+if (config.botSecret && config.botSecret.length > 0) {
+  localStorage.setItem('swagger-bot-secret', config.botSecret);
+  console.log('✅ Bot secret configured (' + config.botSecret.length + ' chars)');
+} else {
+  console.warn('⚠️ BOT_INTEGRITY_SECRET not found in .env');
+}
+
+// Set default secret type
+localStorage.setItem('swagger-secret-type', config.secretType);
+console.log('✅ Default secret type set to:', config.secretType);
+
+console.log('🚀 Swagger signature auto-configuration complete!');
+
+// Expose configuration for debugging (without exposing actual secrets)
+window.SwaggerConfig = {
+  hasServerSecret: !!config.serverSecret,
+  hasBotSecret: !!config.botSecret,
+  secretType: config.secretType,
+  serverSecretLength: config.serverSecret.length,
+  botSecretLength: config.botSecret.length
+};
+`;
+
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(configScript);
+  });
+
+  // =========================================================================
   // SECURITY MIDDLEWARE
   // =========================================================================
   app.use(
@@ -43,9 +107,11 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"], // Added unsafe-inline for custom JS
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Added unsafe-eval for crypto operations
           imgSrc: ["'self'", 'data:', 'https:'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          connectSrc: ["'self'"],
         },
       },
     }),
@@ -208,6 +274,143 @@ async function bootstrap() {
       filter: true,
       showRequestHeaders: true,
       tryItOutEnabled: true,
+      requestInterceptor: async request => {
+        // Load configuration from localStorage
+        const SERVER_SECRET = localStorage.getItem('swagger-server-secret') || '';
+        const BOT_SECRET = localStorage.getItem('swagger-bot-secret') || '';
+        const secretType = localStorage.getItem('swagger-secret-type') || 'server';
+
+        // Public endpoints that skip signature validation
+        const SKIP_PATHS = [
+          '/api/health',
+          '/api/health/database',
+          '/api/health/ready',
+          '/api/health/live',
+          '/api/auth/login',
+          '/api/auth/verify-otp',
+          '/api/auth/refresh-token',
+          '/api/auth/email/verify',
+          '/api/auth/password/request-reset',
+          '/api/auth/password/reset',
+          '/api/companies/by-host',
+        ];
+
+        // Generate HMAC-SHA256 signature (match server)
+        async function generateSignature(payload, secret) {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(payload);
+          const keyData = encoder.encode(secret);
+
+          const key = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign'],
+          );
+
+          const signature = await crypto.subtle.sign('HMAC', key, data);
+
+          return Array.from(new Uint8Array(signature))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        }
+
+        // Build payload - MATCH SERVER MIDDLEWARE FORMAT
+        function buildPayload(method, path, timestamp, body) {
+          // Build full URL (like server middleware)
+          const baseUrl = window.location.origin;
+          const fullUrl = baseUrl + path;
+
+          // Stringify body (match server format)
+          let bodyStr = '';
+          if (body && typeof body === 'object' && Object.keys(body).length > 0) {
+            // Sort keys for consistent signature (match server)
+            const sortedBody = Object.keys(body)
+              .sort()
+              .reduce((obj, key) => {
+                obj[key] = body[key];
+
+                return obj;
+              }, {});
+            bodyStr = JSON.stringify(sortedBody);
+          } else if (body && typeof body === 'string') {
+            bodyStr = body;
+          }
+
+          // Use server format: METHOD|FULL_URL|BODY|TIMESTAMP
+          const components = [method.toUpperCase(), fullUrl, bodyStr, timestamp];
+
+          return components.join('|');
+        }
+
+        // Get path from URL
+        function getPathFromUrl(url) {
+          try {
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+              const urlObj = new URL(url);
+
+              return urlObj.pathname + urlObj.search;
+            } else {
+              return url.split('?')[0];
+            }
+          } catch (_e) {
+            return url;
+          }
+        }
+
+        // Check if should skip signature
+        function shouldSkipSignature(path) {
+          return SKIP_PATHS.some(skipPath => path.startsWith(skipPath));
+        }
+
+        // Process the request
+        const path = getPathFromUrl(request.url);
+
+        if (!shouldSkipSignature(path) && secretType !== 'none') {
+          const secret = secretType === 'bot' ? BOT_SECRET : SERVER_SECRET;
+
+          if (secret) {
+            // Use 10-minute window timestamp like server middleware
+            const timestamp = Math.floor(Date.now() / (10 * 60 * 1000)).toString();
+            const method = request.method || 'GET';
+
+            let bodyObj = null;
+            if (request.body) {
+              try {
+                bodyObj =
+                  typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+              } catch (_e) {
+                bodyObj = request.body;
+              }
+            }
+
+            const payload = buildPayload(method, path, timestamp, bodyObj);
+            const signature = await generateSignature(payload, secret);
+
+            request.headers = request.headers || {};
+            request.headers['x-signature'] = signature;
+            request.headers['x-timestamp'] = timestamp;
+
+            console.warn('✅ Signature added to request:', {
+              path,
+              method,
+              timestamp,
+              signature: signature.substring(0, 8) + '...',
+              secretType,
+              headers: request.headers,
+            });
+          } else {
+            console.warn('⚠️ No secret configured. Set it using localStorage:');
+            console.warn('localStorage.setItem("swagger-server-secret", "your_secret")');
+            console.warn('localStorage.setItem("swagger-secret-type", "server")');
+          }
+        } else {
+          console.warn('⏭️ Skipping signature for public endpoint:', path);
+        }
+
+        return request;
+      },
     },
     customSiteTitle: `${configService.get<string>('APP_NAME', 'Clean Architecture API')} - Clean Architecture API`,
 
@@ -1196,6 +1399,30 @@ async function bootstrap() {
       document.addEventListener('click', function() {
         setTimeout(applyStatusCodeColors, 100);
       });
+      
+      // =========================================================================
+      // SIGNATURE CONFIGURATION
+      // =========================================================================
+      
+      // Load configuration script from server
+      setTimeout(() => {
+        const configScript = document.createElement('script');
+        configScript.src = '/swagger/config.js?t=' + Date.now(); // Cache busting
+        configScript.onload = () => {
+          console.log('📡 Configuration loaded from server');
+          
+          // Load UI script after config
+          const uiScript = document.createElement('script');
+          uiScript.src = '/swagger/swagger-signature.js';
+          uiScript.defer = true;
+          document.head.appendChild(uiScript);
+        };
+        configScript.onerror = () => {
+          console.warn('⚠️ Could not load auto-configuration');
+          console.log('💡 Configure manually: localStorage.setItem("swagger-server-secret", "your_secret")');
+        };
+        document.head.appendChild(configScript);
+      }, 1000);
     `,
   });
 

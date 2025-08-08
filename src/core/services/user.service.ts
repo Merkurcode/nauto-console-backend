@@ -23,13 +23,13 @@ import { UserProfile } from '@core/value-objects/user-profile.vo';
 import { Address } from '@core/value-objects/address.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
+import { UserAuthorizationService } from './user-authorization.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { AuthFailureReason, IAuthValidationResult } from '@core/enums/auth-failure-reason.enum';
-import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
 export class UserService {
@@ -41,6 +41,7 @@ export class UserService {
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepository: ICompanyRepository,
     private readonly domainValidationService: DomainValidationService,
+    private readonly userAuthorizationService: UserAuthorizationService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
@@ -614,21 +615,14 @@ export class UserService {
     );
     roleAssignmentValidation.throwIfInvalid();
 
-    // Additional validation: Admin users can only assign roles to users in their own company
+    // Additional validation: Use centralized authorization service for role assignment
     if (assigningUser && companyId) {
-      const isAssignerAdmin = assigningUser.rolesCollection.containsByName(RolesEnum.ADMIN);
-      const isAssignerRoot = assigningUser.rolesCollection.containsByName(RolesEnum.ROOT);
+      if (!this.userAuthorizationService.canAssignRolesToUser(assigningUser, companyId)) {
+        throw new BusinessRuleValidationException('You do not have permission to assign roles to users in this company.');
+      }
       
-      if (isAssignerAdmin && !isAssignerRoot) {
-        // Admin users can only assign roles to users in their own company
-        if (assigningUser.companyId?.getValue() !== companyId) {
-          throw new BusinessRuleValidationException('Admin users can only assign roles to users in their own company.');
-        }
-        
-        // Target user must also be in the same company
-        if (user.companyId?.getValue() !== companyId) {
-          throw new BusinessRuleValidationException('Cannot assign role to user from different company.');
-        }
+      if (!this.userAuthorizationService.canAssignRole(assigningUser, user, role)) {
+        throw new BusinessRuleValidationException('You do not have permission to assign this role to this user.');
       }
     }
 
@@ -671,7 +665,8 @@ export class UserService {
   }
 
   async hashPassword(password: string): Promise<string> {
-    const salt = await bcrypt.genSalt(10);
+    const saltRounds = this.configService.get<number>('PASSWORD_SALT_ROUNDS', 12);
+    const salt = await bcrypt.genSalt(saltRounds);
 
     return bcrypt.hash(password, salt);
   }

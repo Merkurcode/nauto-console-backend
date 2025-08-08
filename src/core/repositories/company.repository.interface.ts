@@ -44,6 +44,10 @@ export interface ICompanyRepository {
 
   // Hierarchy methods
   findSubsidiaries(parentId: CompanyId): Promise<Company[]>;
+  // Assistant methods
+  findAssistantsByCompanyId(companyId: CompanyId): Promise<{
+    assistantsMap: Map<string, IAssistantAssignment[]>;
+  }>;
   findRootCompanies(): Promise<Company[]>;
   findByParentCompany(parentId: CompanyId): Promise<Company[]>;
   countSubsidiaries(parentId: CompanyId): Promise<number>;

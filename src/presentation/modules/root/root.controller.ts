@@ -22,10 +22,12 @@ import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { AuditLogQueryDto } from '@application/dtos/requests/audit-log-query.dto';
 import { GetAuditLogsQuery } from '@application/queries/audit-log/get-audit-logs.query';
 import { IAuditLogQuery } from '@core/repositories/audit-log.repository.interface';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('root')
 @Controller('root')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@NoBots()
 @Roles(RolesEnum.ROOT)
 @ApiBearerAuth('JWT-auth')
 @ApiExtraModels(AuditLogQueryDto)

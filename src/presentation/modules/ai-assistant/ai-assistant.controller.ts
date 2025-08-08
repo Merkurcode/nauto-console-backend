@@ -38,6 +38,7 @@ import { GetCompanyAssistantsQuery } from '@application/queries/ai-assistant/get
 import { AssignAssistantToCompanyCommand } from '@application/commands/ai-assistant/assign-assistant-to-company.command';
 import { ToggleAssistantStatusCommand } from '@application/commands/ai-assistant/toggle-assistant-status.command';
 import { ToggleFeatureStatusCommand } from '@application/commands/ai-assistant/toggle-feature-status.command';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('AI Assistants')
 @ApiBearerAuth('JWT-auth')
@@ -147,6 +148,7 @@ export class AIAssistantController {
   }
 
   @Post('assign')
+  @NoBots()
   @RequirePermissions('ai-assistant:update')
   @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
@@ -201,6 +203,7 @@ export class AIAssistantController {
   }
 
   @Put('toggle-status')
+  @NoBots()
   @RequirePermissions('ai-assistant:update')
   @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
@@ -262,6 +265,7 @@ export class AIAssistantController {
   }
 
   @Put('toggle-feature')
+  @NoBots()
   @RequirePermissions('ai-assistant:update')
   @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)

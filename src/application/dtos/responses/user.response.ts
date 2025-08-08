@@ -63,6 +63,7 @@ export interface IJwtPayload {
   tenantId?: string;
   companyId?: string;
   jti?: string; // JWT ID - session token
+  tokenId?: string; // BOT token identifier
   iat?: number;
   exp?: number;
 }

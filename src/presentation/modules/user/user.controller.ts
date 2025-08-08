@@ -19,11 +19,13 @@ import { TransactionContextService } from '@infrastructure/database/prisma/trans
 // Guards & Decorators
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
+import { RootAssignmentGuard } from '@presentation/guards/root-assignment.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
+import { PreventRootAssignment } from '@shared/decorators/prevent-root-assignment.decorator';
 
 // DTOs
 import { UpdateUserProfileDto } from '@application/dtos/user/update-user-profile.dto';
@@ -32,6 +34,7 @@ import { AssignRoleDto } from '@application/dtos/user/assign-role.dto';
 
 // Queries
 import { GetUsersQuery } from '@application/queries/user/get-users.query';
+import { GetUserWithAuthorizationQuery } from '@application/queries/user/get-user-with-authorization.query';
 
 // Commands
 import { UpdateUserProfileCommand } from '@application/commands/user/update-user-profile.command';
@@ -42,10 +45,11 @@ import { RemoveRoleCommand } from '@application/commands/user/remove-role.comman
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { UserDeletionPolicyService } from '@core/services/user-deletion-policy.service';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('users')
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootAssignmentGuard)
 @ApiBearerAuth('JWT-auth')
 export class UserController {
   constructor(
@@ -132,7 +136,32 @@ export class UserController {
     return this.queryBus.execute(new GetUsersQuery(currentUser.companyId!, currentUser.sub));
   }
 
+  @Get(':id')
+  @RequirePermissions('user:read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get user by ID with company-based access control',
+    description:
+      'Get detailed information about a specific user by ID with role-based access control:\n\n' +
+      '- **Root/Root-Readonly**: Can access any user\n' +
+      '- **Admin**: Can access users from their company and child companies\n' +
+      '- **Manager, Sales Agent, Host, Guest**: Can only access their own profile\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:read</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
+  })
+  @ApiParam({ name: 'id', description: 'User ID', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Returns user information' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have permission to access this user',
+  })
+  async getUserById(@Param('id') id: string, @CurrentUser() currentUser: IJwtPayload) {
+    return this.queryBus.execute(new GetUserWithAuthorizationQuery(id, currentUser.sub));
+  }
+
   @Put(':id')
+  @NoBots()
   @Roles(
     RolesEnum.ROOT,
     RolesEnum.ROOT_READONLY,
@@ -176,6 +205,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER)
   @CanDelete('user')
   @HttpCode(HttpStatus.OK)
@@ -209,6 +239,7 @@ export class UserController {
   }
 
   @Patch(':id/activate')
+  @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
@@ -248,8 +279,10 @@ export class UserController {
   }
 
   @Post(':id/roles')
+  @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @CanWrite('user')
+  @PreventRootAssignment()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Assign role to user (Root/Admin)',
@@ -282,6 +315,7 @@ export class UserController {
   }
 
   @Delete(':id/roles/:roleId')
+  @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)

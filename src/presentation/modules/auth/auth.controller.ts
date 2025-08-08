@@ -10,6 +10,7 @@ import {
   Request,
   UseGuards,
   Inject,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -56,13 +57,16 @@ import { Public } from '@shared/decorators/public.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { SkipThrottle, Throttle } from '@shared/decorators/throttle.decorator';
 import { WriteOperation } from '@shared/decorators/write-operation.decorator';
+import { PreventRootAssignment } from '@shared/decorators/prevent-root-assignment.decorator';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { InvitationGuard } from '@presentation/guards/invitation.guard';
+import { RootAssignmentGuard } from '@presentation/guards/root-assignment.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 
@@ -92,10 +96,12 @@ export class AuthController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard, RootAssignmentGuard)
   @RequirePermissions('auth:write')
   @WriteOperation('auth')
+  @PreventRootAssignment()
   @Post('register')
+  @NoBots()
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -124,6 +130,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Authenticate user and get tokens',
@@ -181,6 +188,7 @@ export class AuthController {
 
   @Public()
   @Post('refresh-token')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Refresh access token using refresh token',
@@ -200,6 +208,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -225,6 +234,19 @@ export class AuthController {
     description: 'Session token required for local logout',
   })
   async logout(@CurrentUser() user: IJwtPayload, @Body() logoutDto: LogoutDto) {
+    // Check if user is BOT - BOTs cannot logout
+    const isBotUser = user.roles?.some(role => role === RolesEnum.BOT);
+    if (isBotUser) {
+      this.logger.warn({
+        message: 'BOT user attempted logout - operation forbidden',
+        userId: user.sub,
+        email: user.email,
+        roles: user.roles,
+      });
+      
+      throw new ForbiddenException('BOT users cannot perform logout operation');
+    }
+
     this.logger.debug({
       message: 'Logout request received',
       userId: user.sub,
@@ -272,6 +294,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Post('email/send-verification')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -332,6 +355,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get('email/status/:email')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -379,6 +403,7 @@ export class AuthController {
 
   @Public()
   @Post('password/request-reset')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Request a password reset email with captcha validation',
@@ -411,6 +436,7 @@ export class AuthController {
 
   @Public()
   @Post('password/reset')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Reset password with a token',
@@ -429,6 +455,7 @@ export class AuthController {
 
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @Post('admin/change-password')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -464,6 +491,7 @@ export class AuthController {
   }
 
   @Post('change-password')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -501,6 +529,7 @@ export class AuthController {
   }
 
   @Post('change-email')
+  @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -530,8 +559,6 @@ export class AuthController {
       return this.commandBus.execute(
         new ChangeEmailCommand(
           user.sub,
-          user.roles,
-          user.companyId || null,
           changeEmailDto.newEmail,
           changeEmailDto.currentPassword,
           changeEmailDto.targetUserId,

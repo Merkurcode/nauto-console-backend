@@ -51,7 +51,8 @@ export type AuditLogType =
   | 'database'
   | 'security'
   | 'exception'
-  | 'transaction';
+  | 'transaction'
+  | 'bot';
 
 /**
  * Acciones específicas que pueden ser auditadas

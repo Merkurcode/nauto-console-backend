@@ -3,6 +3,10 @@ import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
 import { RolesEnum } from '@shared/constants/enums';
+import {
+  SPECIFICATION_CRITICAL_RESOURCES,
+  SPECIFICATION_CRITICAL_ACTIONS,
+} from '@shared/constants/system-constants';
 
 /**
  * Specification to check if a role is the default role
@@ -114,12 +118,12 @@ export class CanAssignPermissionToRoleSpecification extends Specification<Role> 
 
   private isSystemCriticalPermission(permission: Permission): boolean {
     // Business rule: System critical permissions require root level roles
-    const criticalResources = ['user', 'role', 'permission', 'system', 'company'];
-    const criticalActions = ['delete', 'create', 'update'];
+    const resource = permission.getResource().toLowerCase();
+    const action = permission.getAction().toLowerCase();
 
     return (
-      criticalResources.includes(permission.getResource().toLowerCase()) &&
-      criticalActions.includes(permission.getAction().toLowerCase())
+      SPECIFICATION_CRITICAL_RESOURCES.some(criticalResource => criticalResource === resource) &&
+      SPECIFICATION_CRITICAL_ACTIONS.some(criticalAction => criticalAction === action)
     );
   }
 }
@@ -146,8 +150,8 @@ export class BasicUserRoleSpecification extends Specification<Role> {
       !role.isRootLevelRole() && // Not root or root_readonly
       !role.isAdminRole() && // Not admin
       !role.isDefault && // Not default role (guest)
-      role.permissions.length > 0 &&
-      role.permissions.length <= 10 // Basic roles shouldn't have too many permissions
+      role.permissions.length > 0
+      // Removed arbitrary permission limit - basic roles can have any number of permissions
     );
   }
 }

@@ -1,11 +1,13 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
 import { IJwtPayload } from '@application/dtos/responses/user.response';
 import { Email } from '@core/value-objects/email.vo';
 import { RolesEnum } from '@shared/constants/enums';
+import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';
 
 // Interface for user authorization service compatibility
 interface IUserForAuth {
@@ -28,6 +30,7 @@ export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly userAuthorizationService: UserAuthorizationService,
+    private readonly configService: ConfigService,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -46,6 +49,11 @@ export class PermissionsGuard implements CanActivate {
 
     if (!jwtPayload) {
       return false;
+    }
+
+    // Verificar si tiene el permiso especial BOT (acceso completo)
+    if (jwtPayload.permissions?.includes(BOT_SPECIAL_PERMISSIONS.ALL_ACCESS)) {
+      return true; // BOT con acceso completo pasa todas las verificaciones
     }
 
     // Create a user-like object from JWT payload for authorization service
@@ -79,6 +87,14 @@ export class PermissionsGuard implements CanActivate {
     // Check for sensitive operation requirement
     const requiresSensitive = this.reflector.get<boolean>('sensitive', context.getHandler());
     if (requiresSensitive) {
+      // Check if sensitive operations validation is enabled in config
+      const sensitiveOperationsEnabled = this.configService.get<boolean>('SENSITIVE_OPERATIONS_ENABLED', true);
+      
+      // If disabled in config, skip the 2FA requirement and allow access
+      if (!sensitiveOperationsEnabled) {
+        return true;
+      }
+      
       return this.userAuthorizationService.canPerformSensitiveOperations(userForAuth);
     }
 

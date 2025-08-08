@@ -164,6 +164,9 @@ export class UpdateUserProfileCommandHandler
         updateData.address.interiorNumber !== undefined
           ? updateData.address.interiorNumber
           : currentAddress?.interiorNumber,
+        updateData.address.googleMapsUrl !== undefined
+          ? updateData.address.googleMapsUrl
+          : currentAddress?.googleMapsUrl,
       );
       targetUser.setAddress(newAddress);
       hasChanges = true;

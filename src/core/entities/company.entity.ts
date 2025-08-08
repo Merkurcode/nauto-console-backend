@@ -131,6 +131,7 @@ export class Company extends AggregateRoot {
       exteriorNumber: string;
       interiorNumber?: string;
       postalCode: string;
+      googleMapsUrl?: string;
     };
     host: string;
     timezone?: string;
@@ -155,6 +156,7 @@ export class Company extends AggregateRoot {
       data.address.exteriorNumber,
       data.address.postalCode,
       data.address.interiorNumber,
+      data.address.googleMapsUrl,
     );
 
     const company = new Company(

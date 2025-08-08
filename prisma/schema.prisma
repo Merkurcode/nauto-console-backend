@@ -187,6 +187,7 @@ model User {
   firstName     String
   lastName      String
   secondLastName String?
+  alias         String?   @unique
   isActive      Boolean   @default(true)
   emailVerified Boolean   @default(false)
   otpEnabled    Boolean   @default(false)
@@ -211,6 +212,9 @@ model User {
   address       UserAddress?
   sessions      Sessions[]
   auditLogs     AuditLog[]
+  botTokensAsBot BotToken[] @relation("BotTokenUser")
+  botTokensIssued BotToken[] @relation("BotTokenIssuer")
+  botTokensRevoked BotToken[] @relation("BotTokenRevoker")
   
   @@index([companyId])
   @@unique([agentPhone, companyId])
@@ -374,6 +378,7 @@ model Company {
   assistants    CompanyAIAssistant[]
   eventsCatalog CompanyEventsCatalog[]
   schedules     CompanySchedules[]
+  botTokens     BotToken[]
   
   @@index([parentCompanyId])
 }
@@ -390,6 +395,7 @@ model Address {
   companyId       String    @unique
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  googleMapsUrl   String?
   
   company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
@@ -444,4 +450,33 @@ model AuditLog {
   @@index([timestamp])
   @@index([level, type])
   @@map("AuditLog")
+}
+
+model BotToken {
+  id               String    @id @default(uuid())
+  tokenId          String    @unique // JWT token identifier (UUID)
+  sessionTokenId   String    @unique // Session token (jti) for validation
+  botUserId        String    // BOT user ID
+  botEmail         String    // BOT user email
+  companyId        String?   // Company association (optional for global BOTs)
+  issuedBy         String    // Root user who issued the token
+  issuedAt         DateTime  @default(now())
+  revokedAt        DateTime? // When token was revoked
+  revokedBy        String?   // Who revoked the token
+  isActive         Boolean   @default(true) // Active status
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relations
+  botUser     User      @relation("BotTokenUser", fields: [botUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  issuer      User      @relation("BotTokenIssuer", fields: [issuedBy], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  revoker     User?     @relation("BotTokenRevoker", fields: [revokedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  
+  // Indexes for performance
+  @@index([tokenId]) // Primary lookup
+  @@index([botUserId, isActive]) // BOT user tokens
+  @@index([companyId, isActive]) // Company tokens
+  @@index([isActive, revokedAt]) // Active/revoked status
+  @@index([issuedBy, issuedAt]) // Issued by user
 }

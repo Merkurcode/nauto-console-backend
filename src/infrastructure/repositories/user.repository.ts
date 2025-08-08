@@ -137,6 +137,37 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     });
   }
 
+  async findByAlias(alias: string): Promise<User | null> {
+    return this.executeWithErrorHandling('findByAlias', async () => {
+      const userRecord = await this.client.user.findUnique({
+        where: { alias },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          profile: true,
+          address: true,
+        },
+      });
+
+      if (!userRecord) {
+        return null;
+      }
+
+      return this.mapToModel(userRecord as UserWithRelations);
+    });
+  }
+
   async findByAgentPhoneAndCompany(agentPhone: string, companyId: string): Promise<User | null> {
     return this.executeWithErrorHandling('findByAgentPhoneAndCompany', async () => {
       const userRecord = await this.client.user.findFirst({
@@ -258,6 +289,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           firstName: user.firstName.getValue(),
           lastName: user.lastName.getValue(),
           secondLastName: user.secondLastName?.getValue(),
+          alias: user.alias,
           isActive: user.isActive,
           emailVerified: user.emailVerified,
           otpEnabled: user.otpEnabled,
@@ -338,6 +370,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           firstName: user.firstName.getValue(),
           lastName: user.lastName.getValue(),
           secondLastName: user.secondLastName?.getValue() || null,
+          alias: user.alias || null,
           isActive: user.isActive,
           emailVerified: user.emailVerified,
           otpEnabled: user.otpEnabled,
@@ -525,6 +558,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       firstName: record.firstName,
       lastName: record.lastName,
       secondLastName: record.secondLastName || undefined,
+      alias: record.alias || undefined,
       isActive: record.isActive,
       emailVerified: record.emailVerified,
       otpEnabled: record.otpEnabled,

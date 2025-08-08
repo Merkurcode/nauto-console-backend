@@ -63,6 +63,9 @@ export enum AuthFailureReason {
 
   /** Error del sistema durante el proceso de autenticación */
   SYSTEM_ERROR = 'system_error',
+
+  /** Usuario BOT no tiene token activo válido */
+  BOT_NO_ACTIVE_TOKEN = 'bot_no_active_token',
 }
 
 /**

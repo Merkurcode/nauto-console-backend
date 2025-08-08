@@ -7,6 +7,7 @@ import { Permission as PrismaPermission } from '@prisma/client';
 import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
+import { HIDDEN_PERMISSIONS } from '@shared/constants/bot-permissions';
 
 @Injectable()
 export class PermissionRepository
@@ -54,7 +55,13 @@ export class PermissionRepository
 
   async findAll(): Promise<Permission[]> {
     return this.executeWithErrorHandling('findAll', async () => {
-      const permissionRecords = await this.client.permission.findMany();
+      const permissionRecords = await this.client.permission.findMany({
+        where: {
+          name: {
+            notIn: HIDDEN_PERMISSIONS, // Excluir permisos especiales de BOT
+          },
+        },
+      });
 
       return permissionRecords.map(record => this.mapToModel(record));
     });
@@ -63,6 +70,11 @@ export class PermissionRepository
   async findAllOrderByName(): Promise<Permission[]> {
     return this.executeWithErrorHandling('findAllOrderByName', async () => {
       const permissionRecords = await this.client.permission.findMany({
+        where: {
+          name: {
+            notIn: HIDDEN_PERMISSIONS, // Excluir permisos especiales de BOT
+          },
+        },
         orderBy: { name: 'asc' },
       });
 

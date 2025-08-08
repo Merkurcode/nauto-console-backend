@@ -68,6 +68,7 @@ export class TokenProvider implements ITokenProvider {
     return this.jwtService.sign(payload, {
       secret: this.configService.get('jwt.secret'),
       expiresIn: this.configService.get('jwt.accessExpiration'),
+      algorithm: this.configService.get('JWT_ALGORITHM', 'HS512'),
     });
   }
 

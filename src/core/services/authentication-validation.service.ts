@@ -8,7 +8,12 @@ import { PermissionCollectionService } from './permission-collection.service';
 import { BusinessConfigurationService } from './business-configuration.service';
 import { AuditLogService } from './audit-log.service';
 import { ITokenProvider } from '@core/interfaces/token-provider.interface';
-import { TOKEN_PROVIDER, LOGGER_SERVICE, AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
+import {
+  TOKEN_PROVIDER,
+  LOGGER_SERVICE,
+  AUDIT_LOG_SERVICE,
+  BOT_TOKEN_REPOSITORY,
+} from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 import {
   AuthFailureReason,
@@ -20,6 +25,8 @@ import { AuthResponse } from '@application/dtos/responses/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { User } from '@core/entities/user.entity';
 import { SendVerificationEmailCommand } from '@application/commands/auth/send-verification-email.command';
+import { RolesEnum } from '@shared/constants/enums';
+import { IBotTokenRepository } from '@core/repositories/bot-token.repository.interface';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -94,6 +101,8 @@ export class AuthenticationValidationService {
     private readonly commandBus: CommandBus,
     @Inject(TOKEN_PROVIDER)
     private readonly tokenProvider: ITokenProvider,
+    @Inject(BOT_TOKEN_REPOSITORY)
+    private readonly botTokenRepository: IBotTokenRepository,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
     @Inject(AUDIT_LOG_SERVICE)
@@ -204,10 +213,16 @@ export class AuthenticationValidationService {
         );
       }
 
-      // Step 3: Update last login
+      // Step 3: Special handling for BOT users
+      const isBotUser = user.roles.some(role => role.name === RolesEnum.BOT);
+      if (isBotUser) {
+        return await this.handleBotLogin(user, email, userAgent, ipAddress, startTime);
+      }
+
+      // Step 4: Update last login (regular users only)
       await this.authService.updateLastLogin(user.id.getValue());
 
-      // Step 4: Check email verification requirements
+      // Step 5: Check email verification requirements
       const emailVerificationResult = await this.checkEmailVerification(user, email);
       if (emailVerificationResult.nextStep === 'email_verification') {
         return await this.buildEmailVerificationResult(
@@ -219,15 +234,15 @@ export class AuthenticationValidationService {
         );
       }
 
-      // Step 5: Check OTP requirements
+      // Step 6: Check OTP requirements
       if (user.otpEnabled) {
         return this.buildOtpRequiredResult(user, email, userAgent, ipAddress, startTime);
       }
 
-      // Step 6: Complete login - generate tokens and session
+      // Step 7: Complete login - generate tokens and session
       const authResponse = await this.completeLogin(user, userAgent, ipAddress);
 
-      // Step 7: Log successful authentication
+      // Step 8: Log successful authentication
       await this.logSuccessfulAuth(user, email, userAgent, ipAddress, startTime);
 
       return {
@@ -572,5 +587,109 @@ export class AuthenticationValidationService {
       },
       'info',
     );
+  }
+
+  /**
+   * Handle BOT login - returns existing active token instead of creating new session
+   */
+  private async handleBotLogin(
+    user: User,
+    email: string,
+    userAgent?: string,
+    ipAddress?: string,
+    startTime?: number,
+  ): Promise<ILoginFlowResult> {
+    const duration = startTime ? Date.now() - startTime : 0;
+
+    this.logger.debug({
+      message: 'Processing BOT login',
+      userId: user.id.getValue(),
+      email,
+      alias: user.alias,
+    });
+
+    // Find active BOT token for this user
+    const activeBotTokens = await this.botTokenRepository.findAllActive();
+    const userActiveBotToken = activeBotTokens.find(
+      token => token.botUserId.getValue() === user.id.getValue(),
+    );
+
+    if (!userActiveBotToken) {
+      // No active BOT token found - this shouldn't happen for valid BOT users
+      this.logger.warn({
+        message: 'BOT user has no active token',
+        userId: user.id.getValue(),
+        email,
+        alias: user.alias,
+      });
+
+      return this.buildFailureResult(
+        email,
+        AuthFailureReason.BOT_NO_ACTIVE_TOKEN,
+        {
+          success: false,
+          failureReason: AuthFailureReason.BOT_NO_ACTIVE_TOKEN,
+          message: 'BOT user has no active token',
+        },
+        userAgent,
+        ipAddress,
+        startTime,
+        user.id,
+      );
+    }
+
+    // Get permissions for the BOT user
+    const permissions = await this.permissionCollectionService.collectUserPermissions(user);
+
+    // Create auth response with existing BOT token
+    const authResponse: AuthResponse = {
+      accessToken: userActiveBotToken.tokenId, // BOT token ID is the access token
+      refreshToken: '', // BOTs don't use refresh tokens
+      user: UserMapper.toAuthResponse(user),
+    };
+
+    // Convert Set to array for the response
+    const userResponse = authResponse.user as any;
+    userResponse.permissions = Array.from(permissions);
+
+    // Log successful BOT authentication
+    this.logger.log({
+      message: 'BOT login successful - returned existing token',
+      userId: user.id.getValue(),
+      email,
+      alias: user.alias,
+      tokenId: userActiveBotToken.tokenId.substring(0, 8) + '***',
+      duration,
+    });
+
+    // Audit log for BOT authentication
+    this.auditLogService.logAuth(
+      'login',
+      `BOT user logged in successfully: ${email} (${user.alias})`,
+      user.id,
+      undefined,
+      {
+        email,
+        alias: user.alias,
+        userAgent,
+        ipAddress,
+        tokenId: userActiveBotToken.tokenId.substring(0, 8) + '***',
+        duration,
+        botLogin: true,
+      },
+      'info',
+    );
+
+    return {
+      success: true,
+      nextStep: 'complete',
+      authResponse,
+      auditDetails: {
+        email,
+        userAgent,
+        ipAddress,
+        duration,
+      },
+    };
   }
 }

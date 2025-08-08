@@ -10,6 +10,7 @@ import { IndustryOperationChannel } from '@core/value-objects/industry-operation
 export class UpdateCompanyCommand implements ICommand {
   constructor(
     public readonly id: CompanyId,
+    public readonly currentUserId: string,
     public readonly name?: CompanyName,
     public readonly description?: CompanyDescription,
     public readonly address?: Address,
@@ -28,8 +29,14 @@ export class UpdateCompanyCommand implements ICommand {
 
 import { Inject, NotFoundException, ConflictException } from '@nestjs/common';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { CompanyMapper } from '@application/mappers/company.mapper';
 import { ICompanyResponse } from '@application/dtos/responses/company.response';
+import {
+  EntityNotFoundException,
+  ForbiddenActionException,
+} from '@core/exceptions/domain-exceptions';
 import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 @CommandHandler(UpdateCompanyCommand)
@@ -37,11 +44,15 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
   constructor(
     @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
     private readonly companyRepository: ICompanyRepository,
+    @Inject(REPOSITORY_TOKENS.USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async execute(command: UpdateCompanyCommand): Promise<ICompanyResponse> {
     const {
       id,
+      currentUserId,
       name,
       description,
       address,
@@ -57,10 +68,24 @@ export class UpdateCompanyCommandHandler implements ICommandHandler<UpdateCompan
       parentCompanyId,
     } = command;
 
+    // Get current user for authorization
+    const currentUser = await this.userRepository.findById(currentUserId);
+    if (!currentUser) {
+      throw new EntityNotFoundException('User', currentUserId);
+    }
+
     // Find existing company
     const company = await this.companyRepository.findById(id);
     if (!company) {
-      throw new NotFoundException('Company not found');
+      throw new EntityNotFoundException('Company', id.getValue());
+    }
+
+    // Authorization check: Root users can update any company, Admin users can only update their own company
+    if (!this.userAuthorizationService.canAccessRootFeatures(currentUser)) {
+      // Non-root users (Admin) can only update their own company
+      if (!this.userAuthorizationService.canAccessCompany(currentUser, company.id.getValue())) {
+        throw new ForbiddenActionException('Admin users can only update their own company');
+      }
     }
 
     // Check if new name already exists (if name is being updated)

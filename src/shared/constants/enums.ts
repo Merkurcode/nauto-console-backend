@@ -1,6 +1,7 @@
 export enum RolesEnum {
   ROOT = 'root',
   ROOT_READONLY = 'root_readonly',
+  BOT = 'bot',
   ADMIN = 'admin',
   MANAGER = 'manager',
   SALES_AGENT = 'sales_agent',
@@ -43,6 +44,8 @@ export enum ActionType {
   UPDATE = 'update',
   ASSIGN = 'assign',
   REMOVE = 'remove',
+  OPERATIONS = 'operations',
+  ACCESS = 'access',
 }
 
 /**
@@ -51,6 +54,7 @@ export enum ActionType {
  */
 export const ROLE_HIERARCHY_ORDER = [
   RolesEnum.ROOT,
+  RolesEnum.BOT, // BOT con privilegios ROOT
   RolesEnum.ROOT_READONLY,
   RolesEnum.ADMIN,
   RolesEnum.MANAGER,
@@ -65,6 +69,7 @@ export const ROLE_HIERARCHY_ORDER = [
  */
 export const ROLE_HIERARCHY_ORDER_STRINGS = [
   'root',
+  'bot', // BOT con privilegios ROOT
   'root_readonly',
   'admin',
   'manager',

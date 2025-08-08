@@ -27,6 +27,7 @@ import { AuditLogQueueService } from './services/audit-log-queue.service';
 import { AuditLogCleanupService } from './services/audit-log-cleanup.service';
 import { AuditTransactionService } from './services/audit-transaction.service';
 import { AuthenticationValidationService } from './services/authentication-validation.service';
+import { BotSessionValidationService } from './services/bot-session-validation.service';
 import { MemoryMonitorService } from './services/memory-monitor.service';
 import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { MonitoringHealthService } from './services/monitoring-health.service';
@@ -69,6 +70,7 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     AuditLogCleanupService,
     AuditTransactionService,
     AuthenticationValidationService,
+    BotSessionValidationService,
     // System monitoring and resilience services
     MemoryMonitorService,
     CircuitBreakerService,
@@ -101,6 +103,7 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     AuditLogCleanupService,
     AuditTransactionService,
     AuthenticationValidationService,
+    BotSessionValidationService,
     // System monitoring and resilience services
     MemoryMonitorService,
     CircuitBreakerService,

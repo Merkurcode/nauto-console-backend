@@ -26,9 +26,11 @@ import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operation.decorator';
 import { RolesGuard } from '@presentation/guards/roles.guard';
+import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('company-users')
 @Controller('companies/users')
+@NoBots()
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
 export class CompanyUsersController {

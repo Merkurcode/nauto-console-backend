@@ -10,11 +10,25 @@ import {
   IAuditLogQuery,
   IAuditLogQueryResult,
 } from '@core/repositories/audit-log.repository.interface';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { UserId } from '@core/value-objects/user-id.vo';
-import { AUDIT_LOG_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { AUDIT_LOG_REPOSITORY, LOGGER_SERVICE, USER_REPOSITORY } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { AuditLogQueueService } from './audit-log-queue.service';
 import { Request } from 'express';
+
+/**
+ * Interface para logging de actividades BOT
+ */
+export interface IBotActivityLogData {
+  userId: string;
+  companyId: string | null;
+  action: string;
+  resource: string;
+  details: Record<string, any>;
+  ipAddress: string;
+  userAgent: string;
+}
 
 /**
  * Servicio de dominio para auditoría integral del sistema
@@ -86,6 +100,8 @@ export class AuditLogService {
     private readonly auditLogRepository: IAuditLogRepository,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
     private readonly auditLogQueue: AuditLogQueueService,
   ) {
     this.logger.setContext(AuditLogService.name);
@@ -316,6 +332,137 @@ export class AuditLogService {
    */
   async performAutomaticCleanup(): Promise<number> {
     return this.cleanupOldLogs(7);
+  }
+
+  /**
+   * Consulta específica para logs de actividad BOT
+   *
+   * @param filters - Filtros específicos para BOT
+   * @param limit - Límite de resultados (default: 100)
+   * @returns Logs de actividad BOT
+   */
+  async queryBotActivity(
+    filters: {
+      botAlias?: string;
+      companyId?: string;
+      tokenId?: string;
+      fromDate?: Date;
+      toDate?: Date;
+      method?: string;
+      path?: string;
+      statusCode?: number;
+    },
+    limit: number = 100,
+  ): Promise<AuditLog[]> {
+    let userId: string | undefined;
+
+    // If botAlias is provided, find the user with that alias to get their userId
+    if (filters.botAlias) {
+      try {
+        const user = await this.userRepository.findByAlias(filters.botAlias);
+        userId = user?.id.getValue();
+
+        if (!userId) {
+          // If no user found with this alias, return empty results
+          this.logger.debug({
+            message: 'No user found with provided alias for bot audit query',
+            alias: filters.botAlias,
+          });
+
+          return [];
+        }
+      } catch (error) {
+        this.logger.warn({
+          message: 'Error finding user by alias in bot audit query',
+          alias: filters.botAlias,
+          error: error.message,
+        });
+
+        return [];
+      }
+    }
+
+    const query: IAuditLogQuery = {
+      filters: {
+        type: ['bot'],
+        userId,
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+        // Additional filters as search text
+        search:
+          [
+            filters.companyId && `companyId:${filters.companyId}`,
+            filters.tokenId && `tokenId:${filters.tokenId}`,
+            filters.method && `method:${filters.method}`,
+            filters.path && `path:${filters.path}`,
+            filters.statusCode && `statusCode:${filters.statusCode}`,
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined,
+      },
+      limit,
+    };
+
+    const result = await this.queryLogs(query);
+
+    return result.logs;
+  }
+
+  /**
+   * Log BOT activity with automatic alias resolution
+   */
+  async logBotActivity(botData: IBotActivityLogData): Promise<void> {
+    try {
+      // Get user to resolve alias
+      const user = await this.userRepository.findById(botData.userId);
+      const botAlias = user?.alias;
+
+      // Queue for asynchronous processing
+      await this.auditLogQueue.enqueue(
+        'info', // level
+        'bot', // type
+        botData.action as AuditLogAction, // action
+        `BOT Activity: ${botData.action}`, // message
+        UserId.fromString(botData.userId), // userId
+        {
+          ...botData.details,
+          botAlias,
+          companyId: botData.companyId,
+          resource: botData.resource,
+          ipAddress: botData.ipAddress,
+          userAgent: botData.userAgent,
+        }, // metadata
+        'bot', // context
+      );
+
+      this.logger.debug({
+        message: 'BOT activity queued for audit logging',
+        userId: botData.userId,
+        action: botData.action,
+        resource: botData.resource,
+        botAlias,
+      });
+    } catch (error) {
+      this.logger.error({
+        message: 'Failed to queue BOT activity audit log',
+        error: error.message,
+        userId: botData.userId,
+        action: botData.action,
+        resource: botData.resource,
+      });
+
+      // Fallback: log critical information synchronously
+      this.logger.warn({
+        message: 'BOT activity audit logging failed',
+        userId: botData.userId,
+        action: botData.action,
+        resource: botData.resource,
+        fallbackLogged: true,
+      });
+
+      // No lanzar error para no bloquear operaciones del BOT
+      // El BOT debe seguir funcionando aunque falle el logging
+    }
   }
 
   /**
