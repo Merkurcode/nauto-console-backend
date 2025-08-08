@@ -7,6 +7,7 @@ import {
   IsInt,
   Min,
   Max,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { RolesEnum } from '@shared/constants/enums';
@@ -14,11 +15,13 @@ import { RolesEnum } from '@shared/constants/enums';
 export class CreateRoleDto {
   @ApiProperty({
     description: 'Role name',
-    example: RolesEnum.ROOT,
+    example: RolesEnum.ADMIN,
+    enum: RolesEnum,
+    enumName: 'RolesEnum',
   })
-  @IsString()
+  @IsEnum(RolesEnum)
   @IsNotEmpty()
-  name!: string;
+  name!: RolesEnum;
 
   @ApiProperty({
     description: 'Role description',

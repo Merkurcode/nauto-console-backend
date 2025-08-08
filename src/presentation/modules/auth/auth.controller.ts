@@ -13,7 +13,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
@@ -104,6 +104,10 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth('JWT-auth')
+  @ApiBody({ 
+    type: RegisterDto,
+    description: 'User registration data including email, password, name, company, and optional profile/address information. Roles can be specified using RolesEnum values.',
+  })
   @ApiOperation({ 
     summary: 'Register a new user (invitation-based)',
     description: 'Register a new user in the system through invitation\n\n' +
@@ -132,6 +136,10 @@ export class AuthController {
   @Post('login')
   @NoBots()
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ 
+    type: LoginDto,
+    description: 'User credentials for authentication (email and password)',
+  })
   @ApiOperation({ 
     summary: 'Authenticate user and get tokens',
     description: 'Authenticate user credentials and retrieve access/refresh tokens\n\n' +
@@ -169,6 +177,10 @@ export class AuthController {
   @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ 
+    type: VerifyOtpDto,
+    description: 'OTP verification data including userId and the 6-digit OTP code',
+  })
   @ApiOperation({ 
     summary: 'Verify OTP code for 2FA',
     description: 'Verify OTP code for two-factor authentication\n\n' +
@@ -190,6 +202,10 @@ export class AuthController {
   @Post('refresh-token')
   @NoBots()
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ 
+    type: RefreshTokenDto,
+    description: 'Refresh token to obtain new access token',
+  })
   @ApiOperation({ 
     summary: 'Refresh access token using refresh token',
     description: 'Get new access token using a valid refresh token\n\n' +
@@ -211,6 +227,10 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
+  @ApiBody({ 
+    type: LogoutDto,
+    description: 'Logout scope configuration. Use LogoutScope.LOCAL for current session only or LogoutScope.GLOBAL for all sessions (default: GLOBAL)',
+  })
   @ApiOperation({
     summary: 'Logout the current user - local (current session) or global (all sessions)',
     description:
@@ -494,6 +514,10 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
+  @ApiBody({ 
+    type: ChangePasswordDto,
+    description: 'Password change data including current password and new password',
+  })
   @ApiOperation({
     summary: 'Change current user password',
     description: 'Change own password with current password verification. Terminates all other sessions and returns new tokens.\n\n' +
@@ -532,6 +556,10 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
+  @ApiBody({ 
+    type: ChangeEmailDto,
+    description: 'Email change data including new email, current password for verification, and optional target user ID (for admin operations)',
+  })
   @ApiOperation({
     summary: 'Change user email with role-based access control',
     description: 'Change user email with role-based authorization. Always requires the target user\'s password for verification:\n\n• **Regular users**: Can only change their own email (requires their own password)\n• **Admin users**: Can change emails of users in their company (requires target user\'s password)\n• **Root users**: Can change any user\'s email (requires target user\'s password)\n\n**⚠️ IMPORTANT RESTRICTION**: Root users\' emails cannot be changed by anyone, including themselves.\n\n' +

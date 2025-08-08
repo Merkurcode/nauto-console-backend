@@ -12,7 +12,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CreateCompanyDto } from '@application/dtos/company/create-company.dto';
@@ -161,6 +161,10 @@ export class CompanyController {
   @NoBots()
   @Roles(RolesEnum.ROOT)
   @WriteOperation('company')
+  @ApiBody({ 
+    type: CreateCompanyDto,
+    description: 'Company creation data with required fields: name, description, host, and address. Optional fields include industry sector, operation channel, timezone, currency, language, and URLs.',
+  })
   @ApiOperation({
     summary: 'Create a new company (Root only)',
     description:
@@ -223,6 +227,10 @@ export class CompanyController {
   @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @WriteOperation('company')
+  @ApiBody({ 
+    type: UpdateCompanyDto,
+    description: 'Company update data. All fields are optional. Only provided fields will be updated.',
+  })
   @ApiOperation({ 
     summary: 'Update company (Root and Admin)', 
     description: 'Root users can update any company, Admin users can only update their own company\n\n' +

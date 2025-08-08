@@ -247,7 +247,9 @@ export class RegisterDto {
   @ApiPropertyOptional({
     description: 'User roles',
     example: [RolesEnum.GUEST],
-    type: [String],
+    enum: RolesEnum,
+    isArray: true,
+    enumName: 'RolesEnum',
   })
   @IsArray()
   @IsString({ each: true })

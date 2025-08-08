@@ -10,7 +10,14 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
@@ -152,6 +159,11 @@ export class AIAssistantController {
   @RequirePermissions('ai-assistant:update')
   @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
+  @ApiBody({
+    type: AssignAssistantToCompanyDto,
+    description:
+      'AI assistant assignment data. Specify company and assistant by ID or name. Features can use AssistantAreaEnum values (BRAND_EXPERT, MARKETING_ASSISTANT, etc.)',
+  })
   @ApiOperation({
     summary: 'Assign AI assistant to company with features (Root Only)',
     description:
@@ -207,6 +219,11 @@ export class AIAssistantController {
   @RequirePermissions('ai-assistant:update')
   @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
+  @ApiBody({
+    type: ToggleAssistantStatusDto,
+    description:
+      'Toggle assistant status data. Specify company and assistant by ID or name, and enabled status (true/false)',
+  })
   @ApiOperation({
     summary: 'Toggle AI assistant enabled status for company (Root Only)',
     description:
@@ -269,6 +286,11 @@ export class AIAssistantController {
   @RequirePermissions('ai-assistant:update')
   @DenyForRootReadOnly()
   @Roles(RolesEnum.ROOT)
+  @ApiBody({
+    type: ToggleFeatureStatusDto,
+    description:
+      'Toggle feature status data. Specify company, assistant, and feature by ID or name, and enabled status (true/false)',
+  })
   @ApiOperation({
     summary: 'Toggle AI assistant feature enabled status (Root Only)',
     description:

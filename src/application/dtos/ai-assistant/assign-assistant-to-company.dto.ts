@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AssistantAreaEnum } from '@shared/constants/enums';
 
 export class AssignAssistantFeatureDto {
   @ApiProperty({
@@ -26,7 +27,9 @@ export class AssignAssistantFeatureDto {
   @ApiProperty({
     description:
       'Key name of the AI assistant feature to assign (either featureId or featureKeyName must be provided)',
-    example: 'BRAND_EXPERT',
+    example: AssistantAreaEnum.BRAND_EXPERT,
+    enum: AssistantAreaEnum,
+    enumName: 'AssistantAreaEnum',
     required: false,
   })
   @IsOptional()

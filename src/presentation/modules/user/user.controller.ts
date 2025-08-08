@@ -12,7 +12,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { QueryBus, CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
@@ -173,6 +180,11 @@ export class UserController {
   )
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    type: UpdateUserProfileDto,
+    description:
+      'User profile update data. All fields are optional. Only provided fields will be updated.',
+  })
   @ApiOperation({
     summary: 'Update user profile (All roles with restrictions)',
     description:
@@ -243,6 +255,10 @@ export class UserController {
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @CanWrite('user')
   @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    type: ActivateUserDto,
+    description: 'User activation status (active: true/false)',
+  })
   @ApiOperation({
     summary: 'Activate or deactivate user (Root/Admin)',
     description:
@@ -284,6 +300,10 @@ export class UserController {
   @CanWrite('user')
   @PreventRootAssignment()
   @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    type: AssignRoleDto,
+    description: 'Role assignment data including the roleId to assign',
+  })
   @ApiOperation({
     summary: 'Assign role to user (Root/Admin)',
     description:

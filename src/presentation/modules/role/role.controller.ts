@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { QueryBus, CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 
@@ -297,6 +297,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.CREATED)
+  @ApiBody({ 
+    type: CreateRoleDto,
+    description: 'Role creation data including name (from RolesEnum), description, hierarchy level (2-5), and optional permission IDs',
+  })
   @ApiOperation({ 
     summary: 'Create new role (Root only)',
     description: 'Create a new role in the system with hierarchy level restrictions\n\n' +
@@ -334,6 +338,10 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ 
+    type: UpdateRoleDto,
+    description: 'Role update data. All fields are optional. Only provided fields will be updated.',
+  })
   @ApiOperation({ 
     summary: 'Update role by ID (Root only)',
     description: 'Update role information\n\n' +

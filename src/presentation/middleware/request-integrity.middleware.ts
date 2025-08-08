@@ -59,11 +59,14 @@ export class RequestIntegrityMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction): void {
     // Check if request integrity is enabled in configuration
-    const requestIntegrityEnabled = this.configService.get<boolean>('REQUEST_INTEGRITY_ENABLED', true);
+    const requestIntegrityEnabled = this.configService.get<boolean>(
+      'REQUEST_INTEGRITY_ENABLED',
+      true,
+    );
     if (!requestIntegrityEnabled) {
       return next(); // Skip integrity check if disabled
     }
-    
+
     // Skip integrity check for certain paths
     if (this.shouldSkipIntegrityCheck(req.path)) {
       return next();
