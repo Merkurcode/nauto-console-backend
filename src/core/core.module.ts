@@ -32,6 +32,7 @@ import { MemoryMonitorService } from './services/memory-monitor.service';
 import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { MonitoringHealthService } from './services/monitoring-health.service';
 import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * Core Domain Module

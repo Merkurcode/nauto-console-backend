@@ -63,7 +63,7 @@ export class MemoryMonitorService implements OnModuleInit, OnModuleDestroy {
     this.logger.setContext(MemoryMonitorService.name);
 
     // Load configuration with environment-specific defaults
-    this.monitoringEnabled = this.configService.get<boolean>('MEMORY_MONITORING_ENABLED', true);
+    this.monitoringEnabled = this.configService.get<boolean>('monitoring.memoryMonitoringEnabled', false);
 
     // Environment-aware threshold configuration
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
@@ -150,6 +150,11 @@ export class MemoryMonitorService implements OnModuleInit, OnModuleDestroy {
         criticalThreshold: `${this.criticalThreshold}%`,
         nodeOptions: nodeOptionsInfo,
         v8HeapStatistics: sanitizedV8Stats,
+      });
+    } else {
+      this.logger.log({
+        message: 'Memory monitoring DISABLED by configuration',
+        monitoringEnabled: this.monitoringEnabled,
       });
     }
   }

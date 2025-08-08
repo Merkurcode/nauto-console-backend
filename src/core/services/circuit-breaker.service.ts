@@ -133,7 +133,7 @@ export class CircuitBreakerService implements OnModuleInit, OnModuleDestroy {
       failureThreshold: this.configService.get<number>('CIRCUIT_BREAKER_FAILURE_THRESHOLD', 5),
       timeout: this.configService.get<number>('CIRCUIT_BREAKER_TIMEOUT', 10000),
       resetTimeout: this.configService.get<number>('CIRCUIT_BREAKER_RESET_TIMEOUT', 60000),
-      monitoringEnabled: this.configService.get<boolean>('CIRCUIT_BREAKER_MONITORING', true),
+      monitoringEnabled: this.configService.get<boolean>('monitoring.circuitBreakerMonitoringEnabled', false),
     };
   }
 
@@ -370,30 +370,38 @@ export class CircuitBreakerService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit() {
-    // Start periodic metrics cleanup to prevent memory leaks
-    this.metricsCleanupInterval = setInterval(() => {
-      this.resetMetrics();
-    }, this.METRICS_RESET_INTERVAL);
+    // Only start background processes if monitoring is enabled
+    if (this.defaultConfig.monitoringEnabled) {
+      // Start periodic metrics cleanup to prevent memory leaks
+      this.metricsCleanupInterval = setInterval(() => {
+        this.resetMetrics();
+      }, this.METRICS_RESET_INTERVAL);
 
-    // Start periodic circuit cleanup to prevent memory leaks from inactive circuits
-    this.circuitCleanupInterval = setInterval(() => {
-      this.cleanupInactiveCircuits();
-    }, this.CIRCUIT_CLEANUP_INTERVAL);
+      // Start periodic circuit cleanup to prevent memory leaks from inactive circuits
+      this.circuitCleanupInterval = setInterval(() => {
+        this.cleanupInactiveCircuits();
+      }, this.CIRCUIT_CLEANUP_INTERVAL);
 
-    // Clean up rate limiting tracking periodically
-    setInterval(
-      () => {
-        this.cleanupRateLimitTracking();
-      },
-      60 * 60 * 1000,
-    ); // Every hour
+      // Clean up rate limiting tracking periodically
+      setInterval(
+        () => {
+          this.cleanupRateLimitTracking();
+        },
+        60 * 60 * 1000,
+      ); // Every hour
 
-    this.logger.log({
-      message: 'Circuit breaker service initialized',
-      metricsResetInterval: `${this.METRICS_RESET_INTERVAL / 1000 / 60 / 60}h`,
-      circuitCleanupInterval: `${this.CIRCUIT_CLEANUP_INTERVAL / 1000 / 60}m`,
-      inactivityThreshold: `${this.CIRCUIT_INACTIVITY_THRESHOLD / 1000 / 60 / 60}h`,
-    });
+      this.logger.log({
+        message: 'Circuit breaker service initialized',
+        metricsResetInterval: `${this.METRICS_RESET_INTERVAL / 1000 / 60 / 60}h`,
+        circuitCleanupInterval: `${this.CIRCUIT_CLEANUP_INTERVAL / 1000 / 60}m`,
+        inactivityThreshold: `${this.CIRCUIT_INACTIVITY_THRESHOLD / 1000 / 60 / 60}h`,
+      });
+    } else {
+      this.logger.log({
+        message: 'Circuit breaker background processes DISABLED by configuration',
+        monitoringEnabled: this.defaultConfig.monitoringEnabled,
+      });
+    }
   }
 
   onModuleDestroy() {

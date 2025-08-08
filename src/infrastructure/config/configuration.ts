@@ -87,6 +87,7 @@ export default () => ({
   // Security
   security: {
     sessionSecret: process.env.SESSION_SECRET,
+    requestIntegrityEnabled: process.env.REQUEST_INTEGRITY_ENABLED === 'true',
   },
 
   // Storage
@@ -124,6 +125,14 @@ export default () => ({
       ? process.env.THROTTLER_IGNORE_USER_AGENTS.split(',')
       : [],
   },
+
+  // Monitoring and system services
+  monitoring: {
+    memoryMonitoringEnabled: process.env.MEMORY_MONITORING_ENABLED === 'true',
+    healthMonitoringEnabled: process.env.MONITORING_HEALTH_ENABLED === 'true', 
+    circuitBreakerMonitoringEnabled: process.env.CIRCUIT_BREAKER_MONITORING === 'true',
+  },
+
 
   // i18n
   i18n: {
