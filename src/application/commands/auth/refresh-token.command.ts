@@ -78,7 +78,12 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     const newRefreshToken = uuidv4();
 
     // Refresh the session (creates new session and revokes old one)
-    await this.sessionService.refreshSession(refreshToken, newSessionToken, newRefreshToken);
+    await this.sessionService.refreshSession(
+      user.id.getValue(),
+      refreshToken,
+      newSessionToken,
+      newRefreshToken,
+    );
 
     // Generate new JWT with session token
     const payload = {

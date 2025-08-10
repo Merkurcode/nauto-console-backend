@@ -29,6 +29,7 @@ import {
   OtpInvalidException,
   AuthenticationException,
   InvalidInputException,
+  InvalidCredentialsException,
 } from '@core/exceptions/domain-exceptions';
 import { Email } from '@core/value-objects/email.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
@@ -315,7 +316,8 @@ export class AuthService {
       // SECURITY: Verify that the email is registered in the system
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
-        throw new EntityNotFoundException('User with this email is not registered', email);
+        // SECURITY: Use generic message to prevent email enumeration
+        throw new InvalidCredentialsException();
       }
 
       // Delete any existing verification codes for this email
@@ -363,7 +365,8 @@ export class AuthService {
 
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
-        throw new EntityNotFoundException('User', `${email}`);
+        // SECURITY: Use generic message to prevent email enumeration
+        throw new InvalidCredentialsException();
       }
 
       // Mark as verified
@@ -429,7 +432,8 @@ export class AuthService {
       if (!user) {
         // Still record the attempt even if user doesn't exist for security monitoring
         await this.recordPasswordResetAttempt(email, ipAddress, userAgent);
-        throw new EntityNotFoundException('User', `with email ${email}`);
+        // SECURITY: Use generic message to prevent email enumeration
+        throw new InvalidCredentialsException();
       }
 
       // Record the password reset attempt

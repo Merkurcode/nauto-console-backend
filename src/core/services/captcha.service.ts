@@ -1,12 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class CaptchaService {
   constructor(
-    private readonly configService: ConfigService,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
   ) {

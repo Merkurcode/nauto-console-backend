@@ -17,7 +17,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
     // Log the request
     this.logger.log({
-      message: `Request received`,
+      message: 'Request received',
       userId,
       method,
       url,
@@ -30,7 +30,7 @@ export class LoggingInterceptor implements NestInterceptor {
       tap(data => {
         // Log the response
         this.logger.log({
-          message: `Request completed`,
+          message: 'Request completed',
           userId,
           method,
           url,

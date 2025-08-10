@@ -56,6 +56,9 @@ export interface IAuthRefreshTokenResponse {
 export interface IJwtPayload {
   sub: string;
   email: string;
+  isBanned: boolean; // User ban status
+  bannedUntil: Date | null | undefined; // Optional, if user is banned
+  banReason: string | null | undefined; // Optional, if user is banned
   emailVerified?: boolean;
   isActive: boolean;
   roles: string[];
@@ -64,6 +67,7 @@ export interface IJwtPayload {
   companyId?: string;
   jti?: string; // JWT ID - session token
   tokenId?: string; // BOT token identifier
+  isBotToken?: boolean; // Flag to identify BOT tokens
   iat?: number;
   exp?: number;
 }

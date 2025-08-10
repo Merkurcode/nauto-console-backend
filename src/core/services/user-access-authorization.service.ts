@@ -51,7 +51,7 @@ export class UserAccessAuthorizationService {
       const hasAccess = await this.canAccessCompanyUser(currentUserCompanyId, targetUserCompanyId);
       if (!hasAccess) {
         throw new ForbiddenActionException(
-          `Admin users can only access users from their company or child companies.`,
+          'Admin users can only access users from their company or child companies.',
           'access_user',
           'company_user',
         );

@@ -83,7 +83,10 @@ export class MonitoringHealthService implements OnModuleInit, OnModuleDestroy {
     this.logger.setContext(MonitoringHealthService.name);
 
     // Load configuration
-    this.healthCheckEnabled = this.configService.get<boolean>('monitoring.healthMonitoringEnabled', false);
+    this.healthCheckEnabled = this.configService.get<boolean>(
+      'monitoring.healthMonitoringEnabled',
+      false,
+    );
     this.healthCheckIntervalMs = this.configService.get<number>(
       'MONITORING_HEALTH_INTERVAL',
       60000,

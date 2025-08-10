@@ -22,7 +22,7 @@ interface IHasProfileAndAddress {
  */
 @ValidatorConstraint({ name: 'phoneRequiresCountryCode', async: false })
 export class PhoneRequiresCountryCodeConstraint implements ValidatorConstraintInterface {
-  validate(value: unknown, args: ValidationArguments) {
+  validate(_value: unknown, args: ValidationArguments) {
     const dto = args.object as IHasProfileAndAddress;
 
     // If phone is provided in profile, phoneCountryCode must be provided
@@ -43,7 +43,7 @@ export class PhoneRequiresCountryCodeConstraint implements ValidatorConstraintIn
  */
 @ValidatorConstraint({ name: 'phoneCountryCodeRequiresPhone', async: false })
 export class PhoneCountryCodeRequiresPhoneConstraint implements ValidatorConstraintInterface {
-  validate(value: unknown, args: ValidationArguments) {
+  validate(_value: unknown, args: ValidationArguments) {
     const dto = args.object as IHasProfileAndAddress;
 
     // If phoneCountryCode is provided in profile, phone must be provided
@@ -64,7 +64,7 @@ export class PhoneCountryCodeRequiresPhoneConstraint implements ValidatorConstra
  */
 @ValidatorConstraint({ name: 'countryRequiresState', async: false })
 export class CountryRequiresStateConstraint implements ValidatorConstraintInterface {
-  validate(value: unknown, args: ValidationArguments) {
+  validate(_value: unknown, args: ValidationArguments) {
     const dto = args.object as IHasProfileAndAddress;
 
     // If country is provided, state must also be provided

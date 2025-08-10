@@ -1,4 +1,5 @@
 import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ErrorSanitizationUtil } from '@core/utils/error-sanitization.util';
 
 /**
  * Base repository class with common error handling
@@ -28,7 +29,7 @@ export abstract class BaseRepository<T> {
     // Always log errors to console if logger is not available
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorDetails = {
-      message: `Repository operation failed`,
+      message: 'Repository operation failed',
       operation,
       errorMessage,
       entityType: this.constructor.name.replace('Repository', ''),
@@ -42,11 +43,17 @@ export abstract class BaseRepository<T> {
         this.logger.error(errorDetails);
       }
     } else {
-      // Fallback to console if logger not available
-      console.error('[REPOSITORY ERROR]', errorDetails);
-      if (error instanceof Error && error.stack) {
-        console.error('[STACK TRACE]', error.stack);
-      }
+      // SECURITY: Use logger with sanitized error information
+      const sanitizedError = ErrorSanitizationUtil.forLogging(error, 'repository-error');
+      const logDetails = {
+        ...errorDetails,
+        errorMessage: sanitizedError.message,
+        // Only include stack in development
+        ...(process.env.NODE_ENV === 'development' && {
+          stack: sanitizedError.stack,
+        }),
+      };
+      this.logger?.error('[REPOSITORY ERROR]', JSON.stringify(logDetails));
     }
 
     return returnValue;
@@ -69,7 +76,7 @@ export abstract class BaseRepository<T> {
     try {
       if (this.logger) {
         this.logger.debug({
-          message: `Repository operation started`,
+          message: 'Repository operation started',
           operation,
           entityType: this.constructor.name.replace('Repository', ''),
           entityId,
@@ -82,7 +89,7 @@ export abstract class BaseRepository<T> {
 
       if (this.logger) {
         this.logger.debug({
-          message: `Repository operation completed`,
+          message: 'Repository operation completed',
           operation,
           entityType: this.constructor.name.replace('Repository', ''),
           entityId,

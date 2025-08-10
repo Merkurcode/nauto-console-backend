@@ -72,8 +72,8 @@ export class RootLevelUserSpecification extends Specification<User> {
   isSatisfiedBy(user: User): boolean {
     return user.roles.some(role => {
       const roleName = role.name.toLowerCase();
-      
-      return roleName === RolesEnum.ROOT.toLowerCase() || 
+
+      return roleName === RolesEnum.ROOT.toLowerCase() ||
              roleName === RolesEnum.ROOT_READONLY.toLowerCase();
     });
   }

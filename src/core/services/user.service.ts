@@ -29,7 +29,7 @@ import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { AuthFailureReason, IAuthValidationResult } from '@core/enums/auth-failure-reason.enum';
+import { AuthFailureReason, IAuthValidationResult } from '@shared/constants/auth-failure-reason.enum';
 
 @Injectable()
 export class UserService {
@@ -124,13 +124,13 @@ export class UserService {
         const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
         const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
         const dashboardUrl = `${frontendUrl}${dashboardPath}`;
-        
+
         await this.smsService.sendWelcomeSms(
-          savedUser.profile.phone, 
-          firstName, 
-          actualPassword!, 
+          savedUser.profile.phone,
+          firstName,
+          actualPassword!,
           dashboardUrl,
-          savedUser.id.getValue()
+          savedUser.id.getValue(),
         );
       }
     } catch (error) {
@@ -207,12 +207,12 @@ export class UserService {
     const agentPhoneVO = options?.agentPhone ? new AgentPhone(options.agentPhone, options.agentPhoneCountryCode) : undefined;
     const profileVO = options?.profile
       ? new UserProfile(
-          options.profile.phone,
-          options.profile.phoneCountryCode,
-          options.profile.avatarUrl,
-          options.profile.bio,
-          options.profile.birthDate,
-        )
+        options.profile.phone,
+        options.profile.phoneCountryCode,
+        options.profile.avatarUrl,
+        options.profile.bio,
+        options.profile.birthDate,
+      )
       : undefined;
 
     let addressVO: Address | undefined;
@@ -312,13 +312,13 @@ export class UserService {
           const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
           const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
           const dashboardUrl = `${frontendUrl}${dashboardPath}`;
-          
+
           await this.smsService.sendWelcomeSms(
-            savedUser.profile.phone, 
-            firstName, 
-            actualPassword!, 
+            savedUser.profile.phone,
+            firstName,
+            actualPassword!,
             dashboardUrl,
-            savedUser.id.getValue()
+            savedUser.id.getValue(),
           );
         } else {
           this.logger.debug({
@@ -380,7 +380,7 @@ export class UserService {
       } catch (repositoryError) {
         const errorMessage = repositoryError instanceof Error ? repositoryError.message : String(repositoryError);
         const errorType = repositoryError?.constructor?.name || 'Unknown';
-        
+
         this.logger.error({
           message: 'Repository error during user lookup',
           email: emailStr,
@@ -399,7 +399,7 @@ export class UserService {
           },
         };
       }
-      
+
       if (!user) {
         return {
           success: false,
@@ -407,7 +407,7 @@ export class UserService {
           message: 'User not found',
         };
       }
-      
+
       // Check if user is inactive
       if (!user.isActive) {
         return {
@@ -441,7 +441,7 @@ export class UserService {
         isPasswordValid = await this.comparePasswords(passwordStr, user.passwordHash);
       } catch (passwordError) {
         const errorMessage = passwordError instanceof Error ? passwordError.message : String(passwordError);
-        
+
         this.logger.error({
           message: 'Password comparison error',
           email: emailStr,
@@ -459,7 +459,7 @@ export class UserService {
           },
         };
       }
-      
+
       if (!isPasswordValid) {
         return {
           success: false,
@@ -479,7 +479,7 @@ export class UserService {
       // Catch-all for any unexpected errors
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorType = error?.constructor?.name || 'Unknown';
-      
+
       this.logger.error({
         message: 'Unexpected system error in validateCredentials',
         email: emailStr,
@@ -487,7 +487,7 @@ export class UserService {
         errorType: errorType,
         stack: error instanceof Error ? error.stack : undefined,
       });
-      
+
       return {
         success: false,
         failureReason: AuthFailureReason.SYSTEM_ERROR,
@@ -620,7 +620,7 @@ export class UserService {
       if (!this.userAuthorizationService.canAssignRolesToUser(assigningUser, companyId)) {
         throw new BusinessRuleValidationException('You do not have permission to assign roles to users in this company.');
       }
-      
+
       if (!this.userAuthorizationService.canAssignRole(assigningUser, user, role)) {
         throw new BusinessRuleValidationException('You do not have permission to assign this role to this user.');
       }
@@ -677,9 +677,9 @@ export class UserService {
 
   private async findCompanyByName(companyName: string): Promise<CompanyId> {
     const companyNameVO = new CompanyName(companyName);
-    
+
     const company = await this.companyRepository.findByName(companyNameVO);
-    
+
     if (!company) {
       throw new EntityNotFoundException('Company', companyName);
     }

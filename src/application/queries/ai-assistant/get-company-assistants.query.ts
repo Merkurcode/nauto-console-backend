@@ -1,7 +1,7 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { AIAssistantMapper } from '@application/mappers/ai-assistant.mapper';
-import { AIAssistantResolverService } from '@application/services/ai-assistant-resolver.service';
+import { AIAssistantResolverService } from '@core/services/ai-assistant-resolver.service';
 import { IAIAssistantRepository } from '@core/repositories/ai-assistant.repository.interface';
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
 import { ICompanyAIAssistantResponse } from '@application/dtos/responses/ai-assistant.response';

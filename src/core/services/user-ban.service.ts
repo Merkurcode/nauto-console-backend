@@ -70,6 +70,8 @@ export class UserBanService {
     user.banUser(bannedUntil, banReason);
     const updatedUser = await this.userRepository.update(user);
 
+    // User banned successfully
+
     this.logger.log({
       message: 'User banned successfully',
       userId,
@@ -97,6 +99,8 @@ export class UserBanService {
 
     user.unbanUser();
     const updatedUser = await this.userRepository.update(user);
+
+    // User unbanned successfully
 
     this.logger.log({
       message: 'User unbanned successfully',

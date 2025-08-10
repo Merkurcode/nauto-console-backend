@@ -17,9 +17,9 @@ import {
 } from '@core/specifications/role.specifications';
 import { BusinessRuleValidationException } from '@core/exceptions/domain-exceptions';
 import { RolesEnum } from '@shared/constants/enums';
-import { 
+import {
   MIN_ROLE_NAME_LENGTH,
-  SYSTEM_HELPERS
+  SYSTEM_HELPERS,
 } from '@shared/constants/system-constants';
 
 /**
@@ -75,8 +75,8 @@ export class DomainValidationService {
     }
 
     const rootRoleSpec = new RootRoleSpecification();
-    if ((role.name.toLowerCase() === RolesEnum.ROOT.toLowerCase() || 
-         role.name.toLowerCase() === RolesEnum.ROOT_READONLY.toLowerCase()) && 
+    if ((role.name.toLowerCase() === RolesEnum.ROOT.toLowerCase() ||
+         role.name.toLowerCase() === RolesEnum.ROOT_READONLY.toLowerCase()) &&
         !rootRoleSpec.isSatisfiedBy(role)) {
       result.addWarning('Role name suggests root privileges but lacks root permissions.');
     }
@@ -100,10 +100,10 @@ export class DomainValidationService {
 
     // Check if permission already exists in the role
     const permissionName = permission.getPermissionName();
-    const hasPermission = role.permissions.some(existingPermission => 
-      existingPermission.getPermissionName() === permissionName
+    const hasPermission = role.permissions.some(existingPermission =>
+      existingPermission.getPermissionName() === permissionName,
     );
-    
+
     if (hasPermission) {
       result.addWarning(`Permission '${permissionName}' is already assigned to this role.`);
     }
@@ -187,7 +187,7 @@ export class DomainValidationService {
       if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
         result.addError('Only ROOT users can assign roles with system or audit permissions.');
       }
-      
+
       // Additionally, roles with system/audit permissions can only be assigned to root users
       const rootLevelRoleSpec = new RootLevelRoleSpecification();
       if (!rootLevelRoleSpec.isSatisfiedBy(role) && !user.rolesCollection.containsByName(RolesEnum.ROOT)) {

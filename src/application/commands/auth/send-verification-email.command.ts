@@ -6,12 +6,10 @@ import { EmailService } from '@core/services/email.service';
 import { SmsService } from '@core/services/sms.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
-import { USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
-import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { InvalidCredentialsException } from '@core/exceptions/domain-exceptions';
 import { Email } from '@core/value-objects/email.vo';
 import { User } from '@core/entities/user.entity';
-import { CompanyId } from '@core/value-objects/company-id.vo';
 
 export class SendVerificationEmailCommand implements ICommand {
   constructor(
@@ -36,8 +34,6 @@ export class SendVerificationEmailCommandHandler
     private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    @Inject(COMPANY_REPOSITORY)
-    private readonly companyRepository: ICompanyRepository,
   ) {}
 
   async execute(command: SendVerificationEmailCommand): Promise<{ message: string }> {
@@ -53,7 +49,8 @@ export class SendVerificationEmailCommandHandler
     // SECURITY: Verify that the email is registered in the system
     const targetUser = await this.userRepository.findByEmail(email);
     if (!targetUser) {
-      throw new EntityNotFoundException('User with this email is not registered', email);
+      // SECURITY: Use generic message to prevent email enumeration
+      throw new InvalidCredentialsException();
     }
 
     // SECURITY: Check if email is already verified
@@ -129,31 +126,6 @@ export class SendVerificationEmailCommandHandler
       throw new ForbiddenException(
         'You do not have permission to send verification emails to this email address',
       );
-    }
-  }
-
-  private async isSubsidiaryCompany(
-    parentCompanyId: string,
-    targetCompanyId: string,
-  ): Promise<boolean> {
-    try {
-      const targetCompany = await this.companyRepository.findById(
-        CompanyId.fromString(targetCompanyId),
-      );
-      if (!targetCompany) {
-        return false;
-      }
-
-      // Check if the target company's parent is the current user's company
-      return targetCompany.isSubsidiaryOf(CompanyId.fromString(parentCompanyId));
-    } catch (error) {
-      this.logger.error('Error checking subsidiary relationship', {
-        error: error.message,
-        parentCompanyId,
-        targetCompanyId,
-      });
-
-      return false;
     }
   }
 }

@@ -1,12 +1,12 @@
 /* eslint-disable prettier/prettier */
 import { Controller, Get, HttpCode, HttpStatus, UseGuards, Query } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBearerAuth, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
   ApiQuery,
-  ApiExtraModels 
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { QueryBus } from '@nestjs/cqrs';
 
@@ -37,11 +37,11 @@ export class RootController {
   @Get('system-info')
   @HttpCode(HttpStatus.OK)
   @RequiresResourceAction('system', 'read')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get system information',
     description: 'Get basic system information and status\n\n' +
       '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">system:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>'
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns system information' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'User does not have required permissions' })
@@ -59,7 +59,7 @@ export class RootController {
   @Get('audit-logs')
   @HttpCode(HttpStatus.OK)
   @RequiresResourceAction('audit', 'read')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: '📊 Get comprehensive audit logs',
     description: `
 ## 🔒 Security Audit Logs Access
@@ -94,7 +94,7 @@ export class RootController {
 
 ### ⏱️ Data Retention
 Audit logs are automatically retained for **7 days** and cleaned up via scheduled tasks for optimal performance.
-    `
+    `,
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -108,45 +108,45 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
           items: {
             type: 'object',
             properties: {
-              id: { 
-                type: 'string', 
+              id: {
+                type: 'string',
                 format: 'uuid',
                 description: 'Unique identifier for the audit log entry',
-                example: '550e8400-e29b-41d4-a716-446655440000'
+                example: '550e8400-e29b-41d4-a716-446655440000',
               },
-              level: { 
-                type: 'string', 
+              level: {
+                type: 'string',
                 enum: ['info', 'warn', 'error', 'debug', 'critical'],
                 description: 'Log severity level',
-                example: 'error'
+                example: 'error',
               },
               type: {
                 type: 'string',
                 enum: [
                   'auth', 'user', 'role', 'permission', 'company',
-                  'system', 'api', 'database', 'security', 'exception', 'transaction'
+                  'system', 'api', 'database', 'security', 'exception', 'transaction',
                 ],
                 description: 'Category of the logged event',
-                example: 'auth'
+                example: 'auth',
               },
-              action: { 
+              action: {
                 type: 'string',
                 description: 'Action performed (create, read, update, delete, login, etc.)',
-                example: 'login'
+                example: 'login',
               },
-              message: { 
+              message: {
                 type: 'string',
                 description: 'Human-readable description of the event',
-                example: 'User logged in successfully'
+                example: 'User logged in successfully',
               },
-              userId: { 
-                type: 'string', 
-                format: 'uuid', 
+              userId: {
+                type: 'string',
+                format: 'uuid',
                 nullable: true,
                 description: 'ID of the user who performed the action (null for system events)',
-                example: '550e8400-e29b-41d4-a716-446655440000'
+                example: '550e8400-e29b-41d4-a716-446655440000',
               },
-              metadata: { 
+              metadata: {
                 type: 'object',
                 description: 'Additional context data including request details, IP, user agent, duration, etc.',
                 additionalProperties: true,
@@ -156,19 +156,19 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
                   duration: 152,
                   httpMethod: 'POST',
                   endpoint: '/api/auth/login',
-                  statusCode: 200
-                }
+                  statusCode: 200,
+                },
               },
-              timestamp: { 
-                type: 'string', 
+              timestamp: {
+                type: 'string',
                 format: 'date-time',
                 description: 'When the event occurred (ISO 8601 format)',
-                example: '2025-01-01T12:00:00.000Z'
+                example: '2025-01-01T12:00:00.000Z',
               },
-              context: { 
+              context: {
                 type: 'string',
                 description: 'Context or module where the event originated',
-                example: 'AuthService'
+                example: 'AuthService',
               },
             },
           },
@@ -177,35 +177,35 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
           type: 'object',
           description: 'Pagination information',
           properties: {
-            total: { 
+            total: {
               type: 'number',
               description: 'Total number of audit log entries matching the filter',
-              example: 1250
+              example: 1250,
             },
-            page: { 
+            page: {
               type: 'number',
               description: 'Current page number (1-based)',
-              example: 1
+              example: 1,
             },
-            limit: { 
+            limit: {
               type: 'number',
               description: 'Number of items per page',
-              example: 50
+              example: 50,
             },
-            totalPages: { 
+            totalPages: {
               type: 'number',
               description: 'Total number of pages available',
-              example: 25
+              example: 25,
             },
-            hasNext: { 
+            hasNext: {
               type: 'boolean',
               description: 'Whether there are more pages available',
-              example: true
+              example: true,
             },
-            hasPrevious: { 
+            hasPrevious: {
               type: 'boolean',
               description: 'Whether there are previous pages available',
-              example: false
+              example: false,
             },
           },
         },
@@ -226,11 +226,11 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
               httpMethod: 'POST',
               endpoint: '/api/auth/login',
               statusCode: 401,
-              errorCode: 'INVALID_CREDENTIALS'
+              errorCode: 'INVALID_CREDENTIALS',
             },
             timestamp: '2025-01-01T12:00:00.000Z',
-            context: 'AuthService'
-          }
+            context: 'AuthService',
+          },
         ],
         pagination: {
           total: 1250,
@@ -238,36 +238,36 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
           limit: 50,
           totalPages: 25,
           hasNext: true,
-          hasPrevious: false
-        }
-      }
+          hasPrevious: false,
+        },
+      },
     },
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: '🚫 Unauthorized - Invalid or missing authentication token'
+    description: '🚫 Unauthorized - Invalid or missing authentication token',
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: '❌ Forbidden - Insufficient permissions (ROOT role and audit:read permission required)'
+    description: '❌ Forbidden - Insufficient permissions (ROOT role and audit:read permission required)',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: '⚠️ Bad Request - Invalid query parameters (e.g., invalid date format, page < 1, limit > 1000)'
+    description: '⚠️ Bad Request - Invalid query parameters (e.g., invalid date format, page < 1, limit > 1000)',
   })
   @ApiQuery({
     name: 'level',
     required: false,
     description: '🎯 **Filter by log severity levels** (comma-separated)\n\n**Available levels:** `info`, `warn`, `error`, `debug`, `critical`\n\n**Examples:**\n- `?level=error` - Only error logs\n- `?level=error,warn` - Error and warning logs',
     example: 'error,warn',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'type',
     required: false,
     description: '📂 **Filter by event categories** (comma-separated)\n\n**Available types:** `auth`, `user`, `role`, `permission`, `company`, `system`, `api`, `database`, `security`, `exception`, `transaction`\n\n**Examples:**\n- `?type=auth` - Only authentication events\n- `?type=auth,security` - Auth and security events',
     example: 'auth,security',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'userId',
@@ -275,14 +275,14 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     description: '👤 **Filter by specific user ID**\n\nShow only events performed by this user. System events (userId=null) will be excluded.\n\n**Example:** `?userId=550e8400-e29b-41d4-a716-446655440000`',
     example: '550e8400-e29b-41d4-a716-446655440000',
     type: 'string',
-    format: 'uuid'
+    format: 'uuid',
   })
   @ApiQuery({
     name: 'context',
     required: false,
     description: '🏷️ **Filter by context/module** (comma-separated)\n\nFilter events by the service or module that generated them.\n\n**Examples:**\n- `?context=AuthService` - Events from authentication service\n- `?context=UserService,RoleService` - Events from user and role services',
     example: 'AuthService,UserService',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'fromDate',
@@ -290,7 +290,7 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     description: '📅 **Start date for filtering** (ISO 8601 format)\n\nInclude only events that occurred on or after this date.\n\n**Format:** `YYYY-MM-DDTHH:mm:ss.sssZ`\n\n**Examples:**\n- `?fromDate=2025-01-01T00:00:00.000Z` - From start of 2025\n- `?fromDate=2025-01-15T12:30:00.000Z` - From specific datetime',
     example: '2025-01-01T00:00:00.000Z',
     type: 'string',
-    format: 'date-time'
+    format: 'date-time',
   })
   @ApiQuery({
     name: 'toDate',
@@ -298,21 +298,21 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     description: '📅 **End date for filtering** (ISO 8601 format)\n\nInclude only events that occurred on or before this date.\n\n**Format:** `YYYY-MM-DDTHH:mm:ss.sssZ`\n\n**Examples:**\n- `?toDate=2025-12-31T23:59:59.999Z` - Until end of 2025\n- `?toDate=2025-01-15T12:30:00.000Z` - Until specific datetime',
     example: '2025-12-31T23:59:59.999Z',
     type: 'string',
-    format: 'date-time'
+    format: 'date-time',
   })
   @ApiQuery({
     name: 'ipAddress',
     required: false,
     description: '🌐 **Filter by IP address**\n\nShow events from a specific IP address. Useful for tracking activity from particular locations or investigating suspicious access.\n\n**Examples:**\n- `?ipAddress=192.168.1.100` - Internal network IP\n- `?ipAddress=203.0.113.1` - External IP address',
     example: '192.168.1.100',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'userAgent',
     required: false,
     description: '🖥️ **Filter by user agent** (partial match)\n\nFilter by browser or client application. Supports partial matching.\n\n**Examples:**\n- `?userAgent=Chrome` - All Chrome browsers\n- `?userAgent=Mobile` - Mobile devices\n- `?userAgent=Postman` - API client requests',
     example: 'Chrome',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'sessionId',
@@ -320,28 +320,28 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     description: '🔐 **Filter by session ID**\n\nShow all events from a specific user session. Useful for tracking complete user journeys.\n\n**Example:** `?sessionId=550e8400-e29b-41d4-a716-446655440000`',
     example: '550e8400-e29b-41d4-a716-446655440000',
     type: 'string',
-    format: 'uuid'
+    format: 'uuid',
   })
   @ApiQuery({
     name: 'resource',
     required: false,
     description: '📋 **Filter by resource type**\n\nFilter events related to specific resources or entities.\n\n**Examples:**\n- `?resource=user` - User-related events\n- `?resource=company` - Company-related events\n- `?resource=file` - File operations',
     example: 'user',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'errorCode',
     required: false,
     description: '❌ **Filter by error code**\n\nShow only events with specific error codes. Useful for tracking particular types of failures.\n\n**Examples:**\n- `?errorCode=INVALID_CREDENTIALS` - Authentication failures\n- `?errorCode=ENTITY_NOT_FOUND` - Resource not found errors\n- `?errorCode=INSUFFICIENT_PERMISSIONS` - Authorization failures',
     example: 'INVALID_CREDENTIALS',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'search',
     required: false,
     description: '🔍 **Full-text search**\n\nSearch across log messages and metadata. Case-insensitive partial matching.\n\n**Examples:**\n- `?search=login failed` - Failed login attempts\n- `?search=permission denied` - Permission violations\n- `?search=user created` - User creation events',
     example: 'login failed',
-    type: 'string'
+    type: 'string',
   })
   @ApiQuery({
     name: 'page',
@@ -349,7 +349,7 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     description: '📄 **Page number** (starting from 1)\n\nSpecify which page of results to return.\n\n**Default:** `1`\n**Minimum:** `1`',
     example: 1,
     type: 'number',
-    minimum: 1
+    minimum: 1,
   })
   @ApiQuery({
     name: 'limit',
@@ -358,21 +358,21 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     example: 50,
     type: 'number',
     minimum: 1,
-    maximum: 1000
+    maximum: 1000,
   })
   @ApiQuery({
     name: 'sortBy',
     required: false,
     description: '📈 **Sort field**\n\nField to sort results by.\n\n**Available fields:** `timestamp`, `level`, `type`, `context`\n**Default:** `timestamp`',
     example: 'timestamp',
-    enum: ['timestamp', 'level', 'type', 'context']
+    enum: ['timestamp', 'level', 'type', 'context'],
   })
   @ApiQuery({
     name: 'sortOrder',
     required: false,
     description: '🔄 **Sort direction**\n\nDirection to sort results.\n\n**Values:** `asc` (ascending), `desc` (descending)\n**Default:** `desc` (newest first)',
     example: 'desc',
-    enum: ['asc', 'desc']
+    enum: ['asc', 'desc'],
   })
   async getAuditLogs(@Query() queryDto: AuditLogQueryDto) {
     // Convert DTO to domain query

@@ -117,10 +117,10 @@ export default () => ({
     password: process.env.SWAGGER_PASSWORD,
   },
 
-  // Throttler
+  // Throttler - Strategic rate limiting configuration
   throttler: {
-    ttl: parseInt(process.env.THROTTLER_TTL || '60', 10),
-    limit: parseInt(process.env.THROTTLER_LIMIT || '10', 10),
+    ttl: parseInt(process.env.THROTTLER_TTL || '60', 10), // 60 seconds window
+    limit: parseInt(process.env.THROTTLER_LIMIT || '100', 10), // 100 requests per minute (reasonable for API)
     ignoreUserAgents: process.env.THROTTLER_IGNORE_USER_AGENTS
       ? process.env.THROTTLER_IGNORE_USER_AGENTS.split(',')
       : [],
@@ -129,10 +129,9 @@ export default () => ({
   // Monitoring and system services
   monitoring: {
     memoryMonitoringEnabled: process.env.MEMORY_MONITORING_ENABLED === 'true',
-    healthMonitoringEnabled: process.env.MONITORING_HEALTH_ENABLED === 'true', 
+    healthMonitoringEnabled: process.env.MONITORING_HEALTH_ENABLED === 'true',
     circuitBreakerMonitoringEnabled: process.env.CIRCUIT_BREAKER_MONITORING === 'true',
   },
-
 
   // i18n
   i18n: {

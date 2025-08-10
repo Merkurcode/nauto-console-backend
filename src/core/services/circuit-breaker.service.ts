@@ -133,7 +133,10 @@ export class CircuitBreakerService implements OnModuleInit, OnModuleDestroy {
       failureThreshold: this.configService.get<number>('CIRCUIT_BREAKER_FAILURE_THRESHOLD', 5),
       timeout: this.configService.get<number>('CIRCUIT_BREAKER_TIMEOUT', 10000),
       resetTimeout: this.configService.get<number>('CIRCUIT_BREAKER_RESET_TIMEOUT', 60000),
-      monitoringEnabled: this.configService.get<boolean>('monitoring.circuitBreakerMonitoringEnabled', false),
+      monitoringEnabled: this.configService.get<boolean>(
+        'monitoring.circuitBreakerMonitoringEnabled',
+        false,
+      ),
     };
   }
 

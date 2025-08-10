@@ -97,6 +97,9 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
     const botPayload = {
       sub: botUserId,
       email: botEmail,
+      isBanned: false, // BOT tokens are never banned
+      bannedUntil: null,
+      banReason: null,
       emailVerified: true,
       isActive: true,
       roles: [RolesEnum.BOT, RolesEnum.ROOT], // BOT + ROOT roles
@@ -105,6 +108,7 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
       companyId: companyId || null,
       tokenType: 'bot',
       tokenId,
+      isBotToken: true, // Flag to identify BOT tokens
       jti: sessionTokenId, // Session token para validación de sesión activa
       iat: Math.floor(Date.now() / 1000),
     };
@@ -150,24 +154,21 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
    */
   async validateToken(token: string): Promise<any | null> {
     try {
-      // First decode without verification (fast)
-      const decoded = this.jwtService.decode(token) as any;
-
-      // Quick checks before expensive verification
-      if (!decoded || decoded.tokenType !== 'bot' || !decoded.tokenId) {
-        return null;
-      }
-
-      // Check if token is revoked (O(1) in-memory lookup)
-      if (this.tokenCache.isTokenRevoked(decoded.tokenId)) {
-        return null; // Token is blacklisted
-      }
-
-      // Now do the expensive verification
+      // SECURITY FIX: Verify JWT signature FIRST before trusting any claims
       const verified = this.jwtService.verify(token, {
         secret: this.configService.get('jwt.secret'),
         ignoreExpiration: true, // BOT tokens don't expire
       });
+
+      // Now we can trust the verified claims
+      if (!verified || verified.tokenType !== 'bot' || !verified.tokenId) {
+        return null;
+      }
+
+      // Check if token is revoked (now using verified tokenId)
+      if (this.tokenCache.isTokenRevoked(verified.tokenId)) {
+        return null; // Token is blacklisted
+      }
 
       // Final validation
       if (

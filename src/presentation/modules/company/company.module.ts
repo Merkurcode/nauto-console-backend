@@ -4,7 +4,6 @@ import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { CompanyController } from './company.controller';
 import { CompanyUsersController } from './company-users.controller';
-import { TenantResolverService } from '@presentation/services/tenant-resolver.service';
 import { CreateCompanyCommandHandler } from '@application/commands/company/create-company.command';
 import { UpdateCompanyCommandHandler } from '@application/commands/company/update-company.command';
 import { DeleteCompanyCommandHandler } from '@application/commands/company/delete-company.command';
@@ -39,13 +38,9 @@ const queryHandlers = [
   imports: [CqrsModule, CoreModule, InfrastructureModule],
   controllers: [CompanyController, CompanyUsersController],
   providers: [
-    // Services
-    TenantResolverService,
-
     // Command and Query handlers
     ...commandHandlers,
     ...queryHandlers,
   ],
-  exports: [TenantResolverService],
 })
 export class CompanyModule {}

@@ -2,7 +2,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { CompanyAIAssistant } from '@core/entities/company-ai-assistant.entity';
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
-import { AIAssistantResolverService } from '@application/services/ai-assistant-resolver.service';
+import { AIAssistantResolverService } from '@core/services/ai-assistant-resolver.service';
 import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 export class ToggleAssistantStatusCommand {

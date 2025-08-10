@@ -4,7 +4,7 @@ import { CompanyAIAssistant } from '@core/entities/company-ai-assistant.entity';
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
 import { IAIAssistantRepository } from '@core/repositories/ai-assistant.repository.interface';
 import { AssignAssistantFeatureDto } from '@application/dtos/ai-assistant/assign-assistant-to-company.dto';
-import { AIAssistantResolverService } from '@application/services/ai-assistant-resolver.service';
+import { AIAssistantResolverService } from '@core/services/ai-assistant-resolver.service';
 import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
 
 export class AssignAssistantToCompanyCommand {
@@ -137,7 +137,7 @@ export class AssignAssistantToCompanyCommandHandler
     // Check if all provided feature IDs are valid
     for (const feature of features) {
       if (!availableFeatureIds.includes(feature.featureId)) {
-        throw new BadRequestException(`Invalid feature ID provided`);
+        throw new BadRequestException('Invalid feature ID provided');
       }
     }
   }

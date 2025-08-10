@@ -7,9 +7,8 @@ import {
   InvalidInputException,
   ForbiddenActionException,
 } from '@core/exceptions/domain-exceptions';
-import { COMPANY_EVENTS_CATALOG_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { COMPANY_EVENTS_CATALOG_REPOSITORY } from '@shared/constants/tokens';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
 
 export class CreateCompanyEventCommand {
   constructor(
@@ -42,8 +41,6 @@ export class CreateCompanyEventHandler implements ICommandHandler<CreateCompanyE
   constructor(
     @Inject(COMPANY_EVENTS_CATALOG_REPOSITORY)
     private readonly companyEventsRepository: ICompanyEventsCatalogRepository,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
     private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 

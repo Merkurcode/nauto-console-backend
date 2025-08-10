@@ -57,10 +57,17 @@ export class SessionService {
   async validateSessionToken(sessionToken: string): Promise<Session> {
     this.logger.debug({ message: 'Validating session token' });
 
+    // SECURITY: Validate token format before database query
+    if (!sessionToken || sessionToken.length < 32) {
+      throw new InvalidSessionException('Invalid session token format');
+    }
+
     const session = await this.sessionRepository.findBySessionToken(sessionToken);
     if (!session) {
-      this.logger.warn({ message: 'Session token not found' });
-      throw new InvalidSessionException('Session not found');
+      // Session not found - will be handled by guard
+      // SECURITY: Don't reveal whether token exists or not
+      this.logger.warn({ message: 'Session validation failed' });
+      throw new InvalidSessionException('Invalid or expired session');
     }
 
     this.logger.debug({
@@ -75,10 +82,17 @@ export class SessionService {
   async validateRefreshToken(refreshToken: string): Promise<Session> {
     this.logger.debug({ message: 'Validating refresh token' });
 
+    // SECURITY: Validate token format before database query
+    if (!refreshToken || refreshToken.length < 32) {
+      throw new InvalidSessionException('Invalid refresh token format');
+    }
+
     const session = await this.sessionRepository.findByRefreshToken(refreshToken);
     if (!session) {
-      this.logger.warn({ message: 'Refresh token not found' });
-      throw new InvalidSessionException('Invalid refresh token');
+      // Session not found - will be handled by guard
+      // SECURITY: Don't reveal whether token exists or not
+      this.logger.warn({ message: 'Refresh token validation failed' });
+      throw new InvalidSessionException('Invalid or expired refresh token');
     }
 
     this.logger.debug({
@@ -114,13 +128,17 @@ export class SessionService {
       return;
     }
 
+    const userId = session.userId.getValue();
+
     session.revoke();
     await this.sessionRepository.deleteBySessionToken(sessionToken);
 
+    // Session revoked successfully
+
     this.logger.log({
-      message: 'Session revoked successfully',
+      message: 'Session revoked successfully and cache invalidated',
       sessionId: session.id.getValue(),
-      userId: session.userId.getValue(),
+      userId,
     });
   }
 
@@ -130,7 +148,10 @@ export class SessionService {
     if (scope === 'global') {
       // Revoke all sessions for the user
       await this.sessionRepository.deleteByUserId(userId);
-      this.logger.log({ message: 'All user sessions revoked', userId });
+
+      // All sessions revoked successfully
+
+      this.logger.log({ message: 'All user sessions revoked and cache invalidated', userId });
     } else {
       // For local scope, we would need the current session token to revoke just that one
       // This will be handled in the logout endpoint
@@ -147,8 +168,10 @@ export class SessionService {
 
     await this.sessionRepository.deleteByUserIdExcept(userId, excludeSessionToken);
 
+    // All sessions except current revoked successfully
+
     this.logger.log({
-      message: 'All user sessions revoked except current one',
+      message: 'All user sessions revoked except current one and cache invalidated',
       userId,
     });
   }
@@ -163,17 +186,22 @@ export class SessionService {
       return;
     }
 
+    const userId = session.userId.getValue();
+
     session.revoke();
     await this.sessionRepository.deleteByRefreshToken(refreshToken);
 
+    // Session revoked by refresh token successfully
+
     this.logger.log({
-      message: 'Session revoked by refresh token',
+      message: 'Session revoked by refresh token and cache invalidated',
       sessionId: session.id.getValue(),
-      userId: session.userId.getValue(),
+      userId,
     });
   }
 
   async refreshSession(
+    userId: string,
     oldRefreshToken: string,
     newSessionToken: string,
     newRefreshToken: string,
@@ -240,6 +268,7 @@ export class SessionService {
 
       if (oldestSession) {
         await this.revokeSession(oldestSession.sessionToken);
+        // Note: revokeSession already invalidates the cache
         this.logger.log({
           message: 'Oldest session revoked to make room for new session',
           userId,

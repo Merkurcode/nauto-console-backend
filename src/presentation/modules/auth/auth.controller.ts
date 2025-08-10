@@ -55,7 +55,7 @@ import { ChangeEmailCommand } from '@application/commands/auth/change-email.comm
 // Guards & Decorators
 import { Public } from '@shared/decorators/public.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import { SkipThrottle, Throttle } from '@shared/decorators/throttle.decorator';
+import { Throttle } from '@shared/decorators/throttle.decorator';
 import { WriteOperation } from '@shared/decorators/write-operation.decorator';
 import { PreventRootAssignment } from '@shared/decorators/prevent-root-assignment.decorator';
 import { RequirePermissions } from '@shared/decorators/permissions.decorator';
@@ -87,7 +87,7 @@ export class AuthController {
   private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
     return this.transactionService.executeInTransaction(async (tx) => {
       this.transactionContext.setTransactionClient(tx);
-      
+
       try {
         return await callback();
       } finally {
@@ -104,11 +104,11 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth('JWT-auth')
-  @ApiBody({ 
+  @ApiBody({
     type: RegisterDto,
     description: 'User registration data including email, password, name, company, and optional profile/address information. Roles can be specified using RolesEnum values.',
   })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Register a new user (invitation-based)',
     description: 'Register a new user in the system through invitation\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">auth:write</code>\n\n' +
@@ -116,7 +116,7 @@ export class AuthController {
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can invite users to any company\n' +
       '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can invite users to their company\n' +
       '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can invite users with invitation permissions\n\n' +
-      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation'
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
   })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User successfully registered' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
@@ -135,16 +135,17 @@ export class AuthController {
   @Public()
   @Post('login')
   @NoBots()
+  @Throttle(60, 5) // 5 attempts per minute for login
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ 
+  @ApiBody({
     type: LoginDto,
     description: 'User credentials for authentication (email and password)',
   })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Authenticate user and get tokens',
     description: 'Authenticate user credentials and retrieve access/refresh tokens\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -155,7 +156,7 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Request()
-    req: {
+      req: {
       headers: Record<string, string>;
       ip?: string;
       connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
@@ -176,16 +177,17 @@ export class AuthController {
 
   @Public()
   @Post('verify-otp')
+  @Throttle(60, 3) // 3 OTP attempts per minute
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ 
+  @ApiBody({
     type: VerifyOtpDto,
     description: 'OTP verification data including userId and the 6-digit OTP code',
   })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Verify OTP code for 2FA',
     description: 'Verify OTP code for two-factor authentication\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -201,16 +203,17 @@ export class AuthController {
   @Public()
   @Post('refresh-token')
   @NoBots()
+  @Throttle(60, 10) // 10 refresh attempts per minute
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ 
+  @ApiBody({
     type: RefreshTokenDto,
     description: 'Refresh token to obtain new access token',
   })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Refresh access token using refresh token',
     description: 'Get new access token using a valid refresh token\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -227,7 +230,7 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiBody({ 
+  @ApiBody({
     type: LogoutDto,
     description: 'Logout scope configuration. Use LogoutScope.LOCAL for current session only or LogoutScope.GLOBAL for all sessions (default: GLOBAL)',
   })
@@ -263,7 +266,7 @@ export class AuthController {
         email: user.email,
         roles: user.roles,
       });
-      
+
       throw new ForbiddenException('BOT users cannot perform logout operation');
     }
 
@@ -293,14 +296,13 @@ export class AuthController {
   }
 
   @Get('me')
-  @SkipThrottle()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get current user information',
     description: 'Get current authenticated user basic information\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Authenticated)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'User information retrieved successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
@@ -317,7 +319,7 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Send email verification code',
     description: 'Send email verification code with role-based access control\n\n' +
       '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Role-based</code>\n\n' +
@@ -325,7 +327,7 @@ export class AuthController {
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can send to any email\n' +
       '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can send to emails within company/subsidiaries\n' +
       '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can send to emails within company\n' +
-      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Others</code> - Can only send to own email'
+      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Others</code> - Can only send to own email',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Verification email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
@@ -424,12 +426,13 @@ export class AuthController {
   @Public()
   @Post('password/request-reset')
   @NoBots()
+  @Throttle(300, 3) // 3 reset requests per 5 minutes
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Request a password reset email with captcha validation',
     description: 'Request password reset via email with captcha protection\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format or captcha' })
@@ -437,7 +440,7 @@ export class AuthController {
   async requestPasswordReset(
     @Body() requestPasswordResetDto: RequestPasswordResetDto,
     @Request()
-    req: {
+      req: {
       headers: Record<string, string>;
       ip?: string;
       connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
@@ -458,11 +461,11 @@ export class AuthController {
   @Post('password/reset')
   @NoBots()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Reset password with a token',
     description: 'Reset user password using a valid reset token\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password reset successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid or expired token' })
@@ -484,14 +487,14 @@ export class AuthController {
       '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Role-based</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can change any user password\n' +
-      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can change passwords of users in their company'
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can change passwords of users in their company',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Password changed successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Target user not found' })
-  @ApiResponse({ 
-    status: HttpStatus.FORBIDDEN, 
-    description: 'Insufficient permissions or user not in same company (for admin)' 
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions or user not in same company (for admin)',
   })
   async adminChangePassword(
     @Body() adminChangePasswordDto: AdminChangePasswordDto,
@@ -514,7 +517,7 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiBody({ 
+  @ApiBody({
     type: ChangePasswordDto,
     description: 'Password change data including current password and new password',
   })
@@ -522,17 +525,17 @@ export class AuthController {
     summary: 'Change current user password',
     description: 'Change own password with current password verification. Terminates all other sessions and returns new tokens.\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Own password)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Password changed successfully.',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string' }
-      }
-    }
+        message: { type: 'string' },
+      },
+    },
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data or current password incorrect' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
@@ -556,7 +559,7 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
-  @ApiBody({ 
+  @ApiBody({
     type: ChangeEmailDto,
     description: 'Email change data including new email, current password for verification, and optional target user ID (for admin operations)',
   })
@@ -564,17 +567,17 @@ export class AuthController {
     summary: 'Change user email with role-based access control',
     description: 'Change user email with role-based authorization. Always requires the target user\'s password for verification:\n\n• **Regular users**: Can only change their own email (requires their own password)\n• **Admin users**: Can change emails of users in their company (requires target user\'s password)\n• **Root users**: Can change any user\'s email (requires target user\'s password)\n\n**⚠️ IMPORTANT RESTRICTION**: Root users\' emails cannot be changed by anyone, including themselves.\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Role-based)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (with role-based restrictions)'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (with role-based restrictions)',
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Email changed successfully.',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string' }
-      }
-    }
+        message: { type: 'string' },
+      },
+    },
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data, email already in use, or target user password incorrect' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })

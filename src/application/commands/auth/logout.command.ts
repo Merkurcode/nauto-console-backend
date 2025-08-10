@@ -43,7 +43,7 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
         // Audit log for successful local logout
         this.auditLogService.logAuth(
           'logout',
-          `User logged out successfully from current session`,
+          'User logged out successfully from current session',
           UserId.fromString(userId),
           undefined,
           {
@@ -67,7 +67,7 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
         // Audit log for successful global logout
         this.auditLogService.logAuth(
           'logout',
-          `User logged out successfully from all sessions`,
+          'User logged out successfully from all sessions',
           UserId.fromString(userId),
           undefined,
           {

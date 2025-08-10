@@ -27,6 +27,9 @@ export class TokenProvider implements ITokenProvider {
     const payload = {
       sub: user.id.getValue(),
       email: user.email.getValue(),
+      isBanned: user.isBanned(),
+      bannedUntil: user.bannedUntil,
+      banReason: user.banReason,
       emailVerified: user.emailVerified,
       isActive: user.isActive,
       roles: user.roles.map(role => role.name),

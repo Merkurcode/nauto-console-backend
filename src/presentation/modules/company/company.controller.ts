@@ -62,7 +62,7 @@ export class CompanyController {
   private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
     return this.transactionService.executeInTransaction(async (tx) => {
       this.transactionContext.setTransactionClient(tx);
-      
+
       try {
         return await callback();
       } finally {
@@ -73,11 +73,11 @@ export class CompanyController {
 
 
   @Get()
-  @ApiOperation({ 
-    summary: 'Get companies', 
+  @ApiOperation({
+    summary: 'Get companies',
     description: 'Root users can see all companies, other users can only see their own company\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -92,6 +92,7 @@ export class CompanyController {
 
   @Get('by-host/:host')
   @Public()
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.BOT)
   @ApiOperation({
     summary: 'Get company by host (Public)',
     description:
@@ -116,13 +117,13 @@ export class CompanyController {
 
   @Get('root-companies')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
-  @ApiOperation({ 
-    summary: 'Get root companies', 
+  @ApiOperation({
+    summary: 'Get root companies',
     description: 'Get all companies that have no parent company (root level)\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
-      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>'
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -135,11 +136,12 @@ export class CompanyController {
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
+  @ApiOperation({
     summary: 'Get company by ID (All authenticated users)',
     description: 'Get detailed information about a specific company\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -161,7 +163,7 @@ export class CompanyController {
   @NoBots()
   @Roles(RolesEnum.ROOT)
   @WriteOperation('company')
-  @ApiBody({ 
+  @ApiBody({
     type: CreateCompanyDto,
     description: 'Company creation data with required fields: name, description, host, and address. Optional fields include industry sector, operation channel, timezone, currency, language, and URLs.',
   })
@@ -227,18 +229,18 @@ export class CompanyController {
   @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @WriteOperation('company')
-  @ApiBody({ 
+  @ApiBody({
     type: UpdateCompanyDto,
     description: 'Company update data. All fields are optional. Only provided fields will be updated.',
   })
-  @ApiOperation({ 
-    summary: 'Update company (Root and Admin)', 
+  @ApiOperation({
+    summary: 'Update company (Root and Admin)',
     description: 'Root users can update any company, Admin users can only update their own company\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:write</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can update any company\n' +
       '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only update their own company\n\n' +
-      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation'
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -264,7 +266,7 @@ export class CompanyController {
   ): Promise<CompanyResponse> {
     return this.executeInTransactionWithContext(async () => {
       const companyId = CompanyId.fromString(id);
-      
+
       const { name, description, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
 
       const command = new UpdateCompanyCommand(
@@ -280,15 +282,15 @@ export class CompanyController {
         address.exteriorNumber &&
         address.postalCode
           ? new Address(
-              address.country,
-              address.state,
-              address.city,
-              address.street,
-              address.exteriorNumber,
-              address.postalCode,
-              address.interiorNumber,
-              address.googleMapsUrl,
-            )
+            address.country,
+            address.state,
+            address.city,
+            address.street,
+            address.exteriorNumber,
+            address.postalCode,
+            address.interiorNumber,
+            address.googleMapsUrl,
+          )
           : undefined,
         host ? new Host(host) : undefined,
         timezone,
@@ -310,12 +312,12 @@ export class CompanyController {
   @NoBots()
   @Roles(RolesEnum.ROOT)
   @DeleteOperation('company')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete company (Root only)',
     description: 'Delete a company from the system\n\n' +
       '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:delete</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
-      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation'
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
@@ -332,21 +334,21 @@ export class CompanyController {
   async deleteCompany(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.executeInTransactionWithContext(async () => {
       const companyId = CompanyId.fromString(id);
-      
-return this.commandBus.execute(new DeleteCompanyCommand(companyId));
+
+      return this.commandBus.execute(new DeleteCompanyCommand(companyId));
     });
   }
 
   @Get(':id/subsidiaries')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
-  @ApiOperation({ 
-    summary: 'Get company subsidiaries', 
+  @ApiOperation({
+    summary: 'Get company subsidiaries',
     description: 'Get all direct subsidiaries of a company\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
       '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
-      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>'
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -356,20 +358,20 @@ return this.commandBus.execute(new DeleteCompanyCommand(companyId));
   @RequirePermissions('company:read')
   async getCompanySubsidiaries(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
-    
-return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
+
+    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
   }
 
   @Get(':id/hierarchy')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN)
-  @ApiOperation({ 
-    summary: 'Get company hierarchy', 
+  @ApiOperation({
+    summary: 'Get company hierarchy',
     description: 'Get the complete hierarchy tree for a company including all subsidiaries\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
       '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
-      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>'
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -379,7 +381,7 @@ return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
   @RequirePermissions('company:read')
   async getCompanyHierarchy(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse> {
     const companyId = CompanyId.fromString(id);
-    
-return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId));
+
+    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId));
   }
 }

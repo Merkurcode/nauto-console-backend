@@ -19,7 +19,7 @@ import {
   AuthFailureReason,
   IAuthValidationResult,
   ILoginFlowResult,
-} from '@core/enums/auth-failure-reason.enum';
+} from '@shared/constants/auth-failure-reason.enum';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { AuthResponse } from '@application/dtos/responses/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';

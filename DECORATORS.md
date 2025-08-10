@@ -32,6 +32,21 @@ This document provides a complete reference of all custom decorators used in the
   ```
 - **Guard Integration**: Works with JWT authentication guards
 
+### `@LightweightAuth()`
+- **File**: `src/shared/decorators/lightweight-auth.decorator.ts`
+- **Type**: Method decorator
+- **Purpose**: JWT validation minimalista sin queries pesadas a BD - perfect for endpoints that only need JWT claims
+- **Skips**: User profile loading, roles/permissions loading, session activity updates, validation chains
+- **Usage**: 
+  ```typescript
+  @Get('me')
+  @LightweightAuth()
+  async me(@CurrentUser() user: IJwtPayload) {
+    return { id: user.sub, email: user.email };
+  }
+  ```
+- **Guard Integration**: Processed by `JwtAuthGuard` with minimal validation
+
 ### `@CurrentTenant()`
 - **File**: `src/shared/decorators/tenant.decorator.ts`
 - **Type**: Parameter decorator  
@@ -279,23 +294,28 @@ This document provides a complete reference of all custom decorators used in the
 - **File**: `src/shared/decorators/throttle.decorator.ts`
 - **Type**: Method decorator
 - **Purpose**: Sets custom throttle limits for specific routes
+- **Current Status**: **ACTIVE** - ThrottlerGuard is globally enabled
+- **Default Limits**: 100 req/min globally, Auth endpoints: 5 req/min
 - **Usage**: 
   ```typescript
   @Throttle(60, 10) // 10 requests per 60 seconds
   async intensiveOperation() { }
   ```
-- **Guard Integration**: Works with custom throttling guards
+- **Response**: Returns HTTP 429 when limits exceeded with `X-RateLimit-*` headers
+- **Guard Integration**: Works with `ThrottlerGuard` (executes FIRST in guard chain)
 
 ### `@SkipThrottle()`
 - **File**: `src/shared/decorators/throttle.decorator.ts`
 - **Type**: Method decorator
-- **Purpose**: Skips throttling for specific routes
+- **Purpose**: Skips throttling for specific routes (essential for health checks)
+- **Current Status**: **FUNCTIONAL** - Required for internal endpoints
 - **Usage**: 
   ```typescript
   @SkipThrottle()
   async internalHealthCheck() { }
   ```
-- **Guard Integration**: Works with throttling guards
+- **Guard Integration**: Recognized by `ThrottlerGuard`
+- **BOT Behavior**: BOT users automatically bypass throttling (no need for explicit @SkipThrottle)
 
 ---
 
@@ -342,18 +362,36 @@ This document provides a complete reference of all custom decorators used in the
 
 ## Guard Integration
 
-The decorators work with the following guard system (in execution order):
+**IMPORTANT ARCHITECTURAL CHANGE**: Guard consolidation has been implemented for better performance and maintainability.
 
-1. **`JwtAuthGuard`** - Handles authentication
-2. **`UserBanGuard`** - Checks for banned users
-3. **`SessionGuard`** - Validates active sessions
-4. **`BotOptimizationGuard`** - Optimizes performance for bot users
-5. **`BotRestrictionsGuard`** - Controls bot access restrictions
-6. **`TenantIsolationGuard`** - Manages multi-tenant data isolation
-7. **`ThrottlerGuard`** - Handles rate limiting
+The decorators work with the following **consolidated** guard system (in execution order):
+
+1. **`ThrottlerGuard`** - **FIRST**: Rate limiting and DDoS protection (HTTP 429 responses)
+2. **`JwtAuthGuard`** - **SECOND**: Consolidated authentication guard that includes:
+   - JWT token validation
+   - User ban checking (integrated)
+   - Session validation (integrated) 
+   - BOT optimization logic (integrated)
+   - BOT access restrictions (integrated)
+   - Tenant isolation (integrated)
+   - Lightweight auth support
+
+### Consolidated vs Legacy Guards
+
+**✅ CURRENT (Consolidated)**:
+- `ThrottlerGuard` → `JwtAuthGuard` (with all logic integrated)
+
+**❌ LEGACY (Removed)**:
+- ~~`UserBanGuard`~~ - Now integrated in `JwtAuthGuard.canActivate()`
+- ~~`SessionGuard`~~ - Now integrated in `JwtAuthGuard.canActivate()`
+- ~~`BotOptimizationGuard`~~ - Now integrated in `JwtAuthGuard.canActivate()`
+- ~~`BotRestrictionsGuard`~~ - Now integrated in `JwtAuthGuard.canActivate()`
+- ~~`TenantIsolationGuard`~~ - Now integrated in `JwtAuthGuard.canActivate()`
 
 ### Global Guards Configuration
-All guards are configured globally in `src/app.module.ts`, ensuring consistent behavior across the entire application.
+Both guards are configured globally in `src/app.module.ts` with proper execution order:
+1. ThrottlerGuard executes FIRST for DDoS protection
+2. JwtAuthGuard executes SECOND with all consolidated validation logic
 
 ---
 
@@ -389,10 +427,10 @@ async logout() { }
 async healthCheck() { }
 ```
 
-#### 5. **Throttled Public Endpoints**
+#### 5. **Throttled Auth Endpoints (NEW)**
 ```typescript
+@Throttle(60, 5) // 5 requests per minute - ACTIVE throttling
 @Public()
-@Throttle(60, 5) // 5 requests per minute
 async login() { }
 ```
 
@@ -401,6 +439,25 @@ async login() { }
 @BotOnly()
 @CanWrite('automation')
 async executeAutomatedTask() { }
+```
+
+#### 7. **Lightweight Authentication (NEW)**
+```typescript
+@Get('me')
+@LightweightAuth() // Skip heavy DB queries, only JWT validation
+async getCurrentUser(@CurrentUser() user: IJwtPayload) {
+  return { id: user.sub, email: user.email, roles: user.roles };
+}
+```
+
+#### 8. **Health Check with Throttle Skip (CRITICAL)**
+```typescript
+@Get('health')
+@Public()
+@SkipThrottle() // REQUIRED for health checks to avoid 429 errors
+async healthCheck() {
+  return { status: 'ok' };
+}
 ```
 
 ### Controller-Level vs Method-Level Application
@@ -417,7 +474,12 @@ Decorators can be applied at both controller and method levels:
 2. **Combine role and permission checks** for defense in depth
 3. **Apply bot restrictions** at controller level when entire controllers should be bot-free
 4. **Use public decorators sparingly** and always with proper validation
-5. **Apply throttling** to resource-intensive or authentication-related endpoints
+5. **Apply throttling strategically** - now ACTIVE globally with custom limits for auth endpoints
+6. **Use @SkipThrottle() for internal endpoints** - Essential for health checks, monitoring, and internal APIs
+7. **Use @LightweightAuth() for performance** - Perfect for simple profile/status endpoints that only need JWT claims
+8. **BOT optimization is automatic** - BOT users automatically bypass throttling and get optimized performance
+9. **Rate limiting headers** - All throttled responses now include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers
+10. **HTTP 429 responses** - Proper rate limiting now returns HTTP 429 instead of HTTP 500 errors
 
 ---
 
@@ -426,6 +488,7 @@ Decorators can be applied at both controller and method levels:
 Each decorator uses specific metadata keys for guard identification:
 
 - `IS_PUBLIC_KEY` - Public endpoints
+- `LIGHTWEIGHT_AUTH_KEY` - **NEW**: Lightweight JWT validation
 - `PERMISSIONS_KEY` - Required permissions
 - `ROLES_KEY` - Required roles
 - `SKIP_AUTH_KEY` - Skip authentication
@@ -436,4 +499,4 @@ Each decorator uses specific metadata keys for guard identification:
 - `THROTTLE_KEY` - Custom throttle settings
 - `SKIP_THROTTLE_KEY` - Skip throttling
 
-This comprehensive decorator system provides fine-grained access control, multi-tenancy support, bot management, and performance optimization for the NestJS application.
+This comprehensive decorator system provides fine-grained access control, multi-tenancy support, bot management, active rate limiting with HTTP 429 responses, and performance optimization through both guard consolidation and lightweight authentication for the NestJS application.

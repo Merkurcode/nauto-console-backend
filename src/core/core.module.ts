@@ -28,11 +28,11 @@ import { AuditLogCleanupService } from './services/audit-log-cleanup.service';
 import { AuditTransactionService } from './services/audit-transaction.service';
 import { AuthenticationValidationService } from './services/authentication-validation.service';
 import { BotSessionValidationService } from './services/bot-session-validation.service';
+import { TenantResolverService } from './services/tenant-resolver.service';
 import { MemoryMonitorService } from './services/memory-monitor.service';
 import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { MonitoringHealthService } from './services/monitoring-health.service';
 import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
-import { ConfigService } from '@nestjs/config';
 
 /**
  * Core Domain Module
@@ -72,6 +72,7 @@ import { ConfigService } from '@nestjs/config';
     AuditTransactionService,
     AuthenticationValidationService,
     BotSessionValidationService,
+    TenantResolverService,
     // System monitoring and resilience services
     MemoryMonitorService,
     CircuitBreakerService,
@@ -105,6 +106,7 @@ import { ConfigService } from '@nestjs/config';
     AuditTransactionService,
     AuthenticationValidationService,
     BotSessionValidationService,
+    TenantResolverService,
     // System monitoring and resilience services
     MemoryMonitorService,
     CircuitBreakerService,

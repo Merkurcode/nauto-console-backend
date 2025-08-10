@@ -1,7 +1,5 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
-import { AuthService } from '@core/services/auth.service';
-import { UserService } from '@core/services/user.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
@@ -24,8 +22,6 @@ export class AdminChangePasswordCommandHandler
   implements ICommandHandler<AdminChangePasswordCommand, { success: boolean; message: string }>
 {
   constructor(
-    private readonly authService: AuthService,
-    private readonly userService: UserService,
     private readonly userAuthorizationService: UserAuthorizationService,
     private readonly businessConfigService: BusinessConfigurationService,
     @Inject(USER_REPOSITORY)

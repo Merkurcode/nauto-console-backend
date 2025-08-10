@@ -62,12 +62,12 @@ export class PermissionsGuard implements CanActivate {
       isActive: jwtPayload.isActive,
       rolesCollection: {
         getAllPermissions: () => ({
-          toArray: () => (jwtPayload.permissions || []).map(p => ({ name: p }))
-        })
+          toArray: () => (jwtPayload.permissions || []).map(p => ({ name: p })),
+        }),
       },
       hasPermission: (permissionName: string) => {
         return (jwtPayload.permissions || []).includes(permissionName);
-      }
+      },
     };
 
     // Check for resource and action metadata
@@ -89,12 +89,12 @@ export class PermissionsGuard implements CanActivate {
     if (requiresSensitive) {
       // Check if sensitive operations validation is enabled in config
       const sensitiveOperationsEnabled = this.configService.get<boolean>('SENSITIVE_OPERATIONS_ENABLED', true);
-      
+
       // If disabled in config, skip the 2FA requirement and allow access
       if (!sensitiveOperationsEnabled) {
         return true;
       }
-      
+
       return this.userAuthorizationService.canPerformSensitiveOperations(userForAuth);
     }
 

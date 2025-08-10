@@ -1,4 +1,4 @@
-import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -28,26 +28,23 @@ import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
 import { AuditLogInterceptor } from '@presentation/interceptors/audit-log.interceptor';
-import { RequestIntegrityMiddleware } from '@presentation/middleware/request-integrity.middleware';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
-import { UserBanGuard } from '@presentation/guards/user-ban.guard';
-import { SessionGuard } from '@presentation/guards/session.guard';
-import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guard';
-import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
-import { TenantIsolationGuard } from '@presentation/guards/tenant-isolation.guard';
 import { ThrottlerGuard } from '@presentation/guards/throttler.guard';
 import { UserBanService } from '@core/services/user-ban.service';
-import { SessionService } from '@core/services/session.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { TenantResolverService } from '@presentation/services/tenant-resolver.service';
+import { SessionService } from '@core/services/session.service';
+import { BotSessionValidationService } from '@core/services/bot-session-validation.service';
+import { TenantResolverService } from '@core/services/tenant-resolver.service';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { ThrottlerService } from '@infrastructure/services/throttler.service';
 import { LOGGER_SERVICE, THROTTLER_SERVICE } from '@shared/constants/tokens';
 
 // Config
 import configuration from '@infrastructure/config/configuration';
+import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guard';
+import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
+import { ThrottlerService } from '@infrastructure/services/throttler.service';
 
 @Module({
   imports: [
@@ -78,6 +75,7 @@ import configuration from '@infrastructure/config/configuration';
 
     // JWT Module (Global)
     JwtModule.registerAsync({
+      global: true, // Make JwtService available globally
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -124,66 +122,31 @@ import configuration from '@infrastructure/config/configuration';
       useClass: TransformInterceptor,
     },
 
-    // Global filters
-    {
-      provide: APP_FILTER,
-      useClass: DomainExceptionFilter,
-    },
+    // Global filters (order matters: more specific first)
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
+    {
+      provide: APP_FILTER,
+      useClass: DomainExceptionFilter,
+    },
 
-    // Global guards (order matters!)
-    {
-      provide: APP_GUARD,
-      useFactory: (reflector: Reflector) => new JwtAuthGuard(reflector),
-      inject: [Reflector],
-    },
-    {
-      provide: APP_GUARD,
-      useFactory: (userBanService: UserBanService, reflector: Reflector, logger: ILogger) =>
-        new UserBanGuard(userBanService, reflector, logger),
-      inject: [UserBanService, Reflector, LOGGER_SERVICE],
-    },
-    {
-      provide: APP_GUARD,
-      useFactory: (
-        sessionService: SessionService,
-        reflector: Reflector,
-        logger: ILogger,
-        jwtService: JwtService,
-      ) => new SessionGuard(sessionService, reflector, logger, jwtService),
-      inject: [SessionService, Reflector, LOGGER_SERVICE, JwtService],
-    },
     {
       provide: APP_GUARD,
       useFactory: (reflector: Reflector, logger: ILogger) =>
         new BotOptimizationGuard(reflector, logger),
       inject: [Reflector, LOGGER_SERVICE],
     },
+
     {
       provide: APP_GUARD,
       useFactory: (reflector: Reflector, logger: ILogger) =>
         new BotRestrictionsGuard(reflector, logger),
       inject: [Reflector, LOGGER_SERVICE],
     },
-    {
-      provide: APP_GUARD,
-      useFactory: (
-        reflector: Reflector,
-        tenantResolverService: TenantResolverService,
-        userAuthorizationService: UserAuthorizationService,
-        logger: ILogger,
-      ) =>
-        new TenantIsolationGuard(
-          reflector,
-          tenantResolverService,
-          userAuthorizationService,
-          logger,
-        ),
-      inject: [Reflector, TenantResolverService, UserAuthorizationService, LOGGER_SERVICE],
-    },
+
+    // Throttler Guard (executes FIRST for rate limiting - CRITICAL for DDoS protection)
     {
       provide: APP_GUARD,
       useFactory: (
@@ -193,10 +156,41 @@ import configuration from '@infrastructure/config/configuration';
       ) => new ThrottlerGuard(reflector, throttlerService, configService),
       inject: [Reflector, THROTTLER_SERVICE, ConfigService],
     },
+
+    // JWT Auth Guard (executes SECOND for JWT validation with all integrated checks)
+    {
+      provide: APP_GUARD,
+      useFactory: (
+        reflector: Reflector,
+        jwtService: JwtService,
+        userBanService: UserBanService,
+        sessionService: SessionService,
+        botSessionValidationService: BotSessionValidationService,
+        tenantResolverService: TenantResolverService,
+        userAuthorizationService: UserAuthorizationService,
+        logger: ILogger,
+      ) =>
+        new JwtAuthGuard(
+          reflector,
+          jwtService,
+          userBanService,
+          sessionService,
+          botSessionValidationService,
+          tenantResolverService,
+          userAuthorizationService,
+          logger,
+        ),
+      inject: [
+        Reflector,
+        JwtService,
+        UserBanService,
+        SessionService,
+        BotSessionValidationService,
+        TenantResolverService,
+        UserAuthorizationService,
+        LOGGER_SERVICE,
+      ],
+    },
   ],
 })
-export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIntegrityMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL });
-  }
-}
+export class AppModule {}

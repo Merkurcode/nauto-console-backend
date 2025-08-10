@@ -68,7 +68,7 @@ export class RoleController {
   private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
     return this.transactionService.executeInTransaction(async (tx) => {
       this.transactionContext.setTransactionClient(tx);
-      
+
       try {
         return await callback();
       } finally {
@@ -88,11 +88,11 @@ export class RoleController {
     RolesEnum.GUEST,
   )
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all roles (All authenticated users)',
     description: 'Get all available roles in the system\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns a list of all roles' })
   @ApiResponse({
@@ -110,17 +110,17 @@ export class RoleController {
     RolesEnum.MANAGER,
   )
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get assignable permissions for current user role',
     description: 'Get list of permissions that the current user can assign to roles, filtered by exclude rules\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:read</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
       '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n' +
-      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code>'
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code>',
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Returns permissions with assignability status and exclude reasons',
     schema: {
       type: 'array',
@@ -133,8 +133,8 @@ export class RoleController {
           resource: { type: 'string', example: 'user' },
           action: { type: 'string', example: 'read' },
           canAssign: { type: 'boolean', example: true },
-          excludeReason: { type: 'string', example: 'Role \'guest\' is specifically excluded from this permission', nullable: true }
-        }
+          excludeReason: { type: 'string', example: 'Role \'guest\' is specifically excluded from this permission', nullable: true },
+        },
       },
       example: [
         {
@@ -143,7 +143,7 @@ export class RoleController {
           description: 'Read user information',
           resource: 'user',
           action: 'read',
-          canAssign: true
+          canAssign: true,
         },
         {
           id: '550e8400-e29b-41d4-a716-446655440001',
@@ -152,10 +152,10 @@ export class RoleController {
           resource: 'user',
           action: 'write',
           canAssign: false,
-          excludeReason: 'Role \'manager\' is specifically excluded from this permission'
-        }
-      ]
-    }
+          excludeReason: 'Role \'manager\' is specifically excluded from this permission',
+        },
+      ],
+    },
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -167,25 +167,25 @@ export class RoleController {
   ): Promise<IAssignablePermissionResponse[]> {
     // Use all user roles to determine combined permissions
     return this.queryBus.execute(
-      new GetAssignablePermissionsQuery(currentUser.roles, query.targetRoleName)
+      new GetAssignablePermissionsQuery(currentUser.roles, query.targetRoleName),
     );
   }
 
   @Get('permissions/assignable-to/:targetRoleName')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get permissions that a specific role can have',
     description: 'Get list of all permissions showing which ones can be assigned to the specified target role based on exclude rules. This endpoint focuses on the target role\'s restrictions, not the current user\'s permissions.\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   @ApiParam({
-    name: 'targetRoleName', 
-    description: 'Name of the target role to check permissions for', 
-    example: 'admin'
+    name: 'targetRoleName',
+    description: 'Name of the target role to check permissions for',
+    example: 'admin',
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Returns permissions that can be assigned to the target role',
     schema: {
       type: 'array',
@@ -198,8 +198,8 @@ export class RoleController {
           resource: { type: 'string', example: 'user' },
           action: { type: 'string', example: 'read' },
           canAssign: { type: 'boolean', example: true },
-          excludeReason: { type: 'string', example: 'Target role \'guest\' is excluded from this permission', nullable: true }
-        }
+          excludeReason: { type: 'string', example: 'Target role \'guest\' is excluded from this permission', nullable: true },
+        },
       },
       example: [
         {
@@ -208,7 +208,7 @@ export class RoleController {
           description: 'Read user information',
           resource: 'user',
           action: 'read',
-          canAssign: true
+          canAssign: true,
         },
         {
           id: '550e8400-e29b-41d4-a716-446655440001',
@@ -217,10 +217,10 @@ export class RoleController {
           resource: 'company',
           action: 'delete',
           canAssign: false,
-          excludeReason: 'Target role \'manager\' is excluded from this permission'
-        }
-      ]
-    }
+          excludeReason: 'Target role \'manager\' is excluded from this permission',
+        },
+      ],
+    },
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -236,22 +236,22 @@ export class RoleController {
   ): Promise<IAssignablePermissionResponse[]> {
     // Check permissions that can be assigned to the specific target role
     return this.queryBus.execute(
-      new GetPermissionsForTargetRoleQuery(targetRoleName)
+      new GetPermissionsForTargetRoleQuery(targetRoleName),
     );
   }
 
   @Get('permissions/current')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get current user permissions',
     description: 'Get all permissions that the current authenticated user has based on their roles\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Authenticated)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Returns all permissions granted to the current user',
-    type: [CurrentUserPermissionResponse]
+    type: [CurrentUserPermissionResponse],
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -261,7 +261,7 @@ export class RoleController {
     @CurrentUser() currentUser: IJwtPayload,
   ): Promise<ICurrentUserPermissionResponse[]> {
     return this.queryBus.execute(
-      new GetCurrentUserPermissionsQuery(currentUser.sub)
+      new GetCurrentUserPermissionsQuery(currentUser.sub),
     );
   }
 
@@ -276,11 +276,11 @@ export class RoleController {
     RolesEnum.GUEST,
   )
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get role by ID (All authenticated users)',
     description: 'Get detailed information about a specific role\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>'
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Returns role information' })
@@ -297,17 +297,17 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.CREATED)
-  @ApiBody({ 
+  @ApiBody({
     type: CreateRoleDto,
     description: 'Role creation data including name (from RolesEnum), description, hierarchy level (2-5), and optional permission IDs',
   })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create new role (Root only)',
     description: 'Create a new role in the system with hierarchy level restrictions\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:write</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
       '📈 **Hierarchy Rules:** Root users can create roles with hierarchy levels 2-5 (admin, manager, sales_agent, host, guest)\n\n' +
-      '⚠️ **Restrictions:** Root readonly users cannot perform this operation. Cannot create root-level roles (hierarchy level 1).'
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation. Cannot create root-level roles (hierarchy level 1).',
   })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Role created successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
@@ -338,16 +338,16 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ 
+  @ApiBody({
     type: UpdateRoleDto,
     description: 'Role update data. All fields are optional. Only provided fields will be updated.',
   })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update role by ID (Root only)',
     description: 'Update role information\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:write</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
-      '⚠️ **Restrictions:** Root readonly users cannot perform this operation'
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role updated successfully' })
@@ -374,12 +374,12 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanDelete('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete role by ID (Root only)',
     description: 'Delete a role from the system\n\n' +
       '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:delete</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
-      '⚠️ **Restrictions:** Root readonly users cannot perform this operation'
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiParam({ name: 'id', description: 'Role ID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Role deleted successfully' })
@@ -400,12 +400,12 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Assign permission to role (Root only)',
     description: 'Assign a permission to a specific role\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:write</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
-      '⚠️ **Restrictions:** Root readonly users cannot perform this operation'
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiParam({
     name: 'roleId',
@@ -436,12 +436,12 @@ export class RoleController {
   @Roles(RolesEnum.ROOT)
   @CanWrite('role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Remove permission from role (Root only)',
     description: 'Remove a permission from a specific role\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">role:write</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
-      '⚠️ **Restrictions:** Root readonly users cannot perform this operation'
+      '⚠️ **Restrictions:** Root readonly users cannot perform this operation',
   })
   @ApiParam({
     name: 'roleId',

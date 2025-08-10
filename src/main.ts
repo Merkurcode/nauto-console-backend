@@ -10,6 +10,9 @@ import helmet from 'helmet';
 import { LoggerService } from '@infrastructure/logger/logger.service';
 import { useContainer } from 'class-validator';
 import { join } from 'path';
+import { ValidateSignatureMiddleware } from '@presentation/middleware/validate-signature.middleware';
+import { JwtService } from '@nestjs/jwt';
+import { REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
 
 async function bootstrap() {
   // =========================================================================
@@ -18,11 +21,14 @@ async function bootstrap() {
   const maxOldSpaceSize = process.env.NODE_MAX_OLD_SPACE_SIZE;
   const maxSemiSpaceSize = process.env.NODE_MAX_SEMI_SPACE_SIZE;
 
-  if (maxOldSpaceSize) {
-    console.warn(`Memory limit configured: ${maxOldSpaceSize}MB max heap`);
-  }
-  if (maxSemiSpaceSize) {
-    console.warn(`Semi space configured: ${maxSemiSpaceSize}MB`);
+  // SECURITY: Only log memory configuration in development
+  if (process.env.NODE_ENV === 'development') {
+    if (maxOldSpaceSize) {
+      console.warn(`Memory limit configured: ${maxOldSpaceSize}MB max heap`);
+    }
+    if (maxSemiSpaceSize) {
+      console.warn(`Semi space configured: ${maxSemiSpaceSize}MB`);
+    }
   }
 
   // =========================================================================
@@ -38,88 +44,138 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // =========================================================================
-  // STATIC FILES AND DYNAMIC CONFIG
+  // STATIC FILES AND DYNAMIC CONFIG (BEFORE MIDDLEWARE)
   // =========================================================================
-  // Serve static files from public directory
-  app.useStaticAssets(join(__dirname, '..', 'public'));
-
-  // Serve dynamic configuration script
-  app.use('/swagger/config.js', (req, res) => {
-    const serverSecret = configService.get<string>('SERVER_INTEGRITY_SECRET', '');
-    const botSecret = configService.get<string>('BOT_INTEGRITY_SECRET', '');
-
-    // Escape quotes to prevent injection
-    const escapedServerSecret = serverSecret.replace(/'/g, "\\'").replace(/"/g, '\\"');
-    const escapedBotSecret = botSecret.replace(/'/g, "\\'").replace(/"/g, '\\"');
-
-    const configScript = `
-// Auto-configuration script for Swagger signature
-console.log('🔧 Loading Swagger configuration from server...');
-
-// Auto-configure localStorage with values from server .env
-const config = {
-  serverSecret: '${escapedServerSecret}',
-  botSecret: '${escapedBotSecret}',
-  secretType: 'server' // default
-};
-
-// Only set if values exist and are not empty
-if (config.serverSecret && config.serverSecret.length > 0) {
-  localStorage.setItem('swagger-server-secret', config.serverSecret);
-  console.log('✅ Server secret configured (' + config.serverSecret.length + ' chars)');
-} else {
-  console.warn('⚠️ SERVER_INTEGRITY_SECRET not found in .env');
-}
-
-if (config.botSecret && config.botSecret.length > 0) {
-  localStorage.setItem('swagger-bot-secret', config.botSecret);
-  console.log('✅ Bot secret configured (' + config.botSecret.length + ' chars)');
-} else {
-  console.warn('⚠️ BOT_INTEGRITY_SECRET not found in .env');
-}
-
-// Set default secret type
-localStorage.setItem('swagger-secret-type', config.secretType);
-console.log('✅ Default secret type set to:', config.secretType);
-
-console.log('🚀 Swagger signature auto-configuration complete!');
-
-// Expose configuration for debugging (without exposing actual secrets)
-window.SwaggerConfig = {
-  hasServerSecret: !!config.serverSecret,
-  hasBotSecret: !!config.botSecret,
-  secretType: config.secretType,
-  serverSecretLength: config.serverSecret.length,
-  botSecretLength: config.botSecret.length
-};
-`;
-
-    res.setHeader('Content-Type', 'application/javascript');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.send(configScript);
+  // Serve static files from public directory BEFORE signature middleware
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'text/javascript');
+      }
+    },
   });
 
   // =========================================================================
-  // SECURITY MIDDLEWARE
+  // REQUEST SIGNATURE VALIDATION MIDDLEWARE
   // =========================================================================
+  // Configurar middleware de validación de firma DESPUÉS de archivos estáticos
+  const jwtService = app.get(JwtService);
+  const validateSignatureMiddleware = new ValidateSignatureMiddleware(configService, jwtService);
+  app.use(validateSignatureMiddleware.use.bind(validateSignatureMiddleware));
+
+  // =========================================================================
+  // SECURITY MIDDLEWARE - Enhanced Security Headers
+  // =========================================================================
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isProduction = process.env.NODE_ENV === 'production';
+
   app.use(
     helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Added unsafe-eval for crypto operations
-          imgSrc: ["'self'", 'data:', 'https:'],
-          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-          connectSrc: ["'self'"],
-        },
-      },
+      contentSecurityPolicy: isDevelopment
+        ? false
+        : {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Swagger
+              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+              fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+              imgSrc: ["'self'", 'data:', 'https:'],
+              connectSrc: ["'self'"],
+              objectSrc: ["'none'"],
+              mediaSrc: ["'none'"],
+              frameSrc: ["'none'"],
+              baseUri: ["'self'"],
+              formAction: ["'self'"],
+              frameAncestors: ["'none'"],
+              upgradeInsecureRequests: isProduction ? [] : undefined,
+            },
+          },
+      crossOriginEmbedderPolicy: !isDevelopment,
+      hsts: isProduction
+        ? {
+            maxAge: 31536000, // 1 year
+            includeSubDomains: true,
+            preload: true,
+          }
+        : false,
+      noSniff: true,
+      originAgentCluster: true,
+      dnsPrefetchControl: { allow: false },
+      frameguard: { action: 'deny' },
+      hidePoweredBy: true,
+      ieNoOpen: true,
+      permittedCrossDomainPolicies: false,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      xssFilter: true,
     }),
   );
 
+  // Additional security headers
+  app.use((req, res, next) => {
+    // Permissions Policy (formerly Feature Policy)
+    res.setHeader(
+      'Permissions-Policy',
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+    );
+
+    // Additional CORS security
+    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+
+    // Cache control for sensitive endpoints
+    if (req.path.includes('/api/auth') || req.path.includes('/api/users')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+
+    // Expect-CT for certificate transparency (production only)
+    if (isProduction) {
+      res.setHeader('Expect-CT', 'max-age=86400, enforce');
+    }
+
+    next();
+  });
+
   // =========================================================================
-  // CUSTOM MIDDLEWARE
+  // CUSTOM MIDDLEWARE - ORDERED BY PRIORITY FOR PERFORMANCE & SECURITY
   // =========================================================================
+
+  // 1. HTTPS enforcement for production (first for security)
+  if (isProduction) {
+    app.use((req, res, next) => {
+      // Multiple ways to detect HTTPS for different proxy configurations
+      const isSecure =
+        req.secure || // Express built-in
+        req.headers['x-forwarded-proto'] === 'https' || // Standard proxy header
+        req.headers['x-forwarded-ssl'] === 'on' || // Some load balancers
+        req.headers['x-scheme'] === 'https' || // Alternative header
+        req.connection?.encrypted || // Direct TLS connection
+        req.socket?.encrypted; // Alternative socket check
+
+      if (!isSecure) {
+        // Validate host header to prevent host header injection
+        const host = req.headers.host;
+        if (!host || !/^[a-zA-Z0-9.-]+$/.test(host)) {
+          return res.status(400).json({
+            statusCode: 400,
+            message: 'Invalid host header',
+            error: 'Bad Request',
+          });
+        }
+
+        // Redirect to HTTPS with sanitized host
+        const httpsUrl = `https://${host}${req.url}`;
+
+        // Set security headers for redirect
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+
+        return res.redirect(301, httpsUrl);
+      }
+
+      next();
+    });
+  }
+
   // Handle ngrok and preflight requests
   app.use((req, res, next) => {
     // Handle ngrok browser warning
@@ -133,7 +189,7 @@ window.SwaggerConfig = {
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning',
+        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning, x-idempotency-key',
       );
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Max-Age', '86400');
@@ -147,12 +203,25 @@ window.SwaggerConfig = {
   // =========================================================================
   // GLOBAL PIPES AND FILTERS
   // =========================================================================
-  // Global validation pipe
+  // Global validation pipe with enhanced security
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
+      whitelist: true, // Strip properties that don't have decorators
+      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties exist
+      transform: true, // Transform payloads to DTO instances
+      transformOptions: {
+        enableImplicitConversion: false, // Require explicit type conversion
+      },
+      disableErrorMessages: isProduction, // Hide detailed errors in production
+      validationError: {
+        target: false, // Don't expose target object in errors
+        value: false, // Don't expose values in errors
+      },
+      stopAtFirstError: false, // Validate all fields
+      forbidUnknownValues: true, // Reject unknown values
+      skipMissingProperties: false, // Validate all required properties
+      skipNullProperties: false, // Validate null values
+      skipUndefinedProperties: false, // Validate undefined values
     }),
   );
 
@@ -167,12 +236,30 @@ window.SwaggerConfig = {
     'http://localhost:3000',
   ];
 
-  // In development, allow all origins for easier testing with ngrok
+  // SECURITY: Strict CORS policy - never allow all origins
   const corsOptions = {
-    origin:
-      configService.get<string>('env') === 'development'
-        ? true // Allow all origins in development
-        : allowedOrigins,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow requests with no origin (like mobile apps or Postman)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // In development, allow localhost with any port
+      if (configService.get<string>('env') === 'development' && origin.includes('localhost')) {
+        return callback(null, true);
+      }
+
+      // Reject all other origins
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
@@ -183,6 +270,8 @@ window.SwaggerConfig = {
       'X-Forwarded-For',
       'X-Real-IP',
       'ngrok-skip-browser-warning',
+      // Idempotency header
+      'x-idempotency-key',
     ],
     optionsSuccessStatus: 200,
   };
@@ -279,136 +368,122 @@ window.SwaggerConfig = {
         const SERVER_SECRET = localStorage.getItem('swagger-server-secret') || '';
         const BOT_SECRET = localStorage.getItem('swagger-bot-secret') || '';
         const secretType = localStorage.getItem('swagger-secret-type') || 'server';
-
-        // Public endpoints that skip signature validation
+        
+        // Skip paths that don't need signature
         const SKIP_PATHS = [
           '/api/health',
-          '/api/health/database',
-          '/api/health/ready',
-          '/api/health/live',
           '/api/auth/login',
           '/api/auth/verify-otp',
           '/api/auth/refresh-token',
-          '/api/auth/email/verify',
-          '/api/auth/password/request-reset',
-          '/api/auth/password/reset',
           '/api/companies/by-host',
+          '/docs',
+          '/swagger'
         ];
-
-        // Generate HMAC-SHA256 signature (match server)
-        async function generateSignature(payload, secret) {
-          const encoder = new TextEncoder();
-          const data = encoder.encode(payload);
-          const keyData = encoder.encode(secret);
-
-          const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['sign'],
-          );
-
-          const signature = await crypto.subtle.sign('HMAC', key, data);
-
-          return Array.from(new Uint8Array(signature))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-        }
-
-        // Build payload - MATCH SERVER MIDDLEWARE FORMAT
-        function buildPayload(method, path, timestamp, body) {
-          // Build full URL (like server middleware)
-          const baseUrl = window.location.origin;
-          const fullUrl = baseUrl + path;
-
-          // Stringify body (match server format)
-          let bodyStr = '';
-          if (body && typeof body === 'object' && Object.keys(body).length > 0) {
-            // Sort keys for consistent signature (match server)
-            const sortedBody = Object.keys(body)
-              .sort()
-              .reduce((obj, key) => {
-                obj[key] = body[key];
-
-                return obj;
-              }, {});
-            bodyStr = JSON.stringify(sortedBody);
-          } else if (body && typeof body === 'string') {
-            bodyStr = body;
-          }
-
-          // Use server format: METHOD|FULL_URL|BODY|TIMESTAMP
-          const components = [method.toUpperCase(), fullUrl, bodyStr, timestamp];
-
-          return components.join('|');
-        }
-
-        // Get path from URL
+        
         function getPathFromUrl(url) {
           try {
             if (url.startsWith('http://') || url.startsWith('https://')) {
               const urlObj = new URL(url);
-
               return urlObj.pathname + urlObj.search;
-            } else {
-              return url.split('?')[0];
             }
-          } catch (_e) {
+            return url;
+          } catch (e) {
             return url;
           }
         }
-
-        // Check if should skip signature
-        function shouldSkipSignature(path) {
-          return SKIP_PATHS.some(skipPath => path.startsWith(skipPath));
-        }
-
-        // Process the request
+        
         const path = getPathFromUrl(request.url);
-
-        if (!shouldSkipSignature(path) && secretType !== 'none') {
+        const shouldSkip = SKIP_PATHS.some(skipPath => path.startsWith(skipPath));
+        
+        if (!shouldSkip && secretType !== 'none') {
           const secret = secretType === 'bot' ? BOT_SECRET : SERVER_SECRET;
-
+          
           if (secret) {
-            // Use 10-minute window timestamp like server middleware
-            const timestamp = Math.floor(Date.now() / (10 * 60 * 1000)).toString();
-            const method = request.method || 'GET';
-
-            let bodyObj = null;
+            // Complete signature implementation matching middleware
+            const timestamp = Math.floor(Date.now() / 1000);
+            const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+            const method = (request.method || 'GET').toUpperCase();
+            
+            // Process body consistently with middleware
+            let rawBody = '';
             if (request.body) {
-              try {
-                bodyObj =
-                  typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
-              } catch (_e) {
-                bodyObj = request.body;
+              if (typeof request.body === 'string') {
+                rawBody = request.body;
+              } else if (typeof request.body === 'object') {
+                rawBody = JSON.stringify(request.body);
               }
             }
-
-            const payload = buildPayload(method, path, timestamp, bodyObj);
-            const signature = await generateSignature(payload, secret);
-
+            
+            // Set headers
             request.headers = request.headers || {};
-            request.headers['x-signature'] = signature;
-            request.headers['x-timestamp'] = timestamp;
-
-            console.warn('✅ Signature added to request:', {
-              path,
+            request.headers['x-request-id'] = requestId;
+            request.headers['x-timestamp'] = timestamp.toString();
+            
+            // Get header values for signature
+            const contentType = request.headers['content-type'] || '';
+            const contentLength = rawBody.length.toString();
+            const contentEncoding = 'identity';
+            // Try multiple ways to get authorization header
+            let authorization = request.headers['authorization'] || request.headers['Authorization'] || '';
+            
+            // If no auth header found, try to get it from Swagger UI context
+            if (!authorization) {
+              // Try to access Swagger UI's auth token from various possible locations
+              try {
+                // Check if there's auth info in the current page context
+                const authData = JSON.parse(localStorage.getItem('swagger-ui-auth') || '{}');
+                if (authData.authorized && authData.authorized.bearerAuth) {
+                  authorization = 'Bearer ' + authData.authorized.bearerAuth.value;
+                } else if (authData.token) {
+                  authorization = 'Bearer ' + authData.token;
+                }
+              } catch (e) {
+                // Silently handle auth parsing error
+              }
+            }
+            const host = window.location.host.toLowerCase();
+            
+            // Build dataToSign exactly as middleware does
+            const dataToSign = [
               method,
-              timestamp,
-              signature: signature.substring(0, 8) + '...',
-              secretType,
-              headers: request.headers,
-            });
-          } else {
-            console.warn('⚠️ No secret configured. Set it using localStorage:');
-            console.warn('localStorage.setItem("swagger-server-secret", "your_secret")');
-            console.warn('localStorage.setItem("swagger-secret-type", "server")');
+              path,
+              rawBody,
+              timestamp.toString(),
+              contentType,
+              contentLength,
+              contentEncoding,
+              authorization,
+              requestId,
+              host
+            ].join('\n');
+            
+            
+            // Generate HMAC-SHA256 signature (await properly)
+            try {
+              const encoder = new TextEncoder();
+              const data = encoder.encode(dataToSign);
+              const keyData = encoder.encode(secret);
+              
+              const key = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']
+              );
+              
+              const signature = await crypto.subtle.sign('HMAC', key, data);
+              const hexSignature = Array.from(new Uint8Array(signature))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+              
+              request.headers['x-signature'] = 'sha256=' + hexSignature;
+            } catch (error) {
+              // Silently fail signature generation
+            }
           }
-        } else {
-          console.warn('⏭️ Skipping signature for public endpoint:', path);
         }
-
+        
         return request;
       },
     },
@@ -1293,137 +1368,6 @@ window.SwaggerConfig = {
       }
     `,
 
-    // =========================================================================
-    // CUSTOM JAVASCRIPT FOR STATUS CODE COLORS
-    // =========================================================================
-    customJs: `
-      // Enhanced status code color application
-      function applyStatusCodeColors() {
-        try {
-          // Find all status code elements with multiple selectors
-          const statusElements = document.querySelectorAll(
-            '.swagger-ui .response-col_status, ' +
-            '.swagger-ui td.response-col_status, ' +
-            '.swagger-ui .live-responses-table .response-col_status, ' +
-            '.swagger-ui .responses-table .response-col_status'
-          );
-          
-          statusElements.forEach(element => {
-            const text = (element.textContent || element.innerText || '').trim();
-            
-            // Remove any existing status code classes
-            element.classList.remove('status-200', 'status-error');
-            
-            // Apply base styling
-            element.style.setProperty('font-weight', '700', 'important');
-            element.style.setProperty('border-radius', '4px', 'important');
-            element.style.setProperty('padding', '4px 8px', 'important');
-            element.style.setProperty('font-size', '12px', 'important');
-            element.style.setProperty('display', 'inline-block', 'important');
-            element.style.setProperty('min-width', '50px', 'important');
-            element.style.setProperty('text-align', 'center', 'important');
-            
-            // Default: RED background for all status codes
-            element.style.setProperty('background-color', '#ef4444', 'important');
-            element.style.setProperty('color', '#ffffff', 'important');
-            
-            // Special case: GREEN only for 200 status codes
-            if (text === '200' || text === '200 OK' || text.match(/^200\\s/)) {
-              element.style.setProperty('background-color', '#10b981', 'important');
-              element.style.setProperty('color', '#ffffff', 'important');
-              element.classList.add('status-200');
-            } else {
-              element.classList.add('status-error');
-            }
-          });
-        } catch (error) {
-          console.warn('Status code color application failed:', error);
-        }
-      }
-      
-      // Apply colors immediately
-      applyStatusCodeColors();
-      
-      // Apply when DOM is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyStatusCodeColors);
-      } else {
-        // DOM is already ready, apply immediately
-        setTimeout(applyStatusCodeColors, 100);
-      }
-      
-      // Create a more aggressive observer for dynamic content
-      const observer = new MutationObserver(function(mutations) {
-        let shouldApply = false;
-        
-        mutations.forEach(function(mutation) {
-          // Check for added nodes
-          if (mutation.addedNodes.length > 0) {
-            shouldApply = true;
-          }
-          
-          // Check for text changes
-          if (mutation.type === 'characterData') {
-            shouldApply = true;
-          }
-          
-          // Check for attribute changes on response elements
-          if (mutation.type === 'attributes' && 
-              mutation.target.classList && 
-              mutation.target.classList.contains('response-col_status')) {
-            shouldApply = true;
-          }
-        });
-        
-        if (shouldApply) {
-          setTimeout(applyStatusCodeColors, 10);
-        }
-      });
-      
-      // Start observing with comprehensive options
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: true,
-        attributeFilter: ['class', 'style']
-      });
-      
-      // Additional aggressive intervals to catch any missed updates
-      setInterval(applyStatusCodeColors, 250);
-      
-      // Apply on window focus (in case of missed updates)
-      window.addEventListener('focus', applyStatusCodeColors);
-      
-      // Apply on click events (when user interacts with Swagger)
-      document.addEventListener('click', function() {
-        setTimeout(applyStatusCodeColors, 100);
-      });
-      
-      // =========================================================================
-      // SIGNATURE CONFIGURATION
-      // =========================================================================
-      
-      // Load configuration script from server
-      setTimeout(() => {
-        const configScript = document.createElement('script');
-        configScript.src = '/swagger/config.js?t=' + Date.now(); // Cache busting
-        configScript.onload = () => {
-          console.log('📡 Configuration loaded from server');
-          
-          // Load UI script after config
-          const uiScript = document.createElement('script');
-          uiScript.src = '/swagger/swagger-signature.js';
-          uiScript.defer = true;
-          document.head.appendChild(uiScript);
-        };
-        configScript.onerror = () => {
-          console.warn('⚠️ Could not load auto-configuration');
-          console.log('💡 Configure manually: localStorage.setItem("swagger-server-secret", "your_secret")');
-        };
-        document.head.appendChild(configScript);
-      }, 1000);
-    `,
   });
 
   // =========================================================================
