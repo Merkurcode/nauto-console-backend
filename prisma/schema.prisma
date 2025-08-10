@@ -196,6 +196,7 @@ model User {
   botTokensAsBot BotToken[] @relation("BotTokenUser")
   botTokensIssued BotToken[] @relation("BotTokenIssuer")
   botTokensRevoked BotToken[] @relation("BotTokenRevoker")
+  storageConfig UserStorageConfig?
   
   @@index([companyId])
   @@unique([agentPhone, companyId])
@@ -408,6 +409,39 @@ model File {
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([userId])
+}
+
+model StorageTiers {
+  id                    String   @id @default(uuid())
+  name                  String   @unique // Tier name (e.g., "basic", "premium", "enterprise")
+  level                 String   @unique // Tier level (e.g., "1", "2", "3")
+  maxStorageBytes       BigInt   // Maximum storage in bytes (default 200MB = 209715200 bytes)
+  maxSimultaneousFiles  Int      @default(10) // Maximum files per simultaneous upload
+  isActive              Boolean  @default(true) // Whether this tier is currently available
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  userStorageConfigs    UserStorageConfig[]
+
+  @@index([level])
+  @@index([isActive])
+}
+
+model UserStorageConfig {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  storageTierId         String   // Reference to StorageTiers
+  allowedFileConfig     Json     // JSON with file extensions and their corresponding mime types: {"jpg": ["image/jpeg"], "pdf": ["application/pdf"]}
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  storageTier           StorageTiers @relation(fields: [storageTierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([storageTierId])
 }
 
 model AuditLog {

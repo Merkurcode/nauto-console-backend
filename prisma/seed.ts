@@ -5,6 +5,8 @@ import * as permissionsSeeder from './seed-permissions';
 import * as rolePermissionsMapSeeder from './seed-role-permissions-map';
 import * as aIAssistantsSeeder from './seed-ai-assistants';
 import * as aIAssistantsFeaturesSeeder from './seed-ai-assistants-features';
+import * as storageTiersSeeder from './seed-storage-tiers';
+import * as userStorageConfigsSeeder from './seed-user-storage-configs';
 import * as readline from 'readline';
 
 import * as devSeeder from './dev-seeds/seed';
@@ -83,10 +85,16 @@ async function main() {
   // Create AI assistants features
   await aIAssistantsFeaturesSeeder.default(prisma);
 
+  // Create default storage tiers
+  await storageTiersSeeder.default(prisma);
+
   if (process.env.NODE_ENV === 'development')
   {
     await devSeeder.default(prisma);
   }
+
+  // Create default user storage configurations
+  await userStorageConfigsSeeder.default(prisma);
 
   console.log('Seeding completed successfully!');
 }
