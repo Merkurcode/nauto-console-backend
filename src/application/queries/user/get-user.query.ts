@@ -1,9 +1,8 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { NotFoundException, Injectable, Inject } from '@nestjs/common';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { IUserDetailResponse } from '@application/dtos/responses/user.response';
+import { NotFoundException, Injectable } from '@nestjs/common';
+import { UserService } from '@core/services/user.service';
+import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
 
 export class GetUserQuery implements IQuery {
   constructor(
@@ -15,16 +14,12 @@ export class GetUserQuery implements IQuery {
 @Injectable()
 @QueryHandler(GetUserQuery)
 export class GetUserQueryHandler implements IQueryHandler<GetUserQuery> {
-  constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   async execute(query: GetUserQuery): Promise<IUserDetailResponse> {
-    const { userId, companyId: _companyId } = query;
+    const { userId } = query;
 
-    // For now, we'll use the basic findById until company-specific queries are implemented
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userService.getUserById(userId);
 
     if (!user) {
       throw new NotFoundException(`User with ID "${userId}" not found`);

@@ -19,9 +19,9 @@ import { RequiresResourceAction } from '@shared/decorators/resource-action.decor
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 // Audit Logs
-import { AuditLogQueryDto } from '@application/dtos/requests/audit-log-query.dto';
+import { AuditLogQueryDto } from '@application/dtos/audit-log/audit-log-query.dto';
+import { IAuditLogQueryResponse } from '@application/dtos/_responses/audit-log/audit-log-query.response.interface';
 import { GetAuditLogsQuery } from '@application/queries/audit-log/get-audit-logs.query';
-import { IAuditLogQuery } from '@core/repositories/audit-log.repository.interface';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('root')
@@ -374,29 +374,7 @@ Audit logs are automatically retained for **7 days** and cleaned up via schedule
     example: 'desc',
     enum: ['asc', 'desc'],
   })
-  async getAuditLogs(@Query() queryDto: AuditLogQueryDto) {
-    // Convert DTO to domain query
-    const query: IAuditLogQuery = {
-      filters: {
-        level: queryDto.level,
-        type: queryDto.type,
-        userId: queryDto.userId,
-        context: queryDto.context,
-        fromDate: queryDto.fromDate ? new Date(queryDto.fromDate) : undefined,
-        toDate: queryDto.toDate ? new Date(queryDto.toDate) : undefined,
-        ipAddress: queryDto.ipAddress,
-        userAgent: queryDto.userAgent,
-        sessionId: queryDto.sessionId,
-        resource: queryDto.resource,
-        errorCode: queryDto.errorCode,
-        search: queryDto.search,
-      },
-      page: queryDto.page || 1,
-      limit: queryDto.limit || 50,
-      sortBy: queryDto.sortBy || 'timestamp',
-      sortOrder: queryDto.sortOrder || 'desc',
-    };
-
-    return this.queryBus.execute(new GetAuditLogsQuery(query));
+  async getAuditLogs(@Query() queryDto: AuditLogQueryDto): Promise<IAuditLogQueryResponse> {
+    return await this.queryBus.execute(new GetAuditLogsQuery(queryDto));
   }
 }

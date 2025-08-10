@@ -1,10 +1,9 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { Injectable, Inject } from '@nestjs/common';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { IUserDetailResponse } from '@application/dtos/responses/user.response';
+import { Injectable } from '@nestjs/common';
+import { UserService } from '@core/services/user.service';
+import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 
 export class GetUsersQuery implements IQuery {
@@ -18,8 +17,7 @@ export class GetUsersQuery implements IQuery {
 @QueryHandler(GetUsersQuery)
 export class GetUsersQueryHandler implements IQueryHandler<GetUsersQuery> {
   constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
+    private readonly userService: UserService,
     private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
@@ -27,7 +25,7 @@ export class GetUsersQueryHandler implements IQueryHandler<GetUsersQuery> {
     const { companyId, currentUserId } = query;
 
     // Get current user
-    const currentUser = await this.userRepository.findById(currentUserId);
+    const currentUser = await this.userService.getUserById(currentUserId);
     if (!currentUser) {
       throw new EntityNotFoundException('User', currentUserId);
     }
@@ -36,8 +34,8 @@ export class GetUsersQueryHandler implements IQueryHandler<GetUsersQuery> {
     // This will throw appropriate domain exceptions if not authorized
     this.userAuthorizationService.validateCanQueryCompanyUsers(currentUser, companyId);
 
-    // Get users from repository
-    const users = await this.userRepository.findAllByCompanyId(companyId);
+    // Get users from service
+    const users = await this.userService.getAllUsers(companyId);
 
     // Use the mapper to convert each user to response DTO
     return users.map(user => UserMapper.toDetailResponse(user));

@@ -2,7 +2,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { StorageService } from '@core/services/storage.service';
 import { FileMapper } from '../../mappers/file.mapper';
-import { FileResponseDto } from '../../dtos/responses/file.response';
+import { IFileResponse } from '../../dtos/_responses/storage/file.response.interface';
 
 export class UpdateFileAccessCommand {
   constructor(
@@ -14,14 +14,14 @@ export class UpdateFileAccessCommand {
 
 @CommandHandler(UpdateFileAccessCommand)
 export class UpdateFileAccessCommandHandler
-  implements ICommandHandler<UpdateFileAccessCommand, FileResponseDto>
+  implements ICommandHandler<UpdateFileAccessCommand, IFileResponse>
 {
   constructor(
     private readonly storageService: StorageService,
     private readonly fileMapper: FileMapper,
   ) {}
 
-  async execute(command: UpdateFileAccessCommand): Promise<FileResponseDto> {
+  async execute(command: UpdateFileAccessCommand): Promise<IFileResponse> {
     const { fileId, isPublic, userId } = command;
 
     const file = await this.storageService.getFileById(fileId);
@@ -42,6 +42,6 @@ export class UpdateFileAccessCommandHandler
       throw new Error('File not found after update');
     }
 
-    return this.fileMapper.toResponseDto(updatedFile);
+    return this.fileMapper.toResponse(updatedFile);
   }
 }

@@ -1,10 +1,9 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { Injectable, Inject } from '@nestjs/common';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { IUserDetailResponse } from '@application/dtos/responses/user.response';
+import { Injectable } from '@nestjs/common';
+import { UserService } from '@core/services/user.service';
+import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { UserAccessAuthorizationService } from '@core/services/user-access-authorization.service';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 
 export class GetUserWithAuthorizationQuery implements IQuery {
@@ -20,8 +19,7 @@ export class GetUserWithAuthorizationQueryHandler
   implements IQueryHandler<GetUserWithAuthorizationQuery>
 {
   constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
+    private readonly userService: UserService,
     private readonly userAccessAuthorizationService: UserAccessAuthorizationService,
   ) {}
 
@@ -30,8 +28,8 @@ export class GetUserWithAuthorizationQueryHandler
 
     // Get both users
     const [targetUser, currentUser] = await Promise.all([
-      this.userRepository.findById(targetUserId),
-      this.userRepository.findById(currentUserId),
+      this.userService.getUserById(targetUserId),
+      this.userService.getUserById(currentUserId),
     ]);
 
     if (!targetUser) {

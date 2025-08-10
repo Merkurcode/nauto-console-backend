@@ -19,7 +19,7 @@ import { BotSessionValidationService } from '@core/services/bot-session-validati
 import { TenantResolverService } from '@core/services/tenant-resolver.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { RolesEnum } from '@shared/constants/enums';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { UserBannedException } from '@core/exceptions/domain-exceptions';

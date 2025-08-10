@@ -1,14 +1,13 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { VerifyOtpDto } from '@application/dtos/auth/verify-otp.dto';
-import { IAuthTokenResponse } from '@application/dtos/responses/user.response';
+import { IAuthTokenResponse } from '@application/dtos/_responses/user/user.response';
 import { UnauthorizedException, Injectable, Inject } from '@nestjs/common';
 import { UserMapper } from '@application/mappers/user.mapper';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { IRoleRepository } from '@core/repositories/role.repository.interface';
+import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { ITokenProvider } from '@core/interfaces/token-provider.interface';
-import { USER_REPOSITORY, ROLE_REPOSITORY, TOKEN_PROVIDER } from '@shared/constants/tokens';
+import { TOKEN_PROVIDER } from '@shared/constants/tokens';
 import { I18nService } from 'nestjs-i18n';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,10 +22,7 @@ export class VerifyOtpCommand implements ICommand {
 @CommandHandler(VerifyOtpCommand)
 export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand> {
   constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
-    @Inject(ROLE_REPOSITORY)
-    private readonly roleRepository: IRoleRepository,
+    private readonly userService: UserService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     @Inject(TOKEN_PROVIDER)
@@ -43,28 +39,18 @@ export class VerifyOtpCommandHandler implements ICommandHandler<VerifyOtpCommand
       throw new UnauthorizedException('Invalid OTP');
     }
 
-    // Get user
-    const user = await this.userRepository.findById(userId);
+    // Get user with permissions
+    const { user, permissions } =
+      await this.userService.getUserWithPermissionsForRefreshToken(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
-    }
-
-    // Collect all permissions from all user roles
-    const userPermissions = new Set<string>();
-    for (const role of user.roles) {
-      const roleWithPermissions = await this.roleRepository.findById(role.id.getValue());
-      if (roleWithPermissions && roleWithPermissions.permissions) {
-        roleWithPermissions.permissions.forEach(permission => {
-          userPermissions.add(permission.getStringName());
-        });
-      }
     }
 
     // Generate session token and JWT tokens
     const sessionToken = uuidv4();
     const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
       user,
-      Array.from(userPermissions),
+      permissions,
       sessionToken,
     );
 

@@ -1,14 +1,13 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Injectable, ForbiddenException, Inject, Logger } from '@nestjs/common';
+import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
+import { UserService } from '@core/services/user.service';
+import { CompanyService } from '@core/services/company.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
 import { Email } from '@core/value-objects/email.vo';
 import { User } from '@core/entities/user.entity';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { USER_REPOSITORY, COMPANY_REPOSITORY } from '@shared/constants/tokens';
 
 export class CheckEmailVerificationStatusCommand implements ICommand {
   constructor(
@@ -28,9 +27,9 @@ export class CheckEmailVerificationStatusCommandHandler
 
   constructor(
     private readonly authService: AuthService,
+    private readonly userService: UserService,
+    private readonly companyService: CompanyService,
     private readonly userAuthorizationService: UserAuthorizationService,
-    @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
-    @Inject(COMPANY_REPOSITORY) private readonly companyRepository: ICompanyRepository,
   ) {}
 
   async execute(command: CheckEmailVerificationStatusCommand): Promise<boolean> {
@@ -66,7 +65,7 @@ export class CheckEmailVerificationStatusCommandHandler
     }
 
     // Find the user by email to check company association
-    const targetUser = await this.userRepository.findByEmail(email);
+    const targetUser = await this.userService.findUserByEmail(email);
 
     // If user doesn't exist, we still need to apply access control
     // (We don't want to leak information about email existence)
@@ -81,7 +80,7 @@ export class CheckEmailVerificationStatusCommandHandler
 
         // Check if target user's company is a subsidiary of current user's company
         if (targetUser.companyId) {
-          const targetCompany = await this.companyRepository.findById(targetUser.companyId);
+          const targetCompany = await this.companyService.getCompanyById(targetUser.companyId);
           if (
             targetCompany &&
             (await this.isSubsidiaryCompany(currentUserCompanyId, targetCompany.id.getValue()))
@@ -144,7 +143,7 @@ export class CheckEmailVerificationStatusCommandHandler
     targetCompanyId: string,
   ): Promise<boolean> {
     try {
-      const targetCompany = await this.companyRepository.findById(
+      const targetCompany = await this.companyService.getCompanyById(
         CompanyId.fromString(targetCompanyId),
       );
       if (!targetCompany) {

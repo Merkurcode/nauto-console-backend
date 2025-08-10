@@ -26,7 +26,6 @@ import { StateRepository } from './repositories/state.repository';
 import { PermissionRepository } from './repositories/permission.repository';
 import { AIAssistantRepository } from './repositories/ai-assistant.repository';
 import { CompanyAIAssistantRepository } from './repositories/company-ai-assistant.repository';
-import { CompanyEventsCatalogRepository } from './repositories/company-events-catalog.repository';
 import { CompanySchedulesRepository } from './repositories/company-schedules.repository';
 import { AuditLogRepository } from './repositories/audit-log.repository';
 import { BotTokenRepository } from './repositories/bot-token.repository';
@@ -49,7 +48,6 @@ import {
   STATE_REPOSITORY,
   AI_ASSISTANT_REPOSITORY,
   COMPANY_AI_ASSISTANT_REPOSITORY,
-  COMPANY_EVENTS_CATALOG_REPOSITORY,
   COMPANY_SCHEDULES_REPOSITORY,
   AUDIT_LOG_REPOSITORY,
   BOT_TOKEN_REPOSITORY,
@@ -181,11 +179,6 @@ import {
       inject: [PrismaService],
     },
     {
-      provide: COMPANY_EVENTS_CATALOG_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new CompanyEventsCatalogRepository(prisma),
-      inject: [PrismaService],
-    },
-    {
       provide: COMPANY_SCHEDULES_REPOSITORY,
       useFactory: (prisma: PrismaService) => new CompanySchedulesRepository(prisma),
       inject: [PrismaService],
@@ -238,7 +231,6 @@ import {
     STATE_REPOSITORY,
     AI_ASSISTANT_REPOSITORY,
     COMPANY_AI_ASSISTANT_REPOSITORY,
-    COMPANY_EVENTS_CATALOG_REPOSITORY,
     COMPANY_SCHEDULES_REPOSITORY,
     AUDIT_LOG_REPOSITORY,
     BOT_TOKEN_REPOSITORY,

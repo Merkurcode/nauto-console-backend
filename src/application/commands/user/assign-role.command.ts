@@ -1,6 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UserService } from '@core/services/user.service';
-import { IUserDetailResponse } from '@application/dtos/responses/user.response';
+import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 
 export class AssignRoleCommand {

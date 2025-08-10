@@ -1,6 +1,6 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { Injectable } from '@nestjs/common';
-import { ILivenessResponse } from '@application/dtos/responses/health.response';
+import { ILivenessResponse } from '@application/dtos/_responses/health/health.response';
 import { HealthService } from '@core/services/health.service';
 
 export class GetLivenessQuery implements IQuery {}

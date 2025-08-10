@@ -12,7 +12,7 @@ import { useContainer } from 'class-validator';
 import { join } from 'path';
 import { ValidateSignatureMiddleware } from '@presentation/middleware/validate-signature.middleware';
 import { JwtService } from '@nestjs/jwt';
-import { REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
+import { REQUEST_INTEGRITY_SKIP_PATHS as _REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
 
 async function bootstrap() {
   // =========================================================================
@@ -368,7 +368,7 @@ async function bootstrap() {
         const SERVER_SECRET = localStorage.getItem('swagger-server-secret') || '';
         const BOT_SECRET = localStorage.getItem('swagger-bot-secret') || '';
         const secretType = localStorage.getItem('swagger-secret-type') || 'server';
-        
+
         // Skip paths that don't need signature
         const SKIP_PATHS = [
           '/api/health',
@@ -377,33 +377,35 @@ async function bootstrap() {
           '/api/auth/refresh-token',
           '/api/companies/by-host',
           '/docs',
-          '/swagger'
+          '/swagger',
         ];
-        
+
         function getPathFromUrl(url) {
           try {
             if (url.startsWith('http://') || url.startsWith('https://')) {
               const urlObj = new URL(url);
+
               return urlObj.pathname + urlObj.search;
             }
+
             return url;
-          } catch (e) {
+          } catch (_e) {
             return url;
           }
         }
-        
+
         const path = getPathFromUrl(request.url);
         const shouldSkip = SKIP_PATHS.some(skipPath => path.startsWith(skipPath));
-        
+
         if (!shouldSkip && secretType !== 'none') {
           const secret = secretType === 'bot' ? BOT_SECRET : SERVER_SECRET;
-          
+
           if (secret) {
             // Complete signature implementation matching middleware
             const timestamp = Math.floor(Date.now() / 1000);
             const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
             const method = (request.method || 'GET').toUpperCase();
-            
+
             // Process body consistently with middleware
             let rawBody = '';
             if (request.body) {
@@ -413,19 +415,20 @@ async function bootstrap() {
                 rawBody = JSON.stringify(request.body);
               }
             }
-            
+
             // Set headers
             request.headers = request.headers || {};
             request.headers['x-request-id'] = requestId;
             request.headers['x-timestamp'] = timestamp.toString();
-            
+
             // Get header values for signature
             const contentType = request.headers['content-type'] || '';
             const contentLength = rawBody.length.toString();
             const contentEncoding = 'identity';
             // Try multiple ways to get authorization header
-            let authorization = request.headers['authorization'] || request.headers['Authorization'] || '';
-            
+            let authorization =
+              request.headers['authorization'] || request.headers['Authorization'] || '';
+
             // If no auth header found, try to get it from Swagger UI context
             if (!authorization) {
               // Try to access Swagger UI's auth token from various possible locations
@@ -437,12 +440,12 @@ async function bootstrap() {
                 } else if (authData.token) {
                   authorization = 'Bearer ' + authData.token;
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Silently handle auth parsing error
               }
             }
             const host = window.location.host.toLowerCase();
-            
+
             // Build dataToSign exactly as middleware does
             const dataToSign = [
               method,
@@ -454,36 +457,35 @@ async function bootstrap() {
               contentEncoding,
               authorization,
               requestId,
-              host
+              host,
             ].join('\n');
-            
-            
+
             // Generate HMAC-SHA256 signature (await properly)
             try {
               const encoder = new TextEncoder();
               const data = encoder.encode(dataToSign);
               const keyData = encoder.encode(secret);
-              
+
               const key = await crypto.subtle.importKey(
                 'raw',
                 keyData,
                 { name: 'HMAC', hash: 'SHA-256' },
                 false,
-                ['sign']
+                ['sign'],
               );
-              
+
               const signature = await crypto.subtle.sign('HMAC', key, data);
               const hexSignature = Array.from(new Uint8Array(signature))
                 .map(b => b.toString(16).padStart(2, '0'))
                 .join('');
-              
+
               request.headers['x-signature'] = 'sha256=' + hexSignature;
-            } catch (error) {
+            } catch (_error) {
               // Silently fail signature generation
             }
           }
         }
-        
+
         return request;
       },
     },
@@ -1367,7 +1369,6 @@ async function bootstrap() {
         cursor: pointer !important;
       }
     `,
-
   });
 
   // =========================================================================

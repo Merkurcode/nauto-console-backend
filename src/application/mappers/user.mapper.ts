@@ -5,7 +5,7 @@ import {
   IUserDetailResponse,
   IUserRoleResponse,
   IUserWithAuthResponse,
-} from '@application/dtos/responses/user.response';
+} from '@application/dtos/_responses/user/user.response';
 
 export class UserMapper {
   /**

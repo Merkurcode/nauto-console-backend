@@ -1,17 +1,5 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Inject } from '@nestjs/common';
-import { CompanySchedules } from '@core/entities/company-schedules.entity';
-import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { ScheduleValidationService } from '@core/services/schedule-validation.service';
-import { CompanyId } from '@core/value-objects/company-id.vo';
-import {
-  InvalidInputException,
-  EntityNotFoundException,
-  ForbiddenActionException,
-} from '@core/exceptions/domain-exceptions';
-import { COMPANY_SCHEDULES_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
+import { CompanyScheduleService } from '@core/services/company-schedule.service';
 
 export class CreateCompanyScheduleCommand {
   constructor(
@@ -37,78 +25,17 @@ export interface ICreateCompanyScheduleResponse {
 
 @CommandHandler(CreateCompanyScheduleCommand)
 export class CreateCompanyScheduleHandler implements ICommandHandler<CreateCompanyScheduleCommand> {
-  constructor(
-    @Inject(COMPANY_SCHEDULES_REPOSITORY)
-    private readonly companySchedulesRepository: ICompanySchedulesRepository,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
-    private readonly userAuthorizationService: UserAuthorizationService,
-    private readonly scheduleValidationService: ScheduleValidationService,
-  ) {}
+  constructor(private readonly companyScheduleService: CompanyScheduleService) {}
 
   async execute(command: CreateCompanyScheduleCommand): Promise<ICreateCompanyScheduleResponse> {
-    // Validate input using domain service
-    this.scheduleValidationService.validateScheduleCreation(
+    const savedSchedule = await this.companyScheduleService.createCompanySchedule(
       command.companyId,
       command.dayOfWeek,
       command.startTime,
       command.endTime,
+      command.currentUserId,
+      command.isActive,
     );
-
-    // Validate company access using domain service
-    const currentUser = await this.userRepository.findById(command.currentUserId);
-    if (!currentUser) {
-      throw new EntityNotFoundException('User', command.currentUserId);
-    }
-
-    if (!this.userAuthorizationService.canAccessCompany(currentUser, command.companyId)) {
-      throw new ForbiddenActionException('You can only create schedules for your assigned company');
-    }
-
-    const companyId = CompanyId.fromString(command.companyId);
-
-    // Check if schedule already exists for this company and day
-    const existingSchedule = await this.companySchedulesRepository.findByCompanyIdAndDayOfWeek(
-      companyId,
-      command.dayOfWeek,
-    );
-
-    if (existingSchedule) {
-      throw new InvalidInputException(
-        `Schedule for ${this.scheduleValidationService.getDayName(command.dayOfWeek)} already exists for this company`,
-      );
-    }
-
-    // Check for time conflicts
-    const hasConflict = await this.companySchedulesRepository.hasTimeConflict(
-      companyId,
-      command.dayOfWeek,
-      command.startTime,
-      command.endTime,
-    );
-
-    if (hasConflict) {
-      throw new InvalidInputException(
-        `Time conflict detected with existing schedule for ${this.scheduleValidationService.getDayName(command.dayOfWeek)}`,
-      );
-    }
-
-    // Create the schedule
-    const schedule = CompanySchedules.create({
-      companyId,
-      dayOfWeek: command.dayOfWeek,
-      startTime: command.startTime,
-      endTime: command.endTime,
-      isActive: command.isActive,
-    });
-
-    // Validate domain entity
-    if (!schedule.isValid()) {
-      throw new InvalidInputException('Invalid schedule data');
-    }
-
-    // Save to repository
-    const savedSchedule = await this.companySchedulesRepository.create(schedule);
 
     return {
       id: savedSchedule.id.getValue(),

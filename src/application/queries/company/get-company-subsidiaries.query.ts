@@ -1,10 +1,9 @@
 import { IQuery, QueryHandler, IQueryHandler } from '@nestjs/cqrs';
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import { CompanyService } from '@core/services/company.service';
 import { CompanyMapper } from '@application/mappers/company.mapper';
-import { ICompanyResponse } from '@application/dtos/responses/company.response';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+import { ICompanyResponse } from '@application/dtos/_responses/company/company.response';
 
 export class GetCompanySubsidiariesQuery implements IQuery {
   constructor(public readonly companyId: CompanyId) {}
@@ -15,13 +14,10 @@ export class GetCompanySubsidiariesQuery implements IQuery {
 export class GetCompanySubsidiariesQueryHandler
   implements IQueryHandler<GetCompanySubsidiariesQuery>
 {
-  constructor(
-    @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
-    private readonly companyRepository: ICompanyRepository,
-  ) {}
+  constructor(private readonly companyService: CompanyService) {}
 
   async execute(query: GetCompanySubsidiariesQuery): Promise<ICompanyResponse[]> {
-    const subsidiaries = await this.companyRepository.findSubsidiaries(query.companyId);
+    const subsidiaries = await this.companyService.getCompanySubsidiaries(query.companyId);
 
     return CompanyMapper.toListResponse(subsidiaries);
   }

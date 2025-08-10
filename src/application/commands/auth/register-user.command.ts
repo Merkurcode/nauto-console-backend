@@ -1,6 +1,6 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RegisterDto } from '@application/dtos/auth/register.dto';
-import { IUserBaseResponse } from '@application/dtos/responses/user.response';
+import { IUserBaseResponse } from '@application/dtos/_responses/user/user.response';
 import { Injectable } from '@nestjs/common';
 import { UserService } from '@core/services/user.service';
 import { UserMapper } from '@application/mappers/user.mapper';

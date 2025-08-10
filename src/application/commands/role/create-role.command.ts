@@ -1,10 +1,7 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Inject } from '@nestjs/common';
 import { RoleService } from '@core/services/role.service';
-import { RoleDetailResponse } from '@application/dtos/responses/role.response';
-import { IRoleRepository } from '@core/repositories/role.repository.interface';
+import { RoleDetailResponse } from '@application/dtos/_responses/role/role.response';
 import { RoleMapper } from '@application/mappers/role.mapper';
-import { ROLE_REPOSITORY } from '@shared/constants/tokens';
 
 export class CreateRoleCommand {
   constructor(
@@ -22,11 +19,7 @@ export class CreateRoleCommand {
 export class CreateRoleCommandHandler
   implements ICommandHandler<CreateRoleCommand, RoleDetailResponse>
 {
-  constructor(
-    private readonly roleService: RoleService,
-    @Inject(ROLE_REPOSITORY)
-    private readonly roleRepository: IRoleRepository,
-  ) {}
+  constructor(private readonly roleService: RoleService) {}
 
   async execute(command: CreateRoleCommand): Promise<RoleDetailResponse> {
     const {
@@ -39,31 +32,18 @@ export class CreateRoleCommandHandler
       creatorUserId,
     } = command;
 
-    // Create the role first
-    const role = await this.roleService.createRole(
+    // Use domain service to create role with permissions
+    const role = await this.roleService.createRoleWithPermissions(
       name,
       description,
       hierarchyLevel,
       isDefault,
+      permissionIds,
       isDefaultAppRole,
       creatorUserId,
     );
 
-    // If permission IDs are provided, assign them to the role
-    if (permissionIds && permissionIds.length > 0) {
-      for (const permissionId of permissionIds) {
-        await this.roleService.assignPermissionToRole(role.id.getValue(), permissionId);
-      }
-    }
-
-    // Get the updated role with permissions
-    const updatedRole = await this.roleRepository.findById(role.id.getValue());
-
-    if (!updatedRole) {
-      throw new Error('Role not found after creation');
-    }
-
     // Use the mapper to convert to response DTO
-    return RoleMapper.toDetailResponse(updatedRole);
+    return RoleMapper.toDetailResponse(role);
   }
 }

@@ -1,6 +1,7 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { PermissionExcludeService } from '@core/services/permission-exclude.service';
-import { IAssignablePermissionResponse } from '@application/dtos/responses/assignable-permission.response';
+import { PermissionResponseMapper } from '@application/mappers/permission-response.mapper';
+import { IAssignablePermissionResponse } from '@application/dtos/_responses/permission/assignable-permission.response.interface';
 
 export class GetAssignablePermissionsQuery {
   constructor(
@@ -18,9 +19,11 @@ export class GetAssignablePermissionsQueryHandler
   async execute(query: GetAssignablePermissionsQuery): Promise<IAssignablePermissionResponse[]> {
     const { currentUserRoleNames, targetRoleName } = query;
 
-    return await this.permissionExcludeService.getAssignablePermissionsForMultipleRoles(
+    const result = await this.permissionExcludeService.getAssignablePermissionsForMultipleRoles(
       currentUserRoleNames,
       targetRoleName,
     );
+
+    return PermissionResponseMapper.toAssignablePermissionResponseArray(result);
   }
 }

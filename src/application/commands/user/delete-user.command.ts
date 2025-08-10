@@ -1,8 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
+import { Injectable } from '@nestjs/common';
+import { UserService } from '@core/services/user.service';
 
 export class DeleteUserCommand {
   constructor(
@@ -17,36 +15,12 @@ export class DeleteUserCommand {
 export class DeleteUserCommandHandler
   implements ICommandHandler<DeleteUserCommand, { message: string; companyId: string }>
 {
-  constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
-    private readonly userAuthorizationService: UserAuthorizationService,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   async execute(command: DeleteUserCommand): Promise<{ message: string; companyId: string }> {
-    const { targetUserId, currentUserId, companyId } = command;
+    const { targetUserId, currentUserId } = command;
 
-    // Get current user using centralized method
-    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
-
-    // Get target user
-    const targetUser = await this.userRepository.findById(targetUserId);
-    if (!targetUser) {
-      throw new ForbiddenException('Target user not found');
-    }
-
-    // Check authorization using domain service
-    if (!this.userAuthorizationService.canDeleteUser(currentUser, targetUser)) {
-      throw new ForbiddenException('You do not have permission to delete this user');
-    }
-
-    // Delete user using repository method
-    const deleteResult = await this.userRepository.delete(targetUserId);
-
-    if (!deleteResult) {
-      throw new Error('Failed to delete user');
-    }
-
-    return { message: 'User deleted successfully', companyId };
+    // Use domain service to delete user
+    return await this.userService.deleteUser(targetUserId, currentUserId);
   }
 }

@@ -24,12 +24,14 @@ import { Address } from '@core/value-objects/address.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { UserAuthorizationService } from './user-authorization.service';
+import { UserAccessAuthorizationService } from './user-access-authorization.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { AuthFailureReason, IAuthValidationResult } from '@shared/constants/auth-failure-reason.enum';
+import { BusinessConfigurationService } from './business-configuration.service';
 
 @Injectable()
 export class UserService {
@@ -42,6 +44,8 @@ export class UserService {
     private readonly companyRepository: ICompanyRepository,
     private readonly domainValidationService: DomainValidationService,
     private readonly userAuthorizationService: UserAuthorizationService,
+    private readonly userAccessAuthorizationService: UserAccessAuthorizationService,
+    private readonly businessConfigService: BusinessConfigurationService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
@@ -337,6 +341,84 @@ export class UserService {
     }
 
     return savedUser;
+  }
+
+  async adminChangeUserPassword(
+    targetUserId: string,
+    newPassword: string,
+    adminUserId: string,
+  ): Promise<User> {
+    // Get admin user using authorization service
+    const adminUser = await this.userAuthorizationService.getCurrentUserSafely(adminUserId);
+
+    // Find the target user
+    const targetUser = await this.userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    // Validate authorization using domain service
+    this.userAuthorizationService.canAdminChangePassword(adminUser, targetUser);
+
+    // Hash the new password using business configuration
+    const passwordConfig = this.businessConfigService.getPasswordSecurityConfig();
+    const hashedPassword = await bcrypt.hash(newPassword, passwordConfig.saltRounds);
+
+    // Update the user's password
+    targetUser.changePassword(hashedPassword);
+    
+return await this.userRepository.update(targetUser);
+  }
+
+  async findUserByEmailForVerification(email: string): Promise<User | null> {
+    // Validate email format using value object
+    const emailVO = new Email(email);
+    
+return await this.userRepository.findByEmail(emailVO.getValue());
+  }
+
+  async getUserWithPermissionsForRefreshToken(userId: string): Promise<{
+    user: User;
+    permissions: string[];
+  }> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new EntityNotFoundException('User', userId);
+    }
+
+    // Collect all permissions from all user roles
+    const userPermissions = new Set<string>();
+    for (const role of user.roles) {
+      const roleWithPermissions = await this.roleRepository.findById(role.id.getValue());
+      if (roleWithPermissions && roleWithPermissions.permissions) {
+        roleWithPermissions.permissions.forEach(permission => {
+          userPermissions.add(permission.getStringName());
+        });
+      }
+    }
+
+    return {
+      user,
+      permissions: Array.from(userPermissions),
+    };
+  }
+
+  async getUserById(userId: string): Promise<User | null> {
+    return await this.userRepository.findById(userId);
+  }
+
+  async getAllUsers(companyId?: string): Promise<User[]> {
+    if (companyId) {
+      return await this.userRepository.findAllByCompanyId(companyId);
+    }
+    
+return await this.userRepository.findAll();
+  }
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    const emailVO = new Email(email);
+    
+return await this.userRepository.findByEmail(emailVO.getValue());
   }
 
   async validateCredentials(emailStr: string, passwordStr: string): Promise<IAuthValidationResult> {
@@ -642,6 +724,34 @@ export class UserService {
     return this.userRepository.update(user);
   }
 
+  async removeRoleFromUserWithAuthorization(
+    targetUserId: string,
+    roleId: string,
+    currentUserId: string,
+  ): Promise<User> {
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
+    // Get target user
+    const targetUser = await this.userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    // Get role to be removed
+    const role = await this.roleRepository.findById(roleId);
+    if (!role) {
+      throw new EntityNotFoundException('Role', roleId);
+    }
+
+    // Check authorization using domain service
+    if (!this.userAuthorizationService.canRemoveRoleFromUser(currentUser, targetUser, role)) {
+      throw new BusinessRuleValidationException('You do not have permission to remove this role from this user');
+    }
+
+    return await this.removeRoleFromUser(targetUserId, roleId);
+  }
+
   async activateUser(userId: string): Promise<User> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -651,6 +761,33 @@ export class UserService {
     user.activate();
 
     return this.userRepository.update(user);
+  }
+
+  async activateUserWithAuthorization(
+    targetUserId: string,
+    active: boolean,
+    currentUserId: string,
+  ): Promise<User> {
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
+    // Get target user to get their company ID
+    const targetUser = await this.userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    // Check authorization using domain service
+    const targetUserCompanyId = targetUser.companyId?.getValue() || '';
+    if (!this.userAuthorizationService.canActivateUser(currentUser, targetUserCompanyId)) {
+      throw new BusinessRuleValidationException('You do not have permission to activate/deactivate this user');
+    }
+
+    if (active) {
+      return await this.activateUser(targetUserId);
+    } else {
+      return await this.deactivateUser(targetUserId);
+    }
   }
 
   async deactivateUser(userId: string): Promise<User> {
@@ -675,6 +812,110 @@ export class UserService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  async deleteUser(targetUserId: string, currentUserId: string): Promise<{ message: string; companyId: string }> {
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
+    // Get target user
+    const targetUser = await this.userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    // Check authorization using domain service
+    if (!this.userAuthorizationService.canDeleteUser(currentUser, targetUser)) {
+      throw new BusinessRuleValidationException('You do not have permission to delete this user');
+    }
+
+    // Delete user using repository method
+    const deleteResult = await this.userRepository.delete(targetUserId);
+
+    if (!deleteResult) {
+      throw new Error('Failed to delete user');
+    }
+
+    return { message: 'User deleted successfully', companyId: targetUser.companyId?.getValue() || '' };
+  }
+
+  async createBotUser(
+    alias: string,
+    companyId: string,
+    password: string,
+    currentUserId: string,
+  ): Promise<User> {
+    // Get current user for authorization
+    const currentUser = await this.userRepository.findById(currentUserId);
+    if (!currentUser) {
+      throw new EntityNotFoundException('User', currentUserId);
+    }
+
+    // Authorization check: Only Root users can create bot users
+    if (!this.userAuthorizationService.canAccessRootFeatures(currentUser)) {
+      throw new BusinessRuleValidationException('Only ROOT users can create bot users');
+    }
+
+    // Verify company exists
+    const companyIdVO = CompanyId.fromString(companyId);
+    const company = await this.companyRepository.findById(companyIdVO);
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyId);
+    }
+
+    // Check if alias already exists
+    const existingUserByAlias = await this.userRepository.findByAlias(alias);
+    if (existingUserByAlias) {
+      throw new EntityAlreadyExistsException('User', 'alias');
+    }
+
+    // Generate unique dummy email for the bot
+    const generatedEmail = this.generateSecureBotEmail(alias, companyId);
+    const emailVO = new Email(generatedEmail);
+
+    // Double check generated email is unique (should be, but safety first)
+    const existingUserByEmail = await this.userRepository.findByEmail(generatedEmail);
+    if (existingUserByEmail) {
+      throw new EntityAlreadyExistsException('User', 'email');
+    }
+
+    // Hash password
+    const passwordHash = await this.hashPassword(password);
+
+    // Create bot user with generated email and minimal data
+    const botUser = User.create(
+      emailVO,
+      passwordHash,
+      new FirstName('Bot'), // Default first name
+      new LastName('User'), // Default last name
+      companyIdVO,
+      alias,
+    );
+
+    // Save bot user
+    return await this.userRepository.create(botUser);
+  }
+
+  async verifyPassword(userId: string, password: string, currentUserId: string): Promise<boolean> {
+    // Get current user for authorization
+    const currentUser = await this.userRepository.findById(currentUserId);
+    if (!currentUser) {
+      throw new EntityNotFoundException('User', currentUserId);
+    }
+
+    // Get target user
+    const targetUser = await this.userRepository.findById(userId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', userId);
+    }
+
+    // Authorization check: users can only verify their own password or admins can verify others
+    if (currentUserId !== userId && !this.userAuthorizationService.canAccessAdminFeatures(currentUser)) {
+      throw new BusinessRuleValidationException('You can only verify your own password');
+    }
+
+    // Verify password
+    return await this.comparePasswords(password, targetUser.passwordHash);
+  }
+
   private async findCompanyByName(companyName: string): Promise<CompanyId> {
     const companyNameVO = new CompanyName(companyName);
 
@@ -691,5 +932,158 @@ export class UserService {
     });
 
     return company.id;
+  }
+
+  async updateUserProfile(
+    targetUserId: string,
+    currentUserId: string,
+    updateData: any, // UpdateUserProfileDto type would be ideal but avoiding import
+  ): Promise<User> {
+    // Get both users
+    const [targetUser, currentUser] = await Promise.all([
+      this.userRepository.findById(targetUserId),
+      this.userRepository.findById(currentUserId),
+    ]);
+
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    if (!currentUser) {
+      throw new EntityNotFoundException('Current user not found', currentUserId);
+    }
+
+    // Check authorization using the existing access authorization service
+    await this.userAccessAuthorizationService.validateUserAccess(currentUser, targetUser);
+
+    // Update user data based on provided fields
+    let hasChanges = false;
+
+    // Update basic profile information (firstName and lastName)
+    if (updateData.firstName || updateData.lastName) {
+      const firstName = new FirstName(updateData.firstName || targetUser.firstName.getValue());
+      const lastName = new LastName(updateData.lastName || targetUser.lastName.getValue());
+      targetUser.updateProfile(firstName, lastName);
+      hasChanges = true;
+    }
+
+    // Update second last name if provided
+    if (updateData.secondLastName !== undefined) {
+      const secondLastName = updateData.secondLastName
+        ? new SecondLastName(updateData.secondLastName)
+        : undefined;
+      targetUser.setSecondLastName(secondLastName);
+      hasChanges = true;
+    }
+
+    // Update activation status
+    if (updateData.isActive !== undefined) {
+      if (updateData.isActive && !targetUser.isActive) {
+        targetUser.activate();
+        hasChanges = true;
+      } else if (!updateData.isActive && targetUser.isActive) {
+        targetUser.deactivate();
+        hasChanges = true;
+      }
+    }
+
+    // Update email verification status
+    if (updateData.emailVerified !== undefined) {
+      if (updateData.emailVerified && !targetUser.emailVerified) {
+        targetUser.markEmailAsVerified();
+        hasChanges = true;
+      }
+    }
+
+    // Update ban status
+    if (updateData.bannedUntil !== undefined || updateData.banReason !== undefined) {
+      if (updateData.bannedUntil && updateData.banReason) {
+        const banDate = new Date(updateData.bannedUntil);
+        targetUser.banUser(banDate, updateData.banReason);
+        hasChanges = true;
+      } else if (
+        updateData.bannedUntil === null ||
+        updateData.banReason === null ||
+        updateData.bannedUntil === '' ||
+        updateData.banReason === ''
+      ) {
+        targetUser.unbanUser();
+        hasChanges = true;
+      }
+    }
+
+    // Update agent phone
+    if (updateData.agentPhone !== undefined) {
+      const agentPhone = updateData.agentPhone
+        ? new AgentPhone(updateData.agentPhone, updateData.agentPhoneCountryCode)
+        : undefined;
+      targetUser.setAgentPhone(agentPhone);
+      hasChanges = true;
+    }
+
+    // Update profile information
+    if (updateData.profile) {
+      const currentProfile = targetUser.profile;
+      const newProfile = new UserProfile(
+        updateData.profile.phone !== undefined ? updateData.profile.phone : currentProfile?.phone,
+        updateData.profile.phoneCountryCode !== undefined
+          ? updateData.profile.phoneCountryCode
+          : currentProfile?.phoneCountryCode,
+        updateData.profile.avatarUrl !== undefined
+          ? updateData.profile.avatarUrl
+          : currentProfile?.avatarUrl,
+        updateData.profile.bio !== undefined ? updateData.profile.bio : currentProfile?.bio,
+        updateData.profile.birthDate !== undefined
+          ? updateData.profile.birthDate
+          : currentProfile?.birthDate,
+      );
+      targetUser.setProfile(newProfile);
+      hasChanges = true;
+    }
+
+    // Update address information
+    if (updateData.address) {
+      const currentAddress = targetUser.address;
+      const newAddress = new Address(
+        updateData.address.country !== undefined ? updateData.address.country : currentAddress?.country,
+        updateData.address.state !== undefined ? updateData.address.state : currentAddress?.state,
+        updateData.address.city !== undefined ? updateData.address.city : currentAddress?.city,
+        updateData.address.street !== undefined ? updateData.address.street : currentAddress?.street,
+        updateData.address.exteriorNumber !== undefined
+          ? updateData.address.exteriorNumber
+          : currentAddress?.exteriorNumber,
+        updateData.address.postalCode !== undefined
+          ? updateData.address.postalCode
+          : currentAddress?.postalCode,
+        updateData.address.interiorNumber !== undefined
+          ? updateData.address.interiorNumber
+          : currentAddress?.interiorNumber,
+        updateData.address.googleMapsUrl !== undefined
+          ? updateData.address.googleMapsUrl
+          : currentAddress?.googleMapsUrl,
+      );
+      targetUser.setAddress(newAddress);
+      hasChanges = true;
+    }
+
+    // Save changes if any were made
+    return hasChanges ? await this.userRepository.update(targetUser) : targetUser;
+  }
+
+  private generateSecureBotEmail(alias: string, companyId: string): string {
+    // Create a complex hash combining alias, companyId, timestamp, and random data
+    const timestamp = Date.now().toString(36);
+    const randomBytes = Math.random().toString(36).substring(2, 10);
+    const companyHash = companyId.replace(/-/g, '').substring(0, 8);
+    const aliasHash = alias
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase()
+      .substring(0, 6);
+
+    // Combine all parts in a hard-to-decode way
+    const uniqueIdentifier = `${aliasHash}${companyHash}${timestamp}${randomBytes}`;
+
+    // Generate final email with bot prefix and secure domain
+    return `bot.${uniqueIdentifier}@nauto.internal`;
   }
 }

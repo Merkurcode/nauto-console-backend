@@ -1,17 +1,15 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RefreshTokenDto } from '@application/dtos/auth/refresh-token.dto';
-import { IAuthRefreshTokenResponse } from '@application/dtos/responses/user.response';
-import { UnauthorizedException, Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { IAuthRefreshTokenResponse } from '@application/dtos/_responses/user/user.response';
+import { UnauthorizedException, Injectable, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { IRoleRepository } from '@core/repositories/role.repository.interface';
+import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { UserBanService } from '@core/services/user-ban.service';
 import { RolesEnum } from '@shared/constants/enums';
 import { v4 as uuidv4 } from 'uuid';
-import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';
 
 export class RefreshTokenCommand implements ICommand {
   constructor(public readonly refreshTokenDto: RefreshTokenDto) {}
@@ -21,10 +19,7 @@ export class RefreshTokenCommand implements ICommand {
 @CommandHandler(RefreshTokenCommand)
 export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenCommand> {
   constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
-    @Inject(ROLE_REPOSITORY)
-    private readonly roleRepository: IRoleRepository,
+    private readonly userService: UserService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly userBanService: UserBanService,
@@ -41,11 +36,10 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
       throw new UnauthorizedException();
     }
 
-    // Get user
-    const user = await this.userRepository.findById(token.userId.getValue());
-    if (!user) {
-      throw new UnauthorizedException();
-    }
+    // Get user with permissions using service
+    const { user, permissions } = await this.userService.getUserWithPermissionsForRefreshToken(
+      token.userId.getValue(),
+    );
 
     // Check if user is BOT - BOTs cannot use refresh tokens
     const isBotUser = user.roles.some(role => role.name === RolesEnum.BOT);
@@ -61,17 +55,6 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
 
     // Revoke current refresh token
     await this.authService.revokeRefreshToken(refreshToken);
-
-    // Collect all permissions from all user roles
-    const userPermissions = new Set<string>();
-    for (const role of user.roles) {
-      const roleWithPermissions = await this.roleRepository.findById(role.id.getValue());
-      if (roleWithPermissions && roleWithPermissions.permissions) {
-        roleWithPermissions.permissions.forEach(permission => {
-          userPermissions.add(permission.getStringName());
-        });
-      }
-    }
 
     // Generate new session and refresh tokens
     const newSessionToken = uuidv4();
@@ -91,7 +74,7 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
       email: user.email.getValue(),
       emailVerified: user.emailVerified,
       roles: user.roles.map(role => role.name),
-      permissions: Array.from(userPermissions),
+      permissions,
       tenantId: user.getTenantId(),
       jti: newSessionToken, // Include session token as JWT ID
     };

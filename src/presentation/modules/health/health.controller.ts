@@ -17,7 +17,7 @@ import {
   IDatabaseHealthResponse,
   IReadinessResponse,
   ILivenessResponse,
-} from '@application/dtos/responses/health.response';
+} from '@application/dtos/_responses/health/health.response';
 
 @ApiTags('health')
 @Controller('health')

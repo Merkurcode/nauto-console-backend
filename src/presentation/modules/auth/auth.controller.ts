@@ -33,7 +33,7 @@ import {
   RequestPasswordResetDto,
   ResetPasswordDto,
 } from '@application/dtos/auth/password-reset.dto';
-import { AdminChangePasswordDto } from '@application/dtos/requests/auth/admin-change-password.dto';
+import { AdminChangePasswordDto } from '@application/dtos/auth/admin-change-password.dto';
 import { ChangePasswordDto } from '@application/dtos/auth/change-password.dto';
 import { ChangeEmailDto } from '@application/dtos/auth/change-email.dto';
 
@@ -68,7 +68,7 @@ import { RootAssignmentGuard } from '@presentation/guards/root-assignment.guard'
 import { Roles } from '@shared/decorators/roles.decorator';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 import { RolesEnum } from '@shared/constants/enums';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 @ApiTags('auth')
 @Throttle(60, 5) // 5 requests per minute

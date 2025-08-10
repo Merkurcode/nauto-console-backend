@@ -5,26 +5,18 @@ export class GetCompanyByHostQuery implements IQuery {
   constructor(public readonly host: Host) {}
 }
 
-import { Inject, NotFoundException } from '@nestjs/common';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import { CompanyService } from '@core/services/company.service';
 import { CompanyMapper } from '@application/mappers/company.mapper';
-import { ICompanyResponse } from '@application/dtos/responses/company.response';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+import { ICompanyResponse } from '@application/dtos/_responses/company/company.response';
 
 @QueryHandler(GetCompanyByHostQuery)
 export class GetCompanyByHostQueryHandler implements IQueryHandler<GetCompanyByHostQuery> {
-  constructor(
-    @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
-    private readonly companyRepository: ICompanyRepository,
-  ) {}
+  constructor(private readonly companyService: CompanyService) {}
 
   async execute(query: GetCompanyByHostQuery): Promise<ICompanyResponse> {
     const { host } = query;
 
-    const company = await this.companyRepository.findByHost(host);
-    if (!company) {
-      throw new NotFoundException('Company not found');
-    }
+    const company = await this.companyService.getCompanyByHost(host);
 
     return CompanyMapper.toResponse(company);
   }

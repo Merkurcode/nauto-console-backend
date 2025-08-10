@@ -2,7 +2,7 @@ import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { StorageService } from '@core/services/storage.service';
 import { FileMapper } from '../../mappers/file.mapper';
-import { FileResponseDto } from '../../dtos/responses/file.response';
+import { IFileResponse } from '../../dtos/_responses/storage/file.response.interface';
 
 export class GetFileQuery {
   constructor(
@@ -12,13 +12,13 @@ export class GetFileQuery {
 }
 
 @QueryHandler(GetFileQuery)
-export class GetFileQueryHandler implements IQueryHandler<GetFileQuery, FileResponseDto> {
+export class GetFileQueryHandler implements IQueryHandler<GetFileQuery, IFileResponse> {
   constructor(
     private readonly storageService: StorageService,
     private readonly fileMapper: FileMapper,
   ) {}
 
-  async execute(query: GetFileQuery): Promise<FileResponseDto> {
+  async execute(query: GetFileQuery): Promise<IFileResponse> {
     const { fileId, userId } = query;
 
     const file = await this.storageService.getFileById(fileId);
@@ -31,6 +31,6 @@ export class GetFileQueryHandler implements IQueryHandler<GetFileQuery, FileResp
       throw new UnauthorizedException('You do not have permission to access this file');
     }
 
-    return this.fileMapper.toResponseDto(file);
+    return this.fileMapper.toResponse(file);
   }
 }

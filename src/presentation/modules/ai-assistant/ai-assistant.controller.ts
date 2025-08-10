@@ -38,7 +38,7 @@ import {
   CompanyAIAssistantResponse,
   IAIAssistantResponse,
   ICompanyAIAssistantResponse,
-} from '@application/dtos/responses/ai-assistant.response';
+} from '@application/dtos/_responses/ai-assistant/ai-assistant.response';
 
 import { GetAvailableAssistantsQuery } from '@application/queries/ai-assistant/get-available-assistants.query';
 import { GetCompanyAssistantsQuery } from '@application/queries/ai-assistant/get-company-assistants.query';

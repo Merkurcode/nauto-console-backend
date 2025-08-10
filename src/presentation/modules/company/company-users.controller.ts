@@ -12,7 +12,7 @@ import {
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { AssignUserToCompanyDto } from '@application/dtos/company/assign-user-to-company.dto';

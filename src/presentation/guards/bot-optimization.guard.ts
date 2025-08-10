@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, Inject } from '@nestjs/commo
 import { Reflector } from '@nestjs/core';
 import { BOT_ACCESS_KEY } from '@shared/decorators/bot-access.decorator';
 import { RolesEnum } from '@shared/constants/enums';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 

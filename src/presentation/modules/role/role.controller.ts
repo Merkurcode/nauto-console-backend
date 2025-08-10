@@ -25,15 +25,15 @@ import { CanWrite, CanDelete } from '@shared/decorators/resource-permissions.dec
 import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RolesEnum } from '@shared/constants/enums';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 // DTOs
 import { CreateRoleDto } from '@application/dtos/role/create-role.dto';
 import { UpdateRoleDto } from '@application/dtos/role/update-role.dto';
 import { GetAssignablePermissionsDto } from '@application/dtos/permission/get-assignable-permissions.dto';
-import { IAssignablePermissionResponse } from '@application/dtos/responses/assignable-permission.response';
-import { ICurrentUserPermissionResponse } from '@application/dtos/responses/current-user-permission.response';
-import { CurrentUserPermissionResponse } from '@application/dtos/responses/current-user-permission-swagger.response';
+import { IAssignablePermissionResponse } from '@application/dtos/_responses/permission/assignable-permission.response.interface';
+import { ICurrentUserPermissionResponse } from '@application/dtos/_responses/permission/current-user-permission.response.interface';
+import { CurrentUserPermissionResponse } from '@application/dtos/_responses/permission/current-user-permission-swagger.response';
 
 // Queries
 import { GetRolesQuery } from '@application/queries/role/get-roles.query';
@@ -166,7 +166,7 @@ export class RoleController {
     @Query() query: GetAssignablePermissionsDto,
   ): Promise<IAssignablePermissionResponse[]> {
     // Use all user roles to determine combined permissions
-    return this.queryBus.execute(
+    return await this.queryBus.execute(
       new GetAssignablePermissionsQuery(currentUser.roles, query.targetRoleName),
     );
   }
@@ -235,7 +235,7 @@ export class RoleController {
     @Param('targetRoleName') targetRoleName: string,
   ): Promise<IAssignablePermissionResponse[]> {
     // Check permissions that can be assigned to the specific target role
-    return this.queryBus.execute(
+    return await this.queryBus.execute(
       new GetPermissionsForTargetRoleQuery(targetRoleName),
     );
   }
@@ -260,7 +260,7 @@ export class RoleController {
   async getCurrentUserPermissions(
     @CurrentUser() currentUser: IJwtPayload,
   ): Promise<ICurrentUserPermissionResponse[]> {
-    return this.queryBus.execute(
+    return await this.queryBus.execute(
       new GetCurrentUserPermissionsQuery(currentUser.sub),
     );
   }

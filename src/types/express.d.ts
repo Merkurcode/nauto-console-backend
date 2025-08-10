@@ -1,5 +1,5 @@
 import { User } from '@core/entities/user.entity';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 declare global {
   namespace Express {

@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { BOT_ONLY_KEY, NO_BOTS_KEY } from '@shared/decorators/bot-restrictions.decorator';
 import { RolesEnum } from '@shared/constants/enums';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 

@@ -494,4 +494,106 @@ export class Company extends AggregateRoot {
 
     return level;
   }
+
+  updateHost(host: Host): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._host = host;
+    this._updatedAt = new Date();
+  }
+
+  updateTimezone(timezone: string): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._timezone = timezone;
+    this._updatedAt = new Date();
+  }
+
+  updateCurrency(currency: string): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._currency = currency;
+    this._updatedAt = new Date();
+  }
+
+  updateLanguage(language: string): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._language = language;
+    this._updatedAt = new Date();
+  }
+
+  updateLogoUrl(logoUrl: string): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._logoUrl = logoUrl;
+    this._updatedAt = new Date();
+  }
+
+  updateWebsiteUrl(websiteUrl: string): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._websiteUrl = websiteUrl;
+    this._updatedAt = new Date();
+  }
+
+  updatePrivacyPolicyUrl(privacyPolicyUrl: string): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._privacyPolicyUrl = privacyPolicyUrl;
+    this._updatedAt = new Date();
+  }
+
+  updateIndustrySector(industrySector: IndustrySector): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._industrySector = industrySector;
+    this._updatedAt = new Date();
+  }
+
+  updateIndustryOperationChannel(industryOperationChannel: IndustryOperationChannel): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    this._industryOperationChannel = industryOperationChannel;
+    this._updatedAt = new Date();
+  }
+
+  updateName(name: CompanyName): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    if (!this._name.equals(name)) {
+      this._name = name;
+      this._updatedAt = new Date();
+    }
+  }
+
+  updateDescription(description: CompanyDescription): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    if (!this._description.equals(description)) {
+      this._description = description;
+      this._updatedAt = new Date();
+    }
+  }
+
+  updateAddress(address: Address): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update inactive company');
+    }
+    if (!this._address.equals(address)) {
+      this._address = address;
+      this._updatedAt = new Date();
+    }
+  }
 }

@@ -10,7 +10,7 @@ import {
   ILivenessResponse,
   IHealthCheckDetail,
   IComprehensiveHealthResponse,
-} from '@core/interfaces/health.interface';
+} from '@application/dtos/_responses/health/health.response.interface';
 import {
   HealthCheckException,
   DatabaseConnectionException,

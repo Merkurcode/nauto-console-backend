@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FileResponseDto } from '../dtos/responses/file.response';
+import { IFileResponse } from '../dtos/_responses/storage/file.response.interface';
 import { File } from '@core/entities/file.entity';
 import { StorageService } from '@core/services/storage.service';
 
@@ -11,7 +11,7 @@ export class FileMapper {
     private readonly configService: ConfigService,
   ) {}
 
-  async toResponseDto(file: File): Promise<FileResponseDto> {
+  async toResponse(file: File): Promise<IFileResponse> {
     let url: string;
 
     if (file.isPublic) {
@@ -21,7 +21,7 @@ export class FileMapper {
       url = fileUrl || '';
     }
 
-    return new FileResponseDto({
+    return {
       id: file.id,
       filename: file.filename,
       originalName: file.originalName,
@@ -31,13 +31,13 @@ export class FileMapper {
       url,
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
-    });
+    };
   }
 
-  async toResponseDtoList(files: File[]): Promise<FileResponseDto[]> {
-    const dtos: FileResponseDto[] = [];
+  async toResponseList(files: File[]): Promise<IFileResponse[]> {
+    const dtos: IFileResponse[] = [];
     for (const file of files) {
-      dtos.push(await this.toResponseDto(file));
+      dtos.push(await this.toResponse(file));
     }
 
     return dtos;

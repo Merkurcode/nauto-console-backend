@@ -33,25 +33,6 @@ enum EnumIndustryOperationChannel {
   MIXED
 }
 
-model CompanyEventsCatalog {
-  title       Json // { en-US: "Event Title", es-MX: "Título del Evento" }
-  description Json // { en-US: "Event Description", es-MX: "Descripción del Evento" }
-  iconUrl     String? // URL to an icon image for the event
-  color       String? // Hex color code for the event (e.g., "#FF5733")
-  isActive    Boolean @default(true)
-  isOnline    Boolean @default(false) // Indicates if the event is online or in-person
-  isPhysical  Boolean @default(false) // Indicates if the event is physical or online
-  isAppointment Boolean @default(false) // Indicates if the event is an appointment
-  eventName   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  companyId   String
-
-  @@unique([companyId, eventName])
-}
-
 model CompanySchedules {
   id          String   @id @default(uuid())
   dayOfWeek   Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -376,7 +357,6 @@ model Company {
   address       Address?
   users         User[]
   assistants    CompanyAIAssistant[]
-  eventsCatalog CompanyEventsCatalog[]
   schedules     CompanySchedules[]
   botTokens     BotToken[]
   

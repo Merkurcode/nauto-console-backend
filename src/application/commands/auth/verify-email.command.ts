@@ -4,12 +4,11 @@ import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { IRoleRepository } from '@core/repositories/role.repository.interface';
-import { IAuthTokenResponse } from '@application/dtos/responses/user.response';
+import { UserService } from '@core/services/user.service';
+import { IAuthTokenResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { ITokenProvider } from '@core/interfaces/token-provider.interface';
-import { USER_REPOSITORY, ROLE_REPOSITORY, TOKEN_PROVIDER } from '@shared/constants/tokens';
+import { TOKEN_PROVIDER } from '@shared/constants/tokens';
 
 export class VerifyEmailCommand implements ICommand {
   constructor(public readonly dto: VerifyEmailDto) {}
@@ -23,12 +22,9 @@ export class VerifyEmailCommandHandler
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly userService: UserService,
     @Inject(TOKEN_PROVIDER)
     private readonly tokenProvider: ITokenProvider,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
-    @Inject(ROLE_REPOSITORY)
-    private readonly roleRepository: IRoleRepository,
   ) {}
 
   async execute(command: VerifyEmailCommand): Promise<IAuthTokenResponse | { verified: boolean }> {
@@ -42,8 +38,11 @@ export class VerifyEmailCommandHandler
     }
 
     // If verification succeeded, we can immediately login the user
-    // 1. Find the user by email
-    const user = await this.userRepository.findByEmail(email);
+    // 1. Find the user by email and get permissions
+    const { user, permissions } = await this.userService.getUserWithPermissionsForRefreshToken(
+      (await this.userService.findUserByEmail(email))?.id.getValue() || '',
+    );
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -51,26 +50,15 @@ export class VerifyEmailCommandHandler
     // 2. Update last login
     await this.authService.updateLastLogin(user.id.getValue());
 
-    // 3. Collect all permissions from all user roles
-    const userPermissions = new Set<string>();
-    for (const role of user.roles) {
-      const roleWithPermissions = await this.roleRepository.findById(role.id.getValue());
-      if (roleWithPermissions && roleWithPermissions.permissions) {
-        roleWithPermissions.permissions.forEach(permission => {
-          userPermissions.add(permission.getStringName());
-        });
-      }
-    }
-
-    // 4. Generate session token and JWT tokens
+    // 3. Generate session token and JWT tokens
     const sessionToken = uuidv4();
     const { accessToken, refreshToken } = await this.tokenProvider.generateTokens(
       user,
-      Array.from(userPermissions),
+      permissions,
       sessionToken,
     );
 
-    // 5. Register the session
+    // 4. Register the session
     await this.sessionService.createSession(
       user.id.getValue(),
       sessionToken,
@@ -79,7 +67,7 @@ export class VerifyEmailCommandHandler
       '?', // ipAddress not available in email verification
     );
 
-    // 6. Return tokens and user information
+    // 5. Return tokens and user information
     return {
       accessToken,
       refreshToken,

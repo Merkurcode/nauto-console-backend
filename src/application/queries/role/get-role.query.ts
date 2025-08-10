@@ -1,10 +1,8 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { Inject } from '@nestjs/common';
-import { IRoleRepository } from '@core/repositories/role.repository.interface';
-import { RoleDetailResponse } from '@application/dtos/responses/role.response';
+import { RoleService } from '@core/services/role.service';
+import { RoleDetailResponse } from '@application/dtos/_responses/role/role.response';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { RoleMapper } from '@application/mappers/role.mapper';
-import { ROLE_REPOSITORY } from '@shared/constants/tokens';
 
 export class GetRoleQuery implements IQuery {
   constructor(public readonly id: string) {}
@@ -12,14 +10,11 @@ export class GetRoleQuery implements IQuery {
 
 @QueryHandler(GetRoleQuery)
 export class GetRoleQueryHandler implements IQueryHandler<GetRoleQuery> {
-  constructor(
-    @Inject(ROLE_REPOSITORY)
-    private readonly roleRepository: IRoleRepository,
-  ) {}
+  constructor(private readonly roleService: RoleService) {}
 
   async execute(query: GetRoleQuery): Promise<RoleDetailResponse> {
     const { id } = query;
-    const role = await this.roleRepository.findById(id);
+    const role = await this.roleService.getRoleById(id);
 
     if (!role) {
       throw new EntityNotFoundException('Role', id);

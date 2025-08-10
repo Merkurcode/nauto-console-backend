@@ -1,6 +1,6 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { LoginDto } from '@application/dtos/auth/login.dto';
-import { AuthResponse } from '@application/dtos/responses/user.response';
+import { AuthResponse } from '@application/dtos/_responses/user/user.response';
 import { UnauthorizedException, Injectable, Inject } from '@nestjs/common';
 import { AuthenticationValidationService } from '@core/services/authentication-validation.service';
 import { I18nService } from 'nestjs-i18n';

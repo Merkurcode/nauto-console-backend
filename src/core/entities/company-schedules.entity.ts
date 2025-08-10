@@ -112,6 +112,35 @@ export class CompanySchedules {
     this._props.updatedAt = new Date();
   }
 
+  public updateDayOfWeek(dayOfWeek: number): void {
+    if (dayOfWeek < 0 || dayOfWeek > 6) {
+      throw new Error('Day of week must be between 0 (Sunday) and 6 (Saturday)');
+    }
+    this._props.dayOfWeek = dayOfWeek;
+    this.touch();
+  }
+
+  public updateStartTime(startTime: Date): void {
+    if (startTime >= this._props.endTime) {
+      throw new Error('Start time must be before end time');
+    }
+    this._props.startTime = startTime;
+    this.touch();
+  }
+
+  public updateEndTime(endTime: Date): void {
+    if (this._props.startTime >= endTime) {
+      throw new Error('End time must be after start time');
+    }
+    this._props.endTime = endTime;
+    this.touch();
+  }
+
+  public updateIsActive(isActive: boolean): void {
+    this._props.isActive = isActive;
+    this.touch();
+  }
+
   // Utility methods
   public getDurationInMinutes(): number {
     const diffMs = this._props.endTime.getTime() - this._props.startTime.getTime();

@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { CreateCompanyScheduleDto } from '@application/dtos/company-schedules/create-company-schedule.dto';
 import { UpdateCompanyScheduleDto } from '@application/dtos/company-schedules/update-company-schedule.dto';
 import {
-  CompanyScheduleResponseDto,
-  CompanySchedulesListResponseDto,
-  CompanyWeeklyScheduleResponseDto,
-} from '@application/dtos/company-schedules/company-schedule-response.dto';
+  ICompanyScheduleResponse,
+  ICompanySchedulesListResponse,
+  ICompanyWeeklyScheduleResponse,
+} from '@application/dtos/_responses/company-schedules/company-schedule.response.interface';
 import {
   CreateCompanyScheduleCommand,
   ICreateCompanyScheduleResponse,
@@ -99,7 +99,7 @@ export class CompanySchedulesMapper {
   /**
    * Map Create Command Response to DTO
    */
-  toCreateResponseDto(response: ICreateCompanyScheduleResponse): CompanyScheduleResponseDto {
+  toCreateResponse(response: ICreateCompanyScheduleResponse): ICompanyScheduleResponse {
     return {
       id: response.id,
       companyId: response.companyId,
@@ -117,7 +117,7 @@ export class CompanySchedulesMapper {
   /**
    * Map Update Command Response to DTO
    */
-  toUpdateResponseDto(response: IUpdateCompanyScheduleResponse): CompanyScheduleResponseDto {
+  toUpdateResponse(response: IUpdateCompanyScheduleResponse): ICompanyScheduleResponse {
     return {
       id: response.id,
       companyId: response.companyId,
@@ -135,9 +135,7 @@ export class CompanySchedulesMapper {
   /**
    * Map Schedules List Query Response to DTO
    */
-  toSchedulesListResponseDto(
-    response: IGetCompanySchedulesResponse,
-  ): CompanySchedulesListResponseDto {
+  toSchedulesListResponse(response: IGetCompanySchedulesResponse): ICompanySchedulesListResponse {
     return {
       schedules: response.schedules.map(schedule => ({
         id: schedule.id,
@@ -159,9 +157,9 @@ export class CompanySchedulesMapper {
   /**
    * Map Weekly Schedule Query Response to DTO
    */
-  toWeeklyScheduleResponseDto(
+  toWeeklyScheduleResponse(
     response: IGetCompanyWeeklyScheduleResponse,
-  ): CompanyWeeklyScheduleResponseDto {
+  ): ICompanyWeeklyScheduleResponse {
     return {
       companyId: response.companyId,
       weeklySchedule: response.weeklySchedule.map(schedule => ({

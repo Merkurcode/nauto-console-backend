@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { AuditLogService } from '@core/services/audit-log.service';
 
 /**

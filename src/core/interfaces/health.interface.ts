@@ -1,49 +1,19 @@
 /**
- * Health Domain Interfaces
- * These interfaces define the contracts for health checking in the domain layer
+ * Health Domain Interface - DEPRECATED
+ *
+ * This file is deprecated. Health response interfaces have been moved to:
+ * @see @application/dtos/_responses/health/health.response.interface
+ *
+ * This file is kept temporarily for backward compatibility but will be removed in future versions.
  */
 
-export interface IHealthResponse {
-  status: string;
-  timestamp: string;
-  uptime: number;
-  environment: string;
-  version: string;
-}
+// Re-export from new location for backward compatibility
+export {
+  IHealthResponse,
+  IDatabaseHealthResponse,
+  IReadinessResponse,
+  ILivenessResponse,
+  IHealthCheckDetail,
+  IComprehensiveHealthResponse,
+} from '@application/dtos/_responses/health/health.response.interface';
 
-export interface IDatabaseHealthResponse {
-  status: string;
-  database: string;
-  timestamp: string;
-}
-
-export interface IReadinessResponse {
-  status: string;
-  timestamp: string;
-  checks: {
-    database: string;
-    config: string;
-  };
-}
-
-export interface ILivenessResponse {
-  status: string;
-  timestamp: string;
-  uptime: number;
-}
-
-export interface IHealthCheckDetail {
-  name: string;
-  status: 'ok' | 'error';
-  message?: string;
-  duration?: number;
-}
-
-export interface IComprehensiveHealthResponse {
-  status: 'ok' | 'degraded' | 'down';
-  timestamp: string;
-  uptime: number;
-  environment: string;
-  version: string;
-  checks: IHealthCheckDetail[];
-}

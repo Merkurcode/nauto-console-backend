@@ -32,6 +32,12 @@ import { TenantResolverService } from './services/tenant-resolver.service';
 import { MemoryMonitorService } from './services/memory-monitor.service';
 import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { MonitoringHealthService } from './services/monitoring-health.service';
+import { CompanyService } from './services/company.service';
+import { RoleService } from './services/role.service';
+import { PermissionService } from './services/permission.service';
+import { AIAssistantService } from './services/ai-assistant.service';
+import { CompanyScheduleService } from './services/company-schedule.service';
+import { PermissionExcludeService } from './services/permission-exclude.service';
 import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
 
 /**
@@ -77,6 +83,13 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     MemoryMonitorService,
     CircuitBreakerService,
     MonitoringHealthService,
+    // Domain services for Clean Architecture
+    CompanyService,
+    RoleService,
+    PermissionService,
+    AIAssistantService,
+    CompanyScheduleService,
+    PermissionExcludeService,
   ],
   exports: [
     // Export all domain services
@@ -111,6 +124,13 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     MemoryMonitorService,
     CircuitBreakerService,
     MonitoringHealthService,
+    // Domain services for Clean Architecture
+    CompanyService,
+    RoleService,
+    PermissionService,
+    AIAssistantService,
+    CompanyScheduleService,
+    PermissionExcludeService,
   ],
 })
 export class CoreModule {}

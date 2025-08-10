@@ -25,19 +25,13 @@ export class CreateCompanyCommand implements ICommand {
   ) {}
 }
 
-import { Inject, ConflictException, NotFoundException } from '@nestjs/common';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
-import { Company } from '@core/entities/company.entity';
+import { CompanyService } from '@core/services/company.service';
 import { CompanyMapper } from '@application/mappers/company.mapper';
-import { ICompanyResponse } from '@application/dtos/responses/company.response';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+import { ICompanyResponse } from '@application/dtos/_responses/company/company.response';
 
 @CommandHandler(CreateCompanyCommand)
 export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompanyCommand> {
-  constructor(
-    @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
-    private readonly companyRepository: ICompanyRepository,
-  ) {}
+  constructor(private readonly companyService: CompanyService) {}
 
   async execute(command: CreateCompanyCommand): Promise<ICompanyResponse> {
     const {
@@ -56,29 +50,8 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
       parentCompanyId,
     } = command;
 
-    // Check if company name already exists
-    const existingCompany = await this.companyRepository.findByName(name);
-    if (existingCompany) {
-      throw new ConflictException('Company name already exists');
-    }
-
-    // Check if host already exists
-    const existingHostCompany = await this.companyRepository.findByHost(host);
-    if (existingHostCompany) {
-      throw new ConflictException('Company host already exists');
-    }
-
-    // Find parent company if parentCompanyId is provided
-    let parentCompany: Company | undefined;
-    if (parentCompanyId) {
-      parentCompany = await this.companyRepository.findById(parentCompanyId);
-      if (!parentCompany) {
-        throw new NotFoundException('Parent company not found');
-      }
-    }
-
-    // Create new company
-    const company = Company.create(
+    // Use domain service to create company
+    const company = await this.companyService.createCompany(
       name,
       description,
       address,
@@ -86,18 +59,15 @@ export class CreateCompanyCommandHandler implements ICommandHandler<CreateCompan
       timezone,
       currency,
       language,
-      industrySector,
-      industryOperationChannel,
-      parentCompany,
       logoUrl,
       websiteUrl,
       privacyPolicyUrl,
+      industrySector,
+      industryOperationChannel,
+      parentCompanyId,
     );
 
-    // Save company
-    const savedCompany = await this.companyRepository.save(company);
-
     // Return mapped response
-    return CompanyMapper.toResponse(savedCompany);
+    return CompanyMapper.toResponse(company);
   }
 }

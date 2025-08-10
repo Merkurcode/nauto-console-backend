@@ -1,6 +1,9 @@
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
-import { RoleDetailResponse, PermissionResponse } from '@application/dtos/responses/role.response';
+import {
+  RoleDetailResponse,
+  PermissionResponse,
+} from '@application/dtos/_responses/role/role.response';
 
 export class RoleMapper {
   /**

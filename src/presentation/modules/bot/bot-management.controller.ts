@@ -29,12 +29,13 @@ import { GenerateBotTokenCommand } from '@application/commands/bot/generate-bot-
 import { RevokeBotTokenCommand } from '@application/commands/bot/revoke-bot-token.command';
 import { ListBotTokensQuery } from '@application/queries/bot/list-bot-tokens.query';
 import { CreateBotUserCommand } from '@application/commands/user/create-bot-user.command';
-import { IJwtPayload, IUserDetailResponse } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
+import { IUserDetailResponse } from '@application/dtos/_responses/user/user-detail.response.interface';
 
 // DTOs
-import { GenerateBotTokenDto } from '@application/dtos/requests/bot/generate-bot-token.dto';
+import { GenerateBotTokenDto } from '@application/dtos/bot/generate-bot-token.dto';
 import { CreateBotUserDto } from '@application/dtos/user/create-bot-user.dto';
-import { BotTokenResponse } from '@application/dtos/responses/bot/bot-token.response';
+import { BotTokenResponse } from '@application/dtos/_responses/bot/bot-token.response';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 /**
@@ -127,7 +128,9 @@ export class BotManagementController {
 
       const command = new CreateBotUserCommand(alias, companyId, password, currentUser.sub);
 
-      return this.commandBus.execute(command);
+      const response = await this.commandBus.execute(command);
+
+      return response;
     });
   }
 

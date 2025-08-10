@@ -17,7 +17,7 @@ import { TransactionService } from '@infrastructure/database/prisma/transaction.
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CreateCompanyDto } from '@application/dtos/company/create-company.dto';
 import { UpdateCompanyDto } from '@application/dtos/company/update-company.dto';
-import { CompanyResponse } from '@application/dtos/responses/company.response';
+import { CompanyResponse } from '@application/dtos/_responses/company/company.response';
 import { CreateCompanyCommand } from '@application/commands/company/create-company.command';
 import { UpdateCompanyCommand } from '@application/commands/company/update-company.command';
 import { DeleteCompanyCommand } from '@application/commands/company/delete-company.command';
@@ -44,7 +44,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { Public } from '@shared/decorators/public.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 @ApiTags('companies')

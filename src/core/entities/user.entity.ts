@@ -599,22 +599,4 @@ export class User extends AggregateRoot {
     this._address = address;
     this._updatedAt = new Date();
   }
-
-  // Private helper methods
-  private isEligibleForRole(role: Role): boolean {
-    // Business rule: Only active users can be assigned roles
-    if (!this._isActive) {
-      return false;
-    }
-
-    // Business rule: Root roles require existing root privileges
-    if (role.isRootLevelRole() && !this.isEligibleForRootRole()) {
-      return false;
-    }
-
-    // Business rule: Admin roles are now regular roles, no special requirements
-    // (Admin is no longer the highest privilege level, root is)
-
-    return true;
-  }
 }

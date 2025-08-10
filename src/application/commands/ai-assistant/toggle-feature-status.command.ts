@@ -1,10 +1,9 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Inject, NotFoundException } from '@nestjs/common';
 import { CompanyAIAssistant } from '@core/entities/company-ai-assistant.entity';
-import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
-import { IAIAssistantRepository } from '@core/repositories/ai-assistant.repository.interface';
 import { AIAssistantResolverService } from '@core/services/ai-assistant-resolver.service';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+import { AIAssistantService } from '@core/services/ai-assistant.service';
+import { CompanyId } from '@core/value-objects/company-id.vo';
+import { AIAssistantId } from '@core/value-objects/ai-assistant-id.vo';
 
 export class ToggleFeatureStatusCommand {
   constructor(
@@ -23,10 +22,7 @@ export class ToggleFeatureStatusCommandHandler
   implements ICommandHandler<ToggleFeatureStatusCommand>
 {
   constructor(
-    @Inject(REPOSITORY_TOKENS.COMPANY_AI_ASSISTANT_REPOSITORY)
-    private readonly companyAIAssistantRepository: ICompanyAIAssistantRepository,
-    @Inject(REPOSITORY_TOKENS.AI_ASSISTANT_REPOSITORY)
-    private readonly aiAssistantRepository: IAIAssistantRepository,
+    private readonly aiAssistantService: AIAssistantService,
     private readonly resolverService: AIAssistantResolverService,
   ) {}
 
@@ -48,64 +44,16 @@ export class ToggleFeatureStatusCommandHandler
       command.featureKeyName,
     );
 
-    // Check if assignment exists
-    let assignment = await this.companyAIAssistantRepository.findByCompanyIdAndAssistantId(
-      resolvedCompanyId,
-      resolvedAIAssistantId,
+    // Convert to value objects
+    const companyId = CompanyId.fromString(resolvedCompanyId);
+    const assistantId = AIAssistantId.fromString(resolvedAIAssistantId);
+
+    // Use AIAssistantService to toggle feature status
+    return await this.aiAssistantService.toggleFeatureStatus(
+      companyId,
+      assistantId,
+      resolvedFeatureId,
+      command.enabled,
     );
-
-    if (!assignment) {
-      // Get assistant with features for new assignment creation
-      const assistant =
-        await this.aiAssistantRepository.findByIdWithFeatures(resolvedAIAssistantId);
-      if (!assistant) {
-        throw new NotFoundException('AI Assistant not found');
-      }
-
-      // Create new assignment with all features disabled by default, except the target feature
-      const features = assistant.features.map(feature => ({
-        id: crypto.randomUUID(),
-        featureId: feature.id,
-        enabled: feature.id === resolvedFeatureId ? command.enabled : false,
-      }));
-
-      assignment = CompanyAIAssistant.create({
-        id: crypto.randomUUID(),
-        companyId: resolvedCompanyId,
-        aiAssistantId: resolvedAIAssistantId,
-        enabled: true, // Enable the assistant when creating for feature toggle
-        features,
-      });
-
-      return await this.companyAIAssistantRepository.create(assignment);
-    }
-
-    // Check if feature already exists in assignment
-    const existingFeatureIndex = assignment.features.findIndex(
-      f => f.featureId === resolvedFeatureId,
-    );
-
-    if (existingFeatureIndex >= 0) {
-      // Update existing feature
-      const updatedFeatures = [...assignment.features];
-      updatedFeatures[existingFeatureIndex] = {
-        ...updatedFeatures[existingFeatureIndex],
-        enabled: command.enabled,
-      };
-      assignment.updateFeatures(updatedFeatures);
-    } else {
-      // Add new feature
-      const updatedFeatures = [
-        ...assignment.features,
-        {
-          id: crypto.randomUUID(),
-          featureId: resolvedFeatureId,
-          enabled: command.enabled,
-        },
-      ];
-      assignment.updateFeatures(updatedFeatures);
-    }
-
-    return await this.companyAIAssistantRepository.update(assignment);
   }
 }

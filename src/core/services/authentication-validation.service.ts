@@ -21,7 +21,7 @@ import {
   ILoginFlowResult,
 } from '@shared/constants/auth-failure-reason.enum';
 import { UserId } from '@core/value-objects/user-id.vo';
-import { AuthResponse } from '@application/dtos/responses/user.response';
+import { AuthResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { User } from '@core/entities/user.entity';
 import { SendVerificationEmailCommand } from '@application/commands/auth/send-verification-email.command';

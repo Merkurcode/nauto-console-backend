@@ -18,6 +18,10 @@ import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
 import { BusinessConfigurationService } from '@core/services/business-configuration.service';
+import { UserProfile } from '@core/value-objects/user-profile.vo';
+import { Address } from '@core/value-objects/address.vo';
+import { AgentPhone } from '@core/value-objects/agent-phone.vo';
+import { SecondLastName } from '@core/value-objects/second-lastname.vo';
 
 // Define a type for User with its relations (roles with nested permissions)
 type UserWithRelations = PrismaUser & {
@@ -550,6 +554,45 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         updatedAt: roleRecord.updatedAt,
       });
     });
+
+    // Create UserProfile Value Object if profile data exists
+    let _profileVO = undefined;
+    if (record.profile) {
+      _profileVO = new UserProfile(
+        record.profile.phone || undefined,
+        record.profile.phoneCountryCode || undefined,
+        record.profile.avatarUrl || undefined,
+        record.profile.bio || undefined,
+        record.profile.birthdate || undefined,
+      );
+    }
+
+    // Create Address Value Object if address data exists and is valid
+    let _addressVO = undefined;
+    if (record.address && this.hasValidAddressData(record.address)) {
+      const defaults = this.businessConfigService.getAddressDefaults();
+      _addressVO = new Address(
+        defaults.defaultCountry || 'Unknown',
+        defaults.defaultState || 'Unknown',
+        record.address.city || '',
+        record.address.street || '',
+        record.address.exteriorNumber || '',
+        record.address.postalCode || '',
+        record.address.interiorNumber || undefined,
+      );
+    }
+
+    // Create AgentPhone Value Object if data exists
+    let _agentPhoneVO = undefined;
+    if (record.agentPhone) {
+      _agentPhoneVO = new AgentPhone(record.agentPhone, record.agentPhoneCountryCode);
+    }
+
+    // Create SecondLastName Value Object if exists
+    let _secondLastNameVO = undefined;
+    if (record.secondLastName) {
+      _secondLastNameVO = new SecondLastName(record.secondLastName);
+    }
 
     const user = User.fromData({
       id: record.id,

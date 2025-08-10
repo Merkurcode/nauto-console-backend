@@ -7,9 +7,6 @@ import {
   BusinessRuleValidationException,
   EntityNotFoundException,
 } from '@core/exceptions/domain-exceptions';
-import { Inject } from '@nestjs/common';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
 
 export class ChangeEmailCommand {
   constructor(
@@ -27,8 +24,6 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
     private readonly userService: UserService,
     private readonly sessionService: SessionService,
     private readonly userAuthorizationService: UserAuthorizationService,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
   ) {}
 
   async execute(command: ChangeEmailCommand): Promise<{
@@ -44,7 +39,7 @@ export class ChangeEmailCommandHandler implements ICommandHandler<ChangeEmailCom
     const isSelfOperation = actualTargetUserId === currentUserId;
 
     // Get target user to validate root restriction
-    const targetUser = await this.userRepository.findById(actualTargetUserId);
+    const targetUser = await this.userService.getUserById(actualTargetUserId);
     if (!targetUser) {
       throw new EntityNotFoundException('User', actualTargetUserId);
     }

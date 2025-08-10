@@ -1,9 +1,6 @@
 import { QueryHandler, IQueryHandler } from '@nestjs/cqrs';
-import { Inject } from '@nestjs/common';
-import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
-import { CompanyId } from '@core/value-objects/company-id.vo';
+import { CompanyScheduleService } from '@core/services/company-schedule.service';
 import { InvalidInputException } from '@core/exceptions/domain-exceptions';
-import { COMPANY_SCHEDULES_REPOSITORY } from '@shared/constants/tokens';
 
 export class GetCompanyWeeklyScheduleQuery {
   constructor(public readonly companyId: string) {}
@@ -37,19 +34,14 @@ export interface IGetCompanyWeeklyScheduleResponse {
 export class GetCompanyWeeklyScheduleHandler
   implements IQueryHandler<GetCompanyWeeklyScheduleQuery>
 {
-  constructor(
-    @Inject(COMPANY_SCHEDULES_REPOSITORY)
-    private readonly companySchedulesRepository: ICompanySchedulesRepository,
-  ) {}
+  constructor(private readonly companyScheduleService: CompanyScheduleService) {}
 
   async execute(query: GetCompanyWeeklyScheduleQuery): Promise<IGetCompanyWeeklyScheduleResponse> {
     // Validate input
     this.validateQuery(query);
 
-    const companyId = CompanyId.fromString(query.companyId);
-
-    // Get weekly schedule (ordered by day of week)
-    const schedules = await this.companySchedulesRepository.getWeeklySchedule(companyId);
+    // Get weekly schedule from service
+    const schedules = await this.companyScheduleService.getCompanyWeeklySchedule(query.companyId);
 
     // Map to response format
     const weeklySchedule: IWeeklyScheduleResponse[] = schedules.map(schedule => ({

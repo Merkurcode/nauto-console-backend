@@ -2,7 +2,7 @@ import { AuditLog } from '@core/entities/audit-log.entity';
 import {
   BotAuditLogResponse,
   BotAuditResponse,
-} from '@application/dtos/responses/bot/bot-audit.response';
+} from '@application/dtos/_responses/bot/bot-audit.response';
 
 export class BotAuditMapper {
   /**

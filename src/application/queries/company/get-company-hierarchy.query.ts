@@ -1,10 +1,9 @@
 import { IQuery, QueryHandler, IQueryHandler } from '@nestjs/cqrs';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import { CompanyService } from '@core/services/company.service';
 import { CompanyMapper } from '@application/mappers/company.mapper';
-import { ICompanyResponse } from '@application/dtos/responses/company.response';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+import { ICompanyResponse } from '@application/dtos/_responses/company/company.response';
 
 export class GetCompanyHierarchyQuery implements IQuery {
   constructor(public readonly companyId: CompanyId) {}
@@ -13,20 +12,11 @@ export class GetCompanyHierarchyQuery implements IQuery {
 @Injectable()
 @QueryHandler(GetCompanyHierarchyQuery)
 export class GetCompanyHierarchyQueryHandler implements IQueryHandler<GetCompanyHierarchyQuery> {
-  constructor(
-    @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
-    private readonly companyRepository: ICompanyRepository,
-  ) {}
+  constructor(private readonly companyService: CompanyService) {}
 
   async execute(query: GetCompanyHierarchyQuery): Promise<ICompanyResponse> {
-    const company = await this.companyRepository.findById(query.companyId);
-
-    if (!company) {
-      throw new NotFoundException('Company not found');
-    }
-
-    // Get the root company first to show the complete hierarchy
-    const rootCompany = company.getRootCompany();
+    // Get the root company to show the complete hierarchy
+    const rootCompany = await this.companyService.getCompanyWithHierarchy(query.companyId);
 
     return CompanyMapper.toResponse(rootCompany);
   }

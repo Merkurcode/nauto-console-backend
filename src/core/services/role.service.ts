@@ -12,6 +12,7 @@ import { PermissionId } from '@core/value-objects/permission-id.vo';
 import { ROLE_REPOSITORY, PERMISSION_REPOSITORY, USER_REPOSITORY } from '@shared/constants/tokens';
 import { RolesEnum } from '@shared/constants/enums';
 import { UserAuthorizationService } from './user-authorization.service';
+import { PermissionExcludeService } from './permission-exclude.service';
 
 @Injectable()
 export class RoleService {
@@ -23,6 +24,7 @@ export class RoleService {
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
     private readonly userAuthorizationService: UserAuthorizationService,
+    private readonly permissionExcludeService: PermissionExcludeService,
   ) {}
 
   async createRole(
@@ -101,8 +103,15 @@ export class RoleService {
     }
 
     // The entity will handle updating the updatedAt timestamp
+    const updatedRole = await this.roleRepository.update(role);
 
-    return this.roleRepository.update(role);
+    // Return the updated role with complete data including permissions
+    const completeRole = await this.roleRepository.findById(updatedRole.id.getValue());
+    if (!completeRole) {
+      throw new EntityNotFoundException('Role not found after update');
+    }
+
+    return completeRole;
   }
 
   async assignPermissionToRole(roleId: string, permissionId: string): Promise<Role> {
@@ -124,6 +133,32 @@ export class RoleService {
     return this.roleRepository.update(role);
   }
 
+  async assignPermissionToRoleWithValidation(roleId: string, permissionId: string): Promise<Role> {
+    // Get role to validate exclude rules
+    const role = await this.roleRepository.findById(roleId);
+    if (!role) {
+      throw new EntityNotFoundException('Role', roleId);
+    }
+
+    // Get permission
+    let permission = await this.permissionRepository.findById(permissionId);
+    if (!permission) {
+      permission = await this.permissionRepository.findByName(permissionId);
+      if (!permission) {
+        throw new EntityNotFoundException('Permission', permissionId);
+      }
+    }
+
+    // Validate permission exclude rules
+    await this.permissionExcludeService.validateRolePermissionAssignment(
+      role.name,
+      permission.getStringName(),
+    );
+
+    // Assign the permission to the role
+    return await this.assignPermissionToRole(roleId, permissionId);
+  }
+
   async removePermissionFromRole(roleId: string, permissionId: string): Promise<Role> {
     let role = await this.roleRepository.findById(roleId);
     if (!role) {
@@ -135,7 +170,15 @@ export class RoleService {
 
     role.removePermission(PermissionId.fromString(permissionId));
 
-    return this.roleRepository.update(role);
+    const updatedRole = await this.roleRepository.update(role);
+
+    // Return the updated role with complete data including permissions
+    const completeRole = await this.roleRepository.findById(updatedRole.id.getValue());
+    if (!completeRole) {
+      throw new EntityNotFoundException('Role not found after update');
+    }
+
+    return completeRole;
   }
 
   async deleteRole(id: string): Promise<boolean> {
@@ -183,6 +226,42 @@ export class RoleService {
     }
   }
 
+  async createRoleWithPermissions(
+    name: string,
+    description: string,
+    hierarchyLevel: number,
+    isDefault: boolean = false,
+    permissionIds?: string[],
+    isDefaultAppRole: boolean = false,
+    creatorUserId?: string,
+  ): Promise<Role> {
+    // Create the role first
+    const role = await this.createRole(
+      name,
+      description,
+      hierarchyLevel,
+      isDefault,
+      isDefaultAppRole,
+      creatorUserId,
+    );
+
+    // If permission IDs are provided, assign them to the role
+    if (permissionIds && permissionIds.length > 0) {
+      for (const permissionId of permissionIds) {
+        await this.assignPermissionToRole(role.id.getValue(), permissionId);
+      }
+    }
+
+    // Get the updated role with permissions
+    const updatedRole = await this.roleRepository.findById(role.id.getValue());
+
+    if (!updatedRole) {
+      throw new EntityNotFoundException('Role not found after creation', role.id.getValue());
+    }
+
+    return updatedRole;
+  }
+
   async getUserHighestRole(userId: string): Promise<Role> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -198,5 +277,13 @@ export class RoleService {
     return userRoles.reduce((highest, current) =>
       current.hierarchyLevel < highest.hierarchyLevel ? current : highest,
     );
+  }
+
+  async getRoleById(id: string): Promise<Role | null> {
+    return await this.roleRepository.findById(id);
+  }
+
+  async getAllRoles(): Promise<Role[]> {
+    return await this.roleRepository.findAll();
   }
 }

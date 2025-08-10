@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { Email } from '@core/value-objects/email.vo';
 import { RolesEnum } from '@shared/constants/enums';
 import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';

@@ -1,9 +1,6 @@
 import { QueryHandler, IQueryHandler } from '@nestjs/cqrs';
-import { Inject } from '@nestjs/common';
-import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
-import { CompanyId } from '@core/value-objects/company-id.vo';
+import { CompanyScheduleService } from '@core/services/company-schedule.service';
 import { InvalidInputException } from '@core/exceptions/domain-exceptions';
-import { COMPANY_SCHEDULES_REPOSITORY } from '@shared/constants/tokens';
 
 export class GetCompanySchedulesQuery {
   constructor(
@@ -40,30 +37,38 @@ export interface IGetCompanySchedulesResponse {
 
 @QueryHandler(GetCompanySchedulesQuery)
 export class GetCompanySchedulesHandler implements IQueryHandler<GetCompanySchedulesQuery> {
-  constructor(
-    @Inject(COMPANY_SCHEDULES_REPOSITORY)
-    private readonly companySchedulesRepository: ICompanySchedulesRepository,
-  ) {}
+  constructor(private readonly companyScheduleService: CompanyScheduleService) {}
 
   async execute(query: GetCompanySchedulesQuery): Promise<IGetCompanySchedulesResponse> {
     // Validate input
     this.validateQuery(query);
 
-    const companyId = CompanyId.fromString(query.companyId);
+    // Get schedules from service
+    const schedules = await this.companyScheduleService.getCompanySchedules(query.companyId);
+
+    // Apply filters
+    let filteredSchedules = schedules;
+
+    if (query.isActive !== undefined) {
+      filteredSchedules = filteredSchedules.filter(
+        schedule => schedule.isActive === query.isActive,
+      );
+    }
+
+    if (query.dayOfWeek !== undefined) {
+      filteredSchedules = filteredSchedules.filter(
+        schedule => schedule.dayOfWeek === query.dayOfWeek,
+      );
+    }
+
+    // Apply pagination
     const limit = query.limit || 50;
     const offset = query.offset || 0;
-
-    // Execute query
-    const result = await this.companySchedulesRepository.findMany({
-      companyId,
-      isActive: query.isActive,
-      dayOfWeek: query.dayOfWeek,
-      limit,
-      offset,
-    });
+    const total = filteredSchedules.length;
+    const paginatedSchedules = filteredSchedules.slice(offset, offset + limit);
 
     // Map to response format
-    const schedules: ICompanyScheduleResponse[] = result.schedules.map(schedule => ({
+    const scheduleResponses: ICompanyScheduleResponse[] = paginatedSchedules.map(schedule => ({
       id: schedule.id.getValue(),
       companyId: schedule.companyId.getValue(),
       dayOfWeek: schedule.dayOfWeek,
@@ -77,12 +82,12 @@ export class GetCompanySchedulesHandler implements IQueryHandler<GetCompanySched
     }));
 
     return {
-      schedules,
-      total: result.total,
+      schedules: scheduleResponses,
+      total,
       page: {
         limit,
         offset,
-        hasMore: offset + limit < result.total,
+        hasMore: offset + limit < total,
       },
     };
   }

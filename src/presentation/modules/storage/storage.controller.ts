@@ -34,8 +34,8 @@ import { GetFileQuery } from '@application/queries/storage/get-file.query';
 import { GetUserFilesQuery } from '@application/queries/storage/get-user-files.query';
 
 import { UpdateFileAccessDto } from '@application/dtos/storage/update-file-access.dto';
-import { FileResponseDto } from '@application/dtos/responses/file.response';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IFileResponse } from '@application/dtos/_responses/storage/file.response.interface';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 
 @ApiTags('storage')
@@ -97,7 +97,7 @@ export class StorageController {
     )
     file: Express.Multer.File,
     @CurrentUser() user: IJwtPayload,
-  ): Promise<FileResponseDto> {
+  ): Promise<IFileResponse> {
     const storageFile = {
       buffer: file.buffer,
       originalname: file.originalname,
@@ -120,10 +120,7 @@ export class StorageController {
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (with ownership/access restrictions)',
   })
   @ApiParam({ name: 'id', description: 'File ID' })
-  async getFile(
-    @Param('id') id: string,
-    @CurrentUser() user: IJwtPayload,
-  ): Promise<FileResponseDto> {
+  async getFile(@Param('id') id: string, @CurrentUser() user: IJwtPayload): Promise<IFileResponse> {
     return this.queryBus.execute(new GetFileQuery(id, user.sub));
   }
 
@@ -136,7 +133,7 @@ export class StorageController {
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:read</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>',
   })
-  async getUserFiles(@CurrentUser() user: IJwtPayload): Promise<FileResponseDto[]> {
+  async getUserFiles(@CurrentUser() user: IJwtPayload): Promise<IFileResponse[]> {
     return this.queryBus.execute(new GetUserFilesQuery(user.sub));
   }
 
@@ -170,7 +167,7 @@ export class StorageController {
   async updateFileAccess(
     @Body() updateFileAccessDto: UpdateFileAccessDto,
     @CurrentUser() user: IJwtPayload,
-  ): Promise<FileResponseDto> {
+  ): Promise<IFileResponse> {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
         new UpdateFileAccessCommand(

@@ -4,7 +4,7 @@ import { CompanyAIAssistant } from '@core/entities/company-ai-assistant.entity';
 import {
   IAIAssistantResponse,
   ICompanyAIAssistantResponse,
-} from '@application/dtos/responses/ai-assistant.response';
+} from '@application/dtos/_responses/ai-assistant/ai-assistant.response';
 
 @Injectable()
 export class AIAssistantMapper {

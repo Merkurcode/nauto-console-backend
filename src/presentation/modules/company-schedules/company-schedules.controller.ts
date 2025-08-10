@@ -35,16 +35,16 @@ import { TransactionService } from '@infrastructure/database/prisma/transaction.
 import { CreateCompanyScheduleDto } from '@application/dtos/company-schedules/create-company-schedule.dto';
 import { UpdateCompanyScheduleDto } from '@application/dtos/company-schedules/update-company-schedule.dto';
 import {
-  CompanyScheduleResponseDto,
-  CompanySchedulesListResponseDto,
-  CompanyWeeklyScheduleResponseDto,
-} from '@application/dtos/company-schedules/company-schedule-response.dto';
+  ICompanyScheduleResponse,
+  ICompanySchedulesListResponse,
+  ICompanyWeeklyScheduleResponse,
+} from '@application/dtos/_responses/company-schedules/company-schedule.response.interface';
 
 // Mapper
 import { CompanySchedulesMapper } from '@application/mappers/company-schedules.mapper';
 
 // JWT Payload
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
@@ -88,7 +88,6 @@ export class CompanySchedulesController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Company schedule created successfully',
-    type: CompanyScheduleResponseDto,
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({
@@ -100,12 +99,12 @@ export class CompanySchedulesController {
     @Param('companyId') companyId: string,
     @Body() createScheduleDto: CreateCompanyScheduleDto,
     @CurrentUser() currentUser: IJwtPayload,
-  ): Promise<CompanyScheduleResponseDto> {
+  ): Promise<ICompanyScheduleResponse> {
     return this.transactionService.executeInTransaction(async () => {
       const command = this.mapper.toCreateCommand(createScheduleDto, companyId, currentUser.sub);
       const result = await this.commandBus.execute(command);
 
-      return this.mapper.toCreateResponseDto(result);
+      return this.mapper.toCreateResponse(result);
     });
   }
 
@@ -159,7 +158,6 @@ export class CompanySchedulesController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company schedules retrieved successfully',
-    type: CompanySchedulesListResponseDto,
   })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async getSchedules(
@@ -168,7 +166,7 @@ export class CompanySchedulesController {
     @Query('dayOfWeek', new ParseIntPipe({ optional: true })) dayOfWeek?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
-  ): Promise<CompanySchedulesListResponseDto> {
+  ): Promise<ICompanySchedulesListResponse> {
     const query = this.mapper.toGetSchedulesQuery(companyId, {
       isActive,
       dayOfWeek,
@@ -178,7 +176,7 @@ export class CompanySchedulesController {
 
     const result = await this.queryBus.execute(query);
 
-    return this.mapper.toSchedulesListResponseDto(result);
+    return this.mapper.toSchedulesListResponse(result);
   }
 
   @Get('weekly')
@@ -206,16 +204,15 @@ export class CompanySchedulesController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company weekly schedule retrieved successfully',
-    type: CompanyWeeklyScheduleResponseDto,
   })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async getWeeklySchedule(
     @Param('companyId') companyId: string,
-  ): Promise<CompanyWeeklyScheduleResponseDto> {
+  ): Promise<ICompanyWeeklyScheduleResponse> {
     const query = this.mapper.toGetWeeklyScheduleQuery(companyId);
     const result = await this.queryBus.execute(query);
 
-    return this.mapper.toWeeklyScheduleResponseDto(result);
+    return this.mapper.toWeeklyScheduleResponse(result);
   }
 
   @Put(':scheduleId')
@@ -246,7 +243,6 @@ export class CompanySchedulesController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company schedule updated successfully',
-    type: CompanyScheduleResponseDto,
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Schedule not found' })
@@ -257,12 +253,12 @@ export class CompanySchedulesController {
     @Param('scheduleId') scheduleId: string,
     @Body() updateScheduleDto: UpdateCompanyScheduleDto,
     @CurrentUser() currentUser: IJwtPayload,
-  ): Promise<CompanyScheduleResponseDto> {
+  ): Promise<ICompanyScheduleResponse> {
     return this.transactionService.executeInTransaction(async () => {
       const command = this.mapper.toUpdateCommand(updateScheduleDto, scheduleId, currentUser.sub);
       const result = await this.commandBus.execute(command);
 
-      return this.mapper.toUpdateResponseDto(result);
+      return this.mapper.toUpdateResponse(result);
     });
   }
 

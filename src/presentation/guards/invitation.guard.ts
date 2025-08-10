@@ -7,7 +7,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InvitationRulesService } from '@core/services/invitation-rules.service';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { ICompanyRepository } from '@core/repositories/company.repository.interface';
 import { COMPANY_REPOSITORY } from '@shared/constants/tokens';
 import { CompanyName } from '@core/value-objects/company-name.vo';

@@ -1,14 +1,12 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { SendVerificationEmailDto } from '@application/dtos/auth/email-verification.dto';
-import { Injectable, Inject, Logger, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, ConflictException } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
 import { EmailService } from '@core/services/email.service';
 import { SmsService } from '@core/services/sms.service';
+import { UserService } from '@core/services/user.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { USER_REPOSITORY } from '@shared/constants/tokens';
 import { InvalidCredentialsException } from '@core/exceptions/domain-exceptions';
-import { Email } from '@core/value-objects/email.vo';
 import { User } from '@core/entities/user.entity';
 
 export class SendVerificationEmailCommand implements ICommand {
@@ -31,9 +29,8 @@ export class SendVerificationEmailCommandHandler
     private readonly authService: AuthService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
+    private readonly userService: UserService,
     private readonly userAuthorizationService: UserAuthorizationService,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
   ) {}
 
   async execute(command: SendVerificationEmailCommand): Promise<{ message: string }> {
@@ -43,11 +40,8 @@ export class SendVerificationEmailCommandHandler
     // Get current user using centralized method
     const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
 
-    // Validate email format using value object
-    const _emailVO = new Email(email);
-
     // SECURITY: Verify that the email is registered in the system
-    const targetUser = await this.userRepository.findByEmail(email);
+    const targetUser = await this.userService.findUserByEmailForVerification(email);
     if (!targetUser) {
       // SECURITY: Use generic message to prevent email enumeration
       throw new InvalidCredentialsException();

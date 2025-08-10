@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { RolesEnum } from '@shared/constants/enums';
 import { PREVENT_ROOT_ASSIGNMENT_KEY } from '@shared/decorators/prevent-root-assignment.decorator';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { USER_REPOSITORY, ROLE_REPOSITORY } from '@shared/constants/tokens';

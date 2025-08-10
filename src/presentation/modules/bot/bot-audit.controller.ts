@@ -13,14 +13,14 @@ import { RolesEnum } from '@shared/constants/enums';
 // Services
 import { AuditLogService } from '@core/services/audit-log.service';
 import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
-import { IJwtPayload } from '@application/dtos/responses/user.response';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 // DTOs and Mappers
-import { BotAuditQueryDto } from '@application/dtos/requests/bot/bot-audit-query.dto';
+import { BotAuditQueryDto } from '@application/dtos/bot/bot-audit-query.dto';
 import {
   BotAuditResponse,
   BotStatisticsResponse,
-} from '@application/dtos/responses/bot/bot-audit.response';
+} from '@application/dtos/_responses/bot/bot-audit.response';
 import { BotAuditMapper } from '@application/mappers/bot-audit.mapper';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 

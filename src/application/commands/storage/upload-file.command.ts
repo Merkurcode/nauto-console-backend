@@ -2,7 +2,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Injectable, Inject } from '@nestjs/common';
 import { StorageService, IStorageFile } from '@core/services/storage.service';
 import { FileMapper } from '../../mappers/file.mapper';
-import { FileResponseDto } from '../../dtos/responses/file.response';
+import { IFileResponse } from '../../dtos/_responses/storage/file.response.interface';
 import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
 import { AuditLogService } from '@core/services/audit-log.service';
 import { UserId } from '@core/value-objects/user-id.vo';
@@ -16,9 +16,7 @@ export class UploadFileCommand {
 
 @Injectable()
 @CommandHandler(UploadFileCommand)
-export class UploadFileCommandHandler
-  implements ICommandHandler<UploadFileCommand, FileResponseDto>
-{
+export class UploadFileCommandHandler implements ICommandHandler<UploadFileCommand, IFileResponse> {
   constructor(
     private readonly storageService: StorageService,
     private readonly fileMapper: FileMapper,
@@ -26,7 +24,7 @@ export class UploadFileCommandHandler
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  async execute(command: UploadFileCommand): Promise<FileResponseDto> {
+  async execute(command: UploadFileCommand): Promise<IFileResponse> {
     const startTime = Date.now();
     const { file, userId } = command;
 
@@ -52,7 +50,7 @@ export class UploadFileCommandHandler
         },
       );
 
-      return this.fileMapper.toResponseDto(fileEntity);
+      return this.fileMapper.toResponse(fileEntity);
     } catch (error) {
       const duration = Date.now() - startTime;
 

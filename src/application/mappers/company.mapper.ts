@@ -3,7 +3,7 @@ import {
   ICompanyResponse,
   IAddressResponse,
   IAssistantResponse,
-} from '@application/dtos/responses/company.response';
+} from '@application/dtos/_responses/company/company.response';
 
 import { IAssistantAssignment } from '@core/repositories/company.repository.interface';
 
