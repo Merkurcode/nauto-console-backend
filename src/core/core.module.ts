@@ -40,6 +40,7 @@ import { CompanyScheduleService } from './services/company-schedule.service';
 import { PermissionExcludeService } from './services/permission-exclude.service';
 import { UserStorageConfigService } from './services/user-storage-config.service';
 import { StorageTiersService } from './services/storage-tiers.service';
+import { UserActivityLogService } from './services/user-activity-log.service';
 import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
 
 /**
@@ -94,6 +95,7 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     PermissionExcludeService,
     UserStorageConfigService,
     StorageTiersService,
+    UserActivityLogService,
   ],
   exports: [
     // Export all domain services
@@ -137,6 +139,7 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     PermissionExcludeService,
     UserStorageConfigService,
     StorageTiersService,
+    UserActivityLogService,
   ],
 })
 export class CoreModule {}

@@ -42,6 +42,22 @@ enum FileStatus {
   DELETED
 }
 
+enum UserActivityType {
+  AUTHENTICATION
+  PROFILE_MANAGEMENT
+  ROLE_MANAGEMENT
+  SECURITY_SETTINGS
+  COMPANY_ASSIGNMENT
+  ACCOUNT_MANAGEMENT
+}
+
+enum UserActivityImpact {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model CompanySchedules {
   id          String   @id @default(uuid())
   dayOfWeek   Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -202,6 +218,7 @@ model User {
   address       UserAddress?
   sessions      Sessions[]
   auditLogs     AuditLog[]
+  activityLogs  UserActivityLog[]
   botTokensAsBot BotToken[] @relation("BotTokenUser")
   botTokensIssued BotToken[] @relation("BotTokenIssuer")
   botTokensRevoked BotToken[] @relation("BotTokenRevoker")
@@ -475,6 +492,28 @@ model AuditLog {
   @@index([timestamp])
   @@index([level, type])
   @@map("AuditLog")
+}
+
+model UserActivityLog {
+  id            String              @id @default(uuid())
+  userId        String
+  activityType  UserActivityType
+  action        String              // register, login, change-password, setup-2fa, assign-role, etc.
+  description   String              // Human-readable description
+  impact        UserActivityImpact
+  version       String              @default("1.0.0") // Schema version for backwards compatibility
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?               // Additional context data
+  timestamp     DateTime            @default(now())
+  
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, timestamp])
+  @@index([activityType, timestamp])
+  @@index([impact, timestamp])
+  @@index([timestamp])
+  @@map("UserActivityLog")
 }
 
 model BotToken {
