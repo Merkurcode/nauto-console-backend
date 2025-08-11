@@ -106,10 +106,10 @@ async function bootstrap() {
   // Additional security headers
   app.use((req, res, next) => {
     // Permissions Policy (formerly Feature Policy)
-    res.setHeader(
+    /*res.setHeader(
       'Permissions-Policy',
       'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
-    );
+    );*/
 
     // Additional CORS security
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');

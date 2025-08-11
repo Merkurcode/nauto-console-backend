@@ -31,6 +31,7 @@ import { AuditLogRepository } from './repositories/audit-log.repository';
 import { BotTokenRepository } from './repositories/bot-token.repository';
 import { UserStorageConfigRepository } from './repositories/user-storage-config.repository';
 import { StorageTiersRepository } from './repositories/storage-tiers.repository';
+import { UserActivityLogRepository } from './repositories/user-activity-log.repository';
 import { TokenProvider } from './auth/token.provider';
 import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
@@ -55,6 +56,7 @@ import {
   BOT_TOKEN_REPOSITORY,
   USER_STORAGE_CONFIG_REPOSITORY,
   STORAGE_TIERS_REPOSITORY,
+  USER_ACTIVITY_LOG_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
@@ -213,6 +215,11 @@ import {
         new StorageTiersRepository(prisma, transactionContext),
       inject: [PrismaService, TransactionContextService],
     },
+    {
+      provide: USER_ACTIVITY_LOG_REPOSITORY,
+      useFactory: (prisma: PrismaService) => new UserActivityLogRepository(prisma),
+      inject: [PrismaService],
+    },
 
     // Infrastructure services
     {
@@ -252,6 +259,7 @@ import {
     BOT_TOKEN_REPOSITORY,
     USER_STORAGE_CONFIG_REPOSITORY,
     STORAGE_TIERS_REPOSITORY,
+    USER_ACTIVITY_LOG_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,

@@ -47,7 +47,7 @@ import { ToggleAssistantStatusCommand } from '@application/commands/ai-assistant
 import { ToggleFeatureStatusCommand } from '@application/commands/ai-assistant/toggle-feature-status.command';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
-@ApiTags('AI Assistants')
+@ApiTags('ai-assistants')
 @ApiBearerAuth('JWT-auth')
 @Controller('ai-assistants')
 @UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard, RootReadOnlyGuard)

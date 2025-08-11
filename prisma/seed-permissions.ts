@@ -229,6 +229,13 @@ export const permissions = [
     action: 'delete',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT],
   },
+  {
+    name: 'user_activity_log:read',
+    description: 'Can read user activity logs',
+    resource: 'user_activity_log',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {
