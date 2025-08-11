@@ -24,7 +24,7 @@ export class LoggingInterceptor implements NestInterceptor {
       body,
     });
 
-    const now = Date.now();
+    const now = performance.now();
 
     return next.handle().pipe(
       tap(data => {
@@ -34,7 +34,7 @@ export class LoggingInterceptor implements NestInterceptor {
           userId,
           method,
           url,
-          processingTime: `${Date.now() - now}ms`,
+          processingTime: `${performance.now() - now}ms`,
           responseType: typeof data === 'object' ? 'Object' : typeof data,
         });
       }),

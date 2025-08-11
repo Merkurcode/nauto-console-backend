@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { Permission } from '@core/entities/permission.entity';
 import { IPermissionRepository } from '@core/repositories/permission.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
@@ -8,6 +8,8 @@ import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
 import { HIDDEN_PERMISSIONS } from '@shared/constants/bot-permissions';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class PermissionRepository
@@ -17,8 +19,9 @@ export class PermissionRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    super();
+    super(logger);
   }
 
   private get client() {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Security utility for sanitizing error information to prevent information disclosure
  *
@@ -182,13 +183,13 @@ export class ErrorSanitizationUtil {
    * Apply sanitization patterns with ReDoS protection (character-by-character approach)
    */
   private static applySanitizationWithTimeout(text: string, maxTimeMs: number): string {
-    const startTime = Date.now();
+    const startTime = performance.now();
 
     // Security: Use character-by-character pattern matching instead of regex
     const sanitized = this.applySanitizationSafely(text);
 
     // Check overall timeout
-    if (Date.now() - startTime > maxTimeMs) {
+    if (performance.now() - startTime > maxTimeMs) {
       throw new Error('Sanitization timeout - potential ReDoS attack');
     }
 

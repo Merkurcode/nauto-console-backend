@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { BaseRepository } from './base.repository';
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import {
@@ -15,6 +16,8 @@ import {
 } from '@prisma/client';
 import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 // Define a type for User with its relations (roles with nested permissions)
 type UserWithRelations = PrismaUser & {
@@ -31,80 +34,113 @@ type UserWithRelations = PrismaUser & {
 
 /**
  * Simplified UserRepository for authentication purposes only
- * Does not support transactions - used specifically for JwtStrategy
+ * NOTE: Does not use transactions for authentication queries (performance/simplicity)
+ * Used specifically for JwtStrategy and auth flows
  */
 @Injectable()
-export class UserAuthRepository implements IUserRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class UserAuthRepository extends BaseRepository<User> implements IUserRepository {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+  ) {
+    super(logger);
+  }
+
+  // Authentication queries don't use transactions for performance
+  private get client() {
+    return this.prisma;
+  }
 
   async findById(id: string): Promise<User | null> {
-    const userRecord = await this.prisma.user.findUnique({
-      where: { id },
-      include: {
-        roles: {
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: {
-                    permission: true,
+    return this.executeWithErrorHandling('findById', async () => {
+      const userRecord = await this.client.user.findUnique({
+        where: { id },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
                   },
                 },
               },
             },
           },
+          profile: true,
+          address: true,
         },
-        profile: true,
-        address: true,
-      },
+      });
+
+      if (!userRecord) {
+        return null;
+      }
+
+      return this.mapToModel(userRecord as UserWithRelations);
     });
-
-    if (!userRecord) {
-      return null;
-    }
-
-    return this.mapToModel(userRecord as UserWithRelations);
   }
 
   // Other methods throw NotImplemented error as they're not needed for JWT auth
   async findByEmail(_email: string): Promise<User | null> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('findByEmail', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async findAll(): Promise<User[]> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('findAll', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async findAllByCompanyId(_companyId: string): Promise<User[]> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('findAllByCompanyId', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async findByAlias(_alias: string): Promise<User | null> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('findByAlias', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async findByAgentPhoneAndCompany(_agentPhone: string, _companyId: string): Promise<User | null> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('findByAgentPhoneAndCompany', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async findUsersByRoleId(_roleId: string): Promise<User[]> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('findUsersByRoleId', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async getUserPhoneCountryCode(_userId: string): Promise<string | null> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('getUserPhoneCountryCode', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async create(_user: User): Promise<User> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('create', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async update(_user: User): Promise<User> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('update', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   async delete(_id: string): Promise<boolean> {
-    throw new Error('Not implemented in UserAuthRepository');
+    return this.executeWithErrorHandling('delete', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
   }
 
   private mapToModel(record: UserWithRelations): User {
@@ -171,13 +207,16 @@ export class UserAuthRepository implements IUserRepository {
         : undefined,
       address: record.address
         ? {
-            country: 'México', // Default since we're not storing country/state properly yet
-            state: 'Unknown',
-            city: record.address.city || '',
-            street: record.address.street || '',
-            exteriorNumber: record.address.exteriorNumber || '',
+            id: record.address.id,
+            countryId: record.address.countryId || undefined,
+            stateId: record.address.stateId || undefined,
+            city: record.address.city || undefined,
+            street: record.address.street || undefined,
+            exteriorNumber: record.address.exteriorNumber || undefined,
             interiorNumber: record.address.interiorNumber || undefined,
-            postalCode: record.address.postalCode || '',
+            postalCode: record.address.postalCode || undefined,
+            createdAt: record.address.createdAt,
+            updatedAt: record.address.updatedAt,
           }
         : undefined,
       createdAt: record.createdAt,

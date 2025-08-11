@@ -1,6 +1,7 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { TransactionContextService } from '../database/prisma/transaction-context.service';
+import { BaseRepository } from './base.repository';
 import {
   IAuditLogRepository,
   IAuditLogQuery,
@@ -16,120 +17,133 @@ import { ILogger } from '@core/interfaces/logger.interface';
 /**
  * Audit Log Repository Implementation using Prisma
  * Infrastructure layer - implements domain interface
+ * NOTE: This repository uses a special transaction pattern where audit logs
+ * are persisted OUTSIDE of transactions by default to ensure they are saved
+ * even if the main operation fails.
  */
 @Injectable()
-export class AuditLogRepository implements IAuditLogRepository {
+export class AuditLogRepository extends BaseRepository<AuditLog> implements IAuditLogRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    this.logger.setContext(AuditLogRepository.name);
+    super(logger);
   }
 
   async save(auditLog: AuditLog, useTransaction = false): Promise<AuditLog> {
-    // IMPORTANT: Audit logs should be saved OUTSIDE of transactions by default
-    // to ensure they are persisted even if the main operation fails
-    // Only use transaction context if explicitly requested
-    const client = useTransaction
-      ? this.transactionContext.getTransactionClient() || this.prisma
-      : this.prisma;
+    return this.executeWithErrorHandling('save', async () => {
+      // IMPORTANT: Audit logs should be saved OUTSIDE of transactions by default
+      // to ensure they are persisted even if the main operation fails
+      // Only use transaction context if explicitly requested
+      const client = useTransaction
+        ? this.transactionContext.getTransactionClient() || this.prisma
+        : this.prisma;
 
-    try {
-      const data = await client.auditLog.create({
-        data: {
-          id: auditLog.id.getValue(),
-          level: auditLog.level,
-          type: auditLog.type,
-          action: auditLog.action,
-          message: auditLog.message,
-          userId: auditLog.userId?.getValue() || null,
-          metadata: auditLog.metadata as any,
-          timestamp: auditLog.timestamp,
-          context: auditLog.context,
-        },
-      });
+      try {
+        const data = await client.auditLog.create({
+          data: {
+            id: auditLog.id.getValue(),
+            level: auditLog.level,
+            type: auditLog.type,
+            action: auditLog.action,
+            message: auditLog.message,
+            userId: auditLog.userId?.getValue() || null,
+            metadata: auditLog.metadata as any,
+            timestamp: auditLog.timestamp,
+            context: auditLog.context,
+          },
+        });
 
-      return this.toDomain(data);
-    } catch (error) {
-      this.logger.error({
-        message: 'Failed to save audit log',
-        auditLogId: auditLog.id.getValue(),
-        error: error instanceof Error ? error.message : String(error),
-        useTransaction,
-      });
-      throw error;
-    }
+        return this.toDomain(data);
+      } catch (error) {
+        throw error;
+      }
+    });
   }
 
   async findById(id: AuditLogId): Promise<AuditLog | null> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('findById', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const data = await client.auditLog.findUnique({
-      where: { id: id.getValue() },
+      const data = await client.auditLog.findUnique({
+        where: { id: id.getValue() },
+      });
+
+      return data ? this.toDomain(data) : null;
     });
-
-    return data ? this.toDomain(data) : null;
   }
 
   async query(query: IAuditLogQuery): Promise<IAuditLogQueryResult> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('query', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const { filters = {}, page = 1, limit = 50, sortBy = 'timestamp', sortOrder = 'desc' } = query;
+      const {
+        filters = {},
+        page = 1,
+        limit = 50,
+        sortBy = 'timestamp',
+        sortOrder = 'desc',
+      } = query;
 
-    // Build where clause
-    const where = this.buildWhereClause(filters);
+      // Build where clause
+      const where = this.buildWhereClause(filters);
 
-    // Build order by clause
-    const orderBy = this.buildOrderByClause(sortBy, sortOrder);
+      // Build order by clause
+      const orderBy = this.buildOrderByClause(sortBy, sortOrder);
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+      // Calculate pagination
+      const skip = (page - 1) * limit;
 
-    // Execute queries in parallel
-    const [logs, total] = await Promise.all([
-      client.auditLog.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-      }),
-      client.auditLog.count({ where }),
-    ]);
+      // Execute queries in parallel
+      const [logs, total] = await Promise.all([
+        client.auditLog.findMany({
+          where,
+          orderBy,
+          skip,
+          take: limit,
+        }),
+        client.auditLog.count({ where }),
+      ]);
 
-    const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / limit);
 
-    return {
-      logs: logs.map(log => this.toDomain(log)),
-      total,
-      page,
-      limit,
-      totalPages,
-    };
+      return {
+        logs: logs.map(log => this.toDomain(log)),
+        total,
+        page,
+        limit,
+        totalPages,
+      };
+    });
   }
 
   async findByUserId(userId: UserId, limit: number = 100): Promise<AuditLog[]> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('findByUserId', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const logs = await client.auditLog.findMany({
-      where: { userId: userId.getValue() },
-      orderBy: { timestamp: 'desc' },
-      take: limit,
+      const logs = await client.auditLog.findMany({
+        where: { userId: userId.getValue() },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
+
+      return logs.map(log => this.toDomain(log));
     });
-
-    return logs.map(log => this.toDomain(log));
   }
 
   async findByContext(context: string, limit: number = 100): Promise<AuditLog[]> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('findByContext', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const logs = await client.auditLog.findMany({
-      where: { context },
-      orderBy: { timestamp: 'desc' },
-      take: limit,
+      const logs = await client.auditLog.findMany({
+        where: { context },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
+
+      return logs.map(log => this.toDomain(log));
     });
-
-    return logs.map(log => this.toDomain(log));
   }
 
   async findByTypeAndLevel(
@@ -137,150 +151,162 @@ export class AuditLogRepository implements IAuditLogRepository {
     level: AuditLogLevel,
     limit: number = 100,
   ): Promise<AuditLog[]> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('findByTypeAndLevel', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const logs = await client.auditLog.findMany({
-      where: { type, level },
-      orderBy: { timestamp: 'desc' },
-      take: limit,
+      const logs = await client.auditLog.findMany({
+        where: { type, level },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
+
+      return logs.map(log => this.toDomain(log));
     });
-
-    return logs.map(log => this.toDomain(log));
   }
 
   async findRecentErrors(hours: number, limit: number = 100): Promise<AuditLog[]> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
-    const fromDate = new Date();
-    fromDate.setHours(fromDate.getHours() - hours);
+    return this.executeWithErrorHandling('findRecentErrors', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
+      const fromDate = new Date();
+      fromDate.setHours(fromDate.getHours() - hours);
 
-    const logs = await client.auditLog.findMany({
-      where: {
-        level: 'error',
-        timestamp: {
-          gte: fromDate,
+      const logs = await client.auditLog.findMany({
+        where: {
+          level: 'error',
+          timestamp: {
+            gte: fromDate,
+          },
         },
-      },
-      orderBy: { timestamp: 'desc' },
-      take: limit,
-    });
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
 
-    return logs.map(log => this.toDomain(log));
+      return logs.map(log => this.toDomain(log));
+    });
   }
 
   async findSecurityLogs(fromDate: Date, toDate: Date, limit: number = 1000): Promise<AuditLog[]> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('findSecurityLogs', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const logs = await client.auditLog.findMany({
-      where: {
-        OR: [{ type: 'security' }, { type: 'auth' }, { context: 'security' }],
-        timestamp: {
-          gte: fromDate,
-          lte: toDate,
+      const logs = await client.auditLog.findMany({
+        where: {
+          OR: [{ type: 'security' }, { type: 'auth' }, { context: 'security' }],
+          timestamp: {
+            gte: fromDate,
+            lte: toDate,
+          },
         },
-      },
-      orderBy: { timestamp: 'desc' },
-      take: limit,
-    });
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
 
-    return logs.map(log => this.toDomain(log));
+      return logs.map(log => this.toDomain(log));
+    });
   }
 
   async count(filters: IAuditLogFilters = {}): Promise<number> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
-    const where = this.buildWhereClause(filters);
+    return this.executeWithErrorHandling('count', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
+      const where = this.buildWhereClause(filters);
 
-    return client.auditLog.count({ where });
+      return client.auditLog.count({ where });
+    });
   }
 
   async deleteOlderThan(date: Date): Promise<number> {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('deleteOlderThan', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const result = await client.auditLog.deleteMany({
-      where: {
-        timestamp: {
-          lt: date,
+      const result = await client.auditLog.deleteMany({
+        where: {
+          timestamp: {
+            lt: date,
+          },
         },
-      },
-    });
+      });
 
-    return result.count;
+      return result.count;
+    });
   }
 
   async getStatistics(fromDate: Date, toDate: Date) {
-    const client = this.transactionContext.getTransactionClient() || this.prisma;
+    return this.executeWithErrorHandling('getStatistics', async () => {
+      const client = this.transactionContext.getTransactionClient() || this.prisma;
 
-    const totalLogs = await client.auditLog.count({
-      where: {
-        timestamp: {
-          gte: fromDate,
-          lte: toDate,
+      const totalLogs = await client.auditLog.count({
+        where: {
+          timestamp: {
+            gte: fromDate,
+            lte: toDate,
+          },
         },
-      },
+      });
+
+      // Get statistics by level
+      const levelStats = await client.auditLog.groupBy({
+        by: ['level'],
+        where: {
+          timestamp: {
+            gte: fromDate,
+            lte: toDate,
+          },
+        },
+        _count: true,
+      });
+
+      // Get statistics by type
+      const typeStats = await client.auditLog.groupBy({
+        by: ['type'],
+        where: {
+          timestamp: {
+            gte: fromDate,
+            lte: toDate,
+          },
+        },
+        _count: true,
+      });
+
+      // Get statistics by context
+      const contextStats = await client.auditLog.groupBy({
+        by: ['context'],
+        where: {
+          timestamp: {
+            gte: fromDate,
+            lte: toDate,
+          },
+        },
+        _count: true,
+      });
+
+      return {
+        totalLogs,
+        byLevel: levelStats.reduce(
+          (acc, stat) => {
+            acc[stat.level as AuditLogLevel] = stat._count;
+
+            return acc;
+          },
+          {} as Record<AuditLogLevel, number>,
+        ),
+        byType: typeStats.reduce(
+          (acc, stat) => {
+            acc[stat.type as AuditLogType] = stat._count;
+
+            return acc;
+          },
+          {} as Record<AuditLogType, number>,
+        ),
+        byContext: contextStats.reduce(
+          (acc, stat) => {
+            acc[stat.context] = stat._count;
+
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
+      };
     });
-
-    // Get statistics by level
-    const levelStats = await client.auditLog.groupBy({
-      by: ['level'],
-      where: {
-        timestamp: {
-          gte: fromDate,
-          lte: toDate,
-        },
-      },
-      _count: true,
-    });
-
-    // Get statistics by type
-    const typeStats = await client.auditLog.groupBy({
-      by: ['type'],
-      where: {
-        timestamp: {
-          gte: fromDate,
-          lte: toDate,
-        },
-      },
-      _count: true,
-    });
-
-    // Get statistics by context
-    const contextStats = await client.auditLog.groupBy({
-      by: ['context'],
-      where: {
-        timestamp: {
-          gte: fromDate,
-          lte: toDate,
-        },
-      },
-      _count: true,
-    });
-
-    return {
-      totalLogs,
-      byLevel: levelStats.reduce(
-        (acc, stat) => {
-          acc[stat.level as AuditLogLevel] = stat._count;
-
-          return acc;
-        },
-        {} as Record<AuditLogLevel, number>,
-      ),
-      byType: typeStats.reduce(
-        (acc, stat) => {
-          acc[stat.type as AuditLogType] = stat._count;
-
-          return acc;
-        },
-        {} as Record<AuditLogType, number>,
-      ),
-      byContext: contextStats.reduce(
-        (acc, stat) => {
-          acc[stat.context] = stat._count;
-
-          return acc;
-        },
-        {} as Record<string, number>,
-      ),
-    };
   }
 
   /**

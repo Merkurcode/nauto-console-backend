@@ -6,7 +6,8 @@ import * as path from 'path';
 import { IStorageProvider, IStorageFile } from '@core/services/storage.service';
 import { File } from '@core/entities/file.entity';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
-import { FILE_REPOSITORY } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { FILE_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
 @Injectable()
@@ -20,7 +21,9 @@ export class MinioStorageProvider implements IStorageProvider {
     private readonly configService: ConfigService,
     @Inject(FILE_REPOSITORY) private readonly fileRepository: IFileRepository,
     private readonly businessConfigService: BusinessConfigurationService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
+    this.logger.setContext(MinioStorageProvider.name);
     const minioConfig = this.configService.get('storage.minio');
     this.bucketName = minioConfig.bucketName;
     this.publicFolder = minioConfig.publicFolder;
@@ -36,7 +39,11 @@ export class MinioStorageProvider implements IStorageProvider {
     });
 
     this.initializeBuckets().catch(err => {
-      console.error('Error initializing MinIO buckets:', err);
+      this.logger.error({
+        message: 'Error initializing MinIO buckets',
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
     });
   }
 

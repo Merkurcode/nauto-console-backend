@@ -20,8 +20,9 @@ import { FirstName, LastName } from '@core/value-objects/name.vo';
 import { SecondLastName } from '@core/value-objects/second-lastname.vo';
 import { AgentPhone } from '@core/value-objects/agent-phone.vo';
 import { UserProfile } from '@core/value-objects/user-profile.vo';
-import { Address } from '@core/value-objects/address.vo';
+import { UserAddress } from '@core/entities/user-address.entity';
 import { RoleId } from '@core/value-objects/role-id.vo';
+import { UserId } from '@core/value-objects/user-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { UserAuthorizationService } from './user-authorization.service';
 import { UserAccessAuthorizationService } from './user-access-authorization.service';
@@ -219,25 +220,16 @@ export class UserService {
       )
       : undefined;
 
-    let addressVO: Address | undefined;
-    if (
-      options?.address &&
-      options.address.country &&
-      options.address.state &&
-      options.address.city &&
-      options.address.street &&
-      options.address.exteriorNumber &&
-      options.address.postalCode
-    ) {
-      addressVO = new Address(
-        options.address.country,
-        options.address.state,
-        options.address.city,
-        options.address.street,
-        options.address.exteriorNumber,
-        options.address.postalCode,
-        options.address.interiorNumber,
-      );
+    let addressVO: UserAddress | undefined;
+    if (options?.address) {
+      addressVO = UserAddress.create({
+        userId: UserId.create(), // Temporary, will be set after user creation
+        city: options.address.city,
+        street: options.address.street,
+        exteriorNumber: options.address.exteriorNumber,
+        interiorNumber: options.address.interiorNumber,
+        postalCode: options.address.postalCode,
+      });
     }
 
     // Handle company assignment if provided
@@ -1044,26 +1036,31 @@ return await this.userRepository.findByEmail(emailVO.getValue());
     // Update address information
     if (updateData.address) {
       const currentAddress = targetUser.address;
-      const newAddress = new Address(
-        updateData.address.country !== undefined ? updateData.address.country : currentAddress?.country,
-        updateData.address.state !== undefined ? updateData.address.state : currentAddress?.state,
-        updateData.address.city !== undefined ? updateData.address.city : currentAddress?.city,
-        updateData.address.street !== undefined ? updateData.address.street : currentAddress?.street,
-        updateData.address.exteriorNumber !== undefined
-          ? updateData.address.exteriorNumber
-          : currentAddress?.exteriorNumber,
-        updateData.address.postalCode !== undefined
-          ? updateData.address.postalCode
-          : currentAddress?.postalCode,
-        updateData.address.interiorNumber !== undefined
-          ? updateData.address.interiorNumber
-          : currentAddress?.interiorNumber,
-        updateData.address.googleMapsUrl !== undefined
-          ? updateData.address.googleMapsUrl
-          : currentAddress?.googleMapsUrl,
-      );
-      targetUser.setAddress(newAddress);
-      hasChanges = true;
+      let newAddress: UserAddress;
+      
+      if (currentAddress) {
+        // Update existing address
+        currentAddress.updateFullAddress({
+          city: updateData.address.city !== undefined ? updateData.address.city : currentAddress.city,
+          street: updateData.address.street !== undefined ? updateData.address.street : currentAddress.street,
+          exteriorNumber: updateData.address.exteriorNumber !== undefined ? updateData.address.exteriorNumber : currentAddress.exteriorNumber,
+          interiorNumber: updateData.address.interiorNumber !== undefined ? updateData.address.interiorNumber : currentAddress.interiorNumber,
+          postalCode: updateData.address.postalCode !== undefined ? updateData.address.postalCode : currentAddress.postalCode,
+        });
+        hasChanges = true;
+      } else {
+        // Create new address
+        newAddress = UserAddress.create({
+          userId: targetUser.id,
+          city: updateData.address.city,
+          street: updateData.address.street,
+          exteriorNumber: updateData.address.exteriorNumber,
+          interiorNumber: updateData.address.interiorNumber,
+          postalCode: updateData.address.postalCode,
+        });
+        targetUser.setAddress(newAddress);
+        hasChanges = true;
+      }
     }
 
     // Save changes if any were made

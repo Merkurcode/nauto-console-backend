@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { DomainEvent, AggregateRoot } from '@core/events/domain-event.base';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 /**
  * Domain Event Service for managing and dispatching domain events
@@ -8,6 +10,13 @@ import { DomainEvent, AggregateRoot } from '@core/events/domain-event.base';
 @Injectable()
 export class DomainEventService {
   private readonly eventHandlers = new Map<string, Array<(event: DomainEvent) => Promise<void>>>();
+
+  constructor(
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(DomainEventService.name);
+  }
 
   /**
    * Register an event handler for a specific event type
@@ -69,9 +78,13 @@ export class DomainEventService {
       await Promise.all(promises);
     } catch (error) {
       // Log error but don't throw to prevent transaction rollback
-      console.error(`Error handling domain event ${event.getEventName()}:`, error);
-      // In a real application, you'd use proper logging and potentially
-      // implement a dead letter queue or retry mechanism
+      this.logger.error({
+        message: `Error handling domain event ${event.getEventName()}`,
+        event: event.getEventName(),
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // In a real application, you'd potentially implement a dead letter queue or retry mechanism
     }
   }
 

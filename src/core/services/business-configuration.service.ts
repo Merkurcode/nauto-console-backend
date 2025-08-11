@@ -1,5 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 /**
  * Domain service responsible for business configuration values
@@ -14,7 +17,6 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class BusinessConfigurationService implements OnModuleInit {
-  private readonly logger = new Logger(BusinessConfigurationService.name);
   private readonly configCache = new Map<string, any>();
   private readonly CONFIG_ACCESS_LOG = true; // Enable audit logging for config access
 
@@ -43,11 +45,22 @@ export class BusinessConfigurationService implements OnModuleInit {
     DEFAULT_STATE: /^[a-zA-Z\s-]{1,50}$/, // Letters, spaces, hyphens, max 50 chars
   };
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(BusinessConfigurationService.name);
+  }
 
   async onModuleInit() {
     // Security: Validate all critical configurations at startup
-    await this.validateCriticalConfiguration();
+    await this.validateCriticalConfiguration([
+      'EMAIL_VERIFICATION_EXPIRY_MINUTES',
+      'PASSWORD_SALT_ROUNDS',
+      'PASSWORD_MIN_LENGTH',
+      'RATE_LIMIT_EMAIL_ATTEMPTS',
+      'MAX_ACTIVE_SESSIONS',
+    ]);
     this.logger.log('Business configuration service initialized with security validation');
   }
 
@@ -200,15 +213,7 @@ export class BusinessConfigurationService implements OnModuleInit {
   /**
    * Security: Validate critical configuration at startup
    */
-  private async validateCriticalConfiguration(): Promise<void> {
-    const criticalConfigs = [
-      'EMAIL_VERIFICATION_EXPIRY_MINUTES',
-      'PASSWORD_SALT_ROUNDS',
-      'PASSWORD_MIN_LENGTH',
-      'RATE_LIMIT_EMAIL_ATTEMPTS',
-      'MAX_ACTIVE_SESSIONS',
-    ];
-
+  private async validateCriticalConfiguration(criticalConfigs: string[]): Promise<void> {
     const validationErrors: string[] = [];
 
     for (const configKey of criticalConfigs) {

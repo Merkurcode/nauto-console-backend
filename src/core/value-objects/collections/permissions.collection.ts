@@ -124,21 +124,6 @@ export class PermissionsCollection {
   }
 
   /**
-   * Check if collection has admin permissions
-   */
-  hasAdminPermissions(): boolean {
-    const adminResources = ['user', 'role', 'permission'];
-    const criticalActions = ['write', 'delete'];
-
-    return this._permissions.some(p => {
-      const resource = p.getResource().toLowerCase();
-      const action = p.getAction().toLowerCase();
-
-      return adminResources.includes(resource) && criticalActions.includes(action);
-    });
-  }
-
-  /**
    * Check if collection allows access to a specific resource and action
    */
   allowsAccess(resource: string, action: string): boolean {

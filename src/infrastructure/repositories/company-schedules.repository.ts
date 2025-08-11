@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { ICompanySchedulesRepository } from '@core/repositories/company-schedules.repository.interface';
 import { CompanySchedules } from '@core/entities/company-schedules.entity';
 import { CompanyScheduleId } from '@core/value-objects/company-schedule-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { BaseRepository } from './base.repository';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 // Prisma record interface for company schedules
 interface IPrismaCompanyScheduleRecord {
@@ -18,102 +22,131 @@ interface IPrismaCompanyScheduleRecord {
 }
 
 @Injectable()
-export class CompanySchedulesRepository implements ICompanySchedulesRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class CompanySchedulesRepository
+  extends BaseRepository<CompanySchedules>
+  implements ICompanySchedulesRepository
+{
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+  ) {
+    super(logger);
+  }
+
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
 
   async findById(id: CompanyScheduleId): Promise<CompanySchedules | null> {
-    const record = await this.prisma.companySchedules.findUnique({
-      where: { id: id.getValue() },
-    });
+    return this.executeWithErrorHandling('findById', async () => {
+      const record = await this.client.companySchedules.findUnique({
+        where: { id: id.getValue() },
+      });
 
-    return record ? this.toDomain(record) : null;
+      return record ? this.toDomain(record) : null;
+    });
   }
 
   async findByCompanyId(companyId: CompanyId): Promise<CompanySchedules[]> {
-    const records = await this.prisma.companySchedules.findMany({
-      where: { companyId: companyId.getValue() },
-      orderBy: { dayOfWeek: 'asc' },
-    });
+    return this.executeWithErrorHandling('findByCompanyId', async () => {
+      const records = await this.client.companySchedules.findMany({
+        where: { companyId: companyId.getValue() },
+        orderBy: { dayOfWeek: 'asc' },
+      });
 
-    return records.map(record => this.toDomain(record));
+      return records.map(record => this.toDomain(record));
+    });
   }
 
   async findActiveByCompanyId(companyId: CompanyId): Promise<CompanySchedules[]> {
-    const records = await this.prisma.companySchedules.findMany({
-      where: {
-        companyId: companyId.getValue(),
-        isActive: true,
-      },
-      orderBy: { dayOfWeek: 'asc' },
-    });
+    return this.executeWithErrorHandling('findActiveByCompanyId', async () => {
+      const records = await this.client.companySchedules.findMany({
+        where: {
+          companyId: companyId.getValue(),
+          isActive: true,
+        },
+        orderBy: { dayOfWeek: 'asc' },
+      });
 
-    return records.map(record => this.toDomain(record));
+      return records.map(record => this.toDomain(record));
+    });
   }
 
   async findByCompanyIdAndDayOfWeek(
     companyId: CompanyId,
     dayOfWeek: number,
   ): Promise<CompanySchedules | null> {
-    const record = await this.prisma.companySchedules.findUnique({
-      where: {
-        companyId_dayOfWeek: {
-          companyId: companyId.getValue(),
-          dayOfWeek,
+    return this.executeWithErrorHandling('findByCompanyIdAndDayOfWeek', async () => {
+      const record = await this.client.companySchedules.findUnique({
+        where: {
+          companyId_dayOfWeek: {
+            companyId: companyId.getValue(),
+            dayOfWeek,
+          },
         },
-      },
-    });
+      });
 
-    return record ? this.toDomain(record) : null;
+      return record ? this.toDomain(record) : null;
+    });
   }
 
   async existsByCompanyIdAndDayOfWeek(companyId: CompanyId, dayOfWeek: number): Promise<boolean> {
-    const count = await this.prisma.companySchedules.count({
-      where: {
-        companyId: companyId.getValue(),
-        dayOfWeek,
-      },
-    });
+    return this.executeWithErrorHandling('existsByCompanyIdAndDayOfWeek', async () => {
+      const count = await this.client.companySchedules.count({
+        where: {
+          companyId: companyId.getValue(),
+          dayOfWeek,
+        },
+      });
 
-    return count > 0;
+      return count > 0;
+    });
   }
 
   async create(schedule: CompanySchedules): Promise<CompanySchedules> {
-    const persistenceData = schedule.toPersistence();
+    return this.executeWithErrorHandling('create', async () => {
+      const persistenceData = schedule.toPersistence();
 
-    const record = await this.prisma.companySchedules.create({
-      data: {
-        id: persistenceData.id as string,
-        dayOfWeek: persistenceData.dayOfWeek as number,
-        startTime: persistenceData.startTime as Date,
-        endTime: persistenceData.endTime as Date,
-        isActive: persistenceData.isActive as boolean,
-        companyId: persistenceData.companyId as string,
-      },
+      const record = await this.client.companySchedules.create({
+        data: {
+          id: persistenceData.id as string,
+          dayOfWeek: persistenceData.dayOfWeek as number,
+          startTime: persistenceData.startTime as Date,
+          endTime: persistenceData.endTime as Date,
+          isActive: persistenceData.isActive as boolean,
+          companyId: persistenceData.companyId as string,
+        },
+      });
+
+      return this.toDomain(record);
     });
-
-    return this.toDomain(record);
   }
 
   async update(schedule: CompanySchedules): Promise<CompanySchedules> {
-    const persistenceData = schedule.toPersistence();
+    return this.executeWithErrorHandling('update', async () => {
+      const persistenceData = schedule.toPersistence();
 
-    const record = await this.prisma.companySchedules.update({
-      where: { id: persistenceData.id as string },
-      data: {
-        dayOfWeek: persistenceData.dayOfWeek as number,
-        startTime: persistenceData.startTime as Date,
-        endTime: persistenceData.endTime as Date,
-        isActive: persistenceData.isActive as boolean,
-        updatedAt: new Date(),
-      },
+      const record = await this.client.companySchedules.update({
+        where: { id: persistenceData.id as string },
+        data: {
+          dayOfWeek: persistenceData.dayOfWeek as number,
+          startTime: persistenceData.startTime as Date,
+          endTime: persistenceData.endTime as Date,
+          isActive: persistenceData.isActive as boolean,
+          updatedAt: new Date(),
+        },
+      });
+
+      return this.toDomain(record);
     });
-
-    return this.toDomain(record);
   }
 
   async delete(id: CompanyScheduleId): Promise<void> {
-    await this.prisma.companySchedules.delete({
-      where: { id: id.getValue() },
+    return this.executeWithErrorHandling('delete', async () => {
+      await this.client.companySchedules.delete({
+        where: { id: id.getValue() },
+      });
     });
   }
 
@@ -131,48 +164,52 @@ export class CompanySchedulesRepository implements ICompanySchedulesRepository {
     schedules: CompanySchedules[];
     total: number;
   }> {
-    const where = {
-      ...(filters.companyId && { companyId: filters.companyId.getValue() }),
-      ...(filters.isActive !== undefined && { isActive: filters.isActive }),
-      ...(filters.dayOfWeek !== undefined && { dayOfWeek: filters.dayOfWeek }),
-      ...(filters.timeRange && {
-        OR: [
-          {
-            AND: [
-              { startTime: { lte: filters.timeRange.endTime } },
-              { endTime: { gte: filters.timeRange.startTime } },
-            ],
-          },
-        ],
-      }),
-    };
+    return this.executeWithErrorHandling('findMany', async () => {
+      const where = {
+        ...(filters.companyId && { companyId: filters.companyId.getValue() }),
+        ...(filters.isActive !== undefined && { isActive: filters.isActive }),
+        ...(filters.dayOfWeek !== undefined && { dayOfWeek: filters.dayOfWeek }),
+        ...(filters.timeRange && {
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: filters.timeRange.endTime } },
+                { endTime: { gte: filters.timeRange.startTime } },
+              ],
+            },
+          ],
+        }),
+      };
 
-    const [records, total] = await Promise.all([
-      this.prisma.companySchedules.findMany({
-        where,
-        take: filters.limit || 50,
-        skip: filters.offset || 0,
-        orderBy: { dayOfWeek: 'asc' },
-      }),
-      this.prisma.companySchedules.count({ where }),
-    ]);
+      const [records, total] = await Promise.all([
+        this.client.companySchedules.findMany({
+          where,
+          take: filters.limit || 50,
+          skip: filters.offset || 0,
+          orderBy: { dayOfWeek: 'asc' },
+        }),
+        this.client.companySchedules.count({ where }),
+      ]);
 
-    return {
-      schedules: records.map(record => this.toDomain(record)),
-      total,
-    };
+      return {
+        schedules: records.map(record => this.toDomain(record)),
+        total,
+      };
+    });
   }
 
   async getWeeklySchedule(companyId: CompanyId): Promise<CompanySchedules[]> {
-    const records = await this.prisma.companySchedules.findMany({
-      where: {
-        companyId: companyId.getValue(),
-        isActive: true,
-      },
-      orderBy: { dayOfWeek: 'asc' },
-    });
+    return this.executeWithErrorHandling('getWeeklySchedule', async () => {
+      const records = await this.client.companySchedules.findMany({
+        where: {
+          companyId: companyId.getValue(),
+          isActive: true,
+        },
+        orderBy: { dayOfWeek: 'asc' },
+      });
 
-    return records.map(record => this.toDomain(record));
+      return records.map(record => this.toDomain(record));
+    });
   }
 
   async hasTimeConflict(
@@ -182,27 +219,29 @@ export class CompanySchedulesRepository implements ICompanySchedulesRepository {
     endTime: Date,
     excludeId?: CompanyScheduleId,
   ): Promise<boolean> {
-    const where = {
-      companyId: companyId.getValue(),
-      dayOfWeek,
-      isActive: true,
-      ...(excludeId && { id: { not: excludeId.getValue() } }),
-      OR: [
-        {
-          AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }],
-        },
-        {
-          AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }],
-        },
-        {
-          AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }],
-        },
-      ],
-    };
+    return this.executeWithErrorHandling('hasTimeConflict', async () => {
+      const where = {
+        companyId: companyId.getValue(),
+        dayOfWeek,
+        isActive: true,
+        ...(excludeId && { id: { not: excludeId.getValue() } }),
+        OR: [
+          {
+            AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }],
+          },
+          {
+            AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }],
+          },
+          {
+            AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }],
+          },
+        ],
+      };
 
-    const count = await this.prisma.companySchedules.count({ where });
+      const count = await this.client.companySchedules.count({ where });
 
-    return count > 0;
+      return count > 0;
+    });
   }
 
   async bulkUpdateActiveStatus(
@@ -210,23 +249,27 @@ export class CompanySchedulesRepository implements ICompanySchedulesRepository {
     scheduleIds: CompanyScheduleId[],
     isActive: boolean,
   ): Promise<void> {
-    const ids = scheduleIds.map(id => id.getValue());
+    return this.executeWithErrorHandling('bulkUpdateActiveStatus', async () => {
+      const ids = scheduleIds.map(id => id.getValue());
 
-    await this.prisma.companySchedules.updateMany({
-      where: {
-        companyId: companyId.getValue(),
-        id: { in: ids },
-      },
-      data: {
-        isActive,
-        updatedAt: new Date(),
-      },
+      await this.client.companySchedules.updateMany({
+        where: {
+          companyId: companyId.getValue(),
+          id: { in: ids },
+        },
+        data: {
+          isActive,
+          updatedAt: new Date(),
+        },
+      });
     });
   }
 
   async deleteByCompanyId(companyId: CompanyId): Promise<void> {
-    await this.prisma.companySchedules.deleteMany({
-      where: { companyId: companyId.getValue() },
+    return this.executeWithErrorHandling('deleteByCompanyId', async () => {
+      await this.client.companySchedules.deleteMany({
+        where: { companyId: companyId.getValue() },
+      });
     });
   }
 

@@ -180,7 +180,7 @@ export class AuthenticationValidationService {
     userAgent?: string,
     ipAddress?: string,
   ): Promise<ILoginFlowResult> {
-    const startTime = Date.now();
+    const startTime = performance.now();
 
     try {
       // Step 1: Validate credentials
@@ -253,7 +253,7 @@ export class AuthenticationValidationService {
           email,
           userAgent,
           ipAddress,
-          duration: Date.now() - startTime,
+          duration: performance.now() - startTime,
         },
       };
     } catch (error) {
@@ -378,7 +378,7 @@ export class AuthenticationValidationService {
     startTime?: number,
     userId?: UserId,
   ): ILoginFlowResult {
-    const duration = startTime ? Date.now() - startTime : 0;
+    const duration = startTime ? performance.now() - startTime : 0;
 
     // Build comprehensive failure message
     const failureMessages = {
@@ -454,7 +454,7 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): Promise<ILoginFlowResult> {
-    const duration = startTime ? Date.now() - startTime : 0;
+    const duration = startTime ? performance.now() - startTime : 0;
 
     // Audit log for email verification requirement
     this.auditLogService.logSecurity(
@@ -526,7 +526,7 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): ILoginFlowResult {
-    const duration = startTime ? Date.now() - startTime : 0;
+    const duration = startTime ? performance.now() - startTime : 0;
 
     // Audit log for OTP requirement
     this.auditLogService.logAuth(
@@ -563,7 +563,7 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): Promise<void> {
-    const duration = startTime ? Date.now() - startTime : 0;
+    const duration = startTime ? performance.now() - startTime : 0;
 
     this.logger.log({
       message: 'Login successful',
@@ -599,7 +599,7 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): Promise<ILoginFlowResult> {
-    const duration = startTime ? Date.now() - startTime : 0;
+    const duration = startTime ? performance.now() - startTime : 0;
 
     this.logger.debug({
       message: 'Processing BOT login',

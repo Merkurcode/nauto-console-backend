@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { EmailVerification } from '@core/entities/email-verification.entity';
 import { IEmailVerificationRepository } from '@core/repositories/email-verification.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
@@ -7,6 +7,8 @@ import { BaseRepository } from './base.repository';
 import { Email } from '@core/value-objects/email.vo';
 import { VerificationCode } from '@core/value-objects/verification-code.vo';
 import { EmailVerification as PrismaEmailVerification } from '@prisma/client';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class EmailVerificationRepository
@@ -16,8 +18,9 @@ export class EmailVerificationRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    super();
+    super(logger);
   }
 
   private get client() {

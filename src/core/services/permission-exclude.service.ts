@@ -1,7 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
 import { IPermissionRepository } from '@core/repositories/permission.repository.interface';
-import { REPOSITORY_TOKENS } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { REPOSITORY_TOKENS, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { PERMISSION_EXCLUDE_SYMBOLS } from '@shared/constants/permission-exclude';
 import { PermissionExcludeViolationException } from '@core/exceptions/permission-exclude-violation.exception';
 
@@ -12,7 +13,11 @@ export class PermissionExcludeService {
     private readonly permissionRepository: IPermissionRepository,
     @Inject(REPOSITORY_TOKENS.ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
-  ) {}
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(PermissionExcludeService.name);
+  }
 
   /**
    * Validates if a role can be assigned a specific permission based on exclude rules
@@ -346,7 +351,11 @@ export class PermissionExcludeService {
     try {
       return JSON.parse(excludeRolesJson);
     } catch (error) {
-      console.error('Failed to parse excludeRoles JSON:', excludeRolesJson, error);
+      this.logger.error({
+        message: 'Failed to parse excludeRoles JSON',
+        excludeRolesJson,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return null;
     }

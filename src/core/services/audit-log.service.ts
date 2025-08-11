@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Inject } from '@nestjs/common';
 import {
   AuditLog,
@@ -14,7 +15,6 @@ import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { AUDIT_LOG_REPOSITORY, LOGGER_SERVICE, USER_REPOSITORY } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { AuditLogQueueService } from './audit-log-queue.service';
 import { Request } from 'express';
 
 /**
@@ -102,7 +102,6 @@ export class AuditLogService {
     private readonly logger: ILogger,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    private readonly auditLogQueue: AuditLogQueueService,
   ) {
     this.logger.setContext(AuditLogService.name);
   }
@@ -126,16 +125,17 @@ export class AuditLogService {
    * @param additionalMetadata - Metadata específica del evento
    * @param level - Nivel de severidad ('info' por defecto)
    */
-  logAuth(
+  async logAuth(
     action: AuditLogAction,
     message: string,
     userId: UserId | null,
     request?: Request,
     additionalMetadata?: Partial<IAuditLogMetadata>,
     level: AuditLogLevel = 'info',
-  ): void {
+  ): Promise<void> {
     const metadata = this.buildRequestMetadata(request, additionalMetadata);
-    this.auditLogQueue.enqueue(level, 'auth', action, message, userId, metadata, 'auth');
+    // Queue service was removed - using direct repository call
+    await this.saveAuditLog(AuditLog.createAuthLog(action, message, userId, metadata, level));
   }
 
   /**
@@ -157,16 +157,17 @@ export class AuditLogService {
    * @param additionalMetadata - Contexto adicional de seguridad
    * @param level - Nivel de severidad ('warn' por defecto)
    */
-  logSecurity(
+  async logSecurity(
     action: AuditLogAction,
     message: string,
     userId: UserId | null,
     request?: Request,
     additionalMetadata?: Partial<IAuditLogMetadata>,
     level: AuditLogLevel = 'warn',
-  ): void {
+  ): Promise<void> {
     const metadata = this.buildRequestMetadata(request, additionalMetadata);
-    this.auditLogQueue.enqueue(level, 'security', action, message, userId, metadata, 'security');
+    // Queue service was removed - using direct repository call
+    await this.saveAuditLog(AuditLog.createSecurityLog(action, message, userId, metadata, level));
   }
 
   /**
@@ -187,12 +188,13 @@ export class AuditLogService {
    * @param request - Request HTTP donde ocurrió el error
    * @param additionalMetadata - Contexto adicional específico
    */
-  logException(
+  async logException(
     error: Error,
     userId: UserId | null,
     request?: Request,
     additionalMetadata?: Partial<IAuditLogMetadata>,
-  ): void {
+    level: AuditLogLevel = 'error',
+  ): Promise<void> {
     const metadata = this.buildRequestMetadata(request, {
       errorMessage: error.message,
       errorStack: error.stack,
@@ -200,22 +202,14 @@ export class AuditLogService {
       exceptionType: error.constructor.name,
       ...additionalMetadata,
     });
-
-    this.auditLogQueue.enqueue(
-      'error',
-      'exception',
-      'exception',
-      `Exception: ${error.message}`,
-      userId,
-      metadata,
-      'exception',
-    );
+    // Queue service was removed - using direct repository call
+    await this.saveAuditLog(AuditLog.createExceptionLog(error.message, userId, metadata, level));
   }
 
   /**
    * Log API requests and responses (high performance, non-blocking)
    */
-  logApi(
+  async logApi(
     action: AuditLogAction,
     message: string,
     userId: UserId | null,
@@ -223,14 +217,14 @@ export class AuditLogService {
     responseData?: unknown,
     duration?: number,
     level: AuditLogLevel = 'info',
-  ): void {
+  ): Promise<void> {
     const metadata = this.buildRequestMetadata(request, {
       duration,
       responseStatus: (responseData as any)?.statusCode,
       responseSize: responseData ? JSON.stringify(responseData).length : undefined,
     });
-
-    this.auditLogQueue.enqueue(level, 'api', action, message, userId, metadata, 'api');
+    // Queue service was removed - using direct repository call
+    await this.saveAuditLog(AuditLog.createApiLog(action, message, userId, metadata, level));
   }
 
   /**
@@ -242,15 +236,16 @@ export class AuditLogService {
     userId: UserId | null,
     transactionId?: string,
     additionalMetadata?: Partial<IAuditLogMetadata>,
+    level: AuditLogLevel = 'info',
   ): Promise<void> {
     const metadata: IAuditLogMetadata = {
       transactionId,
       ...additionalMetadata,
     };
-
-    const auditLog = AuditLog.createTransactionLog(action, message, userId, metadata);
-
-    await this.saveAuditLog(auditLog);
+    // Queue service was removed - using direct repository call
+    await this.saveAuditLog(
+      AuditLog.createTransactionLog(action, message, userId, metadata, level),
+    );
   }
 
   /**
@@ -272,9 +267,8 @@ export class AuditLogService {
       previousValue,
       newValue,
     });
-
     const auditLog = AuditLog.create('info', 'user', action, message, userId, metadata, 'user');
-
+    // Queue service was removed - using direct repository call
     await this.saveAuditLog(auditLog);
   }
 
@@ -417,13 +411,12 @@ export class AuditLogService {
       const user = await this.userRepository.findById(botData.userId);
       const botAlias = user?.alias;
 
-      // Queue for asynchronous processing
-      await this.auditLogQueue.enqueue(
-        'info', // level
-        'bot', // type
-        botData.action as AuditLogAction, // action
-        `BOT Activity: ${botData.action}`, // message
-        UserId.fromString(botData.userId), // userId
+      const auditLog = AuditLog.create(
+        'info',
+        'bot',
+        botData.action as AuditLogAction,
+        `BOT Activity: ${botData.action}`,
+        UserId.fromString(botData.userId),
         {
           ...botData.details,
           botAlias,
@@ -431,9 +424,11 @@ export class AuditLogService {
           resource: botData.resource,
           ipAddress: botData.ipAddress,
           userAgent: botData.userAgent,
-        }, // metadata
-        'bot', // context
+        },
+        'bot',
       );
+      // Queue service was removed - using direct repository call
+      await this.saveAuditLog(auditLog);
 
       this.logger.debug({
         message: 'BOT activity queued for audit logging',
@@ -473,7 +468,7 @@ export class AuditLogService {
     additionalMetadata?: Partial<IAuditLogMetadata>,
   ): IAuditLogMetadata {
     const baseMetadata: IAuditLogMetadata = {
-      application: 'nauto-console-backend',
+      application: String(request ? (request.headers?.['x-application'] ?? 'unknown') : 'unknown'),
       timestamp: new Date().toISOString(),
       ...additionalMetadata,
     };

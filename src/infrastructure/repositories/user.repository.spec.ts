@@ -4,7 +4,7 @@ import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { User } from '@core/entities/user.entity';
 import { Email } from '@core/value-objects/email.vo';
 import { FirstName, LastName } from '@core/value-objects/name.vo';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 // We're using a mock record instead of the actual Prisma types
 
 // Mock Logger
@@ -41,7 +41,7 @@ describe('UserRepository', () => {
       providers: [
         UserRepository,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: LoggerService, useValue: mockLoggerService },
+        { provide: 'LOGGER_SERVICE', useValue: mockLoggerService },
       ],
     }).compile();
 

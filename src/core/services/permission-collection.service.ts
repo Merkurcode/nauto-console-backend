@@ -1,7 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { IRoleRepository } from '@core/repositories/role.repository.interface';
-import { ROLE_REPOSITORY } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { ROLE_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 
 /**
@@ -12,7 +13,11 @@ export class PermissionCollectionService {
   constructor(
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
-  ) {}
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(PermissionCollectionService.name);
+  }
 
   /**
    * Collects all permissions from all user roles
@@ -40,7 +45,11 @@ export class PermissionCollectionService {
         }
       } catch (error) {
         // Log the error but continue processing other roles
-        console.warn(`Failed to load permissions for role ${role.id.getValue()}:`, error);
+        this.logger.warn({
+          message: 'Failed to load permissions for role',
+          roleId: role.id.getValue(),
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -100,7 +109,11 @@ export class PermissionCollectionService {
         rolePermissions.forEach(permission => allPermissions.add(permission));
       } catch (error) {
         // Log warning but continue with other roles
-        console.warn(`Failed to load permissions for role ${roleId}:`, error);
+        this.logger.warn({
+          message: 'Failed to load permissions for role',
+          roleId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

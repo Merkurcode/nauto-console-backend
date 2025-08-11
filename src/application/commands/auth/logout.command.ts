@@ -26,7 +26,7 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
   ) {}
 
   async execute(command: LogoutCommand): Promise<{ message: string }> {
-    const startTime = Date.now();
+    const startTime = performance.now();
     const { userId, scope, currentSessionToken } = command;
 
     try {
@@ -38,7 +38,7 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
         // Revoke only the current session
         await this.sessionService.revokeSession(currentSessionToken);
 
-        const duration = Date.now() - startTime;
+        const duration = performance.now() - startTime;
 
         // Audit log for successful local logout
         this.auditLogService.logAuth(
@@ -62,7 +62,7 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
         // Also revoke all refresh tokens as a backup
         await this.authService.revokeAllRefreshTokens(userId);
 
-        const duration = Date.now() - startTime;
+        const duration = performance.now() - startTime;
 
         // Audit log for successful global logout
         this.auditLogService.logAuth(
@@ -81,7 +81,7 @@ export class LogoutCommandHandler implements ICommandHandler<LogoutCommand, { me
         return { message: 'Logged out from all sessions successfully' };
       }
     } catch (error) {
-      const duration = Date.now() - startTime;
+      const duration = performance.now() - startTime;
 
       // Audit log for failed logout
       this.auditLogService.logSecurity(

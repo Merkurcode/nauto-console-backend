@@ -23,15 +23,9 @@ import { PermissionCollectionService } from './services/permission-collection.se
 import { RequestContextService } from './services/request-context.service';
 import { BusinessConfigurationService } from './services/business-configuration.service';
 import { AuditLogService } from './services/audit-log.service';
-import { AuditLogQueueService } from './services/audit-log-queue.service';
-import { AuditLogCleanupService } from './services/audit-log-cleanup.service';
-import { AuditTransactionService } from './services/audit-transaction.service';
 import { AuthenticationValidationService } from './services/authentication-validation.service';
 import { BotSessionValidationService } from './services/bot-session-validation.service';
 import { TenantResolverService } from './services/tenant-resolver.service';
-import { MemoryMonitorService } from './services/memory-monitor.service';
-import { CircuitBreakerService } from './services/circuit-breaker.service';
-import { MonitoringHealthService } from './services/monitoring-health.service';
 import { CompanyService } from './services/company.service';
 import { RoleService } from './services/role.service';
 import { PermissionService } from './services/permission.service';
@@ -76,16 +70,9 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
       provide: AUDIT_LOG_SERVICE,
       useClass: AuditLogService,
     },
-    AuditLogQueueService,
-    AuditLogCleanupService,
-    AuditTransactionService,
     AuthenticationValidationService,
     BotSessionValidationService,
     TenantResolverService,
-    // System monitoring and resilience services
-    MemoryMonitorService,
-    CircuitBreakerService,
-    MonitoringHealthService,
     // Domain services for Clean Architecture
     CompanyService,
     RoleService,
@@ -120,16 +107,9 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     BusinessConfigurationService,
     // Audit logging services
     AUDIT_LOG_SERVICE,
-    AuditLogQueueService,
-    AuditLogCleanupService,
-    AuditTransactionService,
     AuthenticationValidationService,
     BotSessionValidationService,
     TenantResolverService,
-    // System monitoring and resilience services
-    MemoryMonitorService,
-    CircuitBreakerService,
-    MonitoringHealthService,
     // Domain services for Clean Architecture
     CompanyService,
     RoleService,

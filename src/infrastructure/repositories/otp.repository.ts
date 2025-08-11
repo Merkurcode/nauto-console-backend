@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { Otp } from '@core/entities/otp.entity';
 import { IOtpRepository } from '@core/repositories/otp.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
@@ -7,6 +7,8 @@ import { ConfigService } from '@nestjs/config';
 import { Otp as PrismaOtp } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 import { UserId } from '@core/value-objects/user-id.vo';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository {
@@ -14,8 +16,9 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    super();
+    super(logger);
   }
 
   private get client() {

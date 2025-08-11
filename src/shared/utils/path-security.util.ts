@@ -58,10 +58,9 @@ export class PathSecurityUtil {
       }
 
       return cleanPath;
-    } catch (error) {
+    } catch (_error) {
       // If any error occurs during normalization, treat as potentially malicious
-      console.error('Path normalization error:', error);
-
+      // Silently fail and return empty string for security
       return '';
     }
   }

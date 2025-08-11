@@ -26,7 +26,6 @@ import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 // Global providers
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
-import { AuditLogInterceptor } from '@presentation/interceptors/audit-log.interceptor';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
@@ -107,10 +106,6 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
   controllers: [],
   providers: [
     // Global interceptors
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditLogInterceptor,
-    },
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,

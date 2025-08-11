@@ -1,6 +1,6 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { SendVerificationEmailDto } from '@application/dtos/auth/email-verification.dto';
-import { Injectable, Logger, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException, ConflictException } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
 import { EmailService } from '@core/services/email.service';
 import { SmsService } from '@core/services/sms.service';
@@ -8,6 +8,8 @@ import { UserService } from '@core/services/user.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { InvalidCredentialsException } from '@core/exceptions/domain-exceptions';
 import { User } from '@core/entities/user.entity';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 export class SendVerificationEmailCommand implements ICommand {
   constructor(
@@ -23,15 +25,16 @@ export class SendVerificationEmailCommand implements ICommand {
 export class SendVerificationEmailCommandHandler
   implements ICommandHandler<SendVerificationEmailCommand, { message: string }>
 {
-  private readonly logger = new Logger(SendVerificationEmailCommandHandler.name);
-
   constructor(
     private readonly authService: AuthService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
     private readonly userService: UserService,
     private readonly userAuthorizationService: UserAuthorizationService,
-  ) {}
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(SendVerificationEmailCommandHandler.name);
+  }
 
   async execute(command: SendVerificationEmailCommand): Promise<{ message: string }> {
     const { email, phoneNumber } = command.dto;
@@ -64,11 +67,9 @@ export class SendVerificationEmailCommandHandler
     // Send SMS if phone number is provided (and user has phone number)
     let smsSent = false;
     if (phoneNumber && targetUser.profile?.phone) {
-      this.logger.debug('SMS verification requested', {
-        phoneNumberProvided: !!phoneNumber,
-        userHasPhone: !!targetUser.profile?.phone,
-        userId: targetUser.id.getValue(),
-      });
+      this.logger.debug(
+        `SMS verification requested - phoneNumberProvided: ${!!phoneNumber}, userHasPhone: ${!!targetUser.profile?.phone}, userId: ${targetUser.id.getValue()}`,
+      );
 
       // Verify the provided phone number matches the user's registered phone
       if (targetUser.profile.phone === phoneNumber) {
@@ -78,15 +79,14 @@ export class SendVerificationEmailCommandHandler
           code,
           targetUser.id.getValue(),
         );
-        this.logger.debug('SMS verification result', { sent: smsSent });
+        this.logger.debug(`SMS verification result - sent: ${smsSent}`);
       } else {
         this.logger.debug('Phone numbers do not match - SMS not sent');
       }
     } else {
-      this.logger.debug('SMS verification skipped', {
-        phoneNumberProvided: !!phoneNumber,
-        userHasPhone: !!targetUser.profile?.phone,
-      });
+      this.logger.debug(
+        `SMS verification skipped - phoneNumberProvided: ${!!phoneNumber}, userHasPhone: ${!!targetUser.profile?.phone}`,
+      );
     }
 
     // Build response message

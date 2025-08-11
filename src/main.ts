@@ -7,12 +7,12 @@ import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as basicAuth from 'express-basic-auth';
 import helmet from 'helmet';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { useContainer } from 'class-validator';
 import { ValidateSignatureMiddleware } from '@presentation/middleware/validate-signature.middleware';
 import { JwtService } from '@nestjs/jwt';
 import { REQUEST_INTEGRITY_SKIP_PATHS as _REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
-import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 async function bootstrap() {
   // =========================================================================
@@ -36,7 +36,7 @@ async function bootstrap() {
   // =========================================================================
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
-  const logger = await app.resolve(LoggerService);
+  const logger = await app.resolve<ILogger>(LOGGER_SERVICE);
 
   logger.setContext('Application');
 
@@ -187,7 +187,7 @@ async function bootstrap() {
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning, x-idempotency-key, x-request-id, x-timestamp, x-signature',
+        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning, x-idempotency-key, x-request-id, x-timestamp, x-signature, x-application',
       );
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Max-Age', '86400');
@@ -224,7 +224,7 @@ async function bootstrap() {
   );
 
   // Global exception filter
-  const exceptionLogger = await app.resolve(LoggerService);
+  const exceptionLogger = await app.resolve<ILogger>(LOGGER_SERVICE);
   app.useGlobalFilters(new AllExceptionsFilter(exceptionLogger));
 
   // =========================================================================
@@ -272,6 +272,7 @@ async function bootstrap() {
       'x-request-id',
       'x-timestamp',
       'x-signature',
+      'x-application',
     ],
     optionsSuccessStatus: 200,
   };

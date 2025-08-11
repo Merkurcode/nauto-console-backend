@@ -385,46 +385,111 @@ export class Email extends ValueObject<string> {
 
 ```typescript
 // En src/core/repositories/
-export interface IUserActivityLogRepository {
-  save(userActivityLog: UserActivityLog): Promise<UserActivityLog>;
-  findById(id: string): Promise<UserActivityLog | null>;
-  findByUserId(userId: UserId, filters?: IFilters): Promise<UserActivityLog[]>;
-  findAll(filters?: IFilters): Promise<UserActivityLog[]>;
-  countByUserId(userId: UserId, filters?: IFilters): Promise<number>;
-  countAll(filters?: IFilters): Promise<number>;
-  delete(id: string): Promise<void>;
+export interface IUserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  create(user: User): Promise<User>;
+  update(user: User): Promise<User>;
+  delete(id: string): Promise<boolean>;
 }
 ```
 
-### Implementación en Infraestructura
+### Patrón Estándar de Implementación
+
+**TODOS los repositorios DEBEN seguir este patrón obligatorio:**
 
 ```typescript
 // En src/infrastructure/repositories/
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { BaseRepository } from './base.repository';
+import { User } from '@core/entities/user.entity';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
+
 @Injectable()
-export class UserActivityLogRepository implements IUserActivityLogRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class UserRepository extends BaseRepository<User> implements IUserRepository {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
+    super(); // ¡OBLIGATORIO!
+  }
 
-  async save(userActivityLog: UserActivityLog): Promise<UserActivityLog> {
-    const data = UserActivityLogMapper.toPersistence(userActivityLog);
-    
-    const saved = await this.prisma.userActivityLog.upsert({
-      where: { id: userActivityLog.id },
-      update: data as Prisma.UserActivityLogUncheckedUpdateInput,
-      create: data as Prisma.UserActivityLogUncheckedCreateInput,
+  private get client() {
+    return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.executeWithErrorHandling('findById', async () => {
+      const record = await this.client.user.findUnique({
+        where: { id },
+        include: { /* relations */ },
+      });
+
+      return record ? this.mapToModel(record) : null;
     });
+  }
 
-    return UserActivityLogMapper.toDomain(saved);
+  async create(user: User): Promise<User> {
+    return this.executeWithErrorHandling('create', async () => {
+      const data = this.mapToPersistence(user);
+      
+      const created = await this.client.user.create({
+        data,
+        include: { /* relations */ },
+      });
+
+      return this.mapToModel(created);
+    });
   }
 }
 ```
 
-### Reglas de Repositorio
+### Patrones Especiales para Logs/Auditoría
 
-1. **Interface en Dominio**: Define el contrato
-2. **Implementación en Infraestructura**: Usa Prisma u ORM
-3. **Mappers**: Para transformar entre dominio y persistencia
-4. **Filtering**: Usar interfaces específicas para filtros
-5. **Transactions**: Soportar contexto transaccional
+**Para repositorios que NO deben usar transacciones (logs, auditoría):**
+
+```typescript
+@Injectable()
+export class AuditLogRepository extends BaseRepository<AuditLog> implements IAuditLogRepository {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transactionContext: TransactionContextService,
+  ) {
+    super();
+  }
+
+  // IMPORTANTE: Los logs de auditoría NO usan transacciones por defecto
+  // para garantizar que se persistan incluso si falla la operación principal
+  private get client() {
+    return this.prisma; // Siempre usa conexión directa
+  }
+
+  // O para permitir uso opcional de transacciones:
+  private getClient(useTransaction = false) {
+    return useTransaction 
+      ? this.transactionContext.getTransactionClient() || this.prisma
+      : this.prisma;
+  }
+}
+```
+
+### Reglas Obligatorias de Repositorio
+
+1. **✅ DEBE extender BaseRepository<EntityType>**: Proporciona manejo consistente de errores
+2. **✅ DEBE incluir TransactionContextService**: Para soporte transaccional
+3. **✅ DEBE llamar super()** en el constructor
+4. **✅ DEBE usar private get client()**: Para manejo transaccional consistente
+5. **✅ DEBE usar this.executeWithErrorHandling()**: Para operaciones que pueden fallar
+6. **✅ Interface en Dominio**: Define el contrato
+7. **✅ Mappers**: Para transformar entre dominio y persistencia
+
+### Excepciones al Patrón
+
+- **user-auth.repository.ts**: Simplificado para JWT auth únicamente
+- **audit-log.repository.ts**: Los logs persisten fuera de transacciones
+- **user-activity-log.repository.ts**: Los logs de actividad persisten fuera de transacciones
 
 ## 🔌 Dependency Injection
 

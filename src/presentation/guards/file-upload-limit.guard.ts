@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
   CanActivate,
@@ -75,7 +76,7 @@ export class FileUploadLimitGuard implements CanActivate {
 
       if (currentFileCount > maxFilesPerUser) {
         if (this.enableLogs) {
-          console.warn(
+          this.logger.warn(
             `User ${user.sub} attempted upload but has ${currentFileCount}/${maxFilesPerUser} files`,
           );
         }
@@ -92,7 +93,7 @@ export class FileUploadLimitGuard implements CanActivate {
           const maxMB = userStorageConfig.getMaxStorageInMB();
 
           if (this.enableLogs) {
-            console.warn(
+            this.logger.warn(
               `User ${user.sub} attempted upload but storage full: ${currentMB}MB/${maxMB}MB`,
             );
           }
@@ -111,7 +112,7 @@ export class FileUploadLimitGuard implements CanActivate {
         const wouldExceedBy = currentFileCount + filesBeingUploaded - maxFilesPerUser;
 
         if (this.enableLogs) {
-          console.warn(
+          this.logger.warn(
             `User ${user.sub} upload would exceed file limit: ${currentFileCount} + ${filesBeingUploaded} > ${maxFilesPerUser}`,
           );
         }
@@ -143,12 +144,18 @@ export class FileUploadLimitGuard implements CanActivate {
       }
 
       if (this.enableLogs) {
-        console.error('FileUploadLimitGuard error:', error);
+        this.logger.error({
+          message: 'FileUploadLimitGuard error',
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
 
       // If we can't check the limit, allow the upload (fail open for availability)
       // but log the issue for investigation
-      console.error('Failed to check user file limit, allowing upload:', (error as Error).message);
+      this.logger.error({
+        message: 'Failed to check user file limit, allowing upload',
+        error: (error as Error).message,
+      });
 
       return true;
     }

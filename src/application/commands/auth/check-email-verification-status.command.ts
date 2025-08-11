@@ -1,5 +1,5 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, ForbiddenException, Inject } from '@nestjs/common';
 import { AuthService } from '@core/services/auth.service';
 import { UserService } from '@core/services/user.service';
 import { CompanyService } from '@core/services/company.service';
@@ -8,6 +8,8 @@ import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums
 import { Email } from '@core/value-objects/email.vo';
 import { User } from '@core/entities/user.entity';
 import { CompanyId } from '@core/value-objects/company-id.vo';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 export class CheckEmailVerificationStatusCommand implements ICommand {
   constructor(
@@ -23,14 +25,15 @@ export class CheckEmailVerificationStatusCommand implements ICommand {
 export class CheckEmailVerificationStatusCommandHandler
   implements ICommandHandler<CheckEmailVerificationStatusCommand, boolean>
 {
-  private readonly logger = new Logger(CheckEmailVerificationStatusCommandHandler.name);
-
   constructor(
     private readonly authService: AuthService,
     private readonly userService: UserService,
     private readonly companyService: CompanyService,
     private readonly userAuthorizationService: UserAuthorizationService,
-  ) {}
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(CheckEmailVerificationStatusCommandHandler.name);
+  }
 
   async execute(command: CheckEmailVerificationStatusCommand): Promise<boolean> {
     const { email, currentUserId, currentUserCompanyId } = command;
@@ -153,11 +156,10 @@ export class CheckEmailVerificationStatusCommandHandler
       // Check if the target company's parent is the current user's company
       return targetCompany.isSubsidiaryOf(CompanyId.fromString(parentCompanyId));
     } catch (error) {
-      this.logger.error('Error checking subsidiary relationship', {
-        error: error.message,
-        parentCompanyId,
-        targetCompanyId,
-      });
+      this.logger.error(
+        `Error checking subsidiary relationship: ${error.message} (parentCompanyId: ${parentCompanyId}, targetCompanyId: ${targetCompanyId})`,
+        error.stack,
+      );
 
       return false;
     }

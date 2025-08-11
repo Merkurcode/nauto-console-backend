@@ -1,19 +1,20 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { ICountryRepository } from '@core/repositories/country.repository.interface';
 import { Country } from '@core/entities/country.entity';
-import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class CountryRepository implements ICountryRepository {
+export class CountryRepository extends BaseRepository<Country> implements ICountryRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    this.logger.setContext(CountryRepository.name);
+    super(logger);
   }
 
   private get client() {
@@ -21,139 +22,105 @@ export class CountryRepository implements ICountryRepository {
   }
 
   async findById(id: string): Promise<Country | null> {
-    try {
-      const country = await this.client.country.findUnique({
-        where: { id },
-      });
+    return this.executeWithErrorHandling('findById', async () => {
+      try {
+        const country = await this.client.country.findUnique({
+          where: { id },
+        });
 
-      if (!country) {
-        return null;
+        if (!country) {
+          return null;
+        }
+
+        return Country.fromPersistence(country);
+      } catch (error) {
+        throw error;
       }
-
-      return Country.fromPersistence(country);
-    } catch (error) {
-      this.logger.error({
-        message: 'Error finding country by ID',
-        countryId: id,
-        error: error.message,
-      });
-      throw error;
-    }
+    });
   }
 
   async findByName(name: string): Promise<Country | null> {
-    try {
-      const country = await this.client.country.findUnique({
-        where: { name },
-      });
+    return this.executeWithErrorHandling('findByName', async () => {
+      try {
+        const country = await this.client.country.findUnique({
+          where: { name },
+        });
 
-      if (!country) {
-        return null;
+        if (!country) {
+          return null;
+        }
+
+        return Country.fromPersistence(country);
+      } catch (error) {
+        throw error;
       }
-
-      return Country.fromPersistence(country);
-    } catch (error) {
-      this.logger.error({
-        message: 'Error finding country by name',
-        countryName: name,
-        error: error.message,
-      });
-      throw error;
-    }
+    });
   }
 
   async findAll(): Promise<Country[]> {
-    try {
-      const countries = await this.client.country.findMany({
-        orderBy: { name: 'asc' },
-      });
+    return this.executeWithErrorHandling('findAll', async () => {
+      try {
+        const countries = await this.client.country.findMany({
+          orderBy: { name: 'asc' },
+        });
 
-      return countries.map(country => Country.fromPersistence(country));
-    } catch (error) {
-      this.logger.error({
-        message: 'Error finding all countries',
-        error: error.message,
-      });
-      throw error;
-    }
+        return countries.map(country => Country.fromPersistence(country));
+      } catch (error) {
+        throw error;
+      }
+    });
   }
 
   async create(country: Country): Promise<Country> {
-    try {
-      const createdCountry = await this.client.country.create({
-        data: {
-          id: country.id.getValue(),
-          name: country.name,
-          phoneCode: country.phoneCode,
-          langCode: country.langCode,
-          imageUrl: country.imageUrl,
-        },
-      });
+    return this.executeWithErrorHandling('create', async () => {
+      try {
+        const createdCountry = await this.client.country.create({
+          data: {
+            id: country.id.getValue(),
+            name: country.name,
+            phoneCode: country.phoneCode,
+            langCode: country.langCode,
+            imageUrl: country.imageUrl,
+          },
+        });
 
-      this.logger.log({
-        message: 'Country created successfully',
-        countryId: createdCountry.id,
-        countryName: createdCountry.name,
-      });
-
-      return Country.fromPersistence(createdCountry);
-    } catch (error) {
-      this.logger.error({
-        message: 'Error creating country',
-        countryName: country.name,
-        error: error.message,
-      });
-      throw error;
-    }
+        return Country.fromPersistence(createdCountry);
+      } catch (error) {
+        throw error;
+      }
+    });
   }
 
   async update(country: Country): Promise<Country> {
-    try {
-      const updatedCountry = await this.client.country.update({
-        where: { id: country.id.getValue() },
-        data: {
-          name: country.name,
-          phoneCode: country.phoneCode,
-          langCode: country.langCode,
-          imageUrl: country.imageUrl,
-          updatedAt: country.updatedAt,
-        },
-      });
+    return this.executeWithErrorHandling('update', async () => {
+      try {
+        const updatedCountry = await this.client.country.update({
+          where: { id: country.id.getValue() },
+          data: {
+            name: country.name,
+            phoneCode: country.phoneCode,
+            langCode: country.langCode,
+            imageUrl: country.imageUrl,
+            updatedAt: country.updatedAt,
+          },
+        });
 
-      this.logger.log({
-        message: 'Country updated successfully',
-        countryId: updatedCountry.id,
-        countryName: updatedCountry.name,
-      });
-
-      return Country.fromPersistence(updatedCountry);
-    } catch (error) {
-      this.logger.error({
-        message: 'Error updating country',
-        countryId: country.id.getValue(),
-        error: error.message,
-      });
-      throw error;
-    }
+        return Country.fromPersistence(updatedCountry);
+      } catch (error) {
+        throw error;
+      }
+    });
   }
 
   async delete(id: string): Promise<void> {
-    try {
-      await this.client.country.delete({
-        where: { id },
-      });
-
-      this.logger.log({
-        message: 'Country deleted successfully',
-        countryId: id,
-      });
-    } catch (error) {
-      this.logger.error({
-        message: 'Error deleting country',
-        countryId: id,
-        error: error.message,
-      });
-      throw error;
-    }
+    return this.executeWithErrorHandling('delete', async () => {
+      try {
+        await this.client.country.delete({
+          where: { id },
+        });
+      } catch (error) {
+        throw error;
+      }
+    });
   }
 }

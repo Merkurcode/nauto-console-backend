@@ -1,6 +1,8 @@
-import { Catch, ExceptionFilter, ArgumentsHost, HttpStatus, Logger } from '@nestjs/common';
+import { Catch, ExceptionFilter, ArgumentsHost, HttpStatus, Inject } from '@nestjs/common';
 import { Response } from 'express';
 import { DomainException } from '@core/exceptions/domain-exceptions';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 /**
  * Filtro de Excepciones de Dominio - Mapeo automático a respuestas HTTP
@@ -75,7 +77,9 @@ import { DomainException } from '@core/exceptions/domain-exceptions';
  */
 @Catch(DomainException)
 export class DomainExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(DomainExceptionFilter.name);
+  constructor(@Inject(LOGGER_SERVICE) private readonly logger: ILogger) {
+    this.logger.setContext(DomainExceptionFilter.name);
+  }
 
   // Mapping of domain exception codes to HTTP status codes
   private readonly statusCodeMap = new Map<string, HttpStatus>([
@@ -146,12 +150,10 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const status = this.statusCodeMap.get(exception.code) ?? HttpStatus.INTERNAL_SERVER_ERROR;
 
     // Log the exception for debugging
-    this.logger.error(`Domain exception caught: ${exception.name}`, {
-      code: exception.code,
-      message: exception.message,
-      context: exception.context,
-      stack: exception.stack,
-    });
+    this.logger.error(
+      `Domain exception caught: ${exception.name} - code: ${exception.code}, message: ${exception.message}, context: ${JSON.stringify(exception.context)}`,
+      exception.stack,
+    );
 
     // Build error response
     const errorResponse = {

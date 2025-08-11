@@ -16,6 +16,8 @@ import { AuthController } from './auth.controller';
 
 // Special repository for JWT auth
 import { UserAuthRepository } from '@infrastructure/repositories/user-auth.repository';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 // Validators
 import {
@@ -50,6 +52,7 @@ import { ChangeEmailCommandHandler } from '@application/commands/auth/change-ema
 
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 
 
 const commandHandlers = [
@@ -98,8 +101,11 @@ const commandHandlers = [
     // JWT-specific repository (not in InfrastructureModule)
     {
       provide: JWT_USER_REPOSITORY,
-      useClass: UserAuthRepository,
+      useFactory: (prisma: PrismaService, logger: ILogger) =>
+        new UserAuthRepository(prisma, logger),
+      inject: [PrismaService, { token: LOGGER_SERVICE, optional: true }],
     },
+    UserAuthRepository,
 
     // Validators
     CountryExistsConstraint,

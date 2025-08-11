@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
@@ -17,9 +17,14 @@ import {
 import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
-import { BusinessConfigurationService } from '@core/services/business-configuration.service';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { UserProfile } from '@core/value-objects/user-profile.vo';
-import { Address } from '@core/value-objects/address.vo';
+import { UserAddress as _UserAddress } from '@core/entities/user-address.entity';
+import { UserAddressId as _UserAddressId } from '@core/value-objects/user-address-id.vo';
+import { CountryId as _CountryId } from '@core/value-objects/country-id.vo';
+import { StateId as _StateId } from '@core/value-objects/state-id.vo';
+import { UserId as _UserId } from '@core/value-objects/user-id.vo';
 import { AgentPhone } from '@core/value-objects/agent-phone.vo';
 import { SecondLastName } from '@core/value-objects/second-lastname.vo';
 
@@ -41,9 +46,9 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    private readonly businessConfigService: BusinessConfigurationService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    super();
+    super(logger);
   }
 
   private get client() {
@@ -324,6 +329,9 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           address: user.address
             ? {
                 create: {
+                  id: user.address.id.getValue(),
+                  countryId: user.address.countryId?.getValue(),
+                  stateId: user.address.stateId?.getValue(),
                   city: user.address.city,
                   street: user.address.street,
                   exteriorNumber: user.address.exteriorNumber,
@@ -436,28 +444,11 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
 
       // Handle address update/upsert
       if (user.address) {
-        // First find country and state IDs
-        const countryRecord = user.address.country
-          ? await this.client.country.findFirst({
-              where: { name: user.address.country },
-            })
-          : null;
-
-        const stateRecord =
-          user.address.state && countryRecord
-            ? await this.client.state.findFirst({
-                where: {
-                  name: user.address.state,
-                  countryId: countryRecord.id,
-                },
-              })
-            : null;
-
         await this.client.userAddress.upsert({
           where: { userId: user.id.getValue() },
           update: {
-            countryId: countryRecord?.id || null,
-            stateId: stateRecord?.id || null,
+            countryId: user.address.countryId?.getValue() || null,
+            stateId: user.address.stateId?.getValue() || null,
             city: user.address.city || null,
             street: user.address.street || null,
             exteriorNumber: user.address.exteriorNumber || null,
@@ -465,9 +456,10 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             postalCode: user.address.postalCode || null,
           },
           create: {
+            id: user.address.id.getValue(),
             userId: user.id.getValue(),
-            countryId: countryRecord?.id || null,
-            stateId: stateRecord?.id || null,
+            countryId: user.address.countryId?.getValue() || null,
+            stateId: user.address.stateId?.getValue() || null,
             city: user.address.city || null,
             street: user.address.street || null,
             exteriorNumber: user.address.exteriorNumber || null,
@@ -567,20 +559,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       );
     }
 
-    // Create Address Value Object if address data exists and is valid
-    let _addressVO = undefined;
-    if (record.address && this.hasValidAddressData(record.address)) {
-      const defaults = this.businessConfigService.getAddressDefaults();
-      _addressVO = new Address(
-        defaults.defaultCountry || 'Unknown',
-        defaults.defaultState || 'Unknown',
-        record.address.city || '',
-        record.address.street || '',
-        record.address.exteriorNumber || '',
-        record.address.postalCode || '',
-        record.address.interiorNumber || undefined,
-      );
-    }
+    // UserAddress entity is handled in the User.fromData method
 
     // Create AgentPhone Value Object if data exists
     let _agentPhoneVO = undefined;
@@ -621,40 +600,25 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             birthDate: record.profile.birthdate || undefined,
           }
         : undefined,
-      address:
-        record.address && this.hasValidAddressData(record.address)
-          ? {
-              country: this.businessConfigService.getAddressDefaults().defaultCountry || 'Unknown',
-              state: this.businessConfigService.getAddressDefaults().defaultState || 'Unknown',
-              city: record.address.city || '',
-              street: record.address.street || '',
-              exteriorNumber: record.address.exteriorNumber || '',
-              interiorNumber: record.address.interiorNumber || undefined,
-              postalCode: record.address.postalCode || '',
-            }
-          : undefined,
+      address: record.address
+        ? {
+            id: record.address.id,
+            countryId: record.address.countryId || undefined,
+            stateId: record.address.stateId || undefined,
+            city: record.address.city || undefined,
+            street: record.address.street || undefined,
+            exteriorNumber: record.address.exteriorNumber || undefined,
+            interiorNumber: record.address.interiorNumber || undefined,
+            postalCode: record.address.postalCode || undefined,
+            createdAt: record.address.createdAt,
+            updatedAt: record.address.updatedAt,
+          }
+        : undefined,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       companyId: record.companyId || undefined,
     });
 
     return user;
-  }
-
-  /**
-   * Check if address data is valid for creating Address value object
-   */
-  private hasValidAddressData(address: any): boolean {
-    // Check if the address has the minimum required fields
-    const defaults = this.businessConfigService.getAddressDefaults();
-    const hasCountry = defaults.defaultCountry && defaults.defaultCountry.trim() !== '';
-    const hasState = defaults.defaultState && defaults.defaultState.trim() !== '';
-    const hasCity = address.city && address.city.trim() !== '';
-    const hasStreet = address.street && address.street.trim() !== '';
-    const hasExteriorNumber = address.exteriorNumber && address.exteriorNumber.trim() !== '';
-    const hasPostalCode = address.postalCode && address.postalCode.trim() !== '';
-
-    // Return true only if we have all required fields
-    return hasCountry && hasState && hasCity && hasStreet && hasExteriorNumber && hasPostalCode;
   }
 }

@@ -4,8 +4,11 @@ import { FirstName, LastName } from '@core/value-objects/name.vo';
 import { SecondLastName } from '@core/value-objects/second-lastname.vo';
 import { AgentPhone } from '@core/value-objects/agent-phone.vo';
 import { UserProfile } from '@core/value-objects/user-profile.vo';
-import { Address } from '@core/value-objects/address.vo';
+import { UserAddress } from './user-address.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
+import { UserAddressId } from '@core/value-objects/user-address-id.vo';
+import { CountryId } from '@core/value-objects/country-id.vo';
+import { StateId } from '@core/value-objects/state-id.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { AggregateRoot } from '@core/events/domain-event.base';
@@ -48,7 +51,7 @@ export class User extends AggregateRoot {
   private _banReason?: string;
   private _agentPhone?: AgentPhone;
   private _profile?: UserProfile;
-  private _address?: Address;
+  private _address?: UserAddress;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
   private _companyId?: CompanyId | null;
@@ -123,7 +126,7 @@ export class User extends AggregateRoot {
       banReason?: string;
       agentPhone?: AgentPhone;
       profile?: UserProfile;
-      address?: Address;
+      address?: UserAddress;
       companyId?: CompanyId;
     },
   ): User {
@@ -182,14 +185,16 @@ export class User extends AggregateRoot {
       birthDate?: string;
     };
     address?: {
-      country: string;
-      state: string;
-      city: string;
-      street: string;
-      exteriorNumber: string;
+      id: string;
+      countryId?: string;
+      stateId?: string;
+      city?: string;
+      street?: string;
+      exteriorNumber?: string;
       interiorNumber?: string;
-      postalCode: string;
-      googleMapsUrl?: string;
+      postalCode?: string;
+      createdAt: Date;
+      updatedAt: Date;
     };
     createdAt: Date;
     updatedAt: Date;
@@ -230,16 +235,20 @@ export class User extends AggregateRoot {
         )
       : undefined;
     user._address = data.address
-      ? new Address(
-          data.address.country,
-          data.address.state,
-          data.address.city,
-          data.address.street,
-          data.address.exteriorNumber,
-          data.address.postalCode,
-          data.address.interiorNumber,
-          data.address.googleMapsUrl,
-        )
+      ? UserAddress.reconstruct(UserAddressId.fromString(data.address.id), {
+          userId: user._id,
+          countryId: data.address.countryId
+            ? CountryId.fromString(data.address.countryId)
+            : undefined,
+          stateId: data.address.stateId ? StateId.fromString(data.address.stateId) : undefined,
+          city: data.address.city,
+          street: data.address.street,
+          exteriorNumber: data.address.exteriorNumber,
+          interiorNumber: data.address.interiorNumber,
+          postalCode: data.address.postalCode,
+          createdAt: data.address.createdAt,
+          updatedAt: data.address.updatedAt,
+        })
       : undefined;
     user._updatedAt = data.updatedAt;
 
@@ -331,7 +340,7 @@ export class User extends AggregateRoot {
     return this._profile;
   }
 
-  get address(): Address | undefined {
+  get address(): UserAddress | undefined {
     return this._address;
   }
 
@@ -595,7 +604,7 @@ export class User extends AggregateRoot {
     this._updatedAt = new Date();
   }
 
-  setAddress(address?: Address): void {
+  setAddress(address?: UserAddress): void {
     this._address = address;
     this._updatedAt = new Date();
   }

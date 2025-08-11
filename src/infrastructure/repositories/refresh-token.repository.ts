@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { RefreshToken } from '@core/entities/refresh-token.entity';
 import { IRefreshTokenRepository } from '@core/repositories/refresh-token.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
@@ -8,6 +8,8 @@ import { RefreshToken as PrismaRefreshToken } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { Token } from '@core/value-objects/token.vo';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class RefreshTokenRepository
@@ -18,8 +20,9 @@ export class RefreshTokenRepository
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    super();
+    super(logger);
   }
 
   private get client() {

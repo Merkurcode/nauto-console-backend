@@ -53,9 +53,9 @@ export class HealthService {
     this.logger.debug('Performing database health check');
 
     try {
-      const startTime = Date.now();
+      const startTime = performance.now();
       await this.checkDatabase();
-      const duration = Date.now() - startTime;
+      const duration = performance.now() - startTime;
 
       this.logger.debug(`Database health check completed in ${duration}ms`);
 
@@ -237,11 +237,11 @@ export class HealthService {
     name: string,
     checkFn: () => Promise<void>,
   ): Promise<IHealthCheckDetail> {
-    const startTime = Date.now();
+    const startTime = performance.now();
 
     try {
       await checkFn();
-      const duration = Date.now() - startTime;
+      const duration = performance.now() - startTime;
 
       return {
         name,
@@ -249,7 +249,7 @@ export class HealthService {
         duration,
       };
     } catch (error) {
-      const duration = Date.now() - startTime;
+      const duration = performance.now() - startTime;
 
       return {
         name,

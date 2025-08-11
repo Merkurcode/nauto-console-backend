@@ -1,7 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { LoggerService } from './logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
 import { CoreModule } from '@core/core.module';
 import { LoggerModule } from './logger/logger.module';
 import { PrismaModule } from './database/prisma/prisma.module';
@@ -60,6 +60,7 @@ import {
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
+  LOGGER_SERVICE,
 } from '@shared/constants/tokens';
 
 /**
@@ -89,36 +90,52 @@ import {
     // Repository providers
     {
       provide: SESSION_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new SessionRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new SessionRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: USER_REPOSITORY,
       useFactory: (
         prisma: PrismaService,
         transactionContext: TransactionContextService,
-        businessConfigService: BusinessConfigurationService,
-      ) => new UserRepository(prisma, transactionContext, businessConfigService),
-      inject: [PrismaService, TransactionContextService, BusinessConfigurationService],
+        logger: ILogger,
+      ) => new UserRepository(prisma, transactionContext, logger),
+      inject: [
+        PrismaService,
+        TransactionContextService,
+        LOGGER_SERVICE,
+      ],
     },
     {
       provide: COMPANY_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new CompanyRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new CompanyRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: ROLE_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new RoleRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new RoleRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: PERMISSION_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new PermissionRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new PermissionRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: OTP_REPOSITORY,
@@ -126,8 +143,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         configService: ConfigService,
-      ) => new OtpRepository(prisma, transactionContext, configService),
-      inject: [PrismaService, TransactionContextService, ConfigService],
+        logger: ILogger,
+      ) => new OtpRepository(prisma, transactionContext, configService, logger),
+      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
     },
     {
       provide: REFRESH_TOKEN_REPOSITORY,
@@ -135,90 +153,123 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         configService: ConfigService,
-      ) => new RefreshTokenRepository(prisma, transactionContext, configService),
-      inject: [PrismaService, TransactionContextService, ConfigService],
+        logger: ILogger,
+      ) => new RefreshTokenRepository(prisma, transactionContext, configService, logger),
+      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
     },
     {
       provide: EMAIL_VERIFICATION_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new EmailVerificationRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new EmailVerificationRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: PASSWORD_RESET_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new PasswordResetRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new PasswordResetRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: PASSWORD_RESET_ATTEMPT_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new PasswordResetAttemptRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new PasswordResetAttemptRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: COUNTRY_REPOSITORY,
       useFactory: (
         prisma: PrismaService,
         transactionContext: TransactionContextService,
-        logger: LoggerService,
+        logger: ILogger,
       ) => new CountryRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LoggerService],
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: STATE_REPOSITORY,
       useFactory: (
         prisma: PrismaService,
         transactionContext: TransactionContextService,
-        logger: LoggerService,
+        logger: ILogger,
       ) => new StateRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LoggerService],
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: AI_ASSISTANT_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new AIAssistantRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new AIAssistantRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: COMPANY_AI_ASSISTANT_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new CompanyAIAssistantRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new CompanyAIAssistantRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: COMPANY_SCHEDULES_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new CompanySchedulesRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new CompanySchedulesRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: AUDIT_LOG_REPOSITORY,
       useFactory: (
         prisma: PrismaService,
         transactionContext: TransactionContextService,
-        logger: LoggerService,
+        logger: ILogger,
       ) => new AuditLogRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LoggerService],
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: BOT_TOKEN_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new BotTokenRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new BotTokenRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: USER_STORAGE_CONFIG_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserStorageConfigRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new UserStorageConfigRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: STORAGE_TIERS_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new StorageTiersRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new StorageTiersRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: USER_ACTIVITY_LOG_REPOSITORY,
-      useFactory: (prisma: PrismaService) => new UserActivityLogRepository(prisma),
-      inject: [PrismaService],
+      useFactory: (prisma: PrismaService, logger: ILogger) =>
+        new UserActivityLogRepository(prisma, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
 
     // Infrastructure services

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Inject } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
@@ -46,7 +47,7 @@ export class BotAuditInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const startTime = Date.now();
+    const startTime = performance.now();
     const requestId = this.generateRequestId();
 
     // Log de inicio de request BOT
@@ -167,7 +168,7 @@ export class BotAuditInterceptor implements NestInterceptor {
     requestId: string,
     startTime: number,
   ): Promise<void> {
-    const endTime = Date.now();
+    const endTime = performance.now();
     const duration = endTime - startTime;
 
     const auditData = {
@@ -254,7 +255,7 @@ export class BotAuditInterceptor implements NestInterceptor {
     requestId: string,
     startTime: number,
   ): Promise<void> {
-    const endTime = Date.now();
+    const endTime = performance.now();
     const duration = endTime - startTime;
 
     const auditData = {

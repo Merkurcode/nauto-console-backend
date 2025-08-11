@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
   NestMiddleware,
@@ -121,7 +122,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
     // Log successful validation in development
     const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
     if (enableLogs) {
-      console.warn(
+      this.logger.log(
         '✅ ValidateSignatureMiddleware: All environment variables validated successfully',
       );
     }
@@ -231,7 +232,8 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       if (sigBuffer.length !== calcBuffer.length || !timingSafeEqual(sigBuffer, calcBuffer)) {
         // Log para debugging sin exponer información sensible
         if (enableLogs) {
-          console.error('Invalid signature:', {
+          this.logger.error({
+            message: 'Invalid signature',
             path: req.path,
             method: req.method,
             timestamp,
@@ -251,8 +253,9 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
       // Log del error para debugging (sin exponer información sensible)
       if (enableLogs) {
-        console.error('Error in signature validation:', {
-          message: error.message,
+        this.logger.error({
+          message: 'Error in signature validation',
+          error: error.message,
           path: req.path,
           method: req.method,
         });
@@ -401,7 +404,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
     if (!Array.isArray(REQUEST_INTEGRITY_SKIP_PATHS)) {
       const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
       if (enableLogs) {
-        console.error('REQUEST_INTEGRITY_SKIP_PATHS is not defined or is not an array');
+        this.logger.error('REQUEST_INTEGRITY_SKIP_PATHS is not defined or is not an array');
       }
 
       return false;
@@ -425,14 +428,14 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
         // Crear regex con timeout para prevenir ReDoS
         const regex = new RegExp('^' + regexPattern + '(/.*)?$', 'i');
-        const startTime = Date.now();
+        const startTime = performance.now();
         const result = regex.test(path);
 
         // Si la regex toma más de 10ms, considerar sospechoso
-        if (Date.now() - startTime > 10) {
+        if (performance.now() - startTime > 10) {
           const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
           if (enableLogs) {
-            console.warn(`Regex took too long for pattern: ${skipPath}`);
+            this.logger.warn(`Regex took too long for pattern: ${skipPath}`);
           }
 
           return false;
@@ -443,7 +446,10 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
         // Si hay error en la regex, no saltar validación
         const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
         if (enableLogs) {
-          console.error('Error evaluating skip pattern:', error);
+          this.logger.error({
+            message: 'Error evaluating skip pattern',
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
 
         return false;
@@ -537,7 +543,8 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       // En caso de error, log sin exponer información sensible
       const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
       if (enableLogs) {
-        console.error('Error processing body for signature:', {
+        this.logger.error({
+          message: 'Error processing body for signature',
           contentType: req.headers['content-type'],
           bodyType: typeof req.body,
         });

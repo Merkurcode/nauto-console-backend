@@ -1,5 +1,7 @@
-import { LoggerService } from '@infrastructure/logger/logger.service';
 import { ErrorSanitizationUtil } from '@core/utils/error-sanitization.util';
+import { Inject, Optional } from '@nestjs/common';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 /**
  * Base repository class with common error handling
@@ -7,11 +9,10 @@ import { ErrorSanitizationUtil } from '@core/utils/error-sanitization.util';
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export abstract class BaseRepository<T> {
-  protected logger: LoggerService;
+  protected baseLogger?: ILogger;
 
-  constructor() {
-    // We'll disable logging in base repository for now to avoid injection issues
-    this.logger = null;
+  constructor(@Optional() @Inject(LOGGER_SERVICE) logger?: ILogger) {
+    this.baseLogger = logger;
   }
 
   /**
@@ -36,13 +37,7 @@ export abstract class BaseRepository<T> {
       errorType: error?.constructor?.name || 'Unknown',
     };
 
-    if (this.logger) {
-      if (error instanceof Error) {
-        this.logger.error(errorDetails, error.stack);
-      } else {
-        this.logger.error(errorDetails);
-      }
-    } else {
+    if (this.baseLogger) {
       // SECURITY: Use logger with sanitized error information
       const sanitizedError = ErrorSanitizationUtil.forLogging(error, 'repository-error');
       const logDetails = {
@@ -53,7 +48,10 @@ export abstract class BaseRepository<T> {
           stack: sanitizedError.stack,
         }),
       };
-      this.logger?.error('[REPOSITORY ERROR]', JSON.stringify(logDetails));
+      this.baseLogger.error(logDetails, sanitizedError.stack);
+    } else {
+      // Fallback to console if no logger available
+      console.error('[REPOSITORY ERROR]', errorDetails);
     }
 
     return returnValue;
@@ -74,8 +72,8 @@ export abstract class BaseRepository<T> {
     entityId?: string,
   ): Promise<R | undefined> {
     try {
-      if (this.logger) {
-        this.logger.debug({
+      if (this.baseLogger) {
+        this.baseLogger.debug({
           message: 'Repository operation started',
           operation,
           entityType: this.constructor.name.replace('Repository', ''),
@@ -83,12 +81,12 @@ export abstract class BaseRepository<T> {
         });
       }
 
-      const startTime = Date.now();
+      const start = performance.now();
       const result = await action();
-      const duration = Date.now() - startTime;
+      const duration = performance.now() - start;
 
-      if (this.logger) {
-        this.logger.debug({
+      if (this.baseLogger) {
+        this.baseLogger.debug({
           message: 'Repository operation completed',
           operation,
           entityType: this.constructor.name.replace('Repository', ''),

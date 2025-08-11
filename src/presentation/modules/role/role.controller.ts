@@ -33,7 +33,6 @@ import { UpdateRoleDto } from '@application/dtos/role/update-role.dto';
 import { GetAssignablePermissionsDto } from '@application/dtos/permission/get-assignable-permissions.dto';
 import { IAssignablePermissionResponse } from '@application/dtos/_responses/permission/assignable-permission.response.interface';
 import { ICurrentUserPermissionResponse } from '@application/dtos/_responses/permission/current-user-permission.response.interface';
-import { CurrentUserPermissionResponse } from '@application/dtos/_responses/permission/current-user-permission-swagger.response';
 
 // Queries
 import { GetRolesQuery } from '@application/queries/role/get-roles.query';
@@ -251,7 +250,20 @@ export class RoleController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Returns all permissions granted to the current user',
-    type: [CurrentUserPermissionResponse],
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+          name: { type: 'string', example: 'user:read' },
+          description: { type: 'string', example: 'Permission to read user data' },
+          resource: { type: 'string', example: 'user' },
+          action: { type: 'string', example: 'read' },
+          grantedByRole: { type: 'string', example: 'admin' },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,

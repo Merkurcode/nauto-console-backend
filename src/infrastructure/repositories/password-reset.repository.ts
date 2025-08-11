@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { PasswordReset } from '@core/entities/password-reset.entity';
 import { IPasswordResetRepository } from '@core/repositories/password-reset.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
@@ -8,6 +8,8 @@ import { Email } from '@core/value-objects/email.vo';
 import { Token } from '@core/value-objects/token.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { PasswordReset as PrismaPasswordReset } from '@prisma/client';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Injectable()
 export class PasswordResetRepository
@@ -17,8 +19,9 @@ export class PasswordResetRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    super();
+    super(logger);
   }
 
   private get client() {

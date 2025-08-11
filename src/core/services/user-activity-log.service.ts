@@ -12,7 +12,10 @@ import { UserActivityImpact } from '@core/value-objects/user-activity-impact.vo'
 import { User } from '@core/entities/user.entity';
 import { UserActivityLogAccessType } from '@shared/constants/user-activity-log-access-type.enum';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
-import { USER_ACTIVITY_LOG_REPOSITORY } from '@shared/constants/tokens';
+import { USER_ACTIVITY_LOG_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { UserActivityType as UserActivityTypeEnum } from '@shared/constants/user-activity-type.enum';
+import { UserActivityImpact as UserActivityImpactEnum } from '@shared/constants/user-activity-impact.enum';
 
 @Injectable()
 export class UserActivityLogService {
@@ -21,7 +24,10 @@ export class UserActivityLogService {
     private readonly userActivityLogRepository: IUserActivityLogRepository,
     private readonly eventBus: EventBus,
     private readonly userAuthorizationService: UserAuthorizationService,
-  ) {}
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(UserActivityLogService.name);
+  }
 
   async logActivity(
     userId: UserId,
@@ -351,5 +357,212 @@ export class UserActivityLogService {
       default:
         throw new Error(`Invalid access type: ${accessType}`);
     }
+  }
+
+  // ========================
+  // ASYNC NO-WAIT METHODS
+  // ========================
+
+  /**
+   * Logs user activity asynchronously without waiting for completion
+   * Perfect for high-traffic scenarios where logging shouldn't impact performance
+   */
+  logActivityAsync(
+    userId: string,
+    activityType: UserActivityTypeEnum,
+    action: string,
+    description: string,
+    impact: UserActivityImpactEnum,
+    options?: {
+      ipAddress?: string;
+      userAgent?: string;
+      metadata?: Record<string, unknown>;
+    },
+  ): void {
+    // Fire-and-forget - returns immediately
+    setImmediate(async () => {
+      try {
+        const userActivityLog = UserActivityLog.create({
+          userId: UserId.fromString(userId),
+          activityType: UserActivityType.create(activityType),
+          action,
+          description,
+          impact: UserActivityImpact.create(impact),
+          ipAddress: options?.ipAddress,
+          userAgent: options?.userAgent,
+          metadata: options?.metadata,
+        });
+
+        // Save and publish events asynchronously
+        await this.userActivityLogRepository.save(userActivityLog);
+        await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+        userActivityLog.markEventsAsCommitted();
+
+        this.logger.debug(`Activity logged asynchronously for user ${userId}: ${action}`);
+      } catch (error) {
+        // Log error but don't throw to avoid disrupting main flow
+        this.logger.error(
+          `Failed to log activity for user ${userId}: ${error.message}`,
+          error.stack,
+        );
+      }
+    });
+  }
+
+  /**
+   * Fire-and-forget authentication logging
+   */
+  logAuthenticationAsync(
+    userId: string,
+    action: string,
+    description: string,
+    impact = UserActivityImpactEnum.MEDIUM,
+    options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> },
+  ): void {
+    this.logActivityAsync(
+      userId,
+      UserActivityTypeEnum.AUTHENTICATION,
+      action,
+      description,
+      impact,
+      options,
+    );
+  }
+
+  /**
+   * Fire-and-forget profile management logging
+   */
+  logProfileManagementAsync(
+    userId: string,
+    action: string,
+    description: string,
+    impact = UserActivityImpactEnum.LOW,
+    options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> },
+  ): void {
+    this.logActivityAsync(
+      userId,
+      UserActivityTypeEnum.PROFILE_MANAGEMENT,
+      action,
+      description,
+      impact,
+      options,
+    );
+  }
+
+  /**
+   * Fire-and-forget role management logging
+   */
+  logRoleManagementAsync(
+    userId: string,
+    action: string,
+    description: string,
+    impact = UserActivityImpactEnum.HIGH,
+    options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> },
+  ): void {
+    this.logActivityAsync(
+      userId,
+      UserActivityTypeEnum.ROLE_MANAGEMENT,
+      action,
+      description,
+      impact,
+      options,
+    );
+  }
+
+  /**
+   * Fire-and-forget security settings logging
+   */
+  logSecuritySettingsAsync(
+    userId: string,
+    action: string,
+    description: string,
+    impact = UserActivityImpactEnum.HIGH,
+    options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> },
+  ): void {
+    this.logActivityAsync(
+      userId,
+      UserActivityTypeEnum.SECURITY_SETTINGS,
+      action,
+      description,
+      impact,
+      options,
+    );
+  }
+
+  /**
+   * Fire-and-forget company assignment logging
+   */
+  logCompanyAssignmentAsync(
+    userId: string,
+    action: string,
+    description: string,
+    impact = UserActivityImpactEnum.HIGH,
+    options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> },
+  ): void {
+    this.logActivityAsync(
+      userId,
+      UserActivityTypeEnum.COMPANY_ASSIGNMENT,
+      action,
+      description,
+      impact,
+      options,
+    );
+  }
+
+  /**
+   * Fire-and-forget account management logging
+   */
+  logAccountManagementAsync(
+    userId: string,
+    action: string,
+    description: string,
+    impact = UserActivityImpactEnum.MEDIUM,
+    options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> },
+  ): void {
+    this.logActivityAsync(
+      userId,
+      UserActivityTypeEnum.ACCOUNT_MANAGEMENT,
+      action,
+      description,
+      impact,
+      options,
+    );
+  }
+
+  /**
+   * Batch log multiple activities asynchronously
+   * Useful for bulk operations
+   */
+  logMultipleActivitiesAsync(
+    activities: Array<{
+      userId: string;
+      activityType: UserActivityTypeEnum;
+      action: string;
+      description: string;
+      impact: UserActivityImpactEnum;
+      options?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, unknown> };
+    }>,
+  ): void {
+    // Process all activities in parallel, fire-and-forget
+    setImmediate(() => {
+      Promise.all(
+        activities.map(
+          activity =>
+            new Promise<void>(resolve => {
+              this.logActivityAsync(
+                activity.userId,
+                activity.activityType,
+                activity.action,
+                activity.description,
+                activity.impact,
+                activity.options,
+              );
+              resolve();
+            }),
+        ),
+      ).catch(error => {
+        this.logger.error(`Failed to log batch activities: ${error.message}`, error.stack);
+      });
+    });
   }
 }
