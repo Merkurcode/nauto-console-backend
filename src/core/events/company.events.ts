@@ -11,7 +11,7 @@ export class CompanyCreatedEvent extends DomainEvent {
   }
 
   getEventName(): string {
-    return 'CompanyCreated';
+    return 'company.created';
   }
 }
 
@@ -25,7 +25,7 @@ export class CompanyUpdatedEvent extends DomainEvent {
   }
 
   getEventName(): string {
-    return 'CompanyUpdated';
+    return 'company.updated';
   }
 }
 
@@ -38,6 +38,6 @@ export class CompanyDeactivatedEvent extends DomainEvent {
   }
 
   getEventName(): string {
-    return 'CompanyDeactivated';
+    return 'company.deactivated';
   }
 }

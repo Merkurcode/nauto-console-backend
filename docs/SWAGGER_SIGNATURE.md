@@ -6,17 +6,27 @@ The API uses request signature verification to ensure request integrity and prev
 
 ## How It Works
 
-The request signature is calculated using HMAC-SHA256 with the following payload structure:
+The request signature is calculated using HMAC-SHA256 with the following payload structure (separated by newlines `\n`):
 
 ```
-METHOD:PATH:TIMESTAMP[:BODY]
+METHOD\nPATH\nRAW_BODY\nTIMESTAMP\nCONTENT_TYPE\nCONTENT_LENGTH\nCONTENT_ENCODING\nAUTHORIZATION\nREQUEST_ID\nHOST
 ```
 
 Where:
 - `METHOD`: HTTP method (GET, POST, PUT, DELETE, etc.)
-- `PATH`: Request path (e.g., `/api/users`)
-- `TIMESTAMP`: Current timestamp in milliseconds
-- `BODY`: JSON body (only for requests with a body, sorted by keys)
+- `PATH`: Request path with query parameters (e.g., `/api/users?page=1`)
+- `RAW_BODY`: Request body as string (empty for file uploads to avoid size issues)
+- `TIMESTAMP`: Current timestamp in seconds (Unix timestamp)
+- `CONTENT_TYPE`: Content-Type header value
+- `CONTENT_LENGTH`: Content-Length header value (calculated)
+- `CONTENT_ENCODING`: Content-Encoding header value (usually 'identity')
+- `AUTHORIZATION`: Authorization header value (Bearer token)
+- `REQUEST_ID`: Unique request identifier (x-request-id header)
+- `HOST`: Host header value (domain:port)
+
+### Special Handling for File Uploads
+
+For file upload requests (`multipart/form-data`), the `RAW_BODY` field is excluded from signature calculation (set to empty string) due to file size considerations. All other fields are included normally.
 
 ## Using Signature in Swagger UI
 
@@ -130,38 +140,63 @@ If you need to calculate signatures manually (e.g., for testing with curl or Pos
 ```javascript
 const crypto = require('crypto');
 
-function generateSignature(method, path, timestamp, body, secret) {
-  const parts = [method.toUpperCase(), path, timestamp];
+function generateSignature(method, path, rawBody, timestamp, contentType, contentLength, contentEncoding, authorization, requestId, host, secret) {
+  // Build the data string exactly as the middleware does
+  const dataToSign = [
+    method.toUpperCase(),
+    path,
+    rawBody || '', // Empty for file uploads
+    timestamp.toString(),
+    contentType || '',
+    contentLength || '0',
+    contentEncoding || 'identity',
+    authorization || '',
+    requestId || '',
+    host || ''
+  ].join('\n');
   
-  if (body && Object.keys(body).length > 0) {
-    // Sort keys for consistent signature
-    const sortedBody = Object.keys(body)
-      .sort()
-      .reduce((obj, key) => {
-        obj[key] = body[key];
-        return obj;
-      }, {});
-    parts.push(JSON.stringify(sortedBody));
-  }
-  
-  const payload = parts.join(':');
-  return crypto.createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(dataToSign, 'utf8');
+  return 'sha256=' + hmac.digest('hex');
 }
 
-// Example usage
-const timestamp = Date.now().toString();
+// Example usage for regular request
+const timestamp = Math.floor(Date.now() / 1000);
+const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+const body = JSON.stringify({ email: 'test@example.com', name: 'Test User' });
+
 const signature = generateSignature(
-  'POST',
-  '/api/users',
-  timestamp,
-  { email: 'test@example.com', name: 'Test User' },
-  'your_server_secret_here'
+  'POST',                    // method
+  '/api/users',             // path
+  body,                     // rawBody
+  timestamp,                // timestamp
+  'application/json',       // contentType
+  body.length.toString(),   // contentLength
+  'identity',              // contentEncoding
+  'Bearer your_jwt_token',  // authorization
+  requestId,               // requestId
+  'localhost:3008',        // host
+  'your_server_secret_here' // secret
 );
 
 console.log('x-signature:', signature);
 console.log('x-timestamp:', timestamp);
+console.log('x-request-id:', requestId);
+
+// Example usage for file upload (exclude rawBody)
+const fileUploadSignature = generateSignature(
+  'POST',
+  '/api/storage/upload',
+  '', // Empty rawBody for file uploads
+  timestamp,
+  'multipart/form-data',
+  '0', // Content-Length will be set by the client
+  'identity',
+  'Bearer your_jwt_token',
+  requestId,
+  'localhost:3008',
+  'your_server_secret_here'
+);
 ```
 
 ## Related Documentation

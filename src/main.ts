@@ -9,10 +9,10 @@ import * as basicAuth from 'express-basic-auth';
 import helmet from 'helmet';
 import { LoggerService } from '@infrastructure/logger/logger.service';
 import { useContainer } from 'class-validator';
-import { join } from 'path';
 import { ValidateSignatureMiddleware } from '@presentation/middleware/validate-signature.middleware';
 import { JwtService } from '@nestjs/jwt';
 import { REQUEST_INTEGRITY_SKIP_PATHS as _REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 async function bootstrap() {
   // =========================================================================
@@ -44,23 +44,16 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // =========================================================================
-  // STATIC FILES AND DYNAMIC CONFIG (BEFORE MIDDLEWARE)
+  // REQUEST PROCESSING MIDDLEWARE
   // =========================================================================
-  // Serve static files from public directory BEFORE signature middleware
-  app.useStaticAssets(join(__dirname, '..', 'public'), {
-    setHeaders: (res, path) => {
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'text/javascript');
-      }
-    },
-  });
-
-  // =========================================================================
-  // REQUEST SIGNATURE VALIDATION MIDDLEWARE
-  // =========================================================================
-  // Configurar middleware de validación de firma DESPUÉS de archivos estáticos
+  // Configure signature validation middleware
   const jwtService = app.get(JwtService);
-  const validateSignatureMiddleware = new ValidateSignatureMiddleware(configService, jwtService);
+  const loggerService = await app.resolve(LOGGER_SERVICE);
+  const validateSignatureMiddleware = new ValidateSignatureMiddleware(
+    configService,
+    jwtService,
+    loggerService,
+  );
   app.use(validateSignatureMiddleware.use.bind(validateSignatureMiddleware));
 
   // =========================================================================
@@ -122,7 +115,12 @@ async function bootstrap() {
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
 
     // Cache control for sensitive endpoints
-    if (req.path.includes('/api/auth') || req.path.includes('/api/users')) {
+    if (
+      req.path.includes('/api/auth') ||
+      req.path.includes('/api/users') ||
+      req.path.includes('/api/roles') ||
+      req.path.includes('/api/companies')
+    ) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
@@ -189,7 +187,7 @@ async function bootstrap() {
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning, x-idempotency-key',
+        'Content-Type, Authorization, Accept-Language, X-Tenant-ID, ngrok-skip-browser-warning, x-idempotency-key, x-request-id, x-timestamp, x-signature',
       );
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Max-Age', '86400');
@@ -270,8 +268,10 @@ async function bootstrap() {
       'X-Forwarded-For',
       'X-Real-IP',
       'ngrok-skip-browser-warning',
-      // Idempotency header
       'x-idempotency-key',
+      'x-request-id',
+      'x-timestamp',
+      'x-signature',
     ],
     optionsSuccessStatus: 200,
   };
@@ -407,8 +407,12 @@ async function bootstrap() {
             const method = (request.method || 'GET').toUpperCase();
 
             // Process body consistently with middleware
+            // For file uploads (multipart/form-data), exclude rawBody from signature calculation
             let rawBody = '';
-            if (request.body) {
+            const contentType = request.headers['content-type'] || '';
+            const isFileUpload = contentType.includes('multipart/form-data');
+
+            if (!isFileUpload && request.body) {
               if (typeof request.body === 'string') {
                 rawBody = request.body;
               } else if (typeof request.body === 'object') {
@@ -422,7 +426,6 @@ async function bootstrap() {
             request.headers['x-timestamp'] = timestamp.toString();
 
             // Get header values for signature
-            const contentType = request.headers['content-type'] || '';
             const contentLength = rawBody.length.toString();
             const contentEncoding = 'identity';
             // Try multiple ways to get authorization header

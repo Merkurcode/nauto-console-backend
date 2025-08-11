@@ -356,10 +356,13 @@ export class CompanyController {
     type: [CompanyResponse],
   })
   @RequirePermissions('company:read')
-  async getCompanySubsidiaries(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse[]> {
+  async getCompanySubsidiaries(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUserPayload: IJwtPayload,
+  ): Promise<CompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId));
+    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId, currentUserPayload.sub, currentUserPayload.tenantId));
   }
 
   @Get(':id/hierarchy')
@@ -379,9 +382,12 @@ export class CompanyController {
     type: CompanyResponse,
   })
   @RequirePermissions('company:read')
-  async getCompanyHierarchy(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse> {
+  async getCompanyHierarchy(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUserPayload: IJwtPayload,
+  ): Promise<CompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId));
+    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub, currentUserPayload.tenantId));
   }
 }

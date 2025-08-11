@@ -4,12 +4,10 @@ import {
   ExecutionContext,
   ForbiddenException,
   BadRequestException,
-  Inject,
 } from '@nestjs/common';
 import { InvitationRulesService } from '@core/services/invitation-rules.service';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
-import { COMPANY_REPOSITORY } from '@shared/constants/tokens';
+import { CompanyService } from '@core/services/company.service';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { RolesEnum } from '@shared/constants/enums';
 
@@ -17,8 +15,7 @@ import { RolesEnum } from '@shared/constants/enums';
 export class InvitationGuard implements CanActivate {
   constructor(
     private readonly invitationRulesService: InvitationRulesService,
-    @Inject(COMPANY_REPOSITORY)
-    private readonly companyRepository: ICompanyRepository,
+    private readonly companyService: CompanyService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -42,7 +39,7 @@ export class InvitationGuard implements CanActivate {
     let targetCompanyId: string | undefined;
     if (targetCompanyName) {
       const companyNameVO = new CompanyName(targetCompanyName);
-      const targetCompany = await this.companyRepository.findByName(companyNameVO);
+      const targetCompany = await this.companyService.getCompanyByName(companyNameVO);
       targetCompanyId = targetCompany?.id.getValue();
     }
 

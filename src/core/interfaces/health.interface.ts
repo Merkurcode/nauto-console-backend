@@ -16,4 +16,3 @@ export {
   IHealthCheckDetail,
   IComprehensiveHealthResponse,
 } from '@application/dtos/_responses/health/health.response.interface';
-

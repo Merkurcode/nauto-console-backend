@@ -47,4 +47,3 @@ export interface IComprehensiveHealthResponse {
   version: string;
   checks: IHealthCheckDetail[];
 }
-

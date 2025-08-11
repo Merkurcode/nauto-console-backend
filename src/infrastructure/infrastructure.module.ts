@@ -29,6 +29,8 @@ import { CompanyAIAssistantRepository } from './repositories/company-ai-assistan
 import { CompanySchedulesRepository } from './repositories/company-schedules.repository';
 import { AuditLogRepository } from './repositories/audit-log.repository';
 import { BotTokenRepository } from './repositories/bot-token.repository';
+import { UserStorageConfigRepository } from './repositories/user-storage-config.repository';
+import { StorageTiersRepository } from './repositories/storage-tiers.repository';
 import { TokenProvider } from './auth/token.provider';
 import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
@@ -51,6 +53,8 @@ import {
   COMPANY_SCHEDULES_REPOSITORY,
   AUDIT_LOG_REPOSITORY,
   BOT_TOKEN_REPOSITORY,
+  USER_STORAGE_CONFIG_REPOSITORY,
+  STORAGE_TIERS_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
@@ -197,6 +201,18 @@ import {
       useFactory: (prisma: PrismaService) => new BotTokenRepository(prisma),
       inject: [PrismaService],
     },
+    {
+      provide: USER_STORAGE_CONFIG_REPOSITORY,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new UserStorageConfigRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
+    {
+      provide: STORAGE_TIERS_REPOSITORY,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new StorageTiersRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
 
     // Infrastructure services
     {
@@ -234,6 +250,8 @@ import {
     COMPANY_SCHEDULES_REPOSITORY,
     AUDIT_LOG_REPOSITORY,
     BOT_TOKEN_REPOSITORY,
+    USER_STORAGE_CONFIG_REPOSITORY,
+    STORAGE_TIERS_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,

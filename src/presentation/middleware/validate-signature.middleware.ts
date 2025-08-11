@@ -1,15 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
   NestMiddleware,
   UnauthorizedException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class ValidateSignatureMiddleware implements NestMiddleware {
@@ -19,6 +21,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     this.validateEnvironmentVariables();
   }
@@ -141,6 +144,14 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
         return next();
       }
 
+      // Handle file uploads with special signature validation (exclude rawBody)
+      const requestContentType = req.headers['content-type'] || '';
+      const isFileUpload = requestContentType.includes('multipart/form-data');
+
+      if (isFileUpload && enableLogs) {
+        this.logger.log('Using file upload signature validation (excluding rawBody):', path);
+      }
+
       // Rechazar datos comprimidos por seguridad
       this.rejectCompressedData(req);
 
@@ -192,8 +203,9 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       const method = req.method.toUpperCase();
       const url = req.originalUrl || req.url;
 
-      // Reconstruir el body de manera segura después de las validaciones
-      const rawBody = this.getRawBodySafely(req);
+      // For file uploads, exclude rawBody from signature calculation due to size
+      // For other requests, include rawBody for security
+      const rawBody = isFileUpload ? '' : this.getRawBodySafely(req);
 
       // Incluir headers importantes en la firma para mayor seguridad
       const contentType = req.headers['content-type'] || '';
@@ -204,7 +216,8 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       const host = this.getHostSafely(req);
 
       // Construcción consistente del string para firmar
-      // Incluimos: método, url, body, timestamp, content-type, content-length, content-encoding, authorization, request-id y host
+      // Para archivos: método, url, timestamp, content-type, content-length, content-encoding, authorization, request-id y host (sin rawBody)
+      // Para otros: método, url, body, timestamp, content-type, content-length, content-encoding, authorization, request-id y host
       const dataToSign = `${method}\n${url}\n${rawBody}\n${timestamp}\n${contentType}\n${contentLength}\n${contentEncoding}\n${authorization}\n${requestId}\n${host}`;
 
       const hmac = createHmac('sha256', secret);

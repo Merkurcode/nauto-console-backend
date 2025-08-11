@@ -40,7 +40,12 @@ import { CoreModule } from '@core/core.module';
       ) => {
         const driver = configService.get<string>('storage.driver');
 
-        return driver === 's3' ? s3Provider : minioProvider;
+        if (driver === 's3') {
+          return s3Provider;
+        }
+
+        // Default to MinIO provider
+        return minioProvider;
       },
       inject: [ConfigService, MinioStorageProvider, S3StorageProvider],
     },

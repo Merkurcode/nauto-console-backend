@@ -12,8 +12,9 @@ import { BusinessConfigurationService } from '@core/services/business-configurat
 @Injectable()
 export class MinioStorageProvider implements IStorageProvider {
   private minioClient: Minio.Client;
-  private readonly publicBucket: string;
-  private readonly privateBucket: string;
+  private readonly bucketName: string;
+  private readonly publicFolder: string;
+  private readonly privateFolder: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -21,8 +22,9 @@ export class MinioStorageProvider implements IStorageProvider {
     private readonly businessConfigService: BusinessConfigurationService,
   ) {
     const minioConfig = this.configService.get('storage.minio');
-    this.publicBucket = minioConfig.publicBucket;
-    this.privateBucket = minioConfig.privateBucket;
+    this.bucketName = minioConfig.bucketName;
+    this.publicFolder = minioConfig.publicFolder;
+    this.privateFolder = minioConfig.privateFolder;
 
     this.minioClient = new Minio.Client({
       endPoint: minioConfig.endPoint,
@@ -39,29 +41,26 @@ export class MinioStorageProvider implements IStorageProvider {
   }
 
   private async initializeBuckets(): Promise<void> {
-    const buckets = [this.publicBucket, this.privateBucket];
+    const exists = await this.minioClient.bucketExists(this.bucketName);
+    if (!exists) {
+      await this.minioClient.makeBucket(
+        this.bucketName,
+        this.configService.get('storage.minio.region'),
+      );
 
-    for (const bucket of buckets) {
-      const exists = await this.minioClient.bucketExists(bucket);
-      if (!exists) {
-        await this.minioClient.makeBucket(bucket, this.configService.get('storage.minio.region'));
-
-        // Set public policy for public bucket
-        if (bucket === this.publicBucket) {
-          const policy = {
-            Version: '2012-10-17',
-            Statement: [
-              {
-                Effect: 'Allow',
-                Principal: { AWS: ['*'] },
-                Action: ['s3:GetObject'],
-                Resource: [`arn:aws:s3:::${bucket}/*`],
-              },
-            ],
-          };
-          await this.minioClient.setBucketPolicy(bucket, JSON.stringify(policy));
-        }
-      }
+      // Set public policy for public folder
+      const policy = {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { AWS: ['*'] },
+            Action: ['s3:GetObject'],
+            Resource: [`arn:aws:s3:::${this.bucketName}/${this.publicFolder}/*`],
+          },
+        ],
+      };
+      await this.minioClient.setBucketPolicy(this.bucketName, JSON.stringify(policy));
     }
   }
 
@@ -71,10 +70,10 @@ export class MinioStorageProvider implements IStorageProvider {
 
     const filename = `${uuidv4()}${path.extname(file.originalname)}`;
     const isPublic = this.isPublicFile(file.mimetype);
-    const bucket = isPublic ? this.publicBucket : this.privateBucket;
-    const filePath = userId ? `${userId}/${filename}` : filename;
+    const folder = isPublic ? this.publicFolder : this.privateFolder;
+    const filePath = userId ? `${folder}/${userId}/${filename}` : `${folder}/${filename}`;
 
-    await this.minioClient.putObject(bucket, filePath, file.buffer);
+    await this.minioClient.putObject(this.bucketName, filePath, file.buffer);
 
     const fileEntity = new File(
       filename,
@@ -82,7 +81,7 @@ export class MinioStorageProvider implements IStorageProvider {
       filePath,
       file.mimetype,
       file.size,
-      bucket,
+      this.bucketName,
       userId || null,
       isPublic,
     );
@@ -94,11 +93,11 @@ export class MinioStorageProvider implements IStorageProvider {
     const fileConfig = this.businessConfigService.getFileStorageConfig();
     const expiry = fileConfig.urlExpirationHours * 60 * 60; // Convert hours to seconds
 
-    return this.minioClient.presignedGetObject(file.bucket, file.path, expiry);
+    return this.minioClient.presignedGetObject(this.bucketName, file.path, expiry);
   }
 
   async delete(file: File): Promise<void> {
-    await this.minioClient.removeObject(file.bucket, file.path);
+    await this.minioClient.removeObject(this.bucketName, file.path);
   }
 
   private isPublicFile(mimeType: string): boolean {
@@ -107,21 +106,22 @@ export class MinioStorageProvider implements IStorageProvider {
   }
 
   private validateFile(file: IStorageFile): void {
-    const fileConfig = this.businessConfigService.getFileStorageConfig();
+    // File size and type validation is now handled by FileUploadLimitGuard
+    // and UserStorageConfig before reaching this point
 
-    // Validate file size
-    if (file.size > fileConfig.maxFileSize) {
-      throw new Error(
-        `File size exceeds maximum allowed size of ${fileConfig.maxFileSize / (1024 * 1024)}MB`,
-      );
+    // Basic validation for empty files
+    if (file.size <= 0) {
+      throw new Error('File cannot be empty');
     }
 
-    // Validate file type
-    const extension = path.extname(file.originalname).toLowerCase().substring(1);
-    if (!fileConfig.allowedFileTypes.includes(extension)) {
-      throw new Error(
-        `File type '${extension}' is not allowed. Allowed types: ${fileConfig.allowedFileTypes.join(', ')}`,
-      );
+    if (!file.originalname || file.originalname.trim() === '') {
+      throw new Error('File must have a valid name');
+    }
+
+    // Basic file extension validation
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (!extension) {
+      throw new Error('File must have an extension');
     }
   }
 }

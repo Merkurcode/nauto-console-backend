@@ -1,16 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { IStateRepository } from '@core/repositories/state.repository.interface';
 import { State } from '@core/entities/state.entity';
-import { LoggerService } from '@infrastructure/logger/logger.service';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class StateRepository implements IStateRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    private readonly logger: LoggerService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     this.logger.setContext(StateRepository.name);
   }

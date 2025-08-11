@@ -1,12 +1,15 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PrismaService.name);
-
-  constructor(configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+  ) {
     // Get connection pool configuration from environment (optimized for high concurrency)
     const connectionLimit = configService.get<number>('DATABASE_CONNECTION_LIMIT', 50);
     const poolTimeout = configService.get<number>('DATABASE_POOL_TIMEOUT', 30);

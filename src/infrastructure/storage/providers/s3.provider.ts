@@ -17,16 +17,18 @@ import { FILE_REPOSITORY } from '@shared/constants/tokens';
 @Injectable()
 export class S3StorageProvider implements IStorageProvider {
   private readonly s3Client: S3Client;
-  private readonly publicBucket: string;
-  private readonly privateBucket: string;
+  private readonly bucketName: string;
+  private readonly publicFolder: string;
+  private readonly privateFolder: string;
 
   constructor(
     private readonly configService: ConfigService,
     @Inject(FILE_REPOSITORY) private readonly fileRepository: IFileRepository,
   ) {
     const awsConfig = this.configService.get('storage.aws');
-    this.publicBucket = awsConfig.publicBucket;
-    this.privateBucket = awsConfig.privateBucket;
+    this.bucketName = awsConfig.bucketName;
+    this.publicFolder = awsConfig.publicFolder;
+    this.privateFolder = awsConfig.privateFolder;
 
     this.s3Client = new S3Client({
       region: awsConfig.region,
@@ -40,11 +42,11 @@ export class S3StorageProvider implements IStorageProvider {
   async upload(file: IStorageFile, userId?: string): Promise<File> {
     const filename = `${uuidv4()}${path.extname(file.originalname)}`;
     const isPublic = this.isPublicFile(file.mimetype);
-    const bucket = isPublic ? this.publicBucket : this.privateBucket;
-    const filePath = userId ? `${userId}/${filename}` : filename;
+    const folder = isPublic ? this.publicFolder : this.privateFolder;
+    const filePath = userId ? `${folder}/${userId}/${filename}` : `${folder}/${filename}`;
 
     const params = {
-      Bucket: bucket,
+      Bucket: this.bucketName,
       Key: filePath,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -58,7 +60,7 @@ export class S3StorageProvider implements IStorageProvider {
       filePath,
       file.mimetype,
       file.size,
-      bucket,
+      this.bucketName,
       userId || null,
       isPublic,
     );
@@ -68,7 +70,7 @@ export class S3StorageProvider implements IStorageProvider {
 
   async getSignedUrl(file: File): Promise<string> {
     const command = new GetObjectCommand({
-      Bucket: file.bucket,
+      Bucket: this.bucketName,
       Key: file.path,
     });
 
@@ -78,7 +80,7 @@ export class S3StorageProvider implements IStorageProvider {
 
   async delete(file: File): Promise<void> {
     const params = {
-      Bucket: file.bucket,
+      Bucket: this.bucketName,
       Key: file.path,
     };
 

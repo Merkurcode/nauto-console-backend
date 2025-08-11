@@ -14,7 +14,6 @@ import { AuthModule } from '@presentation/modules/auth/auth.module';
 import { UserModule } from '@presentation/modules/user/user.module';
 import { RoleModule } from '@presentation/modules/role/role.module';
 import { RootModule } from '@presentation/modules/root/root.module';
-import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { HealthModule } from '@presentation/modules/health/health.module';
 import { CompanyModule } from '@presentation/modules/company/company.module';
 import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assistant.module';
@@ -97,7 +96,6 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     UserModule,
     RoleModule,
     RootModule,
-    StorageModule,
     HealthModule,
     CompanyModule,
     AIAssistantModule,

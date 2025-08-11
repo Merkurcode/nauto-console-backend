@@ -28,7 +28,7 @@ export class BusinessConfigurationService implements OnModuleInit {
     RATE_LIMIT_IP_ATTEMPTS: { min: 1, max: 1000 },
     RATE_LIMIT_LOCKOUT_MINUTES: { min: 1, max: 1440 },
     FILE_URL_EXPIRY_HOURS: { min: 1, max: 168 }, // 1 hour to 1 week
-    MAX_FILE_SIZE_MB: { min: 1, max: 1000 },
+    // MAX_FILE_SIZE_MB: removed - now managed by StorageTiers
     MAX_ACTIVE_SESSIONS: { min: 1, max: 100 },
     SESSION_INACTIVITY_TIMEOUT: { min: 5, max: 43200 }, // 5 minutes to 30 days (in minutes)
     OTP_EXPIRY_MINUTES: { min: 1, max: 60 },
@@ -38,7 +38,7 @@ export class BusinessConfigurationService implements OnModuleInit {
 
   // Security: Define valid string patterns
   private readonly VALID_PATTERNS = {
-    ALLOWED_FILE_TYPES: /^[a-zA-Z0-9,]+$/, // Only alphanumeric and comma
+    // ALLOWED_FILE_TYPES: removed - now managed by UserStorageConfig
     DEFAULT_COUNTRY: /^[a-zA-Z\s-]{1,50}$/, // Letters, spaces, hyphens, max 50 chars
     DEFAULT_STATE: /^[a-zA-Z\s-]{1,50}$/, // Letters, spaces, hyphens, max 50 chars
   };
@@ -111,19 +111,15 @@ export class BusinessConfigurationService implements OnModuleInit {
 
   /**
    * File storage business configuration
-   * Business Rule: File access and retention policies
+   * Business Rule: Global file access policies (user-specific limits in UserStorageConfig)
+   * @deprecated Use UserStorageConfig + StorageTiers for user-specific file policies
    */
   getFileStorageConfig(): {
     urlExpirationHours: number;
-    maxFileSize: number;
-    allowedFileTypes: string[];
   } {
     return {
       urlExpirationHours: this.configService.get<number>('FILE_URL_EXPIRY_HOURS', 24),
-      maxFileSize: this.configService.get<number>('MAX_FILE_SIZE_MB', 10) * 1024 * 1024,
-      allowedFileTypes: this.configService
-        .get<string>('ALLOWED_FILE_TYPES', 'jpg,png,pdf,doc,docx')
-        .split(','),
+      // maxFileSize and allowedFileTypes now managed by UserStorageConfig + StorageTiers
     };
   }
 

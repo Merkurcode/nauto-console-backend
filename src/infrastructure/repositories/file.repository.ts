@@ -1,9 +1,11 @@
+/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { TransactionContextService } from '../database/prisma/transaction-context.service';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { File } from '@core/entities/file.entity';
 import { BaseRepository } from './base.repository';
+import { FileStatus } from '@shared/constants/file-status.enum';
 
 /**
  * Interface representing file data from storage
@@ -18,6 +20,7 @@ export interface IFileData {
   bucket: string;
   userId: string;
   isPublic: boolean;
+  status: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +55,20 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     return files.map(file => this.mapToEntity(file));
   }
 
+  async findByUserIdAndStatusIn(userId: string, statuses: string[]): Promise<File[]> {
+    const files = await this.client.file.findMany({
+      where: { 
+        userId,
+        status: {
+          in: statuses as FileStatus[]
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return files.map(file => this.mapToEntity(file));
+  }
+
   async findByPath(path: string): Promise<File | null> {
     const fileData = await this.client.file.findFirst({
       where: { path },
@@ -72,6 +89,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
         bucket: file.bucket,
         userId: file.userId,
         isPublic: file.isPublic,
+        status: file.status.toString() as FileStatus,
       },
     });
 
@@ -83,6 +101,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       where: { id: file.id },
       data: {
         isPublic: file.isPublic,
+        status: file.status.toString() as FileStatus,
         updatedAt: file.updatedAt,
       },
     });
@@ -97,16 +116,19 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   }
 
   private mapToEntity(fileData: IFileData): File {
-    return new File(
-      fileData.filename,
-      fileData.originalName,
-      fileData.path,
-      fileData.mimeType,
-      fileData.size,
-      fileData.bucket,
-      fileData.userId,
-      fileData.isPublic,
-      fileData.id,
-    );
+    return File.fromData({
+      id: fileData.id,
+      filename: fileData.filename,
+      originalName: fileData.originalName,
+      path: fileData.path,
+      mimeType: fileData.mimeType,
+      size: fileData.size,
+      bucket: fileData.bucket,
+      userId: fileData.userId,
+      isPublic: fileData.isPublic,
+      status: fileData.status,
+      createdAt: fileData.createdAt,
+      updatedAt: fileData.updatedAt,
+    });
   }
 }

@@ -5,6 +5,9 @@ import { Injectable } from '@nestjs/common';
 import { UserService } from '@core/services/user.service';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { PasswordGenerator } from '@shared/utils/password-generator';
+import { UserStorageConfigService } from '@core/services/user-storage-config.service';
+import { StorageTiersService } from '@core/services/storage-tiers.service';
+import { ConfigService } from '@nestjs/config';
 
 export class RegisterUserCommand implements ICommand {
   constructor(public readonly registerDto: RegisterDto) {}
@@ -13,7 +16,12 @@ export class RegisterUserCommand implements ICommand {
 @Injectable()
 @CommandHandler(RegisterUserCommand)
 export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserCommand> {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly userStorageConfigService: UserStorageConfigService,
+    private readonly storageTiersService: StorageTiersService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async execute(command: RegisterUserCommand): Promise<IUserBaseResponse> {
     const registerDto = command.registerDto;
@@ -51,6 +59,16 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
     if (!user) {
       throw new Error('Failed to create user - user creation returned null');
     }
+
+    // Create default UserStorageConfig with basic tier
+    const defaultStorageTierLevel = this.configService.get<string>(
+      'DEFAULT_STORAGE_TIER_LEVEL',
+      '1',
+    );
+    const storageTier =
+      await this.storageTiersService.getStorageTierByLevelOrThrow(defaultStorageTierLevel);
+
+    await this.userStorageConfigService.createUserStorageConfig(user.id.getValue(), storageTier.id);
 
     // Use the mapper to convert to response DTO
     return UserMapper.toBaseResponse(user);
