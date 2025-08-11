@@ -32,15 +32,10 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
     const invalidVars: string[] = [];
 
     // Check if REQUEST_INTEGRITY_ENABLED exists and is valid boolean
-    const integrityEnabled = this.configService.get<string>('REQUEST_INTEGRITY_ENABLED');
-    if (integrityEnabled === undefined || integrityEnabled === null) {
-      missingVars.push('REQUEST_INTEGRITY_ENABLED');
-    } else if (!['true', 'false'].includes(integrityEnabled.toLowerCase())) {
-      invalidVars.push('REQUEST_INTEGRITY_ENABLED (must be true or false)');
-    }
-
+    const integrityEnabled = this.configService.get<boolean>('security.requestIntegrityEnabled', false);
+    
     // If integrity is enabled, check required secrets
-    if (integrityEnabled?.toLowerCase() === 'true') {
+    if (integrityEnabled) {
       const serverSecret = this.configService.get<string>('SERVER_INTEGRITY_SECRET');
       if (!serverSecret) {
         missingVars.push('SERVER_INTEGRITY_SECRET');
@@ -133,7 +128,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
     try {
       // Verificar si el middleware está habilitado
-      const isEnabled = this.configService.get<boolean>('REQUEST_INTEGRITY_ENABLED', false);
+      const isEnabled = this.configService.get<boolean>('security.requestIntegrityEnabled', false);
       if (!isEnabled) {
         return next();
       }
