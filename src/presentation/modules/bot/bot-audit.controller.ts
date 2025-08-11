@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, HttpCode, HttpStatus, Inject } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 // Guards and decorators
@@ -12,7 +12,6 @@ import { RolesEnum } from '@shared/constants/enums';
 
 // Services
 import { AuditLogService } from '@core/services/audit-log.service';
-import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 // DTOs and Mappers
@@ -37,10 +36,7 @@ import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 @Roles(RolesEnum.ROOT)
 @Controller('bot-audit')
 export class BotAuditController {
-  constructor(
-    @Inject(AUDIT_LOG_SERVICE)
-    private readonly auditLogService: AuditLogService,
-  ) {}
+  constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get('activity')
   @HttpCode(HttpStatus.OK)

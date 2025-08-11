@@ -22,7 +22,6 @@ import { UserDeletionPolicyService } from './services/user-deletion-policy.servi
 import { PermissionCollectionService } from './services/permission-collection.service';
 import { RequestContextService } from './services/request-context.service';
 import { BusinessConfigurationService } from './services/business-configuration.service';
-import { AuditLogService } from './services/audit-log.service';
 import { AuthenticationValidationService } from './services/authentication-validation.service';
 import { BotSessionValidationService } from './services/bot-session-validation.service';
 import { TenantResolverService } from './services/tenant-resolver.service';
@@ -34,8 +33,6 @@ import { CompanyScheduleService } from './services/company-schedule.service';
 import { PermissionExcludeService } from './services/permission-exclude.service';
 import { UserStorageConfigService } from './services/user-storage-config.service';
 import { StorageTiersService } from './services/storage-tiers.service';
-import { UserActivityLogService } from './services/user-activity-log.service';
-import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
 
 /**
  * Core Domain Module
@@ -65,11 +62,6 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     PermissionCollectionService,
     RequestContextService,
     BusinessConfigurationService,
-    // Audit logging services
-    {
-      provide: AUDIT_LOG_SERVICE,
-      useClass: AuditLogService,
-    },
     AuthenticationValidationService,
     BotSessionValidationService,
     TenantResolverService,
@@ -82,7 +74,6 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     PermissionExcludeService,
     UserStorageConfigService,
     StorageTiersService,
-    UserActivityLogService,
   ],
   exports: [
     // Export all domain services
@@ -105,8 +96,6 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     PermissionCollectionService,
     RequestContextService,
     BusinessConfigurationService,
-    // Audit logging services
-    AUDIT_LOG_SERVICE,
     AuthenticationValidationService,
     BotSessionValidationService,
     TenantResolverService,
@@ -119,7 +108,6 @@ import { AUDIT_LOG_SERVICE } from '@shared/constants/tokens';
     PermissionExcludeService,
     UserStorageConfigService,
     StorageTiersService,
-    UserActivityLogService,
   ],
 })
 export class CoreModule {}

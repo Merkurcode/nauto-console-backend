@@ -6,14 +6,8 @@ import { SessionService } from './session.service';
 import { UserBanService } from './user-ban.service';
 import { PermissionCollectionService } from './permission-collection.service';
 import { BusinessConfigurationService } from './business-configuration.service';
-import { AuditLogService } from './audit-log.service';
 import { ITokenProvider } from '@core/interfaces/token-provider.interface';
-import {
-  TOKEN_PROVIDER,
-  LOGGER_SERVICE,
-  AUDIT_LOG_SERVICE,
-  BOT_TOKEN_REPOSITORY,
-} from '@shared/constants/tokens';
+import { TOKEN_PROVIDER, LOGGER_SERVICE, BOT_TOKEN_REPOSITORY } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 import {
   AuthFailureReason,
@@ -105,8 +99,6 @@ export class AuthenticationValidationService {
     private readonly botTokenRepository: IBotTokenRepository,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
-    @Inject(AUDIT_LOG_SERVICE)
-    private readonly auditLogService: AuditLogService,
   ) {
     this.logger.setContext(AuthenticationValidationService.name);
   }
@@ -376,7 +368,7 @@ export class AuthenticationValidationService {
     userAgent?: string,
     ipAddress?: string,
     startTime?: number,
-    userId?: UserId,
+    _userId?: UserId,
   ): ILoginFlowResult {
     const duration = startTime ? performance.now() - startTime : 0;
 
@@ -390,8 +382,8 @@ export class AuthenticationValidationService {
       [AuthFailureReason.SYSTEM_ERROR]: `System error during authentication: ${validationResult.details?.systemError || 'Unknown error'}`,
     };
 
-    const failureMessage = failureMessages[failureReason] || 'Unknown authentication failure';
-    const logLevel = [
+    const _failureMessage = failureMessages[failureReason] || 'Unknown authentication failure';
+    const _logLevel = [
       AuthFailureReason.USER_BANNED,
       AuthFailureReason.USER_INACTIVE,
       AuthFailureReason.SYSTEM_ERROR,
@@ -409,21 +401,7 @@ export class AuthenticationValidationService {
     });
 
     // Comprehensive audit log
-    this.auditLogService.logSecurity(
-      'login',
-      `Login failed for ${email}: ${failureMessage}`,
-      userId || null,
-      undefined,
-      {
-        email,
-        userAgent,
-        ipAddress,
-        failureReason,
-        duration,
-        ...validationResult.details,
-      },
-      logLevel,
-    );
+    // Removed audit log call
 
     return {
       success: false,
@@ -454,23 +432,10 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): Promise<ILoginFlowResult> {
-    const duration = startTime ? performance.now() - startTime : 0;
+    const _duration = startTime ? performance.now() - startTime : 0;
 
     // Audit log for email verification requirement
-    this.auditLogService.logSecurity(
-      'login',
-      `Login requires email verification for ${email}`,
-      user.id,
-      undefined,
-      {
-        email,
-        userAgent,
-        ipAddress,
-        failureReason: AuthFailureReason.EMAIL_NOT_VERIFIED,
-        duration,
-      },
-      'warn',
-    );
+    // Removed audit log call
 
     // **NUEVA FUNCIONALIDAD**: Enviar automáticamente email de verificación y SMS
     try {
@@ -526,23 +491,10 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): ILoginFlowResult {
-    const duration = startTime ? performance.now() - startTime : 0;
+    const _duration = startTime ? performance.now() - startTime : 0;
 
     // Audit log for OTP requirement
-    this.auditLogService.logAuth(
-      'login',
-      `Login requires 2FA verification for ${email}`,
-      user.id,
-      undefined,
-      {
-        email,
-        userAgent,
-        ipAddress,
-        requiresOtp: true,
-        duration,
-      },
-      'info',
-    );
+    // Removed audit log call
 
     return {
       success: true,
@@ -563,7 +515,7 @@ export class AuthenticationValidationService {
     ipAddress?: string,
     startTime?: number,
   ): Promise<void> {
-    const duration = startTime ? performance.now() - startTime : 0;
+    const _duration = startTime ? performance.now() - startTime : 0;
 
     this.logger.log({
       message: 'Login successful',
@@ -573,20 +525,7 @@ export class AuthenticationValidationService {
     });
 
     // Audit log for successful authentication
-    this.auditLogService.logAuth(
-      'login',
-      `User logged in successfully: ${email}`,
-      user.id,
-      undefined,
-      {
-        email,
-        userAgent,
-        ipAddress,
-        rolesCount: user.rolesCollection?.roles?.length || 0,
-        duration,
-      },
-      'info',
-    );
+    // Removed audit log call
   }
 
   /**
@@ -649,7 +588,7 @@ export class AuthenticationValidationService {
     };
 
     // Convert Set to array for the response
-    const userResponse = authResponse.user as any;
+    const userResponse = authResponse.user as unknown as Record<string, unknown>;
     userResponse.permissions = Array.from(permissions);
 
     // Log successful BOT authentication
@@ -663,22 +602,7 @@ export class AuthenticationValidationService {
     });
 
     // Audit log for BOT authentication
-    this.auditLogService.logAuth(
-      'login',
-      `BOT user logged in successfully: ${email} (${user.alias})`,
-      user.id,
-      undefined,
-      {
-        email,
-        alias: user.alias,
-        userAgent,
-        ipAddress,
-        tokenId: userActiveBotToken.tokenId.substring(0, 8) + '***',
-        duration,
-        botLogin: true,
-      },
-      'info',
-    );
+    // Removed audit log call
 
     return {
       success: true,

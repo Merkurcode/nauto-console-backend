@@ -12,8 +12,8 @@
  * - Standardized error codes and messages
  */
 
-import { Logger } from '@nestjs/common';
 import { ErrorSanitizationUtil, SanitizationLevel } from './error-sanitization.util';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 export interface ISecureExceptionResponse {
   message: string;
@@ -72,7 +72,16 @@ export enum SecureErrorCode {
 }
 
 export class SecureExceptionHandler {
-  private static readonly logger = new Logger('SecureExceptionHandler');
+  private static logger?: ILogger;
+
+  // Security: Map of safe error messages by error code
+  /**
+   * Set logger instance for centralized logging
+   */
+  static setLogger(logger: ILogger): void {
+    this.logger = logger;
+    this.logger.setContext('SecureExceptionHandler');
+  }
 
   // Security: Map of safe error messages by error code
   private static readonly SAFE_ERROR_MESSAGES = new Map<SecureErrorCode, string>([
@@ -175,11 +184,20 @@ export class SecureExceptionHandler {
       return response;
     } catch (handlerError) {
       // Fallback if exception handling itself fails
-      this.logger.error('Critical: Exception handler failed', {
+      const logData = {
+        message: 'Critical: Exception handler failed',
         originalError: ErrorSanitizationUtil.forLogging(error, 'exception-handler-failure'),
         handlerError: ErrorSanitizationUtil.forLogging(handlerError, 'exception-handler-internal'),
         correlationId,
-      });
+      };
+
+      if (this.logger) {
+        this.logger.error(logData);
+      } else {
+        // INTENTIONAL FALLBACK: Console logging when Logger Service is not available
+        // This ensures critical exception handler failures are never lost
+        console.error('[EXCEPTION_HANDLER_ERROR]', logData);
+      }
 
       return {
         message: 'An error occurred while processing your request',
@@ -405,16 +423,21 @@ export class SecureExceptionHandler {
       logData['stack'] = ErrorSanitizationUtil.sanitizeMessage(errorInfo.stack, sanitizationLevel);
     }
 
-    switch (logLevel) {
-      case 'error':
-        this.logger.error(logData);
-        break;
-      case 'warn':
-        this.logger.warn(logData);
-        break;
-      case 'debug':
-        this.logger.debug(logData);
-        break;
+    if (this.logger) {
+      switch (logLevel) {
+        case 'error':
+          this.logger.error(logData);
+          break;
+        case 'warn':
+          this.logger.warn(logData);
+          break;
+        case 'debug':
+          this.logger.debug(logData);
+          break;
+      }
+    } else {
+      // INTENTIONAL FALLBACK: Console logging when Logger Service is not available
+      console.error('[SECURE_EXCEPTION_HANDLER]', logData);
     }
   }
 
@@ -432,7 +455,7 @@ export class SecureExceptionHandler {
   ): void {
     // This would integrate with the audit log system
     // For now, just ensure it's logged as a security event
-    this.logger.warn({
+    const auditData = {
       event: 'SECURITY_ERROR',
       correlationId: options.correlationId,
       errorCode: options.code,
@@ -440,7 +463,14 @@ export class SecureExceptionHandler {
       userId: options.userId,
       sanitizedMessage: ErrorSanitizationUtil.sanitizeMessage(errorInfo.message),
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    if (this.logger) {
+      this.logger.warn(auditData);
+    } else {
+      // INTENTIONAL FALLBACK: Console logging when Logger Service is not available
+      console.warn('[SECURITY_AUDIT]', auditData);
+    }
   }
 
   /**
