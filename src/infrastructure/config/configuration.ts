@@ -9,16 +9,15 @@ export default () => ({
   // Database
   database: {
     url: process.env.DATABASE_URL,
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
+    connectionLimit: parseInt(process.env.DATABASE_CONNECTION_LIMIT || '50', 10),
+    poolTimeout: parseInt(process.env.DATABASE_POOL_TIMEOUT || '30', 10),
+    queryTimeout: parseInt(process.env.DATABASE_QUERY_TIMEOUT || '10000', 10),
   },
 
   // JWT
   jwt: {
     secret: process.env.JWT_SECRET,
+    algorithm: process.env.JWT_ALGORITHM || 'HS512',
     accessExpiration: process.env.JWT_ACCESS_EXPIRATION || '15m',
     refreshExpiration: process.env.JWT_REFRESH_EXPIRATION || '7d',
   },
@@ -88,11 +87,20 @@ export default () => ({
   security: {
     sessionSecret: process.env.SESSION_SECRET,
     requestIntegrityEnabled: process.env.REQUEST_INTEGRITY_ENABLED === 'true',
+    serverIntegritySecret: process.env.SERVER_INTEGRITY_SECRET,
+    botIntegritySecret: process.env.BOT_INTEGRITY_SECRET,
+    signatureTimestampSkewSeconds: parseInt(
+      process.env.SIGNATURE_TIMESTAMP_SKEW_SECONDS || '30',
+      10,
+    ),
+    signatureValidationLogs: process.env.SIGNATURE_VALIDATION_LOGS === 'true',
+    requestMaxContentLength: parseInt(process.env.REQUEST_MAX_CONTENT_LENGTH || '10485760', 10),
+    sensitiveOperationsEnabled: process.env.SENSITIVE_OPERATIONS_ENABLED !== 'false',
   },
 
   // Storage
   storage: {
-    provider: process.env.STORAGE_PROVIDER || 'local',
+    provider: process.env.STORAGE_DRIVER || 'local',
     minio: {
       endPoint: process.env.MINIO_ENDPOINT,
       port: parseInt(process.env.MINIO_PORT || '9000', 10),
@@ -100,8 +108,9 @@ export default () => ({
       accessKey: process.env.MINIO_ACCESS_KEY,
       secretKey: process.env.MINIO_SECRET_KEY,
       region: process.env.MINIO_REGION || 'us-east-1',
-      publicBucket: process.env.MINIO_PUBLIC_BUCKET || 'public',
-      privateBucket: process.env.MINIO_PRIVATE_BUCKET || 'private',
+      bucketName: process.env.MINIO_BUCKET_NAME,
+      publicFolder: 'public',
+      privateFolder: 'private',
     },
     aws: {
       region: process.env.AWS_REGION,
@@ -121,16 +130,6 @@ export default () => ({
   throttler: {
     ttl: parseInt(process.env.THROTTLER_TTL || '60', 10), // 60 seconds window
     limit: parseInt(process.env.THROTTLER_LIMIT || '100', 10), // 100 requests per minute (reasonable for API)
-    ignoreUserAgents: process.env.THROTTLER_IGNORE_USER_AGENTS
-      ? process.env.THROTTLER_IGNORE_USER_AGENTS.split(',')
-      : [],
-  },
-
-  // Monitoring and system services
-  monitoring: {
-    memoryMonitoringEnabled: process.env.MEMORY_MONITORING_ENABLED === 'true',
-    healthMonitoringEnabled: process.env.MONITORING_HEALTH_ENABLED === 'true',
-    circuitBreakerMonitoringEnabled: process.env.CIRCUIT_BREAKER_MONITORING === 'true',
   },
 
   // i18n
@@ -145,5 +144,54 @@ export default () => ({
   // Logging
   logging: {
     level: process.env.LOG_LEVEL || 'info',
+  },
+
+  // Business Logic Configuration
+  business: {
+    // Email verification
+    emailVerification: {
+      enabled: process.env.EMAIL_VERIFICATION_ENABLED !== 'false',
+      expiryMinutes: parseInt(process.env.EMAIL_VERIFICATION_EXPIRY_MINUTES || '60', 10),
+    },
+    // Password security policies
+    password: {
+      saltRounds: parseInt(process.env.PASSWORD_SALT_ROUNDS || '12', 10),
+      resetExpiryMinutes: parseInt(process.env.PASSWORD_RESET_EXPIRY_MINUTES || '30', 10),
+      minLength: parseInt(process.env.PASSWORD_MIN_LENGTH || '8', 10),
+      requireSpecial: process.env.PASSWORD_REQUIRE_SPECIAL !== 'false',
+    },
+    // Rate limiting
+    rateLimit: {
+      emailAttempts: parseInt(process.env.RATE_LIMIT_EMAIL_ATTEMPTS || '3', 10),
+      ipAttempts: parseInt(process.env.RATE_LIMIT_IP_ATTEMPTS || '10', 10),
+      lockoutMinutes: parseInt(process.env.RATE_LIMIT_LOCKOUT_MINUTES || '15', 10),
+    },
+    // File storage policies
+    files: {
+      urlExpiryHours: parseInt(process.env.FILE_URL_EXPIRY_HOURS || '24', 10),
+    },
+    // Session management
+    sessions: {
+      maxActive: parseInt(process.env.MAX_ACTIVE_SESSIONS || '3', 10),
+      inactivityTimeout: parseInt(process.env.SESSION_INACTIVITY_TIMEOUT || '120', 10),
+      extendOnActivity: process.env.SESSION_EXTEND_ON_ACTIVITY !== 'false',
+    },
+    // Address defaults
+    address: {
+      defaultCountry: process.env.DEFAULT_COUNTRY || null,
+      defaultState: process.env.DEFAULT_STATE || null,
+      requireFullAddress: process.env.REQUIRE_FULL_ADDRESS === 'true',
+    },
+    // OTP/2FA business configuration
+    otpBusiness: {
+      enabled: process.env.OTP_ENABLED !== 'false',
+      maxAttempts: parseInt(process.env.OTP_MAX_ATTEMPTS || '3', 10),
+      secretLength: parseInt(process.env.OTP_SECRET_LENGTH || '32', 10),
+    },
+    // Storage tiers
+    storageTiers: {
+      defaultTierLevel: parseInt(process.env.DEFAULT_STORAGE_TIER_LEVEL || '1', 10),
+      defaultAllowedFileConfig: process.env.DEFAULT_ALLOWED_FILE_CONFIG,
+    },
   },
 });

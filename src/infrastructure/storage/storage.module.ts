@@ -1,19 +1,17 @@
 import { Module, DynamicModule, forwardRef } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { StorageService } from '@core/services/storage.service';
 import { MinioStorageProvider } from './providers/minio.provider';
 import { S3StorageProvider } from './providers/s3.provider';
 import { FileRepository } from '../repositories/file.repository';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { TransactionContextService } from '../database/prisma/transaction-context.service';
-import storageConfig from '../config/storage.config';
 import { MulterModule } from '@nestjs/platform-express';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
 import { CoreModule } from '@core/core.module';
 
 @Module({
   imports: [
-    ConfigModule.forFeature(storageConfig),
     MulterModule.register({
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
@@ -38,7 +36,7 @@ import { CoreModule } from '@core/core.module';
         minioProvider: MinioStorageProvider,
         s3Provider: S3StorageProvider,
       ) => {
-        const driver = configService.get<string>('storage.driver');
+        const driver = configService.get<string>('storage.provider');
 
         if (driver === 's3') {
           return s3Provider;

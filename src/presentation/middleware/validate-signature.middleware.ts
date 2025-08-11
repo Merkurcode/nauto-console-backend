@@ -32,18 +32,21 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
     const invalidVars: string[] = [];
 
     // Check if REQUEST_INTEGRITY_ENABLED exists and is valid boolean
-    const integrityEnabled = this.configService.get<boolean>('security.requestIntegrityEnabled', false);
-    
+    const integrityEnabled = this.configService.get<boolean>(
+      'security.requestIntegrityEnabled',
+      false,
+    );
+
     // If integrity is enabled, check required secrets
     if (integrityEnabled) {
-      const serverSecret = this.configService.get<string>('SERVER_INTEGRITY_SECRET');
+      const serverSecret = this.configService.get<string>('security.serverIntegritySecret');
       if (!serverSecret) {
         missingVars.push('SERVER_INTEGRITY_SECRET');
       } else if (serverSecret.length < 32) {
         invalidVars.push('SERVER_INTEGRITY_SECRET (minimum 32 characters required)');
       }
 
-      const botSecret = this.configService.get<string>('BOT_INTEGRITY_SECRET');
+      const botSecret = this.configService.get<string>('security.botIntegritySecret');
       if (!botSecret) {
         missingVars.push('BOT_INTEGRITY_SECRET');
       } else if (botSecret.length < 32) {
@@ -59,36 +62,28 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
     }
 
     // Check timestamp skew
-    const timestampSkew = this.configService.get<string>('SIGNATURE_TIMESTAMP_SKEW_SECONDS');
-    if (timestampSkew === undefined || timestampSkew === null) {
-      missingVars.push('SIGNATURE_TIMESTAMP_SKEW_SECONDS');
-    } else {
-      const skewNumber = Number(timestampSkew);
-      if (isNaN(skewNumber) || skewNumber < 0 || skewNumber > 300) {
-        invalidVars.push('SIGNATURE_TIMESTAMP_SKEW_SECONDS (must be a number between 0 and 300)');
-      }
+    const timestampSkew = this.configService.get<number>(
+      'security.signatureTimestampSkewSeconds',
+      30,
+    );
+    if (timestampSkew < 0 || timestampSkew > 300) {
+      invalidVars.push(
+        'security.signatureTimestampSkewSeconds (must be a number between 0 and 300)',
+      );
     }
 
-    // Check validation logs
-    const validationLogs = this.configService.get<string>('SIGNATURE_VALIDATION_LOGS');
-    if (validationLogs === undefined || validationLogs === null) {
-      missingVars.push('SIGNATURE_VALIDATION_LOGS');
-    } else if (!['true', 'false'].includes(validationLogs.toLowerCase())) {
-      invalidVars.push('SIGNATURE_VALIDATION_LOGS (must be true or false)');
-    }
+    // Check validation logs - no validation needed as it's already boolean
 
     // Check max content length
-    const maxContentLength = this.configService.get<string>('REQUEST_MAX_CONTENT_LENGTH');
-    if (maxContentLength === undefined || maxContentLength === null) {
-      missingVars.push('REQUEST_MAX_CONTENT_LENGTH');
-    } else {
-      const lengthNumber = Number(maxContentLength);
-      if (isNaN(lengthNumber) || lengthNumber < 0 || lengthNumber > 104857600) {
-        // 100MB max
-        invalidVars.push(
-          'REQUEST_MAX_CONTENT_LENGTH (must be a number between 0 and 104857600 bytes)',
-        );
-      }
+    const maxContentLength = this.configService.get<number>(
+      'security.requestMaxContentLength',
+      10485760,
+    );
+    if (maxContentLength < 0 || maxContentLength > 104857600) {
+      // 100MB max
+      invalidVars.push(
+        'security.requestMaxContentLength (must be a number between 0 and 104857600 bytes)',
+      );
     }
 
     // Report errors
@@ -115,7 +110,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
     }
 
     // Log successful validation in development
-    const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+    const enableLogs = this.configService.get<boolean>('security.signatureValidationLogs', false);
     if (enableLogs) {
       this.logger.log(
         '✅ ValidateSignatureMiddleware: All environment variables validated successfully',
@@ -124,7 +119,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
   }
 
   use(req: Request, res: Response, next: NextFunction) {
-    const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+    const enableLogs = this.configService.get<boolean>('security.signatureValidationLogs', false);
 
     try {
       // Verificar si el middleware está habilitado
@@ -158,7 +153,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       const secret = this.getSecretFromJWT(req);
 
       const allowedTimestampSkewSeconds = this.configService.get<number>(
-        'SIGNATURE_TIMESTAMP_SKEW_SECONDS',
+        'security.signatureTimestampSkewSeconds',
         30,
       );
 
@@ -310,7 +305,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       }
 
       const maxAllowed = this.configService.get<number>(
-        'REQUEST_MAX_CONTENT_LENGTH',
+        'security.requestMaxContentLength',
         this.maxContentLength,
       );
 
@@ -327,7 +322,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
     // Si no hay JWT, en rutas que requieren firma usar SERVER_INTEGRITY_SECRET
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const serverSecret = this.configService.get<string>('SERVER_INTEGRITY_SECRET');
+      const serverSecret = this.configService.get<string>('security.serverIntegritySecret');
       if (!serverSecret) {
         throw new UnauthorizedException(
           'Invalid security configuration: missing SERVER_INTEGRITY_SECRET',
@@ -358,7 +353,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
       // Verificar si el usuario tiene rol BOT
       if (decoded.role && decoded.role.name === 'bot') {
-        const botSecret = this.configService.get<string>('BOT_INTEGRITY_SECRET');
+        const botSecret = this.configService.get<string>('security.botIntegritySecret');
         if (!botSecret) {
           throw new UnauthorizedException(
             'Invalid BOT security configuration: missing BOT_INTEGRITY_SECRET',
@@ -369,7 +364,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       }
 
       // Usuario normal, usar SERVER_INTEGRITY_SECRET
-      const serverSecret = this.configService.get<string>('SERVER_INTEGRITY_SECRET');
+      const serverSecret = this.configService.get<string>('security.serverIntegritySecret');
       if (!serverSecret) {
         throw new UnauthorizedException(
           'Invalid security configuration: missing SERVER_INTEGRITY_SECRET',
@@ -397,7 +392,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
     // Validar que REQUEST_INTEGRITY_SKIP_PATHS esté definido y sea un array
     if (!Array.isArray(REQUEST_INTEGRITY_SKIP_PATHS)) {
-      const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+      const enableLogs = this.configService.get<boolean>('security.signatureValidationLogs', false);
       if (enableLogs) {
         this.logger.error('REQUEST_INTEGRITY_SKIP_PATHS is not defined or is not an array');
       }
@@ -428,7 +423,10 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
 
         // Si la regex toma más de 10ms, considerar sospechoso
         if (performance.now() - startTime > 10) {
-          const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+          const enableLogs = this.configService.get<boolean>(
+            'security.signatureValidationLogs',
+            false,
+          );
           if (enableLogs) {
             this.logger.warn(`Regex took too long for pattern: ${skipPath}`);
           }
@@ -439,7 +437,10 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
         return result;
       } catch (error) {
         // Si hay error en la regex, no saltar validación
-        const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+        const enableLogs = this.configService.get<boolean>(
+          'security.signatureValidationLogs',
+          false,
+        );
         if (enableLogs) {
           this.logger.error({
             message: 'Error evaluating skip pattern',
@@ -536,7 +537,7 @@ export class ValidateSignatureMiddleware implements NestMiddleware {
       return JSON.stringify(req.body);
     } catch (_error) {
       // En caso de error, log sin exponer información sensible
-      const enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+      const enableLogs = this.configService.get<boolean>('security.signatureValidationLogs', false);
       if (enableLogs) {
         this.logger.error({
           message: 'Error processing body for signature',

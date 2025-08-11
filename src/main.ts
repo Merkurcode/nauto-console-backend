@@ -15,7 +15,6 @@ import { JwtService } from '@nestjs/jwt';
 import { REQUEST_INTEGRITY_SKIP_PATHS as _REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
 
 async function bootstrap() {
-
   // =========================================================================
   // APPLICATION SETUP
   // =========================================================================
@@ -44,8 +43,8 @@ async function bootstrap() {
   // =========================================================================
   // SECURITY MIDDLEWARE - Enhanced Security Headers
   // =========================================================================
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isDevelopment = configService.get<string>('env') === 'development';
+  const isProduction = configService.get<string>('env') === 'production';
 
   app.use(
     helmet({
@@ -210,7 +209,7 @@ async function bootstrap() {
 
   // Global exception filter
   const exceptionLogger = await app.resolve<ILogger>(LOGGER_SERVICE);
-  app.useGlobalFilters(new AllExceptionsFilter(exceptionLogger));
+  app.useGlobalFilters(new AllExceptionsFilter(exceptionLogger, configService));
 
   // =========================================================================
   // CORS CONFIGURATION
@@ -278,9 +277,9 @@ async function bootstrap() {
 
   // Swagger document configuration
   const config = new DocumentBuilder()
-    .setTitle(`${configService.get<string>('APP_NAME', 'API')} API`)
+    .setTitle(`${configService.get<string>('appName', 'API')} API`)
     .setDescription('Documentation.')
-    .setVersion(configService.get<string>('API_VERSION', '1.0'))
+    .setVersion(configService.get<string>('apiVersion', '1.0'))
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
     .addTag('roles', 'Role management endpoints')
@@ -478,7 +477,7 @@ async function bootstrap() {
         return request;
       },
     },
-    customSiteTitle: `${configService.get<string>('APP_NAME', 'Clean Architecture API')} - Clean Architecture API`,
+    customSiteTitle: `${configService.get<string>('appName', 'Clean Architecture API')} - Clean Architecture API`,
 
     // =========================================================================
     // CUSTOM DARK THEME CSS (Supabase Style)
@@ -1387,16 +1386,35 @@ async function bootstrap() {
 // GRACEFUL SHUTDOWN HANDLERS
 // =========================================================================
 let app: any = null;
+let globalLogger: any = null;
+
+// Safe logging function that tries Logger Service first, falls back to console
+const safeLog = {
+  warn: (message: string, ...args: any[]) => {
+    if (globalLogger) {
+      globalLogger.warn(message, ...args);
+    } else {
+      console.warn(message, ...args);
+    }
+  },
+  error: (message: string, ...args: any[]) => {
+    if (globalLogger) {
+      globalLogger.error(message, ...args);
+    } else {
+      console.error(message, ...args);
+    }
+  }
+};
 
 // Handle graceful shutdown on SIGTERM (Kubernetes, Docker, PM2)
 process.on('SIGTERM', async () => {
-  console.warn('SIGTERM signal received: closing HTTP server gracefully');
+  safeLog.warn('SIGTERM signal received: closing HTTP server gracefully');
 
   if (app) {
     try {
       // Give ongoing requests 10 seconds to complete
       const shutdownTimeout = setTimeout(() => {
-        console.error('Forced shutdown after timeout');
+        safeLog.error('Forced shutdown after timeout');
         process.exit(1);
       }, 10000);
 
@@ -1404,10 +1422,10 @@ process.on('SIGTERM', async () => {
       await app.close();
       clearTimeout(shutdownTimeout);
 
-      console.warn('HTTP server closed successfully');
+      safeLog.warn('HTTP server closed successfully');
       process.exit(0);
     } catch (error) {
-      console.error('Error during graceful shutdown:', error);
+      safeLog.error('Error during graceful shutdown:', error);
       process.exit(1);
     }
   } else {
@@ -1417,15 +1435,15 @@ process.on('SIGTERM', async () => {
 
 // Handle graceful shutdown on SIGINT (Ctrl+C)
 process.on('SIGINT', async () => {
-  console.warn('\nSIGINT signal received: closing HTTP server gracefully');
+  safeLog.warn('\nSIGINT signal received: closing HTTP server gracefully');
 
   if (app) {
     try {
       await app.close();
-      console.warn('HTTP server closed successfully');
+      safeLog.warn('HTTP server closed successfully');
       process.exit(0);
     } catch (error) {
-      console.error('Error during graceful shutdown:', error);
+      safeLog.error('Error during graceful shutdown:', error);
       process.exit(1);
     }
   } else {
@@ -1435,14 +1453,14 @@ process.on('SIGINT', async () => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', error => {
-  console.error('Uncaught Exception:', error);
+  safeLog.error('Uncaught Exception:', error);
   // Log the error but keep the process running
   // In production, you might want to restart the process
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  safeLog.error('Unhandled Rejection at:', promise, 'reason:', reason);
   // Log the error but keep the process running
 });
 
@@ -1452,8 +1470,14 @@ process.on('unhandledRejection', (reason, promise) => {
 bootstrap()
   .then(nestApp => {
     app = nestApp; // Store app reference for graceful shutdown
+    // Try to get logger service for shutdown handlers
+    try {
+      globalLogger = app.get('LOGGER_SERVICE');
+    } catch (error) {
+      // Logger service not available, will use console fallback
+    }
   })
   .catch(err => {
-    console.error('Error starting application:', err);
+    safeLog.error('Error starting application:', err);
     process.exit(1);
   });

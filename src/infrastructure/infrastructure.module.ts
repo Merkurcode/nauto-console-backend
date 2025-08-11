@@ -80,7 +80,7 @@ import {
         secret: configService.get<string>('jwt.secret'),
         signOptions: {
           expiresIn: configService.get<string>('jwt.accessExpiration'),
-          algorithm: configService.get('JWT_ALGORITHM', 'HS512'),
+          algorithm: configService.get('jwt.algorithm', 'HS512'),
         },
       }),
       inject: [ConfigService],
@@ -104,11 +104,7 @@ import {
         transactionContext: TransactionContextService,
         logger: ILogger,
       ) => new UserRepository(prisma, transactionContext, logger),
-      inject: [
-        PrismaService,
-        TransactionContextService,
-        LOGGER_SERVICE,
-      ],
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
       provide: COMPANY_REPOSITORY,

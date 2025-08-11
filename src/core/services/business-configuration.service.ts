@@ -73,11 +73,13 @@ export class BusinessConfigurationService implements OnModuleInit {
   } {
     this.auditConfigAccess('EMAIL_VERIFICATION_CONFIG');
 
-    const enabledValue = this.getValidatedBooleanConfig('EMAIL_VERIFICATION_ENABLED', false);
-    const expirationMinutes = this.getValidatedNumericConfig(
-      'EMAIL_VERIFICATION_EXPIRY_MINUTES',
+    const enabledValue = this.configService.get<boolean>(
+      'business.emailVerification.enabled',
+      false,
+    );
+    const expirationMinutes = this.configService.get<number>(
+      'business.emailVerification.expiryMinutes',
       60,
-      'EMAIL_VERIFICATION_EXPIRY_MINUTES',
     );
 
     return {
@@ -97,11 +99,16 @@ export class BusinessConfigurationService implements OnModuleInit {
     requireSpecialCharacters: boolean;
   } {
     return {
-      saltRounds: this.configService.get<number>('PASSWORD_SALT_ROUNDS', 12),
-      resetExpirationMinutes: this.configService.get<number>('PASSWORD_RESET_EXPIRY_MINUTES', 30),
-      minLength: this.configService.get<number>('PASSWORD_MIN_LENGTH', 8),
-      requireSpecialCharacters:
-        this.configService.get<string>('PASSWORD_REQUIRE_SPECIAL', 'true') === 'true',
+      saltRounds: this.configService.get<number>('business.password.saltRounds', 12),
+      resetExpirationMinutes: this.configService.get<number>(
+        'business.password.resetExpiryMinutes',
+        30,
+      ),
+      minLength: this.configService.get<number>('business.password.minLength', 8),
+      requireSpecialCharacters: this.configService.get<boolean>(
+        'business.password.requireSpecial',
+        true,
+      ),
     };
   }
 
@@ -115,9 +122,12 @@ export class BusinessConfigurationService implements OnModuleInit {
     lockoutDurationMinutes: number;
   } {
     return {
-      maxAttemptsPerEmail: this.configService.get<number>('RATE_LIMIT_EMAIL_ATTEMPTS', 3),
-      maxAttemptsPerIp: this.configService.get<number>('RATE_LIMIT_IP_ATTEMPTS', 10),
-      lockoutDurationMinutes: this.configService.get<number>('RATE_LIMIT_LOCKOUT_MINUTES', 15),
+      maxAttemptsPerEmail: this.configService.get<number>('business.rateLimit.emailAttempts', 3),
+      maxAttemptsPerIp: this.configService.get<number>('business.rateLimit.ipAttempts', 10),
+      lockoutDurationMinutes: this.configService.get<number>(
+        'business.rateLimit.lockoutMinutes',
+        15,
+      ),
     };
   }
 
@@ -130,7 +140,7 @@ export class BusinessConfigurationService implements OnModuleInit {
     urlExpirationHours: number;
   } {
     return {
-      urlExpirationHours: this.configService.get<number>('FILE_URL_EXPIRY_HOURS', 24),
+      urlExpirationHours: this.configService.get<number>('business.files.urlExpiryHours', 24),
       // maxFileSize and allowedFileTypes now managed by UserStorageConfig + StorageTiers
     };
   }
@@ -145,10 +155,12 @@ export class BusinessConfigurationService implements OnModuleInit {
     extendOnActivity: boolean;
   } {
     return {
-      maxActiveSessions: this.configService.get<number>('MAX_ACTIVE_SESSIONS', 3),
-      inactivityTimeoutMinutes: this.configService.get<number>('SESSION_INACTIVITY_TIMEOUT', 120),
-      extendOnActivity:
-        this.configService.get<string>('SESSION_EXTEND_ON_ACTIVITY', 'true') === 'true',
+      maxActiveSessions: this.configService.get<number>('business.sessions.maxActive', 3),
+      inactivityTimeoutMinutes: this.configService.get<number>(
+        'business.sessions.inactivityTimeout',
+        120,
+      ),
+      extendOnActivity: this.configService.get<boolean>('business.sessions.extendOnActivity', true),
     };
   }
 
@@ -161,14 +173,13 @@ export class BusinessConfigurationService implements OnModuleInit {
     defaultState: string | null;
     requireFullAddress: boolean;
   } {
-    const defaultCountry = this.configService.get<string>('DEFAULT_COUNTRY', 'México');
-    const defaultState = this.configService.get<string>('DEFAULT_STATE', 'Unknown');
-
     return {
-      defaultCountry: defaultCountry === 'null' ? null : defaultCountry,
-      defaultState: defaultState === 'null' ? null : defaultState,
-      requireFullAddress:
-        this.configService.get<string>('REQUIRE_FULL_ADDRESS', 'false') === 'true',
+      defaultCountry: this.configService.get<string>('business.address.defaultCountry', null),
+      defaultState: this.configService.get<string>('business.address.defaultState', null),
+      requireFullAddress: this.configService.get<boolean>(
+        'business.address.requireFullAddress',
+        false,
+      ),
     };
   }
 
@@ -183,10 +194,10 @@ export class BusinessConfigurationService implements OnModuleInit {
     secretLength: number;
   } {
     return {
-      enabled: this.configService.get<string>('OTP_ENABLED', 'true') === 'true',
+      enabled: this.configService.get<boolean>('business.otpBusiness.enabled', true),
       expirationMinutes: this.configService.get<number>('otp.expiration', 5),
-      maxAttempts: this.configService.get<number>('OTP_MAX_ATTEMPTS', 3),
-      secretLength: this.configService.get<number>('OTP_SECRET_LENGTH', 32),
+      maxAttempts: this.configService.get<number>('business.otpBusiness.maxAttempts', 3),
+      secretLength: this.configService.get<number>('business.otpBusiness.secretLength', 32),
     };
   }
 

@@ -7,6 +7,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { DomainException } from '@core/exceptions/domain-exceptions';
@@ -19,7 +20,10 @@ interface IHttpExceptionResponse {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  constructor(@Inject(LOGGER_SERVICE) private readonly logger: ILogger) {
+  constructor(
+    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    private readonly configService: ConfigService,
+  ) {
     this.logger.setContext(AllExceptionsFilter.name);
   }
 
@@ -89,7 +93,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     );
 
     // SECURITY: Don't expose internal errors in production
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = this.configService.get<string>('env') === 'production';
     const safeMessage =
       isProduction && status === 500 ? 'An error occurred processing your request' : message;
 

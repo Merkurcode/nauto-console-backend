@@ -88,7 +88,7 @@ export class PermissionsGuard implements CanActivate {
     const requiresSensitive = this.reflector.get<boolean>('sensitive', context.getHandler());
     if (requiresSensitive) {
       // Check if sensitive operations validation is enabled in config
-      const sensitiveOperationsEnabled = this.configService.get<boolean>('SENSITIVE_OPERATIONS_ENABLED', true);
+      const sensitiveOperationsEnabled = this.configService.get<boolean>('security.sensitiveOperationsEnabled', true);
 
       // If disabled in config, skip the 2FA requirement and allow access
       if (!sensitiveOperationsEnabled) {

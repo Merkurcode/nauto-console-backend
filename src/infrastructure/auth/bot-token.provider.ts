@@ -116,7 +116,7 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
     // Generar token SIN expiración (infinito)
     const accessToken = this.jwtService.sign(botPayload, {
       secret: this.configService.get('jwt.secret'),
-      algorithm: this.configService.get('JWT_ALGORITHM', 'HS512'),
+      algorithm: this.configService.get('jwt.algorithm', 'HS512'),
       // Sin expiresIn = token infinito
     });
 

@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { Controller, Get, HttpCode, HttpStatus, UseGuards, Query } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiTags,
   ApiOperation,
@@ -32,7 +33,10 @@ import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 @ApiBearerAuth('JWT-auth')
 @ApiExtraModels(AuditLogQueryDto)
 export class RootController {
-  constructor(private readonly queryBus: QueryBus) {}
+  constructor(
+    private readonly queryBus: QueryBus,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get('system-info')
   @HttpCode(HttpStatus.OK)
@@ -50,7 +54,7 @@ export class RootController {
       message: 'Sensitive system information',
       system: {
         version: '1.0.0',
-        environment: process.env.NODE_ENV,
+        environment: this.configService.get<string>('env', 'development'),
         uptime: process.uptime(),
       },
     };

@@ -47,14 +47,6 @@ export class ThrottlerGuard implements CanActivate {
       throttleLimit = ThrottleLimit.create(ttl, limit);
     }
 
-    // Check if user agent should be ignored
-    const ignoreUserAgents = this.configService.get<string[]>('throttler.ignoreUserAgents');
-    const userAgent = request.headers['user-agent'] || '';
-
-    if (ignoreUserAgents && ignoreUserAgents.some(agent => userAgent.includes(agent))) {
-      return true;
-    }
-
     // Use IP as the identifier for throttling (or user ID if authenticated)
     // Can be extended to use different strategies based on requirements
     const identifier = this.getIdentifier(request);

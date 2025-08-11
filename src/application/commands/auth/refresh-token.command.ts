@@ -82,7 +82,7 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get('jwt.secret'),
       expiresIn: this.configService.get('jwt.accessExpiration'),
-      algorithm: this.configService.get('JWT_ALGORITHM', 'HS512'),
+      algorithm: this.configService.get('jwt.algorithm', 'HS512'),
     });
 
     // Create new refresh token entry

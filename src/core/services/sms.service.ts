@@ -111,7 +111,7 @@ export class SmsService {
       userId,
     });
 
-    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.verificationCode(code, appName);
 
     // Get user's country phone code from database if userId is provided
@@ -166,7 +166,7 @@ export class SmsService {
       userId,
     });
 
-    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.welcomeWithPassword(firstName, appName, password, dashboardUrl);
 
     // Get user's country phone code from database if userId is provided
@@ -220,7 +220,7 @@ export class SmsService {
       userId,
     });
 
-    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.welcome(firstName, appName, dashboardUrl);
 
     // Get user's country phone code from database if userId is provided
@@ -272,7 +272,7 @@ export class SmsService {
       userId,
     });
 
-    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.passwordReset(firstName, appName);
 
     // Get user's country phone code from database if userId is provided
@@ -308,7 +308,7 @@ export class SmsService {
       userId,
     });
 
-    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.accountActivated(firstName, appName);
 
     // Get user's country phone code from database if userId is provided
@@ -346,7 +346,7 @@ export class SmsService {
       userId,
     });
 
-    const appName = this.configService.get('APP_NAME', 'Nauto Console');
+    const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.securityAlert(firstName, appName, action);
 
     // Get user's country phone code from database if userId is provided

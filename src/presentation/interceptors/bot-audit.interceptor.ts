@@ -3,6 +3,7 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Inject } fr
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';
@@ -31,6 +32,7 @@ export class BotAuditInterceptor implements NestInterceptor {
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
     private readonly auditLogService: AuditLogService,
+    private readonly configService: ConfigService,
   ) {
     this.logger.setContext(BotAuditInterceptor.name);
   }
@@ -121,7 +123,7 @@ export class BotAuditInterceptor implements NestInterceptor {
 
       // Contexto técnico
       technical: {
-        nodeEnv: process.env.NODE_ENV,
+        nodeEnv: this.configService.get<string>('env', 'development'),
         requestStartTime: startTime,
       },
     };
@@ -287,7 +289,7 @@ export class BotAuditInterceptor implements NestInterceptor {
         code: error.code || 'UNKNOWN_ERROR',
 
         // Stack trace solo en desarrollo
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        stack: this.configService.get<string>('env') === 'development' ? error.stack : undefined,
       },
 
       // Métricas

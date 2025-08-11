@@ -85,7 +85,7 @@ const commandHandlers = [
         secret: configService.get('jwt.secret'),
         signOptions: {
           expiresIn: configService.get('jwt.accessExpiration', '15m'),
-          algorithm: configService.get('JWT_ALGORITHM', 'HS512'),
+          algorithm: configService.get('jwt.algorithm', 'HS512'),
         },
       }),
     }),

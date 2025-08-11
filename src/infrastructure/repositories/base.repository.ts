@@ -50,7 +50,9 @@ export abstract class BaseRepository<T> {
       };
       this.baseLogger.error(logDetails, sanitizedError.stack);
     } else {
-      // Fallback to console if no logger available
+      // INTENTIONAL FALLBACK: Console logging when Logger Service is not available
+      // This ensures critical repository errors are never lost, even during DI container
+      // initialization or when logger injection fails in specific contexts
       console.error('[REPOSITORY ERROR]', errorDetails);
     }
 

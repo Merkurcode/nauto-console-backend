@@ -248,7 +248,7 @@ export class EmailService {
     companyName?: string,
     roles?: string[],
   ): Promise<boolean> {
-    const appName = this.configService.get('APP_NAME', 'Nuestra Aplicación');
+    const appName = this.configService.get('appName', 'Nuestra Aplicación');
     const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
     const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
     const dashboardUrl = `${frontendUrl}${dashboardPath}`;

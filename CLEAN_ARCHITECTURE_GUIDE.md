@@ -99,6 +99,104 @@ Esta guía documenta la implementación de Clean Architecture, DDD, CQRS y Event
 - ✅ Configurable e intercambiable
 - ❌ NO contiene lógica de negocio
 
+#### Configuration Management (`src/infrastructure/config/`)
+
+**REGLA FUNDAMENTAL**: Todas las variables de entorno deben ser gestionadas centralmente a través del sistema de configuración estructurada. **NUNCA** acceder a `process.env` directamente en servicios o controladores.
+
+**Estructura de Configuración**:
+
+```typescript
+// ✅ CORRECTO: src/infrastructure/config/configuration.ts
+export default () => ({
+  // Configuraciones agrupadas lógicamente
+  security: {
+    sessionSecret: process.env.SESSION_SECRET,
+    requestIntegrityEnabled: process.env.REQUEST_INTEGRITY_ENABLED === 'true', // String → Boolean
+    corsOrigins: process.env.ALLOWED_ORIGINS?.split(',') || [], // String → Array
+  },
+  database: {
+    url: process.env.DATABASE_URL,
+    poolTimeout: parseInt(process.env.DATABASE_POOL_TIMEOUT || '30', 10), // String → Number
+  },
+  features: {
+    otpEnabled: process.env.OTP_ENABLED === 'true',
+    emailVerificationEnabled: process.env.EMAIL_VERIFICATION_ENABLED === 'true',
+  },
+});
+```
+
+**Flujo de Implementación**:
+
+1. **Agregar variable a archivos .env**:
+```bash
+# .env.example y .env
+NEW_FEATURE_TIMEOUT=300
+ENABLE_ADVANCED_LOGGING=true
+```
+
+2. **Registrar en configuration.ts con transformación de tipos**:
+```typescript
+export default () => ({
+  features: {
+    advancedLoggingEnabled: process.env.ENABLE_ADVANCED_LOGGING === 'true',
+    newFeatureTimeout: parseInt(process.env.NEW_FEATURE_TIMEOUT || '300', 10),
+  },
+});
+```
+
+3. **Acceder mediante paths estructurados**:
+```typescript
+// ✅ CORRECTO - Path estructurado con tipo apropiado
+@Injectable()
+export class SomeService {
+  constructor(private configService: ConfigService) {}
+  
+  private isLoggingEnabled(): boolean {
+    return this.configService.get<boolean>('features.advancedLoggingEnabled', false);
+  }
+  
+  private getTimeout(): number {
+    return this.configService.get<number>('features.newFeatureTimeout', 300);
+  }
+}
+
+// ❌ INCORRECTO - Acceso directo sin transformación
+const enabled = this.configService.get<string>('ENABLE_ADVANCED_LOGGING'); // Wrong type!
+const timeout = process.env.NEW_FEATURE_TIMEOUT; // Bypasses configuration system!
+```
+
+**Categorías de Configuración Recomendadas**:
+- `security.*` - JWT, encriptación, CORS, autenticación
+- `database.*` - Conexiones, pools, timeouts
+- `storage.*` - MinIO, S3, file handling
+- `email.*` - SMTP, templates, providers
+- `features.*` - Feature flags, toggles
+- `logging.*` - Niveles, destinos, formatos
+- `external.*` - APIs externas, webhooks
+
+**Beneficios del Patrón Estructurado**:
+- **Type Safety**: Conversión automática de tipos (string → boolean/number)
+- **Default Values**: Valores por defecto centralizados y documentados
+- **Validation**: Un solo lugar para validar variables de entorno
+- **Organization**: Agrupación lógica por dominio funcional
+- **Maintainability**: Fácil localización y modificación de configuraciones
+- **Testing**: Fácil mockeo de configuraciones en tests
+
+**Anti-Patrones a Evitar**:
+```typescript
+// ❌ Acceso directo a process.env en servicios
+const dbUrl = process.env.DATABASE_URL;
+
+// ❌ Sin transformación de tipos
+const isEnabled = this.configService.get('FEATURE_ENABLED'); // Returns string "false" 
+
+// ❌ Múltiples defaults dispersos en el código
+const timeout = process.env.TIMEOUT || '30'; // Should be centralized
+
+// ❌ Configuraciones hardcodeadas
+const maxRetries = 3; // Should be configurable via env var
+```
+
 ### 4. Presentation Layer (`src/presentation/`)
 
 **Propósito**: Maneja la interacción con el mundo exterior.

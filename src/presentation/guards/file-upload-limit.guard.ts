@@ -23,7 +23,7 @@ export class FileUploadLimitGuard implements CanActivate {
     private readonly configService: ConfigService,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
-    this.enableLogs = this.configService.get<boolean>('SIGNATURE_VALIDATION_LOGS', false);
+    this.enableLogs = this.configService.get<boolean>('security.signatureValidationLogs', false);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

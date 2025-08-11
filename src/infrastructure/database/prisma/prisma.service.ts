@@ -11,11 +11,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     // Get connection pool configuration from environment (optimized for high concurrency)
-    const connectionLimit = configService.get<number>('DATABASE_CONNECTION_LIMIT', 50);
-    const poolTimeout = configService.get<number>('DATABASE_POOL_TIMEOUT', 30);
+    const connectionLimit = configService.get<number>('database.connectionLimit', 50);
+    const poolTimeout = configService.get<number>('database.poolTimeout', 30);
 
     // Build database URL with connection pool parameters
-    const baseUrl = configService.get<string>('DATABASE_URL');
+    const baseUrl = configService.get<string>('database.url');
     const urlWithPool = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}`;
 
     super({
@@ -24,7 +24,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           url: urlWithPool,
         },
       },
-      log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+      log:
+        configService.get<string>('env') === 'development'
+          ? ['query', 'info', 'warn', 'error']
+          : ['error'],
     });
 
     this.logger.log(
@@ -41,7 +44,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async cleanDatabase() {
-    if (process.env.NODE_ENV === 'production') {
+    if (this.configService.get<string>('env') === 'production') {
       return;
     }
 
