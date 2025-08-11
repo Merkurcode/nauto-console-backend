@@ -33,7 +33,6 @@ export class BusinessConfigurationService implements OnModuleInit {
     // MAX_FILE_SIZE_MB: removed - now managed by StorageTiers
     MAX_ACTIVE_SESSIONS: { min: 1, max: 100 },
     SESSION_INACTIVITY_TIMEOUT: { min: 5, max: 43200 }, // 5 minutes to 30 days (in minutes)
-    OTP_EXPIRY_MINUTES: { min: 1, max: 60 },
     OTP_MAX_ATTEMPTS: { min: 1, max: 10 },
     OTP_SECRET_LENGTH: { min: 16, max: 64 },
   };
@@ -185,7 +184,7 @@ export class BusinessConfigurationService implements OnModuleInit {
   } {
     return {
       enabled: this.configService.get<string>('OTP_ENABLED', 'true') === 'true',
-      expirationMinutes: this.configService.get<number>('OTP_EXPIRY_MINUTES', 5),
+      expirationMinutes: this.configService.get<number>('otp.expiration', 5),
       maxAttempts: this.configService.get<number>('OTP_MAX_ATTEMPTS', 3),
       secretLength: this.configService.get<number>('OTP_SECRET_LENGTH', 32),
     };
@@ -198,15 +197,10 @@ export class BusinessConfigurationService implements OnModuleInit {
   getFeatureFlags(): {
     emailVerificationRequired: boolean;
     otpRequired: boolean;
-    auditLoggingEnabled: boolean;
-    maintenanceMode: boolean;
   } {
     return {
       emailVerificationRequired: this.getEmailVerificationConfig().enabled,
       otpRequired: this.getOtpConfig().enabled,
-      auditLoggingEnabled:
-        this.configService.get<string>('AUDIT_LOGGING_ENABLED', 'true') === 'true',
-      maintenanceMode: this.configService.get<string>('MAINTENANCE_MODE', 'false') === 'true',
     };
   }
 

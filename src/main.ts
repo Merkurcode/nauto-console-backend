@@ -15,21 +15,6 @@ import { JwtService } from '@nestjs/jwt';
 import { REQUEST_INTEGRITY_SKIP_PATHS as _REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
 
 async function bootstrap() {
-  // =========================================================================
-  // MEMORY CONFIGURATION (must be set before app creation)
-  // =========================================================================
-  const maxOldSpaceSize = process.env.NODE_MAX_OLD_SPACE_SIZE;
-  const maxSemiSpaceSize = process.env.NODE_MAX_SEMI_SPACE_SIZE;
-
-  // SECURITY: Only log memory configuration in development
-  if (process.env.NODE_ENV === 'development') {
-    if (maxOldSpaceSize) {
-      console.warn(`Memory limit configured: ${maxOldSpaceSize}MB max heap`);
-    }
-    if (maxSemiSpaceSize) {
-      console.warn(`Semi space configured: ${maxSemiSpaceSize}MB`);
-    }
-  }
 
   // =========================================================================
   // APPLICATION SETUP
