@@ -1,6 +1,6 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { RoleService } from '@core/services/role.service';
-import { RoleDetailResponse } from '@application/dtos/_responses/role/role.response';
+import { IRoleDetailResponse } from '@application/dtos/_responses/role/role.response';
 import { RoleMapper } from '@application/mappers/role.mapper';
 
 export class GetRolesQuery implements IQuery {
@@ -11,7 +11,7 @@ export class GetRolesQuery implements IQuery {
 export class GetRolesQueryHandler implements IQueryHandler<GetRolesQuery> {
   constructor(private readonly roleService: RoleService) {}
 
-  async execute(): Promise<RoleDetailResponse[]> {
+  async execute(): Promise<IRoleDetailResponse[]> {
     const roles = await this.roleService.getAllRoles();
 
     // Use the mapper to convert each role to response DTO

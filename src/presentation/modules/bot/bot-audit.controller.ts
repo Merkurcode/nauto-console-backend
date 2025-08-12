@@ -17,8 +17,8 @@ import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 // DTOs and Mappers
 import { BotAuditQueryDto } from '@application/dtos/bot/bot-audit-query.dto';
 import {
-  BotAuditResponse,
-  BotStatisticsResponse,
+  IBotAuditResponse,
+  IBotStatisticsResponse,
 } from '@application/dtos/_responses/bot/bot-audit.response';
 import { BotAuditMapper } from '@application/mappers/bot-audit.mapper';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
@@ -87,7 +87,7 @@ export class BotAuditController {
   async queryBotActivity(
     @Query() queryDto: BotAuditQueryDto,
     @CurrentUser() user: IJwtPayload,
-  ): Promise<BotAuditResponse> {
+  ): Promise<IBotAuditResponse> {
     // Query BOT activity logs
     const auditLogs = await this.auditLogService.queryBotActivity(
       {
@@ -139,7 +139,7 @@ export class BotAuditController {
     @CurrentUser() user: IJwtPayload,
     @Query('fromDate') fromDate?: string,
     @Query('toDate') toDate?: string,
-  ): Promise<BotStatisticsResponse> {
+  ): Promise<IBotStatisticsResponse> {
     const from = fromDate ? new Date(fromDate) : new Date(Date.now() - 24 * 60 * 60 * 1000);
     const to = toDate ? new Date(toDate) : new Date();
 

@@ -1,6 +1,6 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { RoleService } from '@core/services/role.service';
-import { RoleDetailResponse } from '@application/dtos/_responses/role/role.response';
+import { IRoleDetailResponse } from '@application/dtos/_responses/role/role.response';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { RoleMapper } from '@application/mappers/role.mapper';
 
@@ -12,7 +12,7 @@ export class GetRoleQuery implements IQuery {
 export class GetRoleQueryHandler implements IQueryHandler<GetRoleQuery> {
   constructor(private readonly roleService: RoleService) {}
 
-  async execute(query: GetRoleQuery): Promise<RoleDetailResponse> {
+  async execute(query: GetRoleQuery): Promise<IRoleDetailResponse> {
     const { id } = query;
     const role = await this.roleService.getRoleById(id);
 

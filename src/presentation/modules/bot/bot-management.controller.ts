@@ -35,7 +35,8 @@ import { IUserDetailResponse } from '@application/dtos/_responses/user/user-deta
 // DTOs
 import { GenerateBotTokenDto } from '@application/dtos/bot/generate-bot-token.dto';
 import { CreateBotUserDto } from '@application/dtos/user/create-bot-user.dto';
-import { BotTokenResponse } from '@application/dtos/_responses/bot/bot-token.response';
+import { IBotTokenResponse } from '@application/dtos/_responses/bot/bot-token.response';
+import { BotTokenSwaggerDto } from '@application/dtos/_responses/bot/bot-token.swagger.dto';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 
 /**
@@ -150,7 +151,7 @@ export class BotManagementController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'BOT token generated successfully',
-    type: BotTokenResponse,
+    type: BotTokenSwaggerDto,
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -160,7 +161,7 @@ export class BotManagementController {
   async generateBotToken(
     @CurrentUser() user: IJwtPayload,
     @Body() generateBotTokenDto: GenerateBotTokenDto,
-  ): Promise<BotTokenResponse> {
+  ): Promise<IBotTokenResponse> {
     return this.commandBus.execute(
       new GenerateBotTokenCommand(
         user.sub,

@@ -1,6 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RoleService } from '@core/services/role.service';
-import { RoleDetailResponse } from '@application/dtos/_responses/role/role.response';
+import { IRoleDetailResponse } from '@application/dtos/_responses/role/role.response';
 import { RoleMapper } from '@application/mappers/role.mapper';
 
 export class CreateRoleCommand {
@@ -17,11 +17,11 @@ export class CreateRoleCommand {
 
 @CommandHandler(CreateRoleCommand)
 export class CreateRoleCommandHandler
-  implements ICommandHandler<CreateRoleCommand, RoleDetailResponse>
+  implements ICommandHandler<CreateRoleCommand, IRoleDetailResponse>
 {
   constructor(private readonly roleService: RoleService) {}
 
-  async execute(command: CreateRoleCommand): Promise<RoleDetailResponse> {
+  async execute(command: CreateRoleCommand): Promise<IRoleDetailResponse> {
     const {
       name,
       description,

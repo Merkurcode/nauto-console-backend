@@ -1,6 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RoleService } from '@core/services/role.service';
-import { RoleDetailResponse } from '@application/dtos/_responses/role/role.response';
+import { IRoleDetailResponse } from '@application/dtos/_responses/role/role.response';
 import { RoleMapper } from '@application/mappers/role.mapper';
 
 export class AssignPermissionCommand {
@@ -12,11 +12,11 @@ export class AssignPermissionCommand {
 
 @CommandHandler(AssignPermissionCommand)
 export class AssignPermissionCommandHandler
-  implements ICommandHandler<AssignPermissionCommand, RoleDetailResponse>
+  implements ICommandHandler<AssignPermissionCommand, IRoleDetailResponse>
 {
   constructor(private readonly roleService: RoleService) {}
 
-  async execute(command: AssignPermissionCommand): Promise<RoleDetailResponse> {
+  async execute(command: AssignPermissionCommand): Promise<IRoleDetailResponse> {
     const { roleId, permissionId } = command;
 
     // Use domain service with validation

@@ -34,11 +34,13 @@ import { ToggleAssistantStatusDto } from '@application/dtos/ai-assistant/toggle-
 import { ToggleFeatureStatusDto } from '@application/dtos/ai-assistant/toggle-feature-status.dto';
 
 import {
-  AIAssistantResponse,
-  CompanyAIAssistantResponse,
   IAIAssistantResponse,
   ICompanyAIAssistantResponse,
 } from '@application/dtos/_responses/ai-assistant/ai-assistant.response';
+import {
+  AIAssistantSwaggerDto,
+  CompanyAIAssistantSwaggerDto,
+} from '@application/dtos/_responses/ai-assistant/ai-assistant.swagger.dto';
 
 import { GetAvailableAssistantsQuery } from '@application/queries/ai-assistant/get-available-assistants.query';
 import { GetCompanyAssistantsQuery } from '@application/queries/ai-assistant/get-company-assistants.query';
@@ -69,7 +71,7 @@ export class AIAssistantController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Available AI assistants retrieved successfully',
-    type: [AIAssistantResponse],
+    type: [AIAssistantSwaggerDto],
     example: [
       {
         id: 'b2c3d4e5-f6g7-8901-bcde-f23456789012',
@@ -113,7 +115,7 @@ export class AIAssistantController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company AI assistants retrieved successfully',
-    type: [CompanyAIAssistantResponse],
+    type: [CompanyAIAssistantSwaggerDto],
     example: [
       {
         id: 'c3d4e5f6-g7h8-9012-cdef-g34567890123',

@@ -1,15 +1,15 @@
 import { Role } from '@core/entities/role.entity';
 import { Permission } from '@core/entities/permission.entity';
 import {
-  RoleDetailResponse,
-  PermissionResponse,
+  IRoleDetailResponse,
+  IPermissionResponse,
 } from '@application/dtos/_responses/role/role.response';
 
 export class RoleMapper {
   /**
    * Maps a Permission entity to a PermissionResponse DTO
    */
-  static toPermissionResponse(permission: Permission): PermissionResponse {
+  static toPermissionResponse(permission: Permission): IPermissionResponse {
     return {
       id: permission.id.getValue(),
       name: permission.name.getValue(),
@@ -22,7 +22,7 @@ export class RoleMapper {
   /**
    * Maps a Role entity to a RoleDetailResponse DTO
    */
-  static toDetailResponse(role: Role): RoleDetailResponse {
+  static toDetailResponse(role: Role): IRoleDetailResponse {
     return {
       id: role.id.getValue(),
       name: role.name,

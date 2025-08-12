@@ -1,14 +1,14 @@
 import { AuditLog } from '@core/entities/audit-log.entity';
 import {
-  BotAuditLogResponse,
-  BotAuditResponse,
+  IBotAuditLogResponse,
+  IBotAuditResponse,
 } from '@application/dtos/_responses/bot/bot-audit.response';
 
 export class BotAuditMapper {
   /**
    * Convert domain AuditLog entity to response DTO
    */
-  static toAuditLogResponse(auditLog: AuditLog): BotAuditLogResponse {
+  static toAuditLogResponse(auditLog: AuditLog): IBotAuditLogResponse {
     return {
       id: auditLog.id.getValue(),
       timestamp: auditLog.timestamp.toISOString(),
@@ -37,7 +37,7 @@ export class BotAuditMapper {
     auditLogs: AuditLog[],
     filters: Record<string, unknown>,
     appliedBy: string,
-  ): BotAuditResponse {
+  ): IBotAuditResponse {
     const logs = auditLogs.map(log => this.toAuditLogResponse(log));
 
     return {

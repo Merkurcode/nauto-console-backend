@@ -17,7 +17,8 @@ import { TransactionService } from '@infrastructure/database/prisma/transaction.
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CreateCompanyDto } from '@application/dtos/company/create-company.dto';
 import { UpdateCompanyDto } from '@application/dtos/company/update-company.dto';
-import { CompanyResponse } from '@application/dtos/_responses/company/company.response';
+import { ICompanyResponse } from '@application/dtos/_responses/company/company.response';
+import { CompanySwaggerDto } from '@application/dtos/_responses/company/company.swagger.dto';
 import { CreateCompanyCommand } from '@application/commands/company/create-company.command';
 import { UpdateCompanyCommand } from '@application/commands/company/update-company.command';
 import { DeleteCompanyCommand } from '@application/commands/company/delete-company.command';
@@ -82,10 +83,10 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of companies retrieved successfully',
-    type: [CompanyResponse],
+    type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
-  async getCompanies(@CurrentUser() currentUserPayload: IJwtPayload): Promise<CompanyResponse[]> {
+  async getCompanies(@CurrentUser() currentUserPayload: IJwtPayload): Promise<ICompanyResponse[]> {
     // Delegate all business logic to query handler
     return this.queryBus.execute(new GetCompaniesQuery(currentUserPayload.sub, currentUserPayload.tenantId));
   }
@@ -103,13 +104,13 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company retrieved successfully',
-    type: CompanyResponse,
+    type: CompanySwaggerDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Company not found',
   })
-  async getCompanyByHost(@Param('host') host: string): Promise<CompanyResponse> {
+  async getCompanyByHost(@Param('host') host: string): Promise<ICompanyResponse> {
     const hostVO = new Host(host);
 
     return this.queryBus.execute(new GetCompanyByHostQuery(hostVO));
@@ -128,10 +129,10 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Root companies retrieved successfully',
-    type: [CompanyResponse],
+    type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
-  async getRootCompanies(): Promise<CompanyResponse[]> {
+  async getRootCompanies(): Promise<ICompanyResponse[]> {
     return this.queryBus.execute(new GetRootCompaniesQuery());
   }
 
@@ -146,14 +147,14 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company retrieved successfully',
-    type: CompanyResponse,
+    type: CompanySwaggerDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Company not found',
   })
   @RequirePermissions('company:read')
-  async getCompany(@Param('id', ParseUUIDPipe) id: string): Promise<CompanyResponse> {
+  async getCompany(@Param('id', ParseUUIDPipe) id: string): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
     return this.queryBus.execute(new GetCompanyQuery(companyId));
@@ -178,7 +179,7 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Company created successfully',
-    type: CompanyResponse,
+    type: CompanySwaggerDto,
   })
   @ApiResponse({
     status: HttpStatus.CONFLICT,
@@ -192,7 +193,7 @@ export class CompanyController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
-  async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<CompanyResponse> {
+  async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<ICompanyResponse> {
     return this.executeInTransactionWithContext(async () => {
       const { name, description, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
 
@@ -245,7 +246,7 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company updated successfully',
-    type: CompanyResponse,
+    type: CompanySwaggerDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -263,7 +264,7 @@ export class CompanyController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
     @CurrentUser() currentUserPayload: IJwtPayload,
-  ): Promise<CompanyResponse> {
+  ): Promise<ICompanyResponse> {
     return this.executeInTransactionWithContext(async () => {
       const companyId = CompanyId.fromString(id);
 
@@ -353,13 +354,13 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company subsidiaries retrieved successfully',
-    type: [CompanyResponse],
+    type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
   async getCompanySubsidiaries(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUserPayload: IJwtPayload,
-  ): Promise<CompanyResponse[]> {
+  ): Promise<ICompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
 
     return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId, currentUserPayload.sub, currentUserPayload.tenantId));
@@ -379,13 +380,13 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Company hierarchy retrieved successfully',
-    type: CompanyResponse,
+    type: CompanySwaggerDto,
   })
   @RequirePermissions('company:read')
   async getCompanyHierarchy(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUserPayload: IJwtPayload,
-  ): Promise<CompanyResponse> {
+  ): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
     return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub, currentUserPayload.tenantId));
