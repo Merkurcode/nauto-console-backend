@@ -144,6 +144,7 @@ export default () => ({
   // Logging
   logging: {
     level: process.env.LOG_LEVEL || 'info',
+    prismaLogsEnabled: process.env.PRISMA_LOGS_ENABLED === 'true',
   },
 
   // Business Logic Configuration

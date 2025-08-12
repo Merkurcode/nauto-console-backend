@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
@@ -18,21 +18,25 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     const baseUrl = configService.get<string>('database.url');
     const urlWithPool = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}`;
 
+    // Configure Prisma logging based on PRISMA_LOGS_ENABLED environment variable
+    const prismaLogsEnabled = configService.get<boolean>('logging.prismaLogsEnabled', false);
+    const logConfig: Prisma.LogLevel[] = prismaLogsEnabled
+      ? ['query', 'info', 'warn', 'error']
+      : ['error'];
+
     super({
       datasources: {
         db: {
           url: urlWithPool,
         },
       },
-      log:
-        configService.get<string>('env') === 'development'
-          ? ['query', 'info', 'warn', 'error']
-          : ['error'],
+      log: logConfig,
     });
 
     this.logger.log(
       `Database pool configured: ${connectionLimit} connections, ${poolTimeout}s timeout`,
     );
+    this.logger.log(`Prisma database logs: ${prismaLogsEnabled ? 'enabled' : 'disabled'}`);
   }
 
   async onModuleInit() {
