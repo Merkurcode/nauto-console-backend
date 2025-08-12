@@ -34,6 +34,7 @@ import { PermissionExcludeService } from './services/permission-exclude.service'
 import { UserStorageConfigService } from './services/user-storage-config.service';
 import { StorageTiersService } from './services/storage-tiers.service';
 import { AuditLogService } from './services/audit-log.service';
+import { UserActivityLogService } from './services/user-activity-log.service';
 
 /**
  * Core Domain Module
@@ -77,6 +78,7 @@ import { AuditLogService } from './services/audit-log.service';
     StorageTiersService,
     // Additional domain services
     AuditLogService,
+    UserActivityLogService,
   ],
   exports: [
     // Export all domain services
@@ -113,6 +115,7 @@ import { AuditLogService } from './services/audit-log.service';
     StorageTiersService,
     // Additional domain services
     AuditLogService,
+    UserActivityLogService,
   ],
 })
 export class CoreModule {}
