@@ -14,6 +14,7 @@ import {
   IAuthValidationResult,
   ILoginFlowResult,
 } from '@shared/constants/auth-failure-reason.enum';
+import { ILoginAuthResponse } from '@application/dtos/_responses/auth/login-auth-response.interface';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { AuthResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
@@ -329,7 +330,7 @@ export class AuthenticationValidationService {
     user: User,
     userAgent?: string,
     ipAddress?: string,
-  ): Promise<AuthResponse> {
+  ): Promise<ILoginAuthResponse> {
     // Collect user permissions
     const userPermissions = await this.permissionCollectionService.collectUserPermissions(user);
 

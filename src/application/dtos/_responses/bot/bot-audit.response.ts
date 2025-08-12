@@ -44,13 +44,13 @@ export class BotAuditLogResponse {
   requestId?: string;
 
   @ApiProperty({ required: false })
-  query?: Record<string, any>;
+  query?: Record<string, unknown>;
 
   @ApiProperty({ required: false })
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 
   @ApiProperty({ required: false })
-  error?: Record<string, any>;
+  error?: Record<string, unknown>;
 }
 
 export class BotAuditResponse {
@@ -69,12 +69,12 @@ export class BotAuditResponse {
   @ApiProperty({
     description: 'Applied filters for this query',
   })
-  filters: Record<string, any>;
+  filters: Record<string, unknown>;
 }
 
 export class BotStatisticsResponse {
   @ApiProperty({ description: 'General audit statistics' })
-  general: any;
+  general: Record<string, unknown>;
 
   @ApiProperty({ description: 'BOT-specific statistics' })
   botSpecific: {

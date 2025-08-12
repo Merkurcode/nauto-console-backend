@@ -4,6 +4,7 @@ import { UserService } from '@core/services/user.service';
 import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { UpdateUserProfileDto } from '@application/dtos/user/update-user-profile.dto';
+import { IUpdateUserProfileServiceInput } from '@core/interfaces/user/update-user-profile-service-input.interface';
 
 export class UpdateUserProfileCommand {
   constructor(
@@ -27,7 +28,7 @@ export class UpdateUserProfileCommandHandler
     const updatedUser = await this.userService.updateUserProfile(
       targetUserId,
       currentUserId,
-      updateData,
+      updateData as IUpdateUserProfileServiceInput, // DTO to service type conversion
     );
 
     return UserMapper.toDetailResponse(updatedUser);

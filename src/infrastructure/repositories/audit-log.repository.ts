@@ -8,11 +8,21 @@ import {
   IAuditLogQueryResult,
   IAuditLogFilters,
 } from '@core/repositories/audit-log.repository.interface';
-import { AuditLog, AuditLogLevel, AuditLogType } from '@core/entities/audit-log.entity';
+import {
+  AuditLog,
+  AuditLogLevel,
+  AuditLogType,
+  AuditLogAction,
+} from '@core/entities/audit-log.entity';
 import { AuditLogId } from '@core/value-objects/audit-log-id.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import {
+  IPrismaAuditLogData,
+  IAuditLogMetadata,
+} from '@core/interfaces/repositories/prisma-data.interface';
+import { Prisma } from '@prisma/client';
 
 /**
  * Audit Log Repository Implementation using Prisma
@@ -49,7 +59,7 @@ export class AuditLogRepository extends BaseRepository<AuditLog> implements IAud
             action: auditLog.action,
             message: auditLog.message,
             userId: auditLog.userId?.getValue() || null,
-            metadata: auditLog.metadata as any,
+            metadata: auditLog.metadata as IAuditLogMetadata,
             timestamp: auditLog.timestamp,
             context: auditLog.context,
           },
@@ -312,8 +322,8 @@ export class AuditLogRepository extends BaseRepository<AuditLog> implements IAud
   /**
    * Build WHERE clause from filters
    */
-  private buildWhereClause(filters: IAuditLogFilters): any {
-    const where: any = {};
+  private buildWhereClause(filters: IAuditLogFilters): Prisma.AuditLogWhereInput {
+    const where: Prisma.AuditLogWhereInput = {};
 
     if (filters.level && filters.level.length > 0) {
       where.level = { in: filters.level };
@@ -350,10 +360,10 @@ export class AuditLogRepository extends BaseRepository<AuditLog> implements IAud
 
     if (filters.search) {
       where.OR = [
-        { message: { contains: filters.search, mode: 'insensitive' } },
-        { context: { contains: filters.search, mode: 'insensitive' } },
-        { type: { contains: filters.search, mode: 'insensitive' } },
-        { action: { contains: filters.search, mode: 'insensitive' } },
+        { message: { contains: filters.search, mode: 'insensitive' as const } },
+        { context: { contains: filters.search, mode: 'insensitive' as const } },
+        { type: { contains: filters.search, mode: 'insensitive' as const } },
+        { action: { contains: filters.search, mode: 'insensitive' as const } },
       ];
     }
 
@@ -363,7 +373,7 @@ export class AuditLogRepository extends BaseRepository<AuditLog> implements IAud
   /**
    * Build ORDER BY clause
    */
-  private buildOrderByClause(sortBy: string, sortOrder: 'asc' | 'desc'): any {
+  private buildOrderByClause(sortBy: string, sortOrder: 'asc' | 'desc'): Record<string, string> {
     const validSortFields = ['timestamp', 'level', 'type', 'context'];
     const field = validSortFields.includes(sortBy) ? sortBy : 'timestamp';
 
@@ -373,15 +383,23 @@ export class AuditLogRepository extends BaseRepository<AuditLog> implements IAud
   /**
    * Convert Prisma model to domain entity
    */
-  private toDomain(data: any): AuditLog {
+  private toDomain(data: IPrismaAuditLogData): AuditLog {
     return AuditLog.create(
-      data.level,
-      data.type,
-      data.action,
+      data.level as AuditLogLevel,
+      data.type as AuditLogType,
+      data.action as AuditLogAction,
       data.message,
       data.userId ? UserId.fromString(data.userId) : null,
-      data.metadata || {},
+      this.parseMetadata(data.metadata),
       data.context,
     );
+  }
+
+  private parseMetadata(jsonValue: unknown): IAuditLogMetadata {
+    if (typeof jsonValue === 'object' && jsonValue !== null && !Array.isArray(jsonValue)) {
+      return jsonValue as IAuditLogMetadata;
+    }
+
+    return {};
   }
 }

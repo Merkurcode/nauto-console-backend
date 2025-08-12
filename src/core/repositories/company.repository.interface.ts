@@ -1,6 +1,7 @@
 import { Company } from '@core/entities/company.entity';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { CompanyName } from '@core/value-objects/company-name.vo';
+import { JsonValue } from '@prisma/client/runtime/library';
 import { Host } from '@core/value-objects/host.vo';
 
 // Assistant assignment type for repository
@@ -9,15 +10,15 @@ export interface IAssistantAssignment {
     id: string;
     name: string;
     area: string;
-    description: unknown; // Prisma JsonValue type
+    description: JsonValue;
   };
   enabled: boolean;
   features?: {
     aiAssistantFeature: {
       id: string;
       keyName: string;
-      title: unknown; // Prisma JsonValue type
-      description: unknown; // Prisma JsonValue type
+      title: JsonValue;
+      description: JsonValue;
     };
     enabled: boolean;
   }[];

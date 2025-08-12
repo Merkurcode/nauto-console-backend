@@ -6,6 +6,7 @@ import { AuthenticationValidationService } from '@core/services/authentication-v
 import { I18nService } from 'nestjs-i18n';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { ILoginAuthResponse } from '@application/dtos/_responses/auth/login-auth-response.interface';
 
 export class LoginCommand implements ICommand {
   constructor(
@@ -71,10 +72,12 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
 
     // Complete authentication
     if (loginResult.nextStep === 'complete' && loginResult.authResponse) {
+      const authResp = loginResult.authResponse as ILoginAuthResponse;
+
       return {
-        ...loginResult.authResponse,
+        ...authResp,
         message: this.i18n.t('common.auth.login.success'),
-      };
+      } as AuthResponse;
     }
 
     // This should never happen with proper validation service implementation

@@ -541,13 +541,13 @@ export class AuditLog extends AggregateRoot {
     return sanitized;
   }
 
-  private sanitizeObject(obj: any): any {
+  private sanitizeObject(obj: unknown): unknown {
     if (Array.isArray(obj)) {
       return obj.map(item => this.sanitizeObject(item));
     }
 
     if (typeof obj === 'object' && obj !== null) {
-      const sanitized: any = {};
+      const sanitized: Record<string, unknown> = {};
       Object.keys(obj).forEach(key => {
         const sensitiveFields = [
           'password',

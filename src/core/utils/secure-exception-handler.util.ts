@@ -22,7 +22,7 @@ export interface ISecureExceptionResponse {
   timestamp: string;
   path?: string;
   correlationId?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface ISecureExceptionOptions {
@@ -225,8 +225,10 @@ export class SecureExceptionHandler {
         message: error.message || 'Unknown error',
         stack: error.stack,
         name: error.constructor.name,
-        statusCode: (error as any).statusCode || (error as any).status,
-        code: (error as any).code,
+        statusCode:
+          ((error as unknown as Record<string, unknown>).statusCode as number) ||
+          ((error as unknown as Record<string, unknown>).status as number),
+        code: (error as unknown as Record<string, unknown>).code as string,
         originalError: error,
       };
     }
@@ -240,14 +242,14 @@ export class SecureExceptionHandler {
     }
 
     if (typeof error === 'object' && error !== null) {
-      const obj = error as any;
+      const obj = error as Record<string, unknown>;
 
       return {
-        message: obj.message || obj.toString?.() || 'Object error',
-        stack: obj.stack,
+        message: typeof obj.message === 'string' ? obj.message : obj.toString?.() || 'Object error',
+        stack: typeof obj.stack === 'string' ? obj.stack : undefined,
         name: obj.constructor?.name || 'ObjectError',
-        statusCode: obj.statusCode || obj.status,
-        code: obj.code,
+        statusCode: (obj.statusCode as number) || (obj.status as number),
+        code: obj.code as string,
         originalError: error,
       };
     }
@@ -262,10 +264,13 @@ export class SecureExceptionHandler {
   /**
    * Categorize error to appropriate secure error code and HTTP status
    */
-  private static categorizeError(errorInfo: any): { code: SecureErrorCode; statusCode: number } {
+  private static categorizeError(errorInfo: Record<string, unknown>): {
+    code: SecureErrorCode;
+    statusCode: number;
+  } {
     const { message, name, statusCode, code } = errorInfo;
-    const lowerMessage = message.toLowerCase();
-    const lowerName = name.toLowerCase();
+    const lowerMessage = (typeof message === 'string' ? message : '').toLowerCase();
+    const lowerName = (typeof name === 'string' ? name : '').toLowerCase();
 
     // Security-related errors
     if (
@@ -355,21 +360,24 @@ export class SecureExceptionHandler {
     }
 
     // Default to internal error
-    return { code: SecureErrorCode.INTERNAL_ERROR, statusCode: statusCode || 500 };
+    return {
+      code: SecureErrorCode.INTERNAL_ERROR,
+      statusCode: typeof statusCode === 'number' ? statusCode : 500,
+    };
   }
 
   /**
    * Sanitize error details based on environment
    */
   private static sanitizeErrorDetails(
-    errorInfo: any,
+    errorInfo: Record<string, unknown>,
     level: SanitizationLevel,
-  ): Record<string, any> | null {
+  ): Record<string, unknown> | null {
     if (level === SanitizationLevel.STRICT) {
       return null; // No details in production
     }
 
-    const details: Record<string, any> = {};
+    const details: Record<string, unknown> = {};
 
     if (level === SanitizationLevel.BASIC) {
       // Limited details for staging
@@ -380,9 +388,9 @@ export class SecureExceptionHandler {
     } else if (level === SanitizationLevel.NONE) {
       // Full details for development
       details.type = errorInfo.name;
-      details.originalMessage = ErrorSanitizationUtil.sanitizeMessage(errorInfo.message);
+      details.originalMessage = ErrorSanitizationUtil.sanitizeMessage(errorInfo.message as string);
       if (errorInfo.stack) {
-        details.stack = ErrorSanitizationUtil.sanitizeMessage(errorInfo.stack);
+        details.stack = ErrorSanitizationUtil.sanitizeMessage(errorInfo.stack as string);
       }
       if (errorInfo.code) {
         details.code = errorInfo.code;
@@ -396,7 +404,7 @@ export class SecureExceptionHandler {
    * Log error securely with appropriate level
    */
   private static logError(
-    errorInfo: any,
+    errorInfo: Record<string, unknown>,
     options: {
       code: SecureErrorCode;
       correlationId: string;
@@ -413,14 +421,20 @@ export class SecureExceptionHandler {
       errorCode: code,
       context,
       userId,
-      message: ErrorSanitizationUtil.sanitizeMessage(errorInfo.message, sanitizationLevel),
+      message: ErrorSanitizationUtil.sanitizeMessage(
+        errorInfo.message as string,
+        sanitizationLevel,
+      ),
       errorType: errorInfo.name,
       timestamp: new Date().toISOString(),
     };
 
     // Include stack in development
     if (sanitizationLevel === SanitizationLevel.NONE && errorInfo.stack) {
-      logData['stack'] = ErrorSanitizationUtil.sanitizeMessage(errorInfo.stack, sanitizationLevel);
+      logData['stack'] = ErrorSanitizationUtil.sanitizeMessage(
+        errorInfo.stack as string,
+        sanitizationLevel,
+      );
     }
 
     if (this.logger) {
@@ -445,7 +459,7 @@ export class SecureExceptionHandler {
    * Audit security-relevant errors
    */
   private static auditSecurityError(
-    errorInfo: any,
+    errorInfo: Record<string, unknown>,
     options: {
       code: SecureErrorCode;
       correlationId: string;
@@ -461,7 +475,7 @@ export class SecureExceptionHandler {
       errorCode: options.code,
       context: options.context,
       userId: options.userId,
-      sanitizedMessage: ErrorSanitizationUtil.sanitizeMessage(errorInfo.message),
+      sanitizedMessage: ErrorSanitizationUtil.sanitizeMessage(errorInfo.message as string),
       timestamp: new Date().toISOString(),
     };
 
@@ -502,7 +516,7 @@ export class SecureExceptionHandler {
     error: unknown,
     defaultStatusCode: number = 500,
     options: ISecureExceptionOptions = {},
-  ): any {
+  ): Record<string, unknown> {
     const secureResponse = this.handleException(error, {
       ...options,
       auditRequired: true,

@@ -1,3 +1,5 @@
+import { ILoginAuthResponse } from '@application/dtos/_responses/auth/login-auth-response.interface';
+
 /**
  * Enum que define todas las posibles razones de fallo en la autenticación
  *
@@ -99,7 +101,7 @@ export interface IAuthValidationResult {
   success: boolean;
 
   /** Entidad User si la validación fue exitosa */
-  user?: any; // Will be User entity
+  user?: unknown; // Will be User entity
 
   /** Razón específica del fallo si success=false */
   failureReason?: AuthFailureReason;
@@ -180,7 +182,7 @@ export interface ILoginFlowResult {
   nextStep?: 'complete' | 'email_verification' | 'otp_required';
 
   /** Respuesta de autenticación completa (si nextStep='complete') */
-  authResponse?: any; // AuthResponse
+  authResponse?: ILoginAuthResponse;
 
   /** Indica si se requiere verificación de email */
   requiresEmailVerification?: boolean;
@@ -213,6 +215,6 @@ export interface ILoginFlowResult {
     /** Razón del fallo si aplica */
     failureReason?: AuthFailureReason;
     /** Cualquier metadata adicional */
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }

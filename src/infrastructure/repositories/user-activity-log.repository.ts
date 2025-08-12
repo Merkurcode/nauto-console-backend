@@ -12,13 +12,6 @@ import { Prisma } from '@prisma/client';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 
-interface IWhereClause extends Record<string, unknown> {
-  timestamp?: {
-    gte?: Date;
-    lte?: Date;
-  };
-}
-
 /**
  * User Activity Log Repository
  * NOTE: Activity logs are persisted outside of transactions by default
@@ -74,7 +67,7 @@ export class UserActivityLogRepository
     filters?: IUserActivityLogFilters,
   ): Promise<UserActivityLog[]> {
     return this.executeWithErrorHandling('findByUserId', async () => {
-      const where: IWhereClause = {
+      const where: Prisma.UserActivityLogWhereInput = {
         userId: userId.getValue(),
       };
 
@@ -89,7 +82,7 @@ export class UserActivityLogRepository
       if (filters?.action) {
         where.action = {
           contains: filters.action,
-          mode: 'insensitive',
+          mode: 'insensitive' as const,
         };
       }
 
@@ -118,7 +111,7 @@ export class UserActivityLogRepository
 
   async findAll(filters?: IUserActivityLogFilters): Promise<UserActivityLog[]> {
     return this.executeWithErrorHandling('findAll', async () => {
-      const where: IWhereClause = {};
+      const where: Prisma.UserActivityLogWhereInput = {};
 
       if (filters?.userId) {
         where.userId = filters.userId;
@@ -135,7 +128,7 @@ export class UserActivityLogRepository
       if (filters?.action) {
         where.action = {
           contains: filters.action,
-          mode: 'insensitive',
+          mode: 'insensitive' as const,
         };
       }
 
@@ -167,7 +160,7 @@ export class UserActivityLogRepository
     filters?: Omit<IUserActivityLogFilters, 'limit' | 'offset'>,
   ): Promise<number> {
     return this.executeWithErrorHandling('countByUserId', async () => {
-      const where: IWhereClause = {
+      const where: Prisma.UserActivityLogWhereInput = {
         userId: userId.getValue(),
       };
 
@@ -182,7 +175,7 @@ export class UserActivityLogRepository
       if (filters?.action) {
         where.action = {
           contains: filters.action,
-          mode: 'insensitive',
+          mode: 'insensitive' as const,
         };
       }
 
@@ -204,7 +197,7 @@ export class UserActivityLogRepository
 
   async countAll(filters?: Omit<IUserActivityLogFilters, 'limit' | 'offset'>): Promise<number> {
     return this.executeWithErrorHandling('countAll', async () => {
-      const where: IWhereClause = {};
+      const where: Prisma.UserActivityLogWhereInput = {};
 
       if (filters?.userId) {
         where.userId = filters.userId;
@@ -221,7 +214,7 @@ export class UserActivityLogRepository
       if (filters?.action) {
         where.action = {
           contains: filters.action,
-          mode: 'insensitive',
+          mode: 'insensitive' as const,
         };
       }
 

@@ -152,7 +152,7 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
    * Validate a BOT token - OPTIMIZED for high concurrency
    * This is the HOT PATH - called on every BOT request
    */
-  async validateToken(token: string): Promise<any | null> {
+  async validateToken(token: string): Promise<unknown | null> {
     try {
       // SECURITY FIX: Verify JWT signature FIRST before trusting any claims
       const verified = this.jwtService.verify(token, {

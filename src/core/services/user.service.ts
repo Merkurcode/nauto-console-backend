@@ -33,6 +33,7 @@ import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { AuthFailureReason, IAuthValidationResult } from '@shared/constants/auth-failure-reason.enum';
 import { BusinessConfigurationService } from './business-configuration.service';
+import { IUpdateUserProfileServiceInput } from '@core/interfaces/user/update-user-profile-service-input.interface';
 
 @Injectable()
 export class UserService {
@@ -929,7 +930,7 @@ return await this.userRepository.findByEmail(emailVO.getValue());
   async updateUserProfile(
     targetUserId: string,
     currentUserId: string,
-    updateData: any, // UpdateUserProfileDto type would be ideal but avoiding import
+    updateData: IUpdateUserProfileServiceInput,
   ): Promise<User> {
     // Get both users
     const [targetUser, currentUser] = await Promise.all([
@@ -1026,7 +1027,7 @@ return await this.userRepository.findByEmail(emailVO.getValue());
           : currentProfile?.avatarUrl,
         updateData.profile.bio !== undefined ? updateData.profile.bio : currentProfile?.bio,
         updateData.profile.birthDate !== undefined
-          ? updateData.profile.birthDate
+          ? (typeof updateData.profile.birthDate === 'string' ? updateData.profile.birthDate : updateData.profile.birthDate.toISOString())
           : currentProfile?.birthDate,
       );
       targetUser.setProfile(newProfile);

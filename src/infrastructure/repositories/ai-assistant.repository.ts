@@ -7,6 +7,10 @@ import { IAIAssistantRepository } from '@core/repositories/ai-assistant.reposito
 import { AssistantAreaEnum } from '@shared/constants/enums';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import {
+  IPrismaAIAssistantData,
+  IPrismaAIAssistantFeature,
+} from '@core/interfaces/repositories/prisma-data.interface';
 
 @Injectable()
 export class AIAssistantRepository
@@ -107,23 +111,31 @@ export class AIAssistantRepository
     });
   }
 
-  private mapToModel(data: Record<string, unknown>): AIAssistant {
+  private mapToModel(data: IPrismaAIAssistantData): AIAssistant {
     const props: IAIAssistantProps = {
-      id: data.id as string,
-      name: data.name as string,
+      id: data.id,
+      name: data.name,
       area: data.area as AssistantAreaEnum,
-      available: data.available as boolean,
-      description: data.description as Record<string, string>,
-      features: (data.features as Record<string, unknown>[]).map(feature => ({
-        id: feature.id as string,
-        keyName: feature.keyName as string,
-        title: feature.title as Record<string, string>,
-        description: feature.description as Record<string, string>,
+      available: data.available,
+      description: this.parseJsonAsRecord(data.description),
+      features: data.features.map((feature: IPrismaAIAssistantFeature) => ({
+        id: feature.id,
+        keyName: feature.keyName,
+        title: this.parseJsonAsRecord(feature.title),
+        description: this.parseJsonAsRecord(feature.description),
       })),
       createdAt: data.createdAt as Date,
       updatedAt: data.updatedAt as Date,
     };
 
     return new AIAssistant(props);
+  }
+
+  private parseJsonAsRecord(jsonValue: unknown): Record<string, string> {
+    if (typeof jsonValue === 'object' && jsonValue !== null && !Array.isArray(jsonValue)) {
+      return jsonValue as Record<string, string>;
+    }
+
+    return {};
   }
 }

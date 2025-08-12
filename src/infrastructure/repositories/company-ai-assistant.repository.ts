@@ -9,6 +9,10 @@ import {
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import {
+  IPrismaCompanyAIAssistantData,
+  IPrismaCompanyAIAssistantFeature,
+} from '@core/interfaces/repositories/prisma-data.interface';
 
 @Injectable()
 export class CompanyAIAssistantRepository
@@ -192,16 +196,16 @@ export class CompanyAIAssistantRepository
     });
   }
 
-  private mapToModel(data: Record<string, unknown>): CompanyAIAssistant {
+  private mapToModel(data: IPrismaCompanyAIAssistantData): CompanyAIAssistant {
     const props: ICompanyAIAssistantProps = {
-      id: data.id as string,
-      companyId: data.companyId as string,
-      aiAssistantId: data.aiAssistantId as string,
-      enabled: data.enabled as boolean,
-      features: (data.features as Record<string, unknown>[]).map(feature => ({
-        id: feature.id as string,
-        featureId: feature.featureId as string,
-        enabled: feature.enabled as boolean,
+      id: data.id,
+      companyId: data.companyId,
+      aiAssistantId: data.aiAssistantId,
+      enabled: data.enabled,
+      features: data.features.map((feature: IPrismaCompanyAIAssistantFeature) => ({
+        id: feature.id,
+        featureId: feature.featureId,
+        enabled: feature.enabled,
       })),
       createdAt: data.createdAt as Date,
       updatedAt: data.updatedAt as Date,

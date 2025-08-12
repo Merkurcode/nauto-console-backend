@@ -1,5 +1,8 @@
 import { Injectable, Inject, ConflictException, NotFoundException } from '@nestjs/common';
-import { ICompanyRepository } from '@core/repositories/company.repository.interface';
+import {
+  ICompanyRepository,
+  IAssistantAssignment,
+} from '@core/repositories/company.repository.interface';
 import { Company } from '@core/entities/company.entity';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { CompanyDescription } from '@core/value-objects/company-description.vo';
@@ -296,7 +299,7 @@ export class CompanyService {
 
   async getCompanyByIdWithAssistants(
     companyId: CompanyId,
-  ): Promise<{ company: Company; assistants: any[] }> {
+  ): Promise<{ company: Company; assistants: IAssistantAssignment[] }> {
     const { company, assistants } = await this.companyRepository.findByIdWithAssistants(companyId);
     if (!company) {
       throw new EntityNotFoundException('Company', companyId.getValue());
@@ -335,7 +338,7 @@ export class CompanyService {
     return await this.companyRepository.findSubsidiaries(companyId);
   }
 
-  async getCompanyHierarchy(companyId: CompanyId): Promise<any> {
+  async getCompanyHierarchy(companyId: CompanyId): Promise<Record<string, unknown>> {
     const company = await this.companyRepository.findById(companyId);
     if (!company) {
       throw new EntityNotFoundException('Company', companyId.getValue());
@@ -358,7 +361,7 @@ export class CompanyService {
 
   async getAllCompaniesWithAssistants(
     currentUserId: string,
-  ): Promise<{ companies: Company[]; assistantsMap: Map<string, any[]> }> {
+  ): Promise<{ companies: Company[]; assistantsMap: Map<string, IAssistantAssignment[]> }> {
     // Get current user for authorization
     const currentUser = await this.userRepository.findById(currentUserId);
     if (!currentUser) {

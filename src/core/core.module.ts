@@ -33,6 +33,7 @@ import { CompanyScheduleService } from './services/company-schedule.service';
 import { PermissionExcludeService } from './services/permission-exclude.service';
 import { UserStorageConfigService } from './services/user-storage-config.service';
 import { StorageTiersService } from './services/storage-tiers.service';
+import { AuditLogService } from './services/audit-log.service';
 
 /**
  * Core Domain Module
@@ -74,6 +75,8 @@ import { StorageTiersService } from './services/storage-tiers.service';
     PermissionExcludeService,
     UserStorageConfigService,
     StorageTiersService,
+    // Additional domain services
+    AuditLogService,
   ],
   exports: [
     // Export all domain services
@@ -108,6 +111,8 @@ import { StorageTiersService } from './services/storage-tiers.service';
     PermissionExcludeService,
     UserStorageConfigService,
     StorageTiersService,
+    // Additional domain services
+    AuditLogService,
   ],
 })
 export class CoreModule {}

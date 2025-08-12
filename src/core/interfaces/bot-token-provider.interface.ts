@@ -20,7 +20,7 @@ export interface IBotTokenProvider {
   /**
    * Validate a BOT token
    */
-  validateToken(token: string): Promise<any | null>;
+  validateToken(token: string): Promise<unknown | null>;
 
   /**
    * Revoke a BOT token

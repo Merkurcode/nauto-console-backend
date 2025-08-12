@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -1384,26 +1384,28 @@ async function bootstrap() {
     message: 'Swagger documentation available',
     url: `${appUrl}/docs`,
   });
+
+  return app;
 }
 
 // =========================================================================
 // GRACEFUL SHUTDOWN HANDLERS
 // =========================================================================
-let app: any = null;
-let globalLogger: any = null;
+let app: INestApplication | null = null;
+let globalLogger: ILogger | null = null;
 
 // Safe logging function that tries Logger Service first, falls back to console
 const safeLog = {
-  warn: (message: string, ...args: any[]) => {
+  warn: (message: string, ...args: unknown[]) => {
     if (globalLogger) {
-      globalLogger.warn(message, ...args);
+      globalLogger.warn(args.length > 0 ? `${message} ${args.join(' ')}` : message);
     } else {
       console.warn(message, ...args);
     }
   },
-  error: (message: string, ...args: any[]) => {
+  error: (message: string, ...args: unknown[]) => {
     if (globalLogger) {
-      globalLogger.error(message, ...args);
+      globalLogger.error(args.length > 0 ? `${message} ${args.join(' ')}` : message);
     } else {
       console.error(message, ...args);
     }
@@ -1472,12 +1474,12 @@ process.on('unhandledRejection', (reason, promise) => {
 // APPLICATION BOOTSTRAP
 // =========================================================================
 bootstrap()
-  .then(nestApp => {
+  .then(async nestApp => {
     app = nestApp; // Store app reference for graceful shutdown
     // Try to get logger service for shutdown handlers
     try {
-      globalLogger = app.get('LOGGER_SERVICE');
-    } catch (error) {
+      globalLogger = await app.resolve(LOGGER_SERVICE);
+    } catch (_error) {
       // Logger service not available, will use console fallback
     }
   })

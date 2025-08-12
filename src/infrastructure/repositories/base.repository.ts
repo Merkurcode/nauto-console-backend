@@ -2,6 +2,7 @@ import { ErrorSanitizationUtil } from '@core/utils/error-sanitization.util';
 import { Inject, Optional } from '@nestjs/common';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { IRepositoryError } from '@core/interfaces/repositories/query-filters.interface';
 
 /**
  * Base repository class with common error handling
@@ -24,7 +25,7 @@ export abstract class BaseRepository<T> {
    */
   protected handleError<R>(
     operation: string,
-    error: unknown,
+    error: IRepositoryError | Error | unknown,
     returnValue: R | null = null,
   ): R | null {
     // Always log errors to console if logger is not available

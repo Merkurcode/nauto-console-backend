@@ -24,9 +24,9 @@ export class BotAuditMapper {
       ipAddress: auditLog.metadata.ipAddress as string | undefined,
       userAgent: auditLog.metadata.userAgent as string | undefined,
       requestId: auditLog.metadata.requestId as string | undefined,
-      query: auditLog.metadata.query as Record<string, any> | undefined,
-      params: auditLog.metadata.params as Record<string, any> | undefined,
-      error: auditLog.metadata.error as Record<string, any> | undefined,
+      query: auditLog.metadata.query as Record<string, unknown> | undefined,
+      params: auditLog.metadata.params as Record<string, unknown> | undefined,
+      error: auditLog.metadata.error as Record<string, unknown> | undefined,
     };
   }
 
@@ -35,7 +35,7 @@ export class BotAuditMapper {
    */
   static toBotAuditResponse(
     auditLogs: AuditLog[],
-    filters: Record<string, any>,
+    filters: Record<string, unknown>,
     appliedBy: string,
   ): BotAuditResponse {
     const logs = auditLogs.map(log => this.toAuditLogResponse(log));
