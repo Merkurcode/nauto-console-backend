@@ -19,6 +19,7 @@ import { CompanyModule } from '@presentation/modules/company/company.module';
 import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assistant.module';
 import { CompanySchedulesModule } from '@presentation/modules/company-schedules/company-schedules.module';
 import { BotModule } from '@presentation/modules/bot/bot.module';
+import { UserActivityLogModule } from '@presentation/modules/user-activity-log/user-activity-log.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
@@ -100,6 +101,7 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     AIAssistantModule,
     CompanySchedulesModule,
     BotModule,
+    UserActivityLogModule,
   ],
   controllers: [],
   providers: [
