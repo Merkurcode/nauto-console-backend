@@ -15,7 +15,9 @@ export class LoggerService implements NestLoggerService, ILogger {
 
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     const env = this.configService.get<string>('env', 'development');
-    LoggerService.logLevels = this.getLogLevels(env);
+    const logLevel = this.configService.get<string>('logging.level', 'info');
+    // Initialize log levels based on LOG_LEVEL environment variable
+    LoggerService.logLevels = this.getLogLevels(env, logLevel);
   }
 
   setContext(context: string): ILogger {
@@ -97,7 +99,23 @@ export class LoggerService implements NestLoggerService, ILogger {
     return LoggerService.logLevels.includes(level);
   }
 
-  private getLogLevels(environment: string): LogLevel[] {
+  private getLogLevels(environment: string, logLevel: string): LogLevel[] {
+    // Define log level hierarchy
+    const levelHierarchy: Record<string, LogLevel[]> = {
+      error: ['error'],
+      warn: ['error', 'warn'],
+      info: ['error', 'warn', 'log'],
+      log: ['error', 'warn', 'log'],
+      debug: ['error', 'warn', 'log', 'debug'],
+      verbose: ['error', 'warn', 'log', 'debug', 'verbose'],
+    };
+
+    // Use LOG_LEVEL configuration if provided
+    if (levelHierarchy[logLevel.toLowerCase()]) {
+      return levelHierarchy[logLevel.toLowerCase()];
+    }
+
+    // Fallback to environment-based levels for backward compatibility
     if (environment === 'production') {
       return ['error', 'warn', 'log'];
     }
