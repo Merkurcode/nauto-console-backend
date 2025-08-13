@@ -52,6 +52,7 @@ lerna-debug.log*
 /prisma/.env
 /prisma/migrations/dev
 
+.claude/*
 CLAUDE.md
 NOTES.txt
 *.bat
