@@ -236,6 +236,41 @@ export const permissions = [
     action: 'read',
     excludeRoles: ALLOW_ALL_ROLES,
   },
+  {
+    name: 'ai-persona:read',
+    description: 'Can read AI persona information and configurations',
+    resource: 'ai-persona',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'ai-persona:write',
+    description: 'Can create and update AI personas',
+    resource: 'ai-persona',
+    action: 'write',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'ai-persona:delete',
+    description: 'Can delete AI personas',
+    resource: 'ai-persona',
+    action: 'delete',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'ai-persona:update',
+    description: 'Can update AI persona configurations and properties',
+    resource: 'ai-persona',
+    action: 'update',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'ai-persona:assign',
+    description: 'Can assign AI personas to companies',
+    resource: 'ai-persona',
+    action: 'assign',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {

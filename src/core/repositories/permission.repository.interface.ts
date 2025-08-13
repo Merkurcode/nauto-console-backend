@@ -4,7 +4,7 @@ import { Permission } from '../entities/permission.entity';
  * Permission repository interface
  *
  * Implementations:
- * - {@link PermissionRepository} - Production Prisma/PostgreSQL implementation
+ * - {@link Permission} - Production Prisma/PostgreSQL implementation
  */
 export interface IPermissionRepository {
   findById(id: string): Promise<Permission | null>;

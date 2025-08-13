@@ -20,12 +20,14 @@ import { AIAssistantModule } from '@presentation/modules/ai-assistant/ai-assista
 import { CompanySchedulesModule } from '@presentation/modules/company-schedules/company-schedules.module';
 import { BotModule } from '@presentation/modules/bot/bot.module';
 import { UserActivityLogModule } from '@presentation/modules/user-activity-log/user-activity-log.module';
+import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 // Global providers
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
+import { RequestCacheInterceptor } from '@infrastructure/caching/request-cache.interceptor';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
 import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
@@ -102,10 +104,15 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     CompanySchedulesModule,
     BotModule,
     UserActivityLogModule,
+    AIPersonaModule,
   ],
   controllers: [],
   providers: [
     // Global interceptors
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestCacheInterceptor,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,

@@ -14,6 +14,12 @@ export interface IUserActivityLogFilters {
   offset?: number;
 }
 
+/**
+ * User Activity Log repository interface
+ *
+ * Implementations:
+ * - {@link UserActivityLog} - Production Prisma/PostgreSQL implementation
+ */
 export interface IUserActivityLogRepository {
   save(userActivityLog: UserActivityLog): Promise<UserActivityLog>;
   findById(id: string): Promise<UserActivityLog | null>;

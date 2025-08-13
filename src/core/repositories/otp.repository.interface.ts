@@ -4,7 +4,7 @@ import { Otp } from '../entities/otp.entity';
  * OTP (One-Time Password) repository interface
  *
  * Implementations:
- * - {@link OtpRepository} - Production Prisma/PostgreSQL implementation
+ * - {@link Otp} - Production Prisma/PostgreSQL implementation
  */
 export interface IOtpRepository {
   findById(id: string): Promise<Otp | null>;

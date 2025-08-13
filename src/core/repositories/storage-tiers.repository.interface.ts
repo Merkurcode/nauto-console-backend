@@ -4,7 +4,7 @@ import { StorageTiers } from '../entities/storage-tiers.entity';
  * Storage tiers repository interface
  *
  * Implementations:
- * - {@link StorageTiersRepository} - Production Prisma/PostgreSQL implementation
+ * - {@link StorageTiers} - Production Prisma/PostgreSQL implementation
  */
 export interface IStorageTiersRepository {
   findById(id: string): Promise<StorageTiers | null>;

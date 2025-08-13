@@ -2,6 +2,9 @@ import { PasswordResetAttempt } from '../entities/password-reset-attempt.entity'
 
 /**
  * Password reset attempt repository interface
+ *
+ * Implementations:
+ * - {@link PasswordResetAttempt} - Production Prisma/PostgreSQL implementation
  */
 export interface IPasswordResetAttemptRepository {
   findByEmail(email: string): Promise<PasswordResetAttempt[]>;

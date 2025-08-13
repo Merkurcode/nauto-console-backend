@@ -1,6 +1,12 @@
 import { UserStorageConfig } from '@core/entities/user-storage-config.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
 
+/**
+ * User Storage Config repository interface
+ *
+ * Implementations:
+ * - {@link UserStorageConfig} - Production Prisma/PostgreSQL implementation
+ */
 export interface IUserStorageConfigRepository {
   findById(id: string): Promise<UserStorageConfig | null>;
   findByUserId(userId: UserId): Promise<UserStorageConfig | null>;

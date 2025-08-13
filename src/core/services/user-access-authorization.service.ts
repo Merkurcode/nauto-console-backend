@@ -51,7 +51,7 @@ export class UserAccessAuthorizationService {
       const hasAccess = await this.canAccessCompanyUser(currentUserCompanyId, targetUserCompanyId);
       if (!hasAccess) {
         throw new ForbiddenActionException(
-          'Admin users can only access users from their company or child companies.',
+          'Admin users can only access users from their own company.', //'Admin users can only access users from their company or child companies.',
           'access_user',
           'company_user',
         );
@@ -102,6 +102,9 @@ export class UserAccessAuthorizationService {
     if (currentUserCompanyId === targetUserCompanyId) {
       return true;
     }
+
+    // For now each user can access only his own company
+    return false;
 
     // Check if target company is a child company of the current user's company
     const targetCompany = await this.companyRepository.findById(

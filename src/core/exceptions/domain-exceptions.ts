@@ -52,6 +52,12 @@ export class InvalidValueObjectException extends DomainException {
   }
 }
 
+export class InvalidMultilingualFieldException extends DomainException {
+  constructor(message: string, language?: string) {
+    super(message, 'INVALID_MULTILINGUAL_FIELD', { language });
+  }
+}
+
 // Authentication exceptions
 export class AuthenticationException extends DomainException {
   constructor(message: string) {

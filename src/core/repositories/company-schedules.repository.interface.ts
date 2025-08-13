@@ -2,6 +2,12 @@ import { CompanySchedules } from '@core/entities/company-schedules.entity';
 import { CompanyScheduleId } from '@core/value-objects/company-schedule-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 
+/**
+ * Company Schedules repository interface
+ *
+ * Implementations:
+ * - {@link CompanySchedules} - Production Prisma/PostgreSQL implementation
+ */
 export interface ICompanySchedulesRepository {
   /**
    * Find schedule by ID

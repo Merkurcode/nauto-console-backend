@@ -4,7 +4,7 @@ import { User } from '../entities/user.entity';
  * User repository interface
  *
  * Implementations:
- * - {@link UserRepository} - Production Prisma/PostgreSQL implementation
+ * - {@link User} - Production Prisma/PostgreSQL implementation
  */
 export interface IUserRepository {
   findById(id: string): Promise<User | null>;

@@ -5,6 +5,7 @@ import * as permissionsSeeder from './seed-permissions';
 import * as rolePermissionsMapSeeder from './seed-role-permissions-map';
 import * as aIAssistantsSeeder from './seed-ai-assistants';
 import * as aIAssistantsFeaturesSeeder from './seed-ai-assistants-features';
+import * as aIPersonasSeeder from './seed-ai-personas';
 import * as storageTiersSeeder from './seed-storage-tiers';
 import * as userStorageConfigsSeeder from './seed-user-storage-configs';
 import * as readline from 'readline';
@@ -84,6 +85,9 @@ async function main() {
 
   // Create AI assistants features
   await aIAssistantsFeaturesSeeder.default(prisma);
+
+  // Create default AI personas
+  await aIPersonasSeeder.default(prisma);
 
   // Create default storage tiers
   await storageTiersSeeder.default(prisma);

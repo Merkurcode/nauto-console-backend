@@ -22,6 +22,10 @@ export const USER_ADDRESS_REPOSITORY = Symbol('UserAddressRepository');
 export const USER_STORAGE_CONFIG_REPOSITORY = Symbol('UserStorageConfigRepository');
 export const STORAGE_TIERS_REPOSITORY = Symbol('StorageTiersRepository');
 export const USER_ACTIVITY_LOG_REPOSITORY = Symbol('UserActivityLogRepository');
+export const PERSONA_REPOSITORY = Symbol('PersonaRepository');
+export const COMPANY_PERSONA_REPOSITORY = Symbol('CompanyPersonaRepository');
+export const AI_PERSONA_REPOSITORY = Symbol('AIPersonaRepository');
+export const COMPANY_AI_PERSONA_REPOSITORY = Symbol('CompanyAIPersonaRepository');
 
 // Repository tokens object
 export const REPOSITORY_TOKENS = {
@@ -48,6 +52,10 @@ export const REPOSITORY_TOKENS = {
   USER_STORAGE_CONFIG_REPOSITORY,
   STORAGE_TIERS_REPOSITORY,
   USER_ACTIVITY_LOG_REPOSITORY,
+  PERSONA_REPOSITORY,
+  COMPANY_PERSONA_REPOSITORY,
+  AI_PERSONA_REPOSITORY,
+  COMPANY_AI_PERSONA_REPOSITORY,
 } as const;
 
 // Service injection tokens

@@ -1,5 +1,11 @@
 import { Session } from '@core/entities/session.entity';
 
+/**
+ * Session repository interface
+ *
+ * Implementations:
+ * - {@link Sessions} - Production Prisma/PostgreSQL implementation
+ */
 export interface ISessionRepository {
   create(session: Session): Promise<Session>;
   findById(id: string): Promise<Session | null>;

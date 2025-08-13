@@ -223,6 +223,9 @@ model User {
   botTokensIssued BotToken[] @relation("BotTokenIssuer")
   botTokensRevoked BotToken[] @relation("BotTokenRevoker")
   storageConfig UserStorageConfig?
+  aiPersonasCreated AIPersona[] @relation("AIPersonaCreator")
+  aiPersonasUpdated AIPersona[] @relation("AIPersonaUpdater")
+  companyAIPersonasAssigned CompanyAIPersona[]
   
   @@index([companyId])
   @@unique([agentPhone, companyId])
@@ -386,6 +389,8 @@ model Company {
   assistants    CompanyAIAssistant[]
   schedules     CompanySchedules[]
   botTokens     BotToken[]
+  aiPersonas      AIPersona[]
+  companyAIPersonas CompanyAIPersona[]
   
   @@index([parentCompanyId])
 }
@@ -543,4 +548,54 @@ model BotToken {
   @@index([companyId, isActive]) // Company tokens
   @@index([isActive, revokedAt]) // Active/revoked status
   @@index([issuedBy, issuedAt]) // Issued by user
+}
+
+model AIPersona {
+  id           String    @id @default(uuid())
+  name         String    // Max 10 chars - validated in DTO
+  keyName      String    // Normalized name: lowercase, no accents, spaces to underscores
+  tone         Json      // JSON object with language keys: {"es-MX": "Professional", "en-US": "Professional"}
+  personality  Json      // JSON object with language keys: {"es-MX": "Analítico", "en-US": "Analytical"}
+  objective    Json      // JSON object with language keys: {"es-MX": "Proporcionar soluciones", "en-US": "Provide solutions"}
+  shortDetails Json      // JSON object with language keys: {"es-MX": "Descripción breve", "en-US": "Brief description"} - Max 75 chars per language
+  isDefault    Boolean   @default(false)  // True for system-wide default personas (root only)
+  companyId    String?   // NULL for default personas, populated for company-specific personas
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+
+  // Relations
+  company      Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  creator      User?     @relation("AIPersonaCreator", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updater      User?     @relation("AIPersonaUpdater", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  
+  // Junction table for company assignments
+  companyAssignments CompanyAIPersona[]
+
+  // Unique constraints
+  @@unique([keyName, companyId]) // keyName must be unique within company or within defaults
+  @@index([isDefault])
+  @@index([companyId])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+// Junction table: Each company can have only one active AI persona
+model CompanyAIPersona {
+  id           String    @id @default(uuid())
+  companyId    String    @unique  // UNIQUE ensures only one AI persona per company
+  aiPersonaId  String
+  isActive     Boolean   @default(true)
+  assignedAt   DateTime  @default(now())
+  assignedBy   String?
+
+  // Relations
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  aiPersona    AIPersona @relation(fields: [aiPersonaId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignedUser User?     @relation(fields: [assignedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([aiPersonaId])
+  @@index([isActive])
 }

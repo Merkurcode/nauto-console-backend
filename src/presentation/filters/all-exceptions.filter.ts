@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { DomainException } from '@core/exceptions/domain-exceptions';
+import { PrismaErrorMapper } from './prisma-error-mapper';
 
 interface IHttpExceptionResponse {
   message: string | string[];
@@ -36,22 +37,79 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof DomainException) {
       // Map domain exception codes to HTTP status codes (same logic as DomainExceptionFilter)
       const domainStatusMap = new Map([
+        // Entity exceptions
+        ['ENTITY_NOT_FOUND', 404],
+        ['ENTITY_ALREADY_EXISTS', 409],
+
+        // Input validation exceptions
+        ['INVALID_INPUT', 400],
+        ['INVALID_VALUE_OBJECT', 400],
+
+        // Authentication exceptions
+        ['AUTHENTICATION_FAILED', 401],
+        ['INVALID_CREDENTIALS', 401],
+        ['ACCOUNT_LOCKED', 403],
+        ['TWO_FACTOR_REQUIRED', 401],
+        ['INVALID_SESSION', 401],
+
+        // Authorization exceptions
+        ['FORBIDDEN_ACTION', 403],
+        ['INSUFFICIENT_PERMISSIONS', 403],
+
+        // Rate limiting exceptions
         ['THROTTLING_VIOLATION', 429],
         ['RATE_LIMIT_EXCEEDED', 429],
-        ['ENTITY_NOT_FOUND', 404],
-        ['AUTHENTICATION_FAILED', 401],
-        ['FORBIDDEN_ACTION', 403],
-        ['INVALID_INPUT', 400],
-        // Add more mappings as needed
+
+        // Business rule violations
+        ['BUSINESS_RULE_VIOLATION', 400],
+
+        // AI Persona domain exceptions
+        ['AI_PERSONA_NOT_FOUND', 404],
+        ['AI_PERSONA_KEY_NAME_ALREADY_EXISTS', 409],
+        ['INVALID_AI_PERSONA_NAME', 400],
+        ['INVALID_AI_PERSONA_KEY_NAME', 400],
+        ['INVALID_AI_PERSONA_TONE', 400],
+        ['INVALID_AI_PERSONA_PERSONALITY', 400],
+        ['INVALID_AI_PERSONA_OBJECTIVE', 400],
+        ['INVALID_AI_PERSONA_SHORT_DETAILS', 400],
+        ['UNAUTHORIZED_AI_PERSONA_MODIFICATION', 403],
+        ['COMPANY_ALREADY_HAS_ACTIVE_AI_PERSONA', 409],
+        ['CANNOT_MODIFY_DEFAULT_AI_PERSONA', 403],
+        ['CANNOT_DELETE_DEFAULT_AI_PERSONA', 403],
+        ['AI_PERSONA_COMPANY_ASSIGNMENT_REMOVAL_FAILED', 500],
       ]);
 
       const status = domainStatusMap.get(exception.code) || 500;
+
+      // Get appropriate error name based on status
+      const getErrorName = (statusCode: number): string => {
+        switch (statusCode) {
+          case 400:
+            return 'Bad Request';
+          case 401:
+            return 'Unauthorized';
+          case 403:
+            return 'Forbidden';
+          case 404:
+            return 'Not Found';
+          case 409:
+            return 'Conflict';
+          case 429:
+            return 'Too Many Requests';
+          case 500:
+            return 'Internal Server Error';
+          default:
+            return 'Error';
+        }
+      };
+
       const errorResponse = {
         statusCode: status,
         timestamp: new Date().toISOString(),
-        error: status === 429 ? 'Too Many Requests' : 'Error',
+        error: getErrorName(status),
         message: exception.message,
         code: exception.code,
+        ...(exception.context && { details: exception.context }),
       };
 
       response.status(status).json(errorResponse);
@@ -75,7 +133,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = (exceptionResponse as string) || exception.message;
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      // SECURITY: Handle Prisma database errors with user-friendly messages
+      if (PrismaErrorMapper.isPrismaError(exception.message)) {
+        const mappedError = PrismaErrorMapper.mapError(exception.message);
+        message = mappedError.message;
+        status = mappedError.status;
+        error = mappedError.error;
+      } else {
+        message = exception.message;
+      }
     }
 
     // Log the error with structured data

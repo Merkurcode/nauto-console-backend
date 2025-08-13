@@ -4,7 +4,7 @@ import { File } from '../entities/file.entity';
  * File repository interface
  *
  * Implementations:
- * - {@link FileRepository} - Production Prisma/PostgreSQL implementation
+ * - {@link File} - Production Prisma/PostgreSQL implementation
  */
 export interface IFileRepository {
   findById(id: string): Promise<File | null>;

@@ -6,6 +6,7 @@ import { Session } from '@core/entities/session.entity';
 import { BaseRepository } from './base.repository';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class SessionRepository extends BaseRepository<Session> implements ISessionRepository {
@@ -13,8 +14,9 @@ export class SessionRepository extends BaseRepository<Session> implements ISessi
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    super(logger, requestCache);
   }
 
   private get client() {
@@ -44,13 +46,18 @@ export class SessionRepository extends BaseRepository<Session> implements ISessi
   }
 
   async findBySessionToken(sessionToken: string): Promise<Session | null> {
-    return this.executeWithErrorHandling('findBySessionToken', async () => {
-      const session = await this.client.sessions.findUnique({
-        where: { sessionToken },
-      });
+    return this.executeWithErrorHandling(
+      'findBySessionToken',
+      async () => {
+        const session = await this.client.sessions.findUnique({
+          where: { sessionToken },
+        });
 
-      return session ? Session.fromData(session) : null;
-    });
+        return session ? Session.fromData(session) : null;
+      },
+      undefined,
+      { sessionToken },
+    );
   }
 
   async findByRefreshToken(refreshToken: string): Promise<Session | null> {

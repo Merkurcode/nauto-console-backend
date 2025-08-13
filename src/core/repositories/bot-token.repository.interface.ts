@@ -6,6 +6,9 @@ import { CompanyId } from '@core/value-objects/company-id.vo';
 /**
  * BOT Token Repository Interface
  * Defines operations for BOT token persistence
+ *
+ * Implementations:
+ * - {@link BotToken} - Production Prisma/PostgreSQL implementation
  */
 export interface IBotTokenRepository {
   /**

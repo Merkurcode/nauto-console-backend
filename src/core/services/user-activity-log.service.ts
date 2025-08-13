@@ -53,8 +53,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -81,8 +81,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -109,8 +109,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -137,8 +137,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -165,8 +165,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -193,8 +193,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -221,8 +221,8 @@ export class UserActivityLogService {
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
 
     // Publish domain events
-    await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-    userActivityLog.markEventsAsCommitted();
+    //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+    //userActivityLog.markEventsAsCommitted();
 
     return savedLog;
   }
@@ -395,8 +395,8 @@ export class UserActivityLogService {
 
         // Save and publish events asynchronously
         await this.userActivityLogRepository.save(userActivityLog);
-        await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-        userActivityLog.markEventsAsCommitted();
+        //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
+        //userActivityLog.markEventsAsCommitted();
 
         this.logger.debug(`Activity logged asynchronously for user ${userId}: ${action}`);
       } catch (error) {

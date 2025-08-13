@@ -29,6 +29,7 @@ import { CompanyService } from './services/company.service';
 import { RoleService } from './services/role.service';
 import { PermissionService } from './services/permission.service';
 import { AIAssistantService } from './services/ai-assistant.service';
+import { AIPersonaService } from './services/ai-persona.service';
 import { CompanyScheduleService } from './services/company-schedule.service';
 import { PermissionExcludeService } from './services/permission-exclude.service';
 import { UserStorageConfigService } from './services/user-storage-config.service';
@@ -72,6 +73,7 @@ import { UserActivityLogService } from './services/user-activity-log.service';
     RoleService,
     PermissionService,
     AIAssistantService,
+    AIPersonaService,
     CompanyScheduleService,
     PermissionExcludeService,
     UserStorageConfigService,
@@ -109,6 +111,7 @@ import { UserActivityLogService } from './services/user-activity-log.service';
     RoleService,
     PermissionService,
     AIAssistantService,
+    AIPersonaService,
     CompanyScheduleService,
     PermissionExcludeService,
     UserStorageConfigService,

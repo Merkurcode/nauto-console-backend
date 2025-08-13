@@ -17,6 +17,16 @@ export const CanWrite = (resource: string) => RequirePermissions(`${resource}:wr
 export const CanDelete = (resource: string) => RequirePermissions(`${resource}:delete`);
 
 /**
+ * Helper decorator for requiring update permission on a resource
+ */
+export const CanUpdate = (resource: string) => RequirePermissions(`${resource}:update`);
+
+/**
+ * Helper decorator for requiring assign permission on a resource
+ */
+export const CanAssign = (resource: string) => RequirePermissions(`${resource}:assign`);
+
+/**
  * Helper decorator for requiring multiple permissions on a resource
  */
 export const ResourcePermissions = (resource: string, actions: string[]) => {

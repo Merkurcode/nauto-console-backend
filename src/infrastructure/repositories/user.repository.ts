@@ -27,6 +27,7 @@ import { StateId as _StateId } from '@core/value-objects/state-id.vo';
 import { UserId as _UserId } from '@core/value-objects/user-id.vo';
 import { AgentPhone } from '@core/value-objects/agent-phone.vo';
 import { SecondLastName } from '@core/value-objects/second-lastname.vo';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 // Define a type for User with its relations (roles with nested permissions)
 type UserWithRelations = PrismaUser & {
@@ -47,8 +48,9 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    super(logger, requestCache);
   }
 
   private get client() {
@@ -85,34 +87,39 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.executeWithErrorHandling('findById', async () => {
-      const userRecord = await this.client.user.findUnique({
-        where: { id },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
+    return this.executeWithErrorHandling(
+      'findById',
+      async () => {
+        const userRecord = await this.client.user.findUnique({
+          where: { id },
+          include: {
+            roles: {
+              include: {
+                role: {
+                  include: {
+                    permissions: {
+                      include: {
+                        permission: true,
+                      },
                     },
                   },
                 },
               },
             },
+            profile: true,
+            address: true,
           },
-          profile: true,
-          address: true,
-        },
-      });
+        });
 
-      if (!userRecord) {
-        return null;
-      }
+        if (!userRecord) {
+          return null;
+        }
 
-      return this.mapToModel(userRecord as UserWithRelations);
-    });
+        return this.mapToModel(userRecord as UserWithRelations);
+      },
+      undefined,
+      { id },
+    );
   }
 
   async findByEmail(email: string): Promise<User | null> {

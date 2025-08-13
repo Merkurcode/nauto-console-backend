@@ -36,6 +36,9 @@ export interface IAuditLogQueryResult {
 /**
  * Repository interface for audit log persistence
  * Following Clean Architecture - interface in domain layer
+ *
+ * Implementations:
+ * - {@link AuditLog} - Production Prisma/PostgreSQL implementation
  */
 export interface IAuditLogRepository {
   /**

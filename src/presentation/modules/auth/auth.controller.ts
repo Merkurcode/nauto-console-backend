@@ -295,6 +295,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')

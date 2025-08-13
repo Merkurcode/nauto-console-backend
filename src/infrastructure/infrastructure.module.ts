@@ -10,6 +10,7 @@ import { TransactionContextService } from './database/prisma/transaction-context
 import { TransactionService } from './database/prisma/transaction.service';
 import { TransactionManagerAdapter } from './database/prisma/transaction-manager.adapter';
 import { DatabaseHealthProvider } from './database/database-health.provider';
+import { RequestCacheService } from './caching/request-cache.service';
 
 // Repository implementations
 import { SessionRepository } from './repositories/session.repository';
@@ -25,6 +26,8 @@ import { CountryRepository } from './repositories/country.repository';
 import { StateRepository } from './repositories/state.repository';
 import { PermissionRepository } from './repositories/permission.repository';
 import { AIAssistantRepository } from './repositories/ai-assistant.repository';
+import { AIPersonaRepository } from './repositories/ai-persona.repository';
+import { CompanyAIPersonaRepository } from './repositories/company-ai-persona.repository';
 import { CompanyAIAssistantRepository } from './repositories/company-ai-assistant.repository';
 import { CompanySchedulesRepository } from './repositories/company-schedules.repository';
 import { AuditLogRepository } from './repositories/audit-log.repository';
@@ -49,6 +52,8 @@ import {
   COUNTRY_REPOSITORY,
   STATE_REPOSITORY,
   AI_ASSISTANT_REPOSITORY,
+  AI_PERSONA_REPOSITORY,
+  COMPANY_AI_PERSONA_REPOSITORY,
   COMPANY_AI_ASSISTANT_REPOSITORY,
   COMPANY_SCHEDULES_REPOSITORY,
   AUDIT_LOG_REPOSITORY,
@@ -93,8 +98,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new SessionRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new SessionRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: USER_REPOSITORY,
@@ -102,8 +108,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new UserRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new UserRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: COMPANY_REPOSITORY,
@@ -207,6 +214,18 @@ import {
       inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
     {
+      provide: AI_PERSONA_REPOSITORY,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new AIPersonaRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
+    {
+      provide: COMPANY_AI_PERSONA_REPOSITORY,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new CompanyAIPersonaRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
+    {
       provide: COMPANY_AI_ASSISTANT_REPOSITORY,
       useFactory: (
         prisma: PrismaService,
@@ -268,6 +287,7 @@ import {
     },
 
     // Infrastructure services
+    RequestCacheService,
     {
       provide: DATABASE_HEALTH,
       useFactory: (prisma: PrismaService) => new DatabaseHealthProvider(prisma),
@@ -299,6 +319,8 @@ import {
     COUNTRY_REPOSITORY,
     STATE_REPOSITORY,
     AI_ASSISTANT_REPOSITORY,
+    AI_PERSONA_REPOSITORY,
+    COMPANY_AI_PERSONA_REPOSITORY,
     COMPANY_AI_ASSISTANT_REPOSITORY,
     COMPANY_SCHEDULES_REPOSITORY,
     AUDIT_LOG_REPOSITORY,
@@ -309,6 +331,7 @@ import {
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,
+    RequestCacheService,
 
     // Export modules for re-use
     PrismaModule,

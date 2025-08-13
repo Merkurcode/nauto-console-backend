@@ -1,5 +1,11 @@
 import { AIAssistant } from '../entities/ai-assistant.entity';
 
+/**
+ * AI Assistant repository interface
+ *
+ * Implementations:
+ * - {@link AIAssistant} - Production Prisma/PostgreSQL implementation
+ */
 export interface IAIAssistantRepository {
   findAllAvailable(): Promise<AIAssistant[]>;
   findById(id: string): Promise<AIAssistant | null>;

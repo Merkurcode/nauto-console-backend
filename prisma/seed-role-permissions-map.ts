@@ -20,7 +20,8 @@ const rolePermissionsMap = {
     'company_schedules:read', 'company_schedules:write', 'company_schedules:delete',
     'company_events:read', 'company_events:write', 'company_events:delete',
     'bot:read', 'bot:write', 'bot:delete',
-    'user_activity_log:read',
+    'user_activity_log:read', 
+    'ai-persona:read', 'ai-persona:write', 'ai-persona:delete', 'ai-persona:update', 'ai-persona:assign',
   ],
   [RolesEnum.ROOT_READONLY]: [
     'sensitive:operations',
@@ -34,6 +35,7 @@ const rolePermissionsMap = {
     'company_schedules:read',
     'company_events:read',
     'user_activity_log:read',
+    'ai-persona:read'
   ],
   [RolesEnum.ADMIN]: [
     'sensitive:operations',
@@ -47,6 +49,7 @@ const rolePermissionsMap = {
     'company_schedules:read', 'company_schedules:write', 'company_schedules:delete',
     'company_events:read', 'company_events:write', 'company_events:delete',
     'user_activity_log:read',
+    'ai-persona:read', 'ai-persona:write', 'ai-persona:delete', 'ai-persona:update', 'ai-persona:assign',
   ],
   [RolesEnum.MANAGER]: [
     'sensitive:operations',

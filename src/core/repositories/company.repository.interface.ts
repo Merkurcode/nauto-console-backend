@@ -24,6 +24,12 @@ export interface IAssistantAssignment {
   }[];
 }
 
+/**
+ * Company repository interface
+ *
+ * Implementations:
+ * - {@link Company} - Production Prisma/PostgreSQL implementation
+ */
 export interface ICompanyRepository {
   findById(id: CompanyId): Promise<Company | null>;
   findByIdWithAssistants(

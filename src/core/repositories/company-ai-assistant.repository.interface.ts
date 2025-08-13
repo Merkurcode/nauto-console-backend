@@ -1,5 +1,11 @@
 import { CompanyAIAssistant } from '../entities/company-ai-assistant.entity';
 
+/**
+ * Company AI Assistant repository interface
+ *
+ * Implementations:
+ * - {@link CompanyAIAssistant} - Production Prisma/PostgreSQL implementation
+ */
 export interface ICompanyAIAssistantRepository {
   findByCompanyId(companyId: string): Promise<CompanyAIAssistant[]>;
   findByCompanyIdAndAssistantId(

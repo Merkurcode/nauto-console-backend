@@ -4,7 +4,7 @@ import { Role } from '../entities/role.entity';
  * Role repository interface
  *
  * Implementations:
- * - {@link RoleRepository} - Production Prisma/PostgreSQL implementation
+ * - {@link Role} - Production Prisma/PostgreSQL implementation
  */
 export interface IRoleRepository {
   findById(id: string): Promise<Role | null>;
