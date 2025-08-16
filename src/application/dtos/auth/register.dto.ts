@@ -12,8 +12,8 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
-import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
+// import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
+// import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
 import {
   PhoneRequiresCountryCode,
   PhoneCountryCodeRequiresPhone,
@@ -71,7 +71,7 @@ export class AddressDto {
   })
   @IsString()
   @IsOptional()
-  @CountryExists()
+  // @CountryExists() // Validation moved to UserService
   country?: string;
 
   @ApiPropertyOptional({
@@ -80,7 +80,7 @@ export class AddressDto {
   })
   @IsString()
   @IsOptional()
-  @StateExists()
+  // @StateExists() // Validation moved to UserService
   state?: string;
 
   @ApiPropertyOptional({
@@ -224,7 +224,7 @@ export class RegisterDto {
   })
   @IsString()
   @IsOptional()
-  @AgentPhoneUniqueForCompany()
+  // @AgentPhoneUniqueForCompany() // TODO: Fix dependency injection for validator
   agentPhone?: string;
 
   @ApiPropertyOptional({

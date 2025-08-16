@@ -23,6 +23,7 @@ import { UserActivityLogModule } from '@presentation/modules/user-activity-log/u
 import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
+// import { ValidatorsModule } from '@shared/validators/validators.module'; // Removed - validation moved to domain services
 
 // Global providers
 import { LoggingInterceptor } from '@presentation/interceptors/logging.interceptor';

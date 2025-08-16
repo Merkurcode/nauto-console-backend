@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsDateString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, Max, IsDate, IsUUID } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -66,8 +66,8 @@ export class BotAuditQueryDto {
     example: '2025-08-07T00:00:00Z',
   })
   @IsOptional()
-  @IsDateString()
   @Transform(({ value }) => (value ? new Date(value) : undefined))
+  @IsDate()
   fromDate?: Date;
 
   @ApiProperty({
@@ -76,8 +76,8 @@ export class BotAuditQueryDto {
     example: '2025-08-07T23:59:59Z',
   })
   @IsOptional()
-  @IsDateString()
   @Transform(({ value }) => (value ? new Date(value) : undefined))
+  @IsDate()
   toDate?: Date;
 
   @ApiProperty({

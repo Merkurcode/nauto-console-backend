@@ -1,11 +1,13 @@
 /* eslint-disable prettier/prettier */
 import * as bcrypt from 'bcrypt';
 import { Injectable, Inject } from '@nestjs/common';
-import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { USER_REPOSITORY, ROLE_REPOSITORY, COMPANY_REPOSITORY, COUNTRY_REPOSITORY, STATE_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { User } from '../entities/user.entity';
 import { IUserRepository } from '../repositories/user.repository.interface';
 import { IRoleRepository } from '../repositories/role.repository.interface';
 import { ICompanyRepository } from '../repositories/company.repository.interface';
+import { ICountryRepository } from '../repositories/country.repository.interface';
+import { IStateRepository } from '../repositories/state.repository.interface';
 import { CompanyName } from '@core/value-objects/company-name.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import {
@@ -44,6 +46,10 @@ export class UserService {
     private readonly roleRepository: IRoleRepository,
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepository: ICompanyRepository,
+    @Inject(COUNTRY_REPOSITORY)
+    private readonly countryRepository: ICountryRepository,
+    @Inject(STATE_REPOSITORY)
+    private readonly stateRepository: IStateRepository,
     private readonly domainValidationService: DomainValidationService,
     private readonly userAuthorizationService: UserAuthorizationService,
     private readonly userAccessAuthorizationService: UserAccessAuthorizationService,
@@ -203,6 +209,20 @@ export class UserService {
       throw new EntityAlreadyExistsException('User', 'email');
     }
 
+    // Check if agent phone is unique for the company
+    if (options?.agentPhone && options?.companyName) {
+      const company = await this.companyRepository.findByName(new CompanyName(options.companyName));
+      if (company) {
+        const existingUserWithPhone = await this.userRepository.findByAgentPhoneAndCompany(
+          options.agentPhone,
+          company.id.getValue(),
+        );
+        if (existingUserWithPhone) {
+          throw new EntityAlreadyExistsException('User', 'agentPhone for this company');
+        }
+      }
+    }
+
     // Hash the password
     const passwordHash = await this.hashPassword(password.getValue());
 
@@ -223,6 +243,25 @@ export class UserService {
 
     let addressVO: UserAddress | undefined;
     if (options?.address) {
+      // Validate country if provided
+      if (options.address.country) {
+        const country = await this.countryRepository.findByName(options.address.country);
+        if (!country) {
+          throw new EntityNotFoundException('Country', options.address.country);
+        }
+        
+        // Validate state if provided (requires country)
+        if (options.address.state) {
+          const state = await this.stateRepository.findByNameAndCountry(
+            options.address.state,
+            country.id.getValue(),
+          );
+          if (!state) {
+            throw new EntityNotFoundException('State', `${options.address.state} in ${options.address.country}`);
+          }
+        }
+      }
+      
       addressVO = UserAddress.create({
         userId: UserId.create(), // Temporary, will be set after user creation
         city: options.address.city,
@@ -795,7 +834,7 @@ return await this.userRepository.findByEmail(emailVO.getValue());
   }
 
   async hashPassword(password: string): Promise<string> {
-    const saltRounds = this.configService.get<number>('PASSWORD_SALT_ROUNDS', 12);
+    const saltRounds = this.configService.get<number>('security.password.saltRounds', 12);
     const salt = await bcrypt.genSalt(saltRounds);
 
     return bcrypt.hash(password, salt);

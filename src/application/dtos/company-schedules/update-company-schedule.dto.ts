@@ -1,4 +1,4 @@
-import { IsOptional, IsDateString, IsBoolean } from 'class-validator';
+import { IsOptional, IsDate, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -8,8 +8,8 @@ export class UpdateCompanyScheduleDto {
     example: '2024-01-01T08:00:00.000Z',
   })
   @IsOptional()
-  @IsDateString()
   @Type(() => Date)
+  @IsDate()
   startTime?: Date;
 
   @ApiPropertyOptional({
@@ -17,8 +17,8 @@ export class UpdateCompanyScheduleDto {
     example: '2024-01-01T18:00:00.000Z',
   })
   @IsOptional()
-  @IsDateString()
   @Type(() => Date)
+  @IsDate()
   endTime?: Date;
 
   @ApiPropertyOptional({

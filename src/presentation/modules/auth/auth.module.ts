@@ -19,12 +19,7 @@ import { UserAuthRepository } from '@infrastructure/repositories/user-auth.repos
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 
-// Validators
-import {
-  CountryExistsConstraint,
-  StateExistsConstraint,
-} from '@shared/validators/country-state.validator';
-import { AgentPhoneUniqueForCompanyConstraint } from '@shared/validators/agent-phone.validator';
+// Validators are now provided globally by ValidatorsModule
 
 // Services
 import { UserService } from '@core/services/user.service';
@@ -107,10 +102,6 @@ const commandHandlers = [
     },
     UserAuthRepository,
 
-    // Validators
-    CountryExistsConstraint,
-    StateExistsConstraint,
-    AgentPhoneUniqueForCompanyConstraint,
 
     // Strategies
     JwtStrategy,
