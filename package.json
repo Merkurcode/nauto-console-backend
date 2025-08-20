@@ -54,6 +54,13 @@
     "db:studio": "npx prisma studio",
     "db:studio:test": "cross-env NODE_ENV=test npx prisma studio",
     "db:studio:prod": "cross-env NODE_ENV=production npx prisma studio",
+    "docker:start": "docker-compose up -d",
+    "docker:start:admin": "docker-compose --profile admin up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:status": "docker-compose ps",
+    "docker:clean": "docker-compose down -v && docker system prune -f",
+    "docker:dev": "./scripts/docker-dev.sh",
     "prepare": "husky install",
     "wclaude": "npx win-claude-code@latest"
   },

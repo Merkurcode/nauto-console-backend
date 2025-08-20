@@ -26,6 +26,46 @@ services:
     networks:
       - nestjs-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: nestjs-template-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,KEYS,CONFIG
+    networks:
+      - nestjs-network
+
+  # Optional: Redis Commander for web administration
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: nestjs-template-redis-commander
+    hostname: redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin123
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - nestjs-network
+    profiles:
+      - admin
+
   minio:
     image: minio/minio:latest
     container_name: nestjs-template-minio
@@ -95,6 +135,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   minio_data:
 
 networks:
