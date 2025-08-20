@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ModuleRef } from '@nestjs/core';
+import { CoreModule } from '@core/core.module';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 import { HealthService } from './health/health-checker.service';
 import { QueueHealthController } from './controllers/queue-health.controller';
@@ -197,6 +199,9 @@ export class QueueModule {
 
     if (options.processType === 'worker' || options.processType === 'both') {
       imports.push(CqrsModule);
+
+      // Import necessary modules for auto-detected handlers
+      imports.push(CoreModule, InfrastructureModule);
 
       let handlersToUse: Type<IEventHandler>[] = [];
       if (options.eventHandlers === 'auto-detect') {

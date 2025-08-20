@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Controller,
@@ -8,14 +9,23 @@ import {
   HttpStatus,
   Param,
   HttpException,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Queue } from 'bullmq';
 import { ModuleRef } from '@nestjs/core';
 import { HealthService } from '../health/health-checker.service';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { RolesGuard } from '@presentation/guards/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesEnum } from '@shared/constants/enums';
+import { DenyForRootReadOnly } from '@shared/decorators/root-readonly.decorator';
 
-@ApiTags('Queue Events')
+@ApiTags('queue-events')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('events')
+@Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
 export class QueueEventsController {
   constructor(
     private readonly moduleRef: ModuleRef,
@@ -276,6 +286,7 @@ export class QueueEventsController {
   }
 
   @Post('cleanup-old')
+  @DenyForRootReadOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clean up old jobs' })
   @ApiResponse({ status: 200, description: 'Cleanup completed successfully' })
@@ -355,6 +366,7 @@ export class QueueEventsController {
   }
 
   @Post('queue/:name/cleanup-old')
+  @DenyForRootReadOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clean up old jobs in specific queue' })
   @ApiResponse({ status: 200, description: 'Cleanup completed successfully' })
@@ -366,6 +378,7 @@ export class QueueEventsController {
   }
 
   @Post('cleanup-all')
+  @DenyForRootReadOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clean up old jobs in all queues' })
   @ApiResponse({ status: 200, description: 'Cleanup completed for all queues' })

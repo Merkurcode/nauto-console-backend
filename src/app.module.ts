@@ -49,6 +49,7 @@ import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guar
 import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
 import { ThrottlerService } from '@infrastructure/services/throttler.service';
 import { UsersModuleQueuesTest } from './queues/examples/controller/users.module';
+import { AuthEmailModuleQueue } from './queues/all/email/email.module';
 
 @Module({
   imports: [
@@ -105,6 +106,8 @@ import { UsersModuleQueuesTest } from './queues/examples/controller/users.module
     }),
 
     //UsersModuleQueuesTest,
+
+    AuthEmailModuleQueue,
 
     // Other Feature Modules
     UserModule,

@@ -18,7 +18,26 @@ export class GenericEventProcessor extends BaseProcessor<IEventJobData> {
       throw new Error('InvalidJob: eventName is required');
     }
 
-    const instance = EventRegistry.deserializeEvent(eventName, payload);
+    // Check for invalid event names that should be discarded
+    if (eventName === 'Array' || eventName === 'Object' || eventName.trim() === '') {
+      this.logger.warn(`Discarding job ${job.id} with invalid event name: ${eventName}`);
+      await job.discard();
+      return;
+    }
+
+    try {
+      var instance = EventRegistry.deserializeEvent(eventName, payload);
+    } catch (error) {
+      // If event deserialization fails due to missing constructor, discard the job
+      if (error.message.includes('Event constructor not found')) {
+        this.logger.warn(`Discarding job ${job.id} with unregistered event: ${eventName}. Error: ${error.message}`);
+        await job.discard();
+        return;
+      }
+      // Re-throw other errors for normal retry logic
+      throw error;
+    }
+
     await this.executeHandlers(instance, job);
   }
 

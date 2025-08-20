@@ -1,12 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Controller, Get, HttpStatus, HttpException, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  HttpException,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { HealthService } from '../health/health-checker.service';
 import { getPerformanceConfig } from '../config/queue.config';
 import { ConfigService } from '@nestjs/config';
+import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
+import { RolesGuard } from '@presentation/guards/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesEnum } from '@shared/constants/enums';
 
-@ApiTags('Queue Health')
+@ApiTags('queue-health')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('healthz')
+@Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
 export class QueueHealthController {
   constructor(
     private readonly healthService: HealthService,

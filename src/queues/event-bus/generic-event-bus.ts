@@ -19,11 +19,16 @@ export class GenericEventBus extends BaseEventBus<Record<string, unknown>> {
   }
 
   protected getJobName(event: Record<string, unknown>): string {
+    // Validate that the event is a proper object, not an array
+    if (Array.isArray(event)) {
+      throw new Error('Cannot publish Array as event. Events must be objects with proper event structure.');
+    }
+
     const evt = event as Record<string, unknown> & {
       constructor?: { __eventName?: string; name?: string };
     };
 
-    return (
+    const eventName = (
       (evt.__eventName as string) ||
       evt.constructor?.__eventName ||
       (evt.eventName as string) ||
@@ -32,6 +37,13 @@ export class GenericEventBus extends BaseEventBus<Record<string, unknown>> {
       evt.constructor?.name ||
       'Event'
     );
+
+    // Additional validation for problematic event names
+    if (eventName === 'Array' || eventName === 'Object') {
+      throw new Error(`Invalid event name "${eventName}". Event objects must have a proper __eventName, eventType, type, or name property.`);
+    }
+
+    return eventName;
   }
 
   protected prepareJobData(event: Record<string, any>, jobId: string): IEventJobData {

@@ -87,30 +87,87 @@ class EventRegistryService {
       );
     }
 
+    // Use toJSON method if available for better serialization control
+    let serializedData: Record<string, any>;
+    
+    if (typeof event.toJSON === 'function') {
+      serializedData = event.toJSON();
+    } else {
+      serializedData = { ...(event as Record<string, any>) };
+    }
+
     return {
-      ...(event as Record<string, any>),
+      ...serializedData,
       __eventName: eventName,
     };
+  }
+
+  getRegisteredEventNames(): string[] {
+    return this.getAllRegisteredEvents();
   }
 
   deserializeEvent<T = any>(eventName: string, payload: Record<string, any>): T {
     const ctor = this.getConstructor(eventName);
     if (!ctor) {
-      throw new Error(`Event constructor not found for: ${eventName}`);
+      const availableEvents = this.getRegisteredEventNames();
+      throw new Error(
+        `Event constructor not found for: ${eventName}. ` +
+        `Available events: ${availableEvents.length > 0 ? availableEvents.join(', ') : 'none'}. ` +
+        `Make sure the event class is decorated with @MQSerializableEvent and imported.`
+      );
     }
 
     const clean = { ...payload };
     delete (clean as any).__eventName;
 
     const anyCtor = ctor as any;
+    
+    // Try custom fromJSON method first
     if (typeof anyCtor.fromJSON === 'function') {
       return anyCtor.fromJSON(clean);
     }
 
+    // Try to reconstruct using constructor parameters
+    try {
+      // For events with constructor parameters, try to call constructor with payload values
+      // This is a heuristic approach - ideally events should implement fromJSON for complex cases
+      const parameterNames = this.getConstructorParameterNames(ctor);
+      
+      if (parameterNames.length > 0) {
+        const args = parameterNames.map(param => clean[param]);
+        return new ctor(...args) as T;
+      }
+    } catch (constructorError) {
+      // Fall back to Object.assign if constructor approach fails
+      console.warn(`Failed to use constructor for ${eventName}, falling back to Object.assign:`, constructorError.message);
+    }
+
+    // Fallback: create instance and assign properties
     const instance = Object.create(ctor.prototype);
     Object.assign(instance, clean);
 
     return instance as T;
+  }
+
+  private getConstructorParameterNames(ctor: IEventConstructor): string[] {
+    // Try to extract parameter names from constructor
+    const ctorString = ctor.toString();
+    const match = ctorString.match(/constructor\s*\([^)]*\)/);
+    
+    if (!match) return [];
+    
+    const paramsString = match[0].replace(/constructor\s*\(|\)/g, '');
+    if (!paramsString.trim()) return [];
+    
+    return paramsString
+      .split(',')
+      .map(param => {
+        // Extract parameter name, handling TypeScript patterns like 'public readonly name: string'
+        const cleanParam = param.trim().replace(/^(public|private|protected|readonly)\s+/, '');
+        const paramName = cleanParam.split(':')[0].trim();
+        return paramName;
+      })
+      .filter(name => name && !name.includes('...'));
   }
 }
 
