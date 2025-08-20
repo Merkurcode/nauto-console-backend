@@ -23,6 +23,8 @@ import { UserActivityLogModule } from '@presentation/modules/user-activity-log/u
 import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
+import { QueueModule } from './queues/queue.module';
+import { Queues } from './queues/all/queues';
 // import { ValidatorsModule } from '@shared/validators/validators.module'; // Removed - validation moved to domain services
 
 // Global providers
@@ -46,6 +48,7 @@ import configuration from '@infrastructure/config/configuration';
 import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guard';
 import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
 import { ThrottlerService } from '@infrastructure/services/throttler.service';
+import { UsersModuleQueuesTest } from './queues/examples/controller/users.module';
 
 @Module({
   imports: [
@@ -94,6 +97,14 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     // Core Domain and Infrastructure
     CoreModule,
     InfrastructureModule,
+
+    // Queue System (for both API and Worker processes)
+    QueueModule.withQueues('both', Queues, {
+      eventHandlers: 'auto-detect',
+      includeConfigModule: false, // Already loaded above
+    }),
+
+    //UsersModuleQueuesTest,
 
     // Other Feature Modules
     UserModule,

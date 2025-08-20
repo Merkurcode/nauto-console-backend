@@ -56,6 +56,7 @@ lerna-debug.log*
 CLAUDE.md
 NOTES.txt
 *.bat
+*.txt
 
 # Development notes and session summaries
 dev-notes/

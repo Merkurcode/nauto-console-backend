@@ -147,6 +147,44 @@ export default () => ({
     prismaLogsEnabled: process.env.PRISMA_LOGS_ENABLED === 'true',
   },
 
+  // Queue System
+  queue: {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      db: parseInt(process.env.REDIS_DB || '0', 10),
+      username: process.env.REDIS_USER,
+      password: process.env.REDIS_PASSWORD,
+      tls: {
+        enabled: process.env.REDIS_TLS === 'true',
+        rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false',
+        servername: process.env.REDIS_TLS_SERVERNAME,
+      },
+    },
+    bullmq: {
+      prefix: process.env.BULLMQ_PREFIX || 'nauto:queues',
+    },
+    performance: {
+      healthCheckIntervalMs: parseInt(process.env.HEALTH_CHECK_INTERVAL_MS || '2000', 10),
+      maxBacklog: parseInt(process.env.BQ_MAX_BACKLOG || '5000', 10),
+      maxActive: parseInt(process.env.BQ_MAX_ACTIVE || '200', 10),
+      redisMaxFillPct: parseFloat(process.env.REDIS_MAX_FILL_PCT || '0.85'),
+      redisMaxUsedMb: parseInt(process.env.REDIS_MAX_USED_MB || '2048', 10),
+      eventMaxBytes: parseInt(process.env.EVENT_MAX_BYTES || '262144', 10), // 256KB
+    },
+    events: {
+      defaultQueue: 'events',
+      retryWindowHours: 6,
+      concurrency: 10,
+      attempts: 5,
+      backoffDelay: 5000,
+    },
+    streams: {
+      maxLen: parseInt(process.env.QUEUE_EVENTS_STREAM_MAXLEN || '20000', 10),
+      approximate: process.env.QUEUE_EVENTS_STREAM_APPROX !== 'false',
+    },
+  },
+
   // Business Logic Configuration
   business: {
     // Email verification
