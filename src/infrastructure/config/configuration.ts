@@ -100,23 +100,38 @@ export default () => ({
 
   // Storage
   storage: {
-    provider: process.env.STORAGE_DRIVER || 'local',
+    provider: process.env.STORAGE_DRIVER || 'minio',
+    defaultBucket: process.env.STORAGE_DEFAULT_BUCKET || 'files',
+    concurrency: {
+      globalMaxSimultaneousFiles: parseInt(process.env.GLOBAL_MAX_SIMULTANEOUS_FILES || '5', 10),
+      redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+      slotTtlSec: parseInt(process.env.SLOT_TTL_SECONDS || '7200', 10),
+      bookingTtlSec: parseInt(process.env.RESERVATION_TTL || '7200', 10),
+    },
+    presign: {
+      expirySec: parseInt(process.env.PRESIGN_EXPIRY_SEC || '3600', 10),
+      maxExpiryHours: parseInt(process.env.PRESIGN_MAX_EXPIRY_HOURS || '24', 10),
+      minExpirySeconds: parseInt(process.env.PRESIGN_MIN_EXPIRY_SECONDS || '60', 10),
+    },
     minio: {
-      endPoint: process.env.MINIO_ENDPOINT,
+      endpoint: process.env.MINIO_ENDPOINT || 'http://127.0.0.1:9000',
       port: parseInt(process.env.MINIO_PORT || '9000', 10),
       useSSL: process.env.MINIO_USE_SSL === 'true',
-      accessKey: process.env.MINIO_ACCESS_KEY,
-      secretKey: process.env.MINIO_SECRET_KEY,
+      accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
       region: process.env.MINIO_REGION || 'us-east-1',
-      bucketName: process.env.MINIO_BUCKET_NAME,
+      bucketName: process.env.MINIO_BUCKET_NAME || 'files',
+      forcePathStyle: process.env.MINIO_FORCE_PATH_STYLE === 'true',
       publicFolder: 'public',
       privateFolder: 'private',
     },
     aws: {
-      region: process.env.AWS_REGION,
+      endpoint: process.env.AWS_S3_ENDPOINT,
+      region: process.env.AWS_REGION || 'us-east-1',
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      bucketName: process.env.AWS_S3_BUCKET_NAME,
+      bucketName: process.env.AWS_S3_BUCKET_NAME || 'files',
+      forcePathStyle: process.env.AWS_S3_FORCE_PATH_STYLE === 'true',
     },
   },
 
@@ -130,6 +145,7 @@ export default () => ({
   throttler: {
     ttl: parseInt(process.env.THROTTLER_TTL || '60', 10), // 60 seconds window
     limit: parseInt(process.env.THROTTLER_LIMIT || '100', 10), // 100 requests per minute (reasonable for API)
+    disableForTesting: process.env.THROTTLER_DISABLE_FOR_TESTING === 'true', // Disable throttling in test environments
   },
 
   // i18n

@@ -57,6 +57,8 @@ CLAUDE.md
 NOTES.txt
 *.bat
 *.txt
+scripts/*
+nul
 
 # Development notes and session summaries
 dev-notes/

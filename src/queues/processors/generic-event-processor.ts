@@ -22,6 +22,7 @@ export class GenericEventProcessor extends BaseProcessor<IEventJobData> {
     if (eventName === 'Array' || eventName === 'Object' || eventName.trim() === '') {
       this.logger.warn(`Discarding job ${job.id} with invalid event name: ${eventName}`);
       await job.discard();
+
       return;
     }
 
@@ -30,8 +31,11 @@ export class GenericEventProcessor extends BaseProcessor<IEventJobData> {
     } catch (error) {
       // If event deserialization fails due to missing constructor, discard the job
       if (error.message.includes('Event constructor not found')) {
-        this.logger.warn(`Discarding job ${job.id} with unregistered event: ${eventName}. Error: ${error.message}`);
+        this.logger.warn(
+          `Discarding job ${job.id} with unregistered event: ${eventName}. Error: ${error.message}`,
+        );
         await job.discard();
+
         return;
       }
       // Re-throw other errors for normal retry logic

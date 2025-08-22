@@ -74,22 +74,15 @@ export class UserStorageConfigService {
   }
 
   async getAllUserStorageConfigs(): Promise<UserStorageConfig[]> {
-    // This method would need to be implemented in the repository
-    // For now, throwing an error to indicate it needs implementation
-    throw new Error('Method not implemented - repository needs findAll method');
+    return await this.userStorageConfigRepository.findAll();
   }
 
-  async getUserStorageConfigsByCompany(_companyId: string): Promise<UserStorageConfig[]> {
-    // This method would need to be implemented in the repository
-    // For now, throwing an error to indicate it needs implementation
-    throw new Error('Method not implemented - repository needs findByCompanyId method');
+  async getUserStorageConfig(userId: string): Promise<UserStorageConfig | null> {
+    return await this.userStorageConfigRepository.findByUserId(UserId.fromString(userId));
   }
 
-  // Helper methods for FileUploadLimitGuard
-  async getUserActiveFileCount(_userId: string): Promise<number> {
-    // This would be implemented in the service that knows about files
-    // For now, we'll keep this logic in the guard
-    throw new Error('Method not implemented - use StorageService for file operations');
+  async getUserStorageConfigsByCompany(companyId: string): Promise<UserStorageConfig[]> {
+    return await this.userStorageConfigRepository.findByCompanyId(companyId);
   }
 
   async validateUserCanUpload(userId: string, fileCount: number = 1): Promise<boolean> {

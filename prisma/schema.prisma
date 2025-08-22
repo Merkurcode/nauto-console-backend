@@ -428,13 +428,16 @@ model File {
   id          String    @id @default(uuid())
   filename    String
   originalName String
-  path        String
+  path        String    // Virtual folder path (e.g., "invoices/2025/aug")
+  objectKey   String    // Full S3/MinIO object key (path + filename)
   mimeType    String
-  size        Int
+  size        Int       // Final size in bytes
   bucket      String
   userId      String?
   isPublic    Boolean   @default(false)
   status      FileStatus @default(PENDING)
+  uploadId    String?   // S3 multipart uploadId (only during UPLOADING)
+  etag        String?   // ETag of completed object
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -442,6 +445,7 @@ model File {
 
   @@index([userId])
   @@index([status])
+  @@unique([bucket, objectKey])
 }
 
 model StorageTiers {

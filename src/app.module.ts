@@ -21,6 +21,7 @@ import { CompanySchedulesModule } from '@presentation/modules/company-schedules/
 import { BotModule } from '@presentation/modules/bot/bot.module';
 import { UserActivityLogModule } from '@presentation/modules/user-activity-log/user-activity-log.module';
 import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
+import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { QueueModule } from './queues/queue.module';
@@ -48,8 +49,10 @@ import configuration from '@infrastructure/config/configuration';
 import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guard';
 import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
 import { ThrottlerService } from '@infrastructure/services/throttler.service';
-import { UsersModuleQueuesTest } from './queues/examples/controller/users.module';
+// import { UsersModuleQueuesTest } from './queues/examples/controller/users.module';
 import { AuthEmailModuleQueue } from './queues/all/email/email.module';
+import { StaleUploadsCleanupModule } from './queues/all/stale-uploads-cleanup/stale-uploads-cleanup.module';
+import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploads-maintenance.module';
 
 @Module({
   imports: [
@@ -108,6 +111,8 @@ import { AuthEmailModuleQueue } from './queues/all/email/email.module';
     //UsersModuleQueuesTest,
 
     AuthEmailModuleQueue,
+    StaleUploadsCleanupModule,
+    UploadsMaintenanceModule,
 
     // Other Feature Modules
     UserModule,
@@ -120,6 +125,7 @@ import { AuthEmailModuleQueue } from './queues/all/email/email.module';
     BotModule,
     UserActivityLogModule,
     AIPersonaModule,
+    StorageModule,
   ],
   controllers: [],
   providers: [

@@ -1,63 +1,102 @@
 import { Module, DynamicModule, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageService } from '@core/services/storage.service';
-import { MinioStorageProvider } from './providers/minio.provider';
-import { S3StorageProvider } from './providers/s3.provider';
+import { CqrsModule } from '@nestjs/cqrs';
+import { FileOperationsService } from '@core/services/file-operations.service';
+import { MultipartUploadService } from '@core/services/multipart-upload.service';
+import { StorageProviderFactory } from './storage-provider.factory';
 import { FileRepository } from '../repositories/file.repository';
+import { UserStorageConfigRepository } from '../repositories/user-storage-config.repository';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { TransactionContextService } from '../database/prisma/transaction-context.service';
-import { MulterModule } from '@nestjs/platform-express';
-import { FILE_REPOSITORY } from '@shared/constants/tokens';
+import { RedisModule } from '../redis/redis.module';
+import { ConcurrencyService } from '../services/concurrency.service';
+import {
+  FILE_REPOSITORY,
+  STORAGE_SERVICE,
+  LOGGER_SERVICE,
+  USER_STORAGE_CONFIG_REPOSITORY,
+  CONCURRENCY_SERVICE,
+} from '@shared/constants/tokens';
 import { CoreModule } from '@core/core.module';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Module({
-  imports: [
-    MulterModule.register({
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
-      },
-    }),
-    forwardRef(() => CoreModule),
-  ],
+  imports: [CqrsModule, RedisModule, forwardRef(() => CoreModule)],
   providers: [
     {
       provide: FILE_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new FileRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
-    },
-    StorageService,
-    MinioStorageProvider,
-    S3StorageProvider,
-    {
-      provide: 'STORAGE_PROVIDER',
       useFactory: (
-        configService: ConfigService,
-        minioProvider: MinioStorageProvider,
-        s3Provider: S3StorageProvider,
-      ) => {
-        const driver = configService.get<string>('storage.provider');
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new FileRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+    },
+    {
+      provide: USER_STORAGE_CONFIG_REPOSITORY,
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new UserStorageConfigRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+    },
+    {
+      provide: STORAGE_SERVICE,
+      useFactory: (configService: ConfigService, logger: ILogger) => {
+        // Validate configuration before creating the provider
+        const validation = StorageProviderFactory.validateConfig(configService);
 
-        if (driver === 's3') {
-          return s3Provider;
+        if (!validation.isValid) {
+          logger.error({
+            message: 'Storage provider configuration validation failed',
+            provider: validation.provider,
+            errors: validation.errors,
+            context: 'StorageModule',
+          });
+          throw new Error(`Storage configuration errors: ${validation.errors.join(', ')}`);
         }
 
-        // Default to MinIO provider
-        return minioProvider;
+        if (validation.warnings.length > 0) {
+          logger.warn({
+            message: 'Storage provider configuration warnings',
+            provider: validation.provider,
+            warnings: validation.warnings,
+            context: 'StorageModule',
+          });
+        }
+
+        // Log provider information
+        const providerInfo = StorageProviderFactory.getProviderInfo(configService);
+        logger.log({
+          message: 'Storage provider initialized',
+          ...providerInfo,
+          context: 'StorageModule',
+        });
+
+        return StorageProviderFactory.create(configService, logger);
       },
-      inject: [ConfigService, MinioStorageProvider, S3StorageProvider],
+      inject: [ConfigService, LOGGER_SERVICE],
     },
     {
-      provide: 'STORAGE_SERVICE_INITIALIZATION',
-      useFactory: (storageService: StorageService, storageProvider) => {
-        storageService.setProvider(storageProvider);
-
-        return true;
-      },
-      inject: [StorageService, 'STORAGE_PROVIDER'],
+      provide: CONCURRENCY_SERVICE,
+      useClass: ConcurrencyService,
     },
+    FileOperationsService,
+    MultipartUploadService,
+    // Storage services for multipart upload system
+    // Provider is selected dynamically based on STORAGE_DRIVER environment variable:
+    // - 'minio': MinIO storage service (default for development)
+    // - 'aws': AWS S3 storage service (recommended for production)
   ],
-  exports: [StorageService],
+  exports: [
+    FileOperationsService,
+    MultipartUploadService,
+    FILE_REPOSITORY,
+    STORAGE_SERVICE,
+    USER_STORAGE_CONFIG_REPOSITORY,
+    CONCURRENCY_SERVICE,
+  ],
 })
 export class StorageModule {
   static register(options?: { global?: boolean }): DynamicModule {

@@ -5,6 +5,8 @@ import { ILogger } from '@core/interfaces/logger.interface';
 import { CoreModule } from '@core/core.module';
 import { LoggerModule } from './logger/logger.module';
 import { PrismaModule } from './database/prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
+import { StorageModule } from './storage/storage.module';
 import { PrismaService } from './database/prisma/prisma.service';
 import { TransactionContextService } from './database/prisma/transaction-context.service';
 import { TransactionService } from './database/prisma/transaction.service';
@@ -35,7 +37,9 @@ import { BotTokenRepository } from './repositories/bot-token.repository';
 import { UserStorageConfigRepository } from './repositories/user-storage-config.repository';
 import { StorageTiersRepository } from './repositories/storage-tiers.repository';
 import { UserActivityLogRepository } from './repositories/user-activity-log.repository';
+import { FileRepository } from './repositories/file.repository';
 import { TokenProvider } from './auth/token.provider';
+import { ConcurrencyService } from './services/concurrency.service';
 
 // Tokens
 import {
@@ -61,10 +65,12 @@ import {
   USER_STORAGE_CONFIG_REPOSITORY,
   STORAGE_TIERS_REPOSITORY,
   USER_ACTIVITY_LOG_REPOSITORY,
+  FILE_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
   LOGGER_SERVICE,
+  CONCURRENCY_SERVICE,
 } from '@shared/constants/tokens';
 
 /**
@@ -77,6 +83,8 @@ import {
     LoggerModule,
     ConfigModule,
     PrismaModule,
+    RedisModule,
+    StorageModule,
     forwardRef(() => CoreModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -285,6 +293,15 @@ import {
         new UserActivityLogRepository(prisma, logger),
       inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
     },
+    {
+      provide: FILE_REPOSITORY,
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+      ) => new FileRepository(prisma, transactionContext, logger),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+    },
 
     // Infrastructure services
     RequestCacheService,
@@ -302,6 +319,10 @@ import {
       useFactory: (transactionService: TransactionService) =>
         new TransactionManagerAdapter(transactionService),
       inject: [TransactionService],
+    },
+    {
+      provide: CONCURRENCY_SERVICE,
+      useClass: ConcurrencyService,
     },
   ],
   exports: [
@@ -328,14 +349,18 @@ import {
     USER_STORAGE_CONFIG_REPOSITORY,
     STORAGE_TIERS_REPOSITORY,
     USER_ACTIVITY_LOG_REPOSITORY,
+    FILE_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,
+    CONCURRENCY_SERVICE,
     RequestCacheService,
 
     // Export modules for re-use
     PrismaModule,
     LoggerModule,
+    RedisModule,
+    StorageModule,
   ],
 })
 export class InfrastructureModule {}

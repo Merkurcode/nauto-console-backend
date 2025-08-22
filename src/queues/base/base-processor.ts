@@ -80,7 +80,7 @@ export abstract class BaseProcessor<T = IBaseJobData> extends WorkerHost {
     }
 
     this.logger.error(
-      `✗ Job ${job.id} failed (attempt ${job.attemptsMade}/${job.opts?.attempts ?? '?'}): ${msg}`
+      `✗ Job ${job.id} failed (attempt ${job.attemptsMade}/${job.opts?.attempts ?? '?'}): ${msg}`,
     );
     throw err;
   }

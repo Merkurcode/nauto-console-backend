@@ -30,7 +30,3 @@ export { QueueHealthController } from './controllers/queue-health.controller';
 
 // Types
 export * from './types';
-
-// Examples (remove these in production)
-export { UserCreatedEvent } from './examples/event-handlers/user-created.handler';
-export { UserCreatedHandler } from './examples/event-handlers/user-created.handler';
