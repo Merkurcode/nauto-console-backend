@@ -9,6 +9,7 @@ import { IConcurrencyService } from '@core/repositories/concurrency.service.inte
 import { ILogger } from '@core/interfaces/logger.interface';
 import { FileQuotaService } from './file-quota.service';
 import { FileUploadValidationService } from './file-upload-validation.service';
+import { FileNamingService } from './file-naming.service';
 
 import { File } from '@core/entities/file.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
@@ -31,13 +32,14 @@ import {
 } from '@shared/constants/tokens';
 
 export interface IInitiateUploadParams {
-  userId: string;
-  path: string;
+  bucket: string;
+  storagePath: string;
   filename: string;
   originalName: string;
   mimeType: string;
   size: number;
-  bucket: string;
+  userId: string;
+  companyId: string;
 }
 
 export interface IInitiateUploadResult {
@@ -70,6 +72,8 @@ export class MultipartUploadService {
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
 
+    private readonly fileNamingService: FileNamingService,
+
     private readonly configService: ConfigService,
     private readonly eventBus: EventBus,
     private readonly fileQuotaService: FileQuotaService,
@@ -80,7 +84,10 @@ export class MultipartUploadService {
    * Initiates a multipart upload with comprehensive validation
    */
   async initiateUpload(params: IInitiateUploadParams): Promise<IInitiateUploadResult> {
-    const { userId, path, filename, originalName, mimeType, size, bucket } = params;
+    const { bucket, storagePath, filename, originalName, mimeType, size, userId } = params;
+
+    // Ensure intermediate directories exist in storage
+    await this.createIntermediateDirectories(bucket, storagePath);
 
     // 1) Centralized validation (MIME/ext, space preflight, concurrency by domain)
     await this.fileUploadValidationService.validateFileUploadOrThrow({
@@ -130,15 +137,27 @@ export class MultipartUploadService {
     let savedFile: File | null = null;
 
     try {
-      // 4) Create and persist file aggregate in "pending"
-      const file = File.createForUpload(
+      // 4) Generate unique filename to handle conflicts (like Dropbox)
+      const uniqueFileResult = await this.fileNamingService.generateUniqueFileName(
         filename,
+        storagePath,
+        bucket,
+      );
+
+      // 5) Create and persist file aggregate in "pending"
+      // Files in common areas (products/marketing) are public, user files are private
+      const isPublic = storagePath.includes('/common/');
+
+      const file = File.createForUpload(
+        uniqueFileResult.filename,
         originalName,
-        path,
+        storagePath,
+        uniqueFileResult.objectKey,
         mimeType,
         size,
         bucket,
         userId,
+        isPublic,
       );
       savedFile = await this.fileRepository.save(file);
 
@@ -400,5 +419,19 @@ export class MultipartUploadService {
     const parts = filename.split('.');
 
     return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+  }
+
+  private async createIntermediateDirectories(bucket: string, storagePath: string): Promise<void> {
+    const cleanPath = storagePath.replace(/^\/+|\/+$/g, '');
+    if (cleanPath === '') {
+      return;
+    }
+
+    const segments = cleanPath.split('/').filter(segment => segment.length > 0);
+
+    for (let i = 1; i <= segments.length; i++) {
+      const currentPath = segments.slice(0, i).join('/');
+      await this.storageService.createFolder(bucket, currentPath);
+    }
   }
 }

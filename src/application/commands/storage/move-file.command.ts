@@ -22,7 +22,7 @@ export class MoveFileHandler implements ICommandHandler<MoveFileCommand, FileRes
 
     const file = await this.fileOperationsService.moveFile({
       fileId,
-      newPath,
+      newStoragePath: newPath,
       userId,
     });
 

@@ -79,6 +79,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -142,6 +143,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -173,6 +175,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -207,6 +210,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -237,6 +241,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -270,6 +275,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -364,6 +370,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -424,6 +431,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 
@@ -495,6 +503,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           },
           profile: true,
           address: true,
+          company: true,
         },
       });
 

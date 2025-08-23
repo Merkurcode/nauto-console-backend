@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
-import { GetUserFilesResponseDto } from '@application/dtos/_responses/storage/storage.swagger.dto';
-import { FileMapper } from '@application/mappers/file.mapper';
+import { IGetUserFilesResponse } from '@application/dtos/_responses/storage/storage.response.interface';
+import { EnhancedFileMapper } from '@application/mappers/enhanced-file.mapper';
 import { File } from '@core/entities/file.entity';
 import { FileStatus } from '@core/value-objects/file-status.vo';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
@@ -22,15 +22,16 @@ export class GetUserFilesQuery implements IQuery {
 @Injectable()
 @QueryHandler(GetUserFilesQuery)
 export class GetUserFilesHandler
-  implements IQueryHandler<GetUserFilesQuery, GetUserFilesResponseDto>
+  implements IQueryHandler<GetUserFilesQuery, IGetUserFilesResponse>
 {
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
     private readonly fileAccessControlService: FileAccessControlService,
+    private readonly enhancedFileMapper: EnhancedFileMapper,
   ) {}
 
-  async execute(query: GetUserFilesQuery): Promise<GetUserFilesResponseDto> {
+  async execute(query: GetUserFilesQuery): Promise<IGetUserFilesResponse> {
     const { userId, status, path } = query;
 
     // Validate and parse limit
@@ -106,14 +107,20 @@ export class GetUserFilesHandler
       }
     });
 
+    const currentPage = Math.floor(finalOffset / finalLimit) + 1;
+    const hasNext = finalOffset + accessibleFiles.length < total;
+    const hasPrev = finalOffset > 0;
+
+    const filesWithSignedUrls =
+      await this.enhancedFileMapper.toResponseArrayWithSignedUrls(accessibleFiles);
+
     return {
-      files: FileMapper.toResponseArray(accessibleFiles),
-      total: accessibleFiles.length, // Use filtered count for accurate pagination
-      pagination: {
-        limit: finalLimit,
-        offset: finalOffset,
-        hasMore: finalOffset + accessibleFiles.length < total,
-      },
+      files: filesWithSignedUrls,
+      total: total,
+      page: currentPage,
+      limit: finalLimit,
+      hasNext,
+      hasPrev,
     };
   }
 }

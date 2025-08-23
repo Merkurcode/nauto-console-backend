@@ -2,12 +2,7 @@ import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Injectable } from '@nestjs/common';
 import { MultipartUploadService } from '@core/services/multipart-upload.service';
 import { InvalidParameterException } from '@core/exceptions/domain-exceptions';
-
-export interface IGeneratePartUrlResponse {
-  url: string;
-  partNumber: number;
-  expirationSeconds: number;
-}
+import { IGeneratePartUrlResponse } from '@application/dtos/_responses/storage/storage.response.interface';
 
 export class GeneratePartUrlCommand implements ICommand {
   constructor(

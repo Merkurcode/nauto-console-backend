@@ -26,6 +26,8 @@ export interface IFileResponse {
   etag: string | null;
   createdAt: Date;
   updatedAt: Date;
+  signedUrl?: string;
+  signedUrlExpiresAt?: Date;
 }
 
 export interface IGetFileSignedUrlResponse {
@@ -63,4 +65,31 @@ export interface IGetUserStorageQuotaResponse {
   formattedQuota: string;
   formattedAvailable: string;
   usagePercentage: number;
+}
+
+export interface ICreateFolderResponse {
+  path: string;
+}
+
+export interface IDirectoryItem {
+  name: string;
+  type: 'file' | 'folder';
+  path: string;
+  size?: number;
+  mimeType?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  status?: string;
+  signedUrl?: string;
+  signedUrlExpiresAt?: Date;
+}
+
+export interface IDirectoryContentsResponse {
+  items: IDirectoryItem[];
+  currentPath: string;
+  total: number;
+  page: number;
+  limit: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }

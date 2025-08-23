@@ -104,7 +104,18 @@ export interface IStorageService {
   // Folder/prefix operations
   listObjectsByPrefix(bucket: string, prefix: string): Promise<string[]>;
 
+  listObjectsV2?(
+    bucket: string,
+    prefix: string,
+  ): Promise<{ objects: string[]; prefixes: string[] }>;
+
   deleteObjectsByPrefix(bucket: string, prefix: string): Promise<number>;
+
+  createFolder(bucket: string, folderPath: string): Promise<void>;
+
+  deleteFolder(bucket: string, folderPath: string): Promise<void>;
+
+  folderExists(bucket: string, folderPath: string): Promise<boolean>;
 
   // Bucket operations
   bucketExists(bucket: string): Promise<boolean>;

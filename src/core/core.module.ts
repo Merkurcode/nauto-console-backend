@@ -41,6 +41,7 @@ import { FileLockService } from './services/file-lock.service';
 import { FileQuotaService } from './services/file-quota.service';
 import { FileUploadValidationService } from './services/file-upload-validation.service';
 import { MultipartUploadService } from './services/multipart-upload.service';
+import { FileNamingService } from './services/file-naming.service';
 
 /**
  * Core Domain Module
@@ -91,6 +92,7 @@ import { MultipartUploadService } from './services/multipart-upload.service';
     FileQuotaService,
     FileUploadValidationService,
     MultipartUploadService,
+    FileNamingService,
   ],
   exports: [
     // Export all domain services
@@ -134,6 +136,7 @@ import { MultipartUploadService } from './services/multipart-upload.service';
     FileQuotaService,
     FileUploadValidationService,
     MultipartUploadService,
+    FileNamingService,
   ],
 })
 export class CoreModule {}

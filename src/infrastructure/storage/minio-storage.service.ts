@@ -436,12 +436,15 @@ export class MinioStorageService implements IStorageService {
       this.logger.debug({ message: 'Listing objects by prefix', bucket, prefix });
 
       const objects: string[] = [];
-      const stream = this.minioClient.listObjects(bucket, prefix);
+      // Use recursive:true to get all objects under the prefix
+      const stream = this.minioClient.listObjects(bucket, prefix, true);
 
-      // API oficial: consumir mediante eventos 'data'/'error'/'end' (stream) :contentReference[oaicite:2]{index=2}
+      // API oficial: consumir mediante eventos 'data'/'error'/'end' (stream)
       await new Promise<void>((resolve, reject) => {
         stream.on('data', (obj: any) => {
-          if (obj?.name) objects.push(obj.name);
+          if (obj?.name) {
+            objects.push(obj.name);
+          }
         });
         stream.on('error', (err: any) => reject(err));
         stream.on('end', () => resolve());
@@ -457,6 +460,54 @@ export class MinioStorageService implements IStorageService {
       return objects;
     } catch (error) {
       this.logAndThrow('Failed to list objects by prefix', { bucket, prefix }, error);
+    }
+  }
+
+  /**
+   * List objects and folders at a specific level (non-recursive)
+   * This is better for directory-like browsing
+   */
+  async listObjectsV2(
+    bucket: string,
+    prefix: string,
+  ): Promise<{ objects: string[]; prefixes: string[] }> {
+    try {
+      this.logger.debug({ message: 'Listing objects V2 (with prefixes)', bucket, prefix });
+
+      const objects: string[] = [];
+      const prefixes: string[] = [];
+
+      // Use recursive:false to get folder prefixes
+      const stream = this.minioClient.listObjectsV2(bucket, prefix, false);
+
+      await new Promise<void>((resolve, reject) => {
+        stream.on('data', (obj: any) => {
+          // Regular objects (files)
+          if (obj?.name) {
+            objects.push(obj.name);
+          }
+          // Folder prefixes
+          if (obj?.prefix) {
+            prefixes.push(obj.prefix);
+          }
+        });
+        stream.on('error', (err: any) => reject(err));
+        stream.on('end', () => resolve());
+      });
+
+      this.logger.log({
+        message: 'Objects V2 listed successfully',
+        bucket,
+        prefix,
+        objectCount: objects.length,
+        prefixCount: prefixes.length,
+        objects: objects.slice(0, 5),
+        prefixes: prefixes.slice(0, 5),
+      });
+
+      return { objects, prefixes };
+    } catch (error) {
+      this.logAndThrow('Failed to list objects V2', { bucket, prefix }, error);
     }
   }
 
@@ -507,6 +558,97 @@ export class MinioStorageService implements IStorageService {
       this.logger.log({ message: 'Bucket created successfully', bucket, region });
     } catch (error) {
       this.logAndThrow('Failed to create bucket', { bucket }, error);
+    }
+  }
+
+  async createFolder(bucket: string, folderPath: string): Promise<void> {
+    try {
+      await this.ensureBucketExists(bucket);
+
+      // Normalize folder path - ensure it ends with /
+      const key = this.normalizeFolderKey(folderPath);
+
+      const meta: Record<string, string> = {
+        'Content-Type': 'application/x-directory',
+        // Si tu bucket/política exige SSE, descomenta una:
+        // 'x-amz-server-side-encryption': 'AES256',
+        // 'x-amz-server-side-encryption': 'aws:kms', // si usas KMS en MinIO
+      };
+
+      // Create folder by putting an empty object with the folder path
+      // This creates a "folder marker" that most S3 clients recognize as a folder
+      await this.minioClient.putObject(bucket, key, Buffer.alloc(0), 0, meta);
+
+      this.logger.log({
+        message: 'Folder created successfully',
+        bucket,
+        folderPath: key,
+      });
+    } catch (error) {
+      this.logAndThrow('Failed to create folder', { bucket, folderPath }, error);
+    }
+  }
+
+  async deleteFolder(bucket: string, folderPath: string): Promise<void> {
+    try {
+      // Normalize folder path - ensure it ends with /
+      const normalizedPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
+
+      // First check if folder exists
+      const exists = await this.folderExists(bucket, folderPath);
+      if (!exists) {
+        this.logger.warn({
+          message: 'Folder does not exist, skipping deletion',
+          bucket,
+          folderPath: normalizedPath,
+        });
+
+        return;
+      }
+
+      // Delete all objects with this prefix (including the folder marker)
+      const deletedCount = await this.deleteObjectsByPrefix(bucket, normalizedPath);
+
+      this.logger.log({
+        message: 'Folder deleted successfully',
+        bucket,
+        folderPath: normalizedPath,
+        deletedObjectsCount: deletedCount,
+      });
+    } catch (error) {
+      this.logAndThrow('Failed to delete folder', { bucket, folderPath }, error);
+    }
+  }
+
+  async folderExists(bucket: string, folderPath: string): Promise<boolean> {
+    try {
+      // Normalize folder path - ensure it ends with /
+      const normalizedPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
+
+      // Check if the folder marker exists
+      try {
+        await this.minioClient.statObject(bucket, normalizedPath);
+
+        return true;
+      } catch (statError: any) {
+        // If folder marker doesn't exist, check if there are any objects with this prefix
+        // This handles cases where folder was created implicitly by uploading files
+        if (statError.code === 'NotFound') {
+          const objects = await this.listObjectsByPrefix(bucket, normalizedPath);
+
+          return objects.length > 0;
+        }
+        throw statError;
+      }
+    } catch (error) {
+      this.logger.error({
+        message: 'Failed to check folder existence',
+        bucket,
+        folderPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return false;
     }
   }
 
@@ -634,6 +776,37 @@ export class MinioStorageService implements IStorageService {
     }
     const reserved = ['admin', 'api', 'www', 'ftp', 'mail', 'pop', 'pop3', 'imap', 'smtp'];
     if (reserved.includes(bucketName)) throw new Error('Bucket name uses a reserved word');
+  }
+
+  private normalizeFolderKey(input: string): string {
+    if (!input || typeof input !== 'string') throw new Error('folderPath required');
+
+    let k = input;
+    try {
+      k = decodeURIComponent(k);
+    } catch {}
+    k = k.replace(/\\/g, '/'); // backslashes -> slash
+    k = k.replace(/\/+/g, '/'); // colapsa //
+    k = k.replace(/^\/+|\/+$/g, ''); // quita slashes al inicio/fin
+
+    // no absolutos/UNC/drive
+    if (k.startsWith('/') || k.startsWith('//') || /^[a-zA-Z]:/.test(k)) {
+      throw new Error('folderPath must be relative');
+    }
+
+    // niega "." y ".."
+    const parts = k.split('/').filter(Boolean);
+    for (const p of parts) {
+      if (p === '.' || p === '..') throw new Error('path traversal detected');
+    }
+
+    // termina en "/"
+    k = parts.join('/') + '/';
+
+    // tamaño máximo de key en S3/MinIO ~1024
+    if (k.length > 1024) throw new Error('folderPath too long');
+
+    return k;
   }
 
   // (opcional) útil si necesitas inferir el tipo a partir del nombre de archivo

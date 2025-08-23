@@ -9,6 +9,7 @@ import {
   InvalidParameterException,
 } from '@core/exceptions/domain-exceptions';
 import { FileAccessControlService } from '@core/services/file-access-control.service';
+import { IGetFileSignedUrlResponse } from '@application/dtos/_responses/storage/storage.response.interface';
 
 export class GetFileSignedUrlQuery implements IQuery {
   constructor(
@@ -16,12 +17,6 @@ export class GetFileSignedUrlQuery implements IQuery {
     public readonly expirationSeconds?: string,
     public readonly userId?: string, // For access control
   ) {}
-}
-
-export interface IGetFileSignedUrlResponse {
-  url: string;
-  expirationSeconds: number;
-  isPublic: boolean;
 }
 
 @Injectable()

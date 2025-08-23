@@ -1,5 +1,9 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, IsOptional, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsValidStoragePath,
+  HasValidDirectoryDepth,
+} from '@shared/validators/storage-path.validator';
 
 export class MoveFileDto {
   @ApiProperty({
@@ -7,6 +11,9 @@ export class MoveFileDto {
     example: 'documents/archive',
   })
   @IsString()
-  @MinLength(0)
+  @IsOptional()
+  @Length(0, 255)
+  @IsValidStoragePath()
+  @HasValidDirectoryDepth(100)
   newPath: string;
 }

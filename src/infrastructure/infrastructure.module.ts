@@ -40,6 +40,7 @@ import { UserActivityLogRepository } from './repositories/user-activity-log.repo
 import { FileRepository } from './repositories/file.repository';
 import { TokenProvider } from './auth/token.provider';
 import { ConcurrencyService } from './services/concurrency.service';
+import { FileNamingService } from '@core/services/file-naming.service';
 
 // Tokens
 import {
@@ -71,6 +72,7 @@ import {
   TRANSACTION_MANAGER,
   LOGGER_SERVICE,
   CONCURRENCY_SERVICE,
+  FILE_NAMING_SERVICE,
 } from '@shared/constants/tokens';
 
 /**
@@ -324,6 +326,11 @@ import {
       provide: CONCURRENCY_SERVICE,
       useClass: ConcurrencyService,
     },
+    {
+      provide: FILE_NAMING_SERVICE,
+      useFactory: fileRepository => new FileNamingService(fileRepository),
+      inject: [FILE_REPOSITORY],
+    },
   ],
   exports: [
     // Export repository tokens for use by other modules
@@ -354,6 +361,7 @@ import {
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,
     CONCURRENCY_SERVICE,
+    FILE_NAMING_SERVICE,
     RequestCacheService,
 
     // Export modules for re-use

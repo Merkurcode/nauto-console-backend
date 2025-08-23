@@ -17,6 +17,12 @@ export class InvalidObjectKeyException extends StorageDomainException {
   }
 }
 
+export class InvalidHierarchicalPathException extends StorageDomainException {
+  constructor(message: string, path?: string) {
+    super(message, 'INVALID_HIERARCHICAL_PATH', { path });
+  }
+}
+
 // Storage concurrency exceptions
 export class ConcurrencyLimitExceededException extends StorageDomainException {
   constructor(userId: string, currentLimit: number) {

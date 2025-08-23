@@ -12,6 +12,7 @@ export interface IFileAccessRules {
 
 export interface IUserContext {
   sub: string;
+  companyId?: string;
   role?: RolesEnum;
   roles?: RolesEnum[];
 }
@@ -58,14 +59,40 @@ export class FileAccessControlService {
       };
     }
 
-    // Public files are readable by anyone authenticated
+    // Public files - check if it's a common area file
     if (file.isPublic) {
-      return {
-        canRead: true,
-        canWrite: false,
-        canDelete: false,
-        reason: 'Public file access',
-      };
+      const userCompanyId = this.getUserCompanyId(user);
+      const fileCompanyId = this.extractCompanyIdFromPath(file.path);
+
+      // For common area files, check if user is from the same company
+      if (this.isCommonAreaFile(file)) {
+        if (userCompanyId && fileCompanyId && userCompanyId === fileCompanyId) {
+          // Users from same company can read/write common area files
+          return {
+            canRead: true,
+            canWrite: true,
+            canDelete: false, // Only file owner can delete
+            reason: 'Company common area access',
+          };
+        } else {
+          return {
+            canRead: false,
+            canWrite: false,
+            canDelete: false,
+            reason: 'Access denied - different company',
+          };
+        }
+      }
+
+      // Regular public files (non-common area) - only for accessible from same company
+      if (userCompanyId && fileCompanyId && userCompanyId === fileCompanyId) {
+        return {
+          canRead: true,
+          canWrite: false,
+          canDelete: false,
+          reason: 'Public file access',
+        };
+      }
     }
 
     // Private files are only accessible to owners
@@ -219,5 +246,39 @@ export class FileAccessControlService {
 
   private isFileOwner(file: File, user: IJwtPayload | IUserContext): boolean {
     return file.userId === user.sub;
+  }
+
+  /**
+   * Checks if a file is in a common area (shared company folder)
+   */
+  private isCommonAreaFile(file: File): boolean {
+    // Check if the file path indicates it's in a common area
+    // Format: company-uuid/common/folder-name/...
+    return file.path.includes('/common/');
+  }
+
+  /**
+   * Extracts company ID from hierarchical file path
+   */
+  private extractCompanyIdFromPath(path: string): string | null {
+    // Format: company-uuid/users/user-uuid/... or company-uuid/common/folder/...
+    const parts = path.split('/');
+
+    return parts.length > 0 ? parts[0] : null;
+  }
+
+  /**
+   * Gets the company ID from user context
+   */
+  private getUserCompanyId(user: IJwtPayload | IUserContext): string | null {
+    if ('companyId' in user && user.companyId) {
+      return user.companyId;
+    }
+    // For IJwtPayload, company ID might be in a different field
+    if ('company_id' in user && (user as { company_id: string }).company_id) {
+      return (user as { company_id: string }).company_id;
+    }
+
+    return null;
   }
 }

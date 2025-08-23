@@ -244,10 +244,28 @@ export class GetUserFilesResponseDto {
   total: number;
 
   @ApiProperty({
-    description: 'Pagination information',
-    type: PaginationInfoDto,
+    description: 'Current page',
+    example: 1,
   })
-  pagination: PaginationInfoDto;
+  page: number;
+
+  @ApiProperty({
+    description: 'Items per page',
+    example: 20,
+  })
+  limit: number;
+
+  @ApiProperty({
+    description: 'Whether there are more pages',
+    example: true,
+  })
+  hasNext: boolean;
+
+  @ApiProperty({
+    description: 'Whether there are previous pages',
+    example: false,
+  })
+  hasPrev: boolean;
 }
 
 export class GetUserStorageQuotaResponseDto {
@@ -305,4 +323,12 @@ export class GetUserStorageQuotaResponseDto {
     example: 20,
   })
   usagePercentage: number;
+}
+
+export class CreateFolderResponseDto {
+  @ApiProperty({
+    description: 'Created folder path',
+    example: 'documents/projects',
+  })
+  path: string;
 }

@@ -70,3 +70,4 @@ export const TRANSACTION_MANAGER = Symbol('TransactionManager');
 // Storage service tokens
 export const STORAGE_SERVICE = Symbol('StorageService');
 export const CONCURRENCY_SERVICE = Symbol('ConcurrencyService');
+export const FILE_NAMING_SERVICE = Symbol('FileNamingService');

@@ -119,29 +119,32 @@ export class File extends AggregateRoot {
     return this._updatedAt;
   }
 
-  // Factory method for creating new files (for multipart upload)
+  // Simple factory method - path and access already determined by endpoint
   public static createForUpload(
     filename: string,
     originalName: string,
-    path: string,
+    storagePath: string,
+    objectKey: string,
     mimeType: string,
     size: number,
     bucket: string,
-    userId: string | null = null,
+    userId: string,
+    isPublic: boolean = false, // Determined by area (common = public, user = private)
   ): File {
-    const objectKey = ObjectKey.join(path, filename);
     const fileSize = FileSize.fromBytes(size);
+    const objectKeyVo = ObjectKey.create(objectKey);
+
     const file = new File(
       uuidv4(),
       filename,
       originalName,
-      path,
-      objectKey,
+      storagePath,
+      objectKeyVo,
       mimeType,
       fileSize,
       bucket,
       userId,
-      false, // Start as private
+      isPublic,
       FileStatus.pending(),
       null, // No upload ID yet
       null, // No ETag yet

@@ -12,11 +12,13 @@ import {
   DeleteObjectsCommand,
   HeadObjectCommand,
   GetObjectCommand,
+  PutObjectCommand,
   PutObjectAclCommand,
   ListObjectsV2Command,
   CreateBucketCommand,
   HeadBucketCommand,
   CompletedPart,
+  PutObjectCommandInput,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -760,6 +762,145 @@ export class AwsS3StorageService implements IStorageService {
     }
   }
 
+  async createFolder(
+    bucket: string,
+    folderPath: string,
+    opts?: {
+      sse?: 'AES256' | 'aws:kms';
+      kmsKeyId?: string; // requerido si sse='aws:kms'
+      allowedPrefixRegex?: RegExp;
+      idempotent?: boolean; // true => no sobrescribe si ya existe
+    },
+  ): Promise<void> {
+    this.validateBucketName(bucket);
+    await this.ensureBucketExists(bucket);
+
+    // Normalize folder path - ensure it ends with /
+    const key = this.normalizeS3FolderKey(folderPath, {
+      allowedPrefixRegex: opts?.allowedPrefixRegex,
+    });
+
+    try {
+      // Idempotencia: si ya existe el marker, sal sin crear nueva versión
+      if (opts?.idempotent) {
+        try {
+          await this.s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+          this.logger.log({
+            message: 'Folder already exists (idempotent)',
+            bucket,
+            folderPath: key,
+          });
+
+          return;
+        } catch (e: any) {
+          // Continúa sólo si es 404/NoSuchKey
+          const msg = (e?.Code || e?.name || e?.message || '').toString();
+          if (!/NotFound|NoSuchKey/i.test(msg) && e?.$metadata?.httpStatusCode !== 404) throw e;
+        }
+      }
+
+      const input: PutObjectCommandInput = {
+        Bucket: bucket,
+        Key: key,
+        Body: new Uint8Array(0), // 0 bytes
+        ContentType: 'application/x-directory',
+        ContentLength: 0,
+      };
+
+      // Cifrado del lado servidor (ajusta a tu política)
+      if (opts?.sse === 'AES256') {
+        input.ServerSideEncryption = 'AES256';
+      } else if (opts?.sse === 'aws:kms') {
+        if (!opts.kmsKeyId) throw new Error("kmsKeyId is required when sse='aws:kms'");
+        input.ServerSideEncryption = 'aws:kms';
+        input.SSEKMSKeyId = opts.kmsKeyId;
+        // Opcional: S3 Bucket Key para KMS (menos costos)
+        input.BucketKeyEnabled = true;
+      }
+
+      await this.s3Client.send(new PutObjectCommand(input));
+
+      this.logger.log({ message: 'Folder created successfully', bucket, folderPath: key });
+    } catch (error: any) {
+      // Preserva metadatos útiles de AWS (status, requestId)
+      this.logger.error({
+        message: 'Failed to create folder',
+        bucket,
+        folderPath,
+        code: error?.Code || error?.name,
+        status: error?.$metadata?.httpStatusCode,
+        requestId: error?.$metadata?.requestId,
+        error: error?.message ?? String(error),
+      });
+      throw new Error(`Failed to create folder: ${error?.message ?? String(error)}`);
+    }
+  }
+
+  async deleteFolder(bucket: string, folderPath: string): Promise<void> {
+    try {
+      this.validateBucketName(bucket);
+
+      // Normalize folder path - ensure it ends with /
+      const normalizedPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
+
+      // Delete all objects with this prefix (including the folder marker)
+      const deletedCount = await this.deleteObjectsByPrefix(bucket, normalizedPath);
+
+      this.logger.log({
+        message: 'Folder deleted successfully',
+        bucket,
+        folderPath: normalizedPath,
+        deletedObjectsCount: deletedCount,
+      });
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to delete folder',
+        bucket,
+        folderPath,
+        error: error?.message,
+      });
+      throw new Error(`Failed to delete folder: ${error?.message ?? String(error)}`);
+    }
+  }
+
+  async folderExists(bucket: string, folderPath: string): Promise<boolean> {
+    try {
+      this.validateBucketName(bucket);
+
+      // Normalize folder path - ensure it ends with /
+      const normalizedPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
+
+      // Check if the folder marker exists
+      try {
+        await this.s3Client.send(
+          new HeadObjectCommand({
+            Bucket: bucket,
+            Key: normalizedPath,
+          }),
+        );
+
+        return true;
+      } catch (headError: any) {
+        // If folder marker doesn't exist, check if there are any objects with this prefix
+        if (headError.name === 'NotFound' || headError.$metadata?.httpStatusCode === 404) {
+          const objects = await this.listObjectsByPrefix(bucket, normalizedPath);
+
+          return objects.length > 0;
+        }
+        throw headError;
+      }
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to check folder existence',
+        bucket,
+        folderPath,
+        error: error.message,
+      });
+
+      return false;
+    }
+  }
+
   // ============================================================================
   // PRIVATE HELPERS
   // ============================================================================
@@ -811,5 +952,45 @@ export class AwsS3StorageService implements IStorageService {
       if (seen.has(p.PartNumber)) throw new Error(`Duplicate part number ${p.PartNumber}`);
       seen.add(p.PartNumber);
     }
+  }
+
+  /** Normaliza/valida un key de “carpeta” para S3 (debe terminar en "/") */
+  private normalizeS3FolderKey(
+    input: string,
+    opts?: {
+      maxLen?: number;
+      allowedPrefixRegex?: RegExp; // p.ej. /^tenants\/[a-z0-9-]+\/users\/[a-z0-9-]+\/?/i
+    },
+  ): string {
+    if (!input || typeof input !== 'string') throw new Error('folderPath required');
+
+    let k = input;
+    try {
+      k = decodeURIComponent(k);
+    } catch {}
+    k = k.replace(/\\/g, '/'); // backslashes -> slash
+    k = k.replace(/\/+/g, '/'); // colapsa //
+    k = k.replace(/^\/+|\/+$/g, ''); // quita / inicial/final
+
+    // rechaza absolutos/UNC/drive (por si llegan desde UI)
+    if (k.startsWith('/') || k.startsWith('//') || /^[a-zA-Z]:/.test(k)) {
+      throw new Error('folderPath must be relative');
+    }
+    // niega "." y ".."
+    const parts = k.split('/').filter(Boolean);
+    for (const p of parts) if (p === '.' || p === '..') throw new Error('path traversal detected');
+
+    // aplica prefijo permitido (multi-tenant)
+    if (opts?.allowedPrefixRegex && !opts.allowedPrefixRegex.test(k + '/')) {
+      throw new Error('folderPath outside allowed prefix');
+    }
+
+    k = parts.join('/') + '/';
+
+    // límite de S3: 1024 bytes en UTF-8
+    const maxLen = opts?.maxLen ?? 1024;
+    if (Buffer.byteLength(k, 'utf8') > maxLen) throw new Error('folderPath too long');
+
+    return k;
   }
 }

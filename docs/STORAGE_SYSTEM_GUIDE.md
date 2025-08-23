@@ -140,7 +140,7 @@ STORAGE_DEFAULT_BUCKET=nauto-console    # Default bucket name
 MINIO_ENDPOINT=http://127.0.0.1:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET_NAME=nauto-console
+# MINIO_BUCKET_NAME=nauto-console         # OBSOLETE: Use STORAGE_DEFAULT_BUCKET instead
 MINIO_FORCE_PATH_STYLE=true
 
 # AWS S3 Configuration (Production)
@@ -148,7 +148,7 @@ AWS_S3_ENDPOINT=                        # Leave empty for standard AWS S3
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_S3_BUCKET_NAME=your_bucket
+# AWS_S3_BUCKET_NAME=your_bucket          # OBSOLETE: Use STORAGE_DEFAULT_BUCKET instead
 AWS_S3_FORCE_PATH_STYLE=false
 
 # Concurrency Control

@@ -49,6 +49,17 @@ export interface IFileRepository {
   // Bulk operations
   findByBucketAndPrefix(bucket: string, prefix: string): Promise<File[]>;
   deleteByIds(ids: string[]): Promise<void>;
+  deleteFilesByPrefix(pathPrefix: string, companyId: string): Promise<number>;
+
+  // Company-based hierarchical operations
+  findByCompanyIdAndFilters(params: {
+    companyId: string;
+    pathPrefix?: string;
+    status?: string;
+    mimeType?: string;
+    page: number;
+    limit: number;
+  }): Promise<File[]>;
 
   // Status operations
   updateStatus(id: string, status: FileStatus): Promise<void>;

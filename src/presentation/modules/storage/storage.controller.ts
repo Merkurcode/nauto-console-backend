@@ -33,6 +33,7 @@ import { CompleteMultipartUploadDto } from '@application/dtos/storage/complete-m
 import { MoveFileDto } from '@application/dtos/storage/move-file.dto';
 import { RenameFileDto } from '@application/dtos/storage/rename-file.dto';
 import { SetFileVisibilityDto } from '@application/dtos/storage/set-file-visibility.dto';
+import { CreateFolderDto } from '@application/dtos/storage/create-folder.dto';
 
 // Response DTOs
 import {
@@ -41,12 +42,12 @@ import {
   FileResponseDto,
   GetFileSignedUrlResponseDto,
   GetUploadStatusResponseDto,
-  GetUserFilesResponseDto,
   GetUserStorageQuotaResponseDto,
+  CreateFolderResponseDto,
 } from '@application/dtos/_responses/storage/storage.swagger.dto';
 
 // Commands
-import { InitiateMultipartUploadCommand } from '@application/commands/storage/initiate-multipart-upload.command';
+import { InitiateUserUploadCommand } from '@application/commands/storage/initiate-user-upload.command';
 import { GeneratePartUrlCommand } from '@application/commands/storage/generate-part-url.command';
 import { CompleteMultipartUploadCommand } from '@application/commands/storage/complete-multipart-upload.command';
 import { AbortMultipartUploadCommand } from '@application/commands/storage/abort-multipart-upload.command';
@@ -56,20 +57,23 @@ import { DeleteFileCommand } from '@application/commands/storage/delete-file.com
 import { SetFileVisibilityCommand } from '@application/commands/storage/set-file-visibility.command';
 import { ClearUserConcurrencySlotsCommand } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { HeartbeatUploadCommand } from '@application/commands/storage/heartbeat-upload.command';
+import { CreateUserFolderCommand } from '@application/commands/storage/create-user-folder.command';
+import { DeleteUserFolderCommand } from '@application/commands/storage/delete-user-folder.command';
+import { DeleteUserFileCommand } from '@application/commands/storage/delete-user-file.command';
 
 // Queries
 import { GetUploadStatusQuery } from '@application/queries/storage/get-upload-status.query';
 import { GetFileQuery } from '@application/queries/storage/get-file.query';
-import { GetUserFilesQuery } from '@application/queries/storage/get-user-files.query';
 import { GetFileSignedUrlQuery } from '@application/queries/storage/get-file-signed-url.query';
 import { GetUserStorageQuotaQuery } from '@application/queries/storage/get-user-storage-quota.query';
 import { GetConcurrencyStatsQuery } from '@application/queries/storage/get-concurrency-stats.query';
 import { GetUserConcurrentCountQuery } from '@application/queries/storage/get-user-concurrent-count.query';
 import { GetConcurrencyHealthQuery } from '@application/queries/storage/get-concurrency-health.query';
+import { GetDirectoryContentsQuery } from '@application/queries/storage/get-directory-contents.query';
 
 // Guards & Decorators
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import { WriteOperation } from '@shared/decorators/write-operation.decorator';
+import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operation.decorator';
 import { CanRead, CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
 import { Throttle } from '@shared/decorators/throttle.decorator';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
@@ -132,15 +136,16 @@ export class StorageController {
     // 🐛 DEBUG - Storage Controller ejecutado: userId: ${user.sub}, filename: ${dto.filename}
 
     return this.transactionService.executeInTransaction(async () => {
+      // FACT: This endpoint ALWAYS operates in user space
       return this.commandBus.execute(
-        new InitiateMultipartUploadCommand(
+        new InitiateUserUploadCommand(
           user.sub,
+          user.companyId,
           dto.path,
           dto.filename,
           dto.originalName,
           dto.mimeType,
           dto.size,
-          dto.bucket,
         ),
       );
     });
@@ -292,6 +297,115 @@ export class StorageController {
   }
 
   // ============================================================================
+  // FOLDER OPERATIONS
+  // ============================================================================
+
+  @Post('folders')
+  @HttpCode(HttpStatus.CREATED)
+  @WriteOperation('file')
+  @CanWrite('file')
+  @Throttle(60000, 20) // 20 folder creations per minute
+  @ApiOperation({
+    summary: 'Create folder in user space',
+    description:
+      "Creates a virtual folder in the user's personal storage area. " +
+      'The folder is automatically created within: nauto-console-dev/company-uuid/users/user-uuid/{path}. ' +
+      'Users have complete freedom to name their folders as they wish.',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Folder created successfully',
+    type: CreateFolderResponseDto,
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid folder path' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to create folder' })
+  async createFolder(
+    @Body() dto: CreateFolderDto,
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<CreateFolderResponseDto> {
+    return this.transactionService.executeInTransaction(async () => {
+      return this.commandBus.execute(
+        new CreateUserFolderCommand(dto.path, user.sub, user.companyId),
+      );
+    });
+  }
+
+  @Delete('folders')
+  @HttpCode(HttpStatus.OK)
+  @DeleteOperation('file')
+  @CanDelete('file')
+  @ApiOperation({
+    summary: 'Delete folder',
+    description:
+      'Deletes a folder and all its contents from user storage area. ' +
+      'This operation will remove the folder physically from storage and delete all file records within it. ' +
+      'Users have complete freedom to delete their folders as they wish.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Folder deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        deletedCount: { type: 'number', description: 'Number of files deleted' },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Folder not found' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to delete folder' })
+  async deleteFolder(
+    @Query('path') path: string,
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<{ deletedCount: number }> {
+    return this.transactionService.executeInTransaction(async () => {
+      return this.commandBus.execute(
+        new DeleteUserFolderCommand(path || '', user.sub, user.companyId),
+      );
+    });
+  }
+
+  @Delete('files/:filename')
+  @DeleteOperation('file')
+  @CanDelete('file')
+  @Throttle(60000, 20) // 20 file deletions per minute
+  @ApiOperation({
+    summary: 'Delete individual file from user space by filename',
+    description:
+      "Deletes a specific file from the user's storage area by filename and optional path. " +
+      'Can delete files registered in database or physical files that only exist in storage. ' +
+      'For database files, applies ownership validation. ' +
+      'For physical-only files, deletes directly from MinIO storage.',
+  })
+  @ApiParam({
+    name: 'filename',
+    description: 'Name of the file to delete',
+    example: 'document.pdf',
+  })
+  @ApiQuery({
+    name: 'path',
+    required: false,
+    description: 'Directory path where the file is located (empty for root)',
+    example: 'documents/2024',
+  })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'File deleted successfully',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to delete file' })
+  async deleteUserFileByName(
+    @Param('filename') filename: string,
+    @Query('path') path: string = '',
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<void> {
+    return this.transactionService.executeInTransaction(async () => {
+      const command = new DeleteUserFileCommand(path, filename, user.sub, user.companyId);
+
+      return this.commandBus.execute(command);
+    });
+  }
+
+  // ============================================================================
   // FILE OPERATIONS
   // ============================================================================
 
@@ -317,30 +431,79 @@ export class StorageController {
     return this.queryBus.execute(new GetFileQuery(fileId, user.sub));
   }
 
-  @Get('files')
+  @Get('directory')
   @HttpCode(HttpStatus.OK)
   @CanRead('file')
   @ApiOperation({
-    summary: 'Get user files',
-    description: 'Retrieves a list of files owned by the current user',
+    summary: 'Get directory contents (files + folders)',
+    description:
+      'Retrieves both files and folders in a specific directory path. ' +
+      'Returns a combined view like a file manager, showing folders first then files, both sorted alphabetically.',
   })
-  @ApiQuery({ name: 'status', required: false, description: 'Filter by file status' })
-  @ApiQuery({ name: 'path', required: false, description: 'Filter by path prefix' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Maximum number of files to return' })
-  @ApiQuery({ name: 'offset', required: false, description: 'Number of files to skip' })
+  @ApiQuery({
+    name: 'path',
+    required: false,
+    description: 'Directory path to explore (empty for root)',
+    example: 'documents/invoices',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Maximum number of items to return (max 200)',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'Number of items to skip for pagination',
+  })
+  @ApiQuery({
+    name: 'includePhysical',
+    required: false,
+    description: 'Include physical files from MinIO that are not in database (default: true)',
+    type: Boolean,
+    example: true,
+  })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'User files retrieved successfully',
-    type: GetUserFilesResponseDto,
+    description: 'Directory contents retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', example: 'invoice.pdf' },
+              type: { type: 'string', enum: ['file', 'folder'], example: 'file' },
+              path: { type: 'string', example: 'documents/invoices' },
+              size: { type: 'number', example: 2048576 },
+              mimeType: { type: 'string', example: 'application/pdf' },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
+              status: { type: 'string', example: 'UPLOADED' },
+            },
+          },
+        },
+        currentPath: { type: 'string', example: 'documents/invoices' },
+        total: { type: 'number', example: 25 },
+        page: { type: 'number', example: 1 },
+        limit: { type: 'number', example: 50 },
+        hasNext: { type: 'boolean', example: false },
+        hasPrev: { type: 'boolean', example: false },
+      },
+    },
   })
-  async getUserFiles(
+  async getDirectoryContents(
     @CurrentUser() user: IJwtPayload,
-    @Query('status') status?: string,
-    @Query('path') path?: string,
+    @Query('path') path: string = '',
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
-  ): Promise<GetUserFilesResponseDto> {
-    return this.queryBus.execute(new GetUserFilesQuery(user.sub, status, path, limit, offset));
+    @Query('includePhysical') includePhysical?: string,
+  ) {
+    return this.queryBus.execute(
+      new GetDirectoryContentsQuery(user.sub, user.companyId, path, limit, offset, includePhysical),
+    );
   }
 
   @Put('files/:fileId/move')

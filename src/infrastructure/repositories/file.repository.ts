@@ -323,6 +323,23 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     });
   }
 
+  async deleteFilesByPrefix(pathPrefix: string, companyId: string): Promise<number> {
+    return this.executeWithErrorHandling('deleteFilesByPrefix', async () => {
+      const result = await this.client.file.deleteMany({
+        where: {
+          path: {
+            startsWith: pathPrefix
+          },
+          user: {
+            companyId: companyId
+          }
+        }
+      });
+      
+      return result.count;
+    });
+  }
+
   async updateStatus(id: string, status: FileStatus): Promise<void> {
     return this.executeWithErrorHandling('updateStatus', async () => {
       await this.client.file.update({
@@ -386,6 +403,52 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           }
         },
         orderBy: { createdAt: 'desc' },
+      });
+
+      return files.map(file => this.mapToEntity(file));
+    });
+  }
+
+  async findByCompanyIdAndFilters(params: {
+    companyId: string;
+    pathPrefix?: string;
+    status?: string;
+    mimeType?: string;
+    page: number;
+    limit: number;
+  }): Promise<File[]> {
+    const { companyId, pathPrefix, status, mimeType, page, limit } = params;
+
+    return this.executeWithErrorHandling('findByCompanyIdAndFilters', async () => {
+      const whereClause: any = {
+        user: {
+          companyId: companyId,
+        },
+      };
+
+      if (pathPrefix) {
+        whereClause.path = {
+          startsWith: pathPrefix,
+        };
+      }
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      if (mimeType) {
+        whereClause.mimeType = {
+          startsWith: mimeType,
+        };
+      }
+
+      const files = await this.client.file.findMany({
+        where: whereClause,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
       });
 
       return files.map(file => this.mapToEntity(file));

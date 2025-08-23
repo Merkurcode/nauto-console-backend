@@ -86,6 +86,7 @@ export class GetPublicFileSignedUrlHandler
     const url = await this.fileOperationsService.generateSignedUrl({
       fileId,
       expirationSeconds: expiry,
+      userId: file.userId, // Use file owner for public access
     });
 
     return {

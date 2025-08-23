@@ -1,5 +1,6 @@
 import { ValueObject } from './base.vo';
 import { InvalidObjectKeyException } from '@core/exceptions/storage-domain.exceptions';
+import { HierarchicalPath } from './hierarchical-path.vo';
 
 export class ObjectKey extends ValueObject<string> {
   constructor(value: string) {
@@ -78,6 +79,23 @@ export class ObjectKey extends ValueObject<string> {
 
   public static create(value: string): ObjectKey {
     return new ObjectKey(value);
+  }
+
+  /**
+   * Creates ObjectKey from HierarchicalPath and filename
+   */
+  public static fromHierarchicalPath(
+    hierarchicalPath: HierarchicalPath,
+    filename: string,
+  ): ObjectKey {
+    return ObjectKey.join(hierarchicalPath.toString(), filename);
+  }
+
+  /**
+   * Creates ObjectKey from HierarchicalPath prefix only (for folder operations)
+   */
+  public static fromHierarchicalPathPrefix(hierarchicalPath: HierarchicalPath): ObjectKey {
+    return new ObjectKey(hierarchicalPath.toObjectKeyPrefix());
   }
 
   public getFilename(): string {
