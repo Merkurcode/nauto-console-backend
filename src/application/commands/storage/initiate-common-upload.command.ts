@@ -17,6 +17,8 @@ export class InitiateCommonUploadCommand implements ICommand {
     public readonly size: number,
     public readonly userId: string,
     public readonly companyId: string,
+    public readonly upsert: boolean = false,
+    public readonly autoRename: boolean = false,
   ) {}
 }
 
@@ -31,7 +33,18 @@ export class InitiateCommonUploadHandler
   ) {}
 
   async execute(command: InitiateCommonUploadCommand): Promise<IInitiateMultipartUploadResponse> {
-    const { area, path, filename, originalName, mimeType, size, userId, companyId } = command;
+    const {
+      area,
+      path,
+      filename,
+      originalName,
+      mimeType,
+      size,
+      userId,
+      companyId,
+      upsert,
+      autoRename,
+    } = command;
 
     // Simple path validation
     StoragePaths.validateUserPath(path);
@@ -39,15 +52,20 @@ export class InitiateCommonUploadHandler
     // FACT: Always common area (products or marketing)
     const storagePath = StorageAreaUtils.getStoragePathForCommonFolder(area, companyId, path);
 
-    return this.multipartUploadService.initiateUpload({
-      bucket: this.configService.get<string>('storage.defaultBucket'),
-      storagePath,
-      filename,
-      originalName,
-      mimeType,
-      size,
-      userId,
-      companyId,
-    });
+    return this.multipartUploadService.initiateUpload(
+      {
+        bucket: this.configService.get<string>('storage.defaultBucket'),
+        storagePath,
+        filename,
+        originalName,
+        mimeType,
+        size,
+        userId,
+        companyId,
+        upsert,
+        autoRename,
+      },
+      true,
+    );
   }
 }

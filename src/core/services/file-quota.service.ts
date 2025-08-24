@@ -3,7 +3,8 @@ import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { UserStorageConfigService } from './user-storage-config.service';
 import { FileLockService } from './file-lock.service';
 import { IConcurrencyService } from '@core/repositories/concurrency.service.interface';
-import { FILE_REPOSITORY, CONCURRENCY_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { FILE_REPOSITORY, CONCURRENCY_SERVICE, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ConcurrencyService } from '@infrastructure/services/concurrency.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -27,10 +28,14 @@ export class FileQuotaService {
     private readonly fileRepository: IFileRepository,
     @Inject(CONCURRENCY_SERVICE)
     private readonly concurrencyService: IConcurrencyService,
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
     private readonly userStorageConfigService: UserStorageConfigService,
     private readonly fileLockService: FileLockService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.logger.setContext(FileQuotaService.name);
+  }
 
   // ===========================================================================
   // API pública
@@ -59,8 +64,18 @@ export class FileQuotaService {
       const result = await this.performQuotaCheck(userId, fileSize, _companyId);
 
       if (result.allowed) {
-        // Reserva atómica con TTL (sumamos y refrescamos TTL)
-        await this.addReservation(userId, fileSize);
+        try {
+          await this.addReservation(userId, fileSize);
+        } catch (e) {
+          // CHANGED: fail-closed si no se pudo persistir la reserva
+          this.logger.error(`Failed to add reservation for ${userId}: ${(e as Error).message}`);
+
+          return {
+            ...result,
+            allowed: false,
+            reason: 'Reservation could not be recorded',
+          };
+        }
       }
 
       return result;
@@ -69,24 +84,53 @@ export class FileQuotaService {
 
   /**
    * Libera una reserva previamente hecha (p. ej. al fallar o cancelar un upload).
+   * Solo libera si la reserva realmente existía para prevenir valores negativos.
    */
-  async releaseReservedQuota(userId: string, fileSize: number): Promise<void> {
-    if (!userId || !Number.isFinite(fileSize) || fileSize <= 0) return;
+  async releaseReservedQuota(
+    userId: string,
+    fileSize: number,
+  ): Promise<{ success: boolean; remainingReserved: number }> {
+    if (!userId || !Number.isFinite(fileSize) || fileSize <= 0) {
+      return { success: false, remainingReserved: 0 };
+    }
 
     return this.fileLockService.withQuotaLock(userId, async () => {
-      await this.removeReservation(userId, fileSize);
+      const result = await this.removeReservation(userId, fileSize);
+
+      if (!result.success) {
+        // Log cuando intentamos liberar más de lo que está reservado
+        this.logger.warn(
+          `Attempted to release ${fileSize} bytes but insufficient reservation for user ${userId}. This may indicate double-release or expired reservation.`,
+        );
+      }
+
+      return result;
     });
   }
 
   /**
    * Tras finalizar exitosamente un upload (persistido en BD),
-   * se descuenta la reserva, ya que el uso “real” quedará reflejado en la BD.
+   * se descuenta la reserva, ya que el uso "real" quedará reflejado en la BD.
    */
-  async finalizeQuotaUsage(userId: string, fileSize: number): Promise<void> {
-    if (!userId || !Number.isFinite(fileSize) || fileSize <= 0) return;
+  async finalizeQuotaUsage(
+    userId: string,
+    fileSize: number,
+  ): Promise<{ success: boolean; remainingReserved: number }> {
+    if (!userId || !Number.isFinite(fileSize) || fileSize <= 0) {
+      return { success: false, remainingReserved: 0 };
+    }
 
     return this.fileLockService.withQuotaLock(userId, async () => {
-      await this.removeReservation(userId, fileSize);
+      const result = await this.removeReservation(userId, fileSize);
+
+      if (!result.success) {
+        // Este caso es más crítico porque debería haber reserva para finalizar
+        this.logger.error(
+          `CRITICAL: Attempted to finalize ${fileSize} bytes but insufficient reservation for user ${userId}. This indicates a quota tracking bug.`,
+        );
+      }
+
+      return result;
     });
   }
 
@@ -259,17 +303,29 @@ export class FileQuotaService {
   /**
    * Resta una reserva (y elimina la key si queda <= 0) de forma atómica.
    */
-  private async removeReservation(userId: string, fileSize: number): Promise<void> {
+  private async removeReservation(
+    userId: string,
+    fileSize: number,
+  ): Promise<{ success: boolean; remainingReserved: number }> {
     const reservedKey = this.getReservedKey(userId);
-    const bookingTtlSec =
-      this.configService.get<number>('storage.concurrency.bookingTtlSec', 7200) ?? 7200;
-    await this.concurrencyService.adjustCounterWithTtl(reservedKey, -fileSize, bookingTtlSec);
+
+    // CHANGED: pasar ttl=0 para NO extender TTL al decrementar
+    const result = await this.concurrencyService.safeDecrementCounter(
+      reservedKey,
+      fileSize,
+      0, // <= conservar TTL existente (gracias al cambio en el script)
+    );
+
+    return {
+      success: result.success,
+      remainingReserved: result.remainingValue,
+    };
   }
 
   /**
    * Key de reservas por usuario (usa la misma hash-tag que ConcurrencyService).
    */
   private getReservedKey(userId: string): string {
-    return `${ConcurrencyService.HASH_TAG}:quota:reserved:${userId}`;
+    return ConcurrencyService.reservedQuotaKey(userId); //`${ConcurrencyService.HASH_TAG}:quota:reserved:${userId}`;
   }
 }

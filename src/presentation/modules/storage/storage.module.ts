@@ -17,7 +17,6 @@ import { CompleteMultipartUploadHandler } from '@application/commands/storage/co
 import { AbortMultipartUploadHandler } from '@application/commands/storage/abort-multipart-upload.command';
 import { MoveFileHandler } from '@application/commands/storage/move-file.command';
 import { RenameFileHandler } from '@application/commands/storage/rename-file.command';
-import { DeleteFileHandler } from '@application/commands/storage/delete-file.command';
 import { SetFileVisibilityHandler } from '@application/commands/storage/set-file-visibility.command';
 import { ClearUserConcurrencySlotsHandler } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { HeartbeatUploadHandler } from '@application/commands/storage/heartbeat-upload.command';
@@ -44,6 +43,7 @@ import { GetFilesHandler } from '@application/queries/storage/get-files.query';
 import { GetFileByIdHandler } from '@application/queries/storage/get-file-by-id.query';
 import { GetDirectoryContentsHandler } from '@application/queries/storage/get-directory-contents.query';
 import { GetCommonDirectoryContentsHandler } from '@application/queries/storage/get-common-directory-contents.query';
+import { GetAllUserFilesHandler } from '@application/queries/storage/get-all-user-files.query';
 
 // Application services
 import { EnhancedFileMapper } from '@application/mappers/enhanced-file.mapper';
@@ -64,7 +64,6 @@ const commandHandlers = [
   AbortMultipartUploadHandler,
   MoveFileHandler,
   RenameFileHandler,
-  DeleteFileHandler,
   SetFileVisibilityHandler,
   ClearUserConcurrencySlotsHandler,
   HeartbeatUploadHandler,
@@ -84,6 +83,7 @@ const queryHandlers = [
   GetFileByIdHandler,
   GetDirectoryContentsHandler,
   GetCommonDirectoryContentsHandler,
+  GetAllUserFilesHandler,
 ];
 
 @Module({

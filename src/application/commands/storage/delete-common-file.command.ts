@@ -42,7 +42,7 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
     const objectKey = path ? `${fullStoragePath}/${filename}` : `${fullStoragePath}/${filename}`;
 
     // Try to find file in database first
-    const dbFile = await this.findFileInDatabase(fullStoragePath, filename);
+    const dbFile = await this.findFileInDatabase(fullStoragePath, filename, userId);
 
     if (dbFile) {
       // File exists in database - use existing file operations service
@@ -52,14 +52,16 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
         hardDelete: true, // Force physical deletion
       });
     } else {
-      // File only exists physically in MinIO - delete directly from storage
+      // File only exists physically in MinIO - check existence first, then delete
       const physicalExists = await this.storageService.objectExists(bucket, objectKey);
 
       if (!physicalExists) {
         throw new EntityNotFoundException('File', filename);
       }
 
-      // Delete physical file directly
+      // Delete physical file directly (no database record to delete first)
+      // In common areas, physical files without DB records are considered "orphaned"
+      // and can be cleaned up by any authenticated user to prevent storage leaks
       await this.storageService.deleteObject(bucket, objectKey);
     }
   }
@@ -70,11 +72,22 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
     return path ? `${basePath}/${path}` : basePath;
   }
 
-  private async findFileInDatabase(storagePath: string, filename: string): Promise<File | null> {
+  private async findFileInDatabase(
+    storagePath: string,
+    filename: string,
+    userId: string,
+  ): Promise<File | null> {
     try {
       const files = await this.fileRepository.findByPath(storagePath);
 
-      return files.find(file => file.filename === filename) || null;
+      // In common areas, only allow deletion if:
+      // 1. User owns the file, OR
+      // 2. File is public (anyone can delete public files)
+      return (
+        files.find(
+          file => file.filename === filename && (file.userId === userId || file.isPublic),
+        ) || null
+      );
     } catch (_error) {
       // File not found in database
       return null;

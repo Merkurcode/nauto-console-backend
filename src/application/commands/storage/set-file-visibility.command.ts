@@ -35,6 +35,13 @@ export class SetFileVisibilityHandler
       throw new NotFoundException(`File with ID ${fileId} not found`);
     }
 
+    // Security requirement 3: Only UPLOADED files can have visibility changed
+    if (!file.status.isUploaded()) {
+      throw new ForbiddenException(
+        `Cannot change visibility of file in status '${file.status.getValue()}'. Only UPLOADED files can have their visibility changed.`,
+      );
+    }
+
     // Check if user has permission to change visibility
     const user = userId
       ? {

@@ -34,6 +34,7 @@ import { LOGGER_SERVICE } from '@shared/constants/tokens';
  * - **Not Found**: ENTITY_NOT_FOUND → 404 Not Found
  * - **Conflicts**: ENTITY_ALREADY_EXISTS → 409 Conflict
  * - **Rate Limiting**: RATE_LIMIT_EXCEEDED → 429 Too Many Requests
+ * - **Storage**: UPLOAD_EXPIRED → 410 Gone
  * - **System**: DATABASE_CONNECTION_FAILED → 503 Service Unavailable
  *
  * **Características especiales**:
@@ -155,6 +156,10 @@ export class DomainExceptionFilter implements ExceptionFilter {
     ['CANNOT_MODIFY_DEFAULT_AI_PERSONA', HttpStatus.FORBIDDEN],
     ['CANNOT_DELETE_DEFAULT_AI_PERSONA', HttpStatus.FORBIDDEN],
     ['AI_PERSONA_COMPANY_ASSIGNMENT_REMOVAL_FAILED', HttpStatus.INTERNAL_SERVER_ERROR],
+
+    // Storage domain exceptions
+    ['UPLOAD_EXPIRED', HttpStatus.GONE],
+    ['DUPLICATE_PATH_UPLOAD', HttpStatus.CONFLICT],
   ]);
 
   catch(exception: DomainException, host: ArgumentsHost) {
@@ -209,6 +214,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
         return 'Conflict';
       case HttpStatus.TOO_MANY_REQUESTS:
         return 'Too Many Requests';
+      case HttpStatus.GONE:
+        return 'Gone';
       case HttpStatus.INTERNAL_SERVER_ERROR:
         return 'Internal Server Error';
       case HttpStatus.SERVICE_UNAVAILABLE:

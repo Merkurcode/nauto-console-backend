@@ -14,6 +14,8 @@ export class InitiateUserUploadCommand implements ICommand {
     public readonly originalName: string,
     public readonly mimeType: string,
     public readonly size: number,
+    public readonly upsert: boolean = false,
+    public readonly autoRename: boolean = false,
   ) {}
 }
 
@@ -28,7 +30,8 @@ export class InitiateUserUploadHandler
   ) {}
 
   async execute(command: InitiateUserUploadCommand): Promise<IInitiateMultipartUploadResponse> {
-    const { userId, companyId, path, filename, originalName, mimeType, size } = command;
+    const { userId, companyId, path, filename, originalName, mimeType, size, upsert, autoRename } =
+      command;
 
     // Simple path validation
     StoragePaths.validateUserPath(path);
@@ -36,15 +39,20 @@ export class InitiateUserUploadHandler
     // FACT: Always user space
     const storagePath = StoragePaths.forUser(companyId, userId, path);
 
-    return this.multipartUploadService.initiateUpload({
-      bucket: this.configService.get<string>('storage.defaultBucket'),
-      storagePath,
-      filename,
-      originalName,
-      mimeType,
-      size,
-      userId,
-      companyId,
-    });
+    return this.multipartUploadService.initiateUpload(
+      {
+        bucket: this.configService.get<string>('storage.defaultBucket'),
+        storagePath,
+        filename,
+        originalName,
+        mimeType,
+        size,
+        userId,
+        companyId,
+        upsert,
+        autoRename,
+      },
+      true,
+    );
   }
 }

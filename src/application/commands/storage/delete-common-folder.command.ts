@@ -5,7 +5,10 @@ import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { IStorageService } from '@core/repositories/storage.service.interface';
 import { FILE_REPOSITORY, STORAGE_SERVICE } from '@shared/constants/tokens';
 import { StorageAreaType } from '@shared/types/storage-areas.types';
-import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import {
+  EntityNotFoundException,
+  InvalidFileOperationException,
+} from '@core/exceptions/domain-exceptions';
 
 export class DeleteCommonFolderCommand implements ICommand {
   constructor(
@@ -41,6 +44,16 @@ export class DeleteCommonFolderHandler
     const hasContent = await this.checkFolderExistence(bucket, storagePath);
     if (!hasContent) {
       throw new EntityNotFoundException('Folder', path || 'root');
+    }
+
+    // Security requirement 7: Cannot delete folders with files in upload progress
+    const hasUploadingFiles = await this.checkForUploadingFiles(storagePath);
+    if (hasUploadingFiles) {
+      throw new InvalidFileOperationException(
+        'delete folder',
+        'Cannot delete folder containing files in progress (PENDING, UPLOADING, or COPYING status). Files in progress will be ignored.',
+        path || 'root',
+      );
     }
 
     const totalDeletedCount = await this.depthFirstDelete(bucket, storagePath, userId, companyId);
@@ -164,8 +177,8 @@ export class DeleteCommonFolderHandler
             await this.storageService.deleteObject(bucket, file.objectKey.toString());
           }
 
-          file.markAsDeleted();
-          await this.fileRepository.update(file);
+          // Hard delete from database to avoid objectKey conflicts
+          await this.fileRepository.delete(file.id);
           deletedCount++;
         } catch (fileError) {
           console.warn(`Failed to delete file ${file.id}:`, fileError);
@@ -220,7 +233,7 @@ export class DeleteCommonFolderHandler
   private async deleteCurrentFolderIfEmpty(bucket: string, storagePath: string): Promise<void> {
     try {
       const dbFiles = await this.fileRepository.findByPath(storagePath);
-      const activeDbFiles = dbFiles.filter(file => !file.status.isDeleted());
+      const activeDbFiles = dbFiles;
 
       if (activeDbFiles.length > 0) {
         return;
@@ -266,6 +279,31 @@ export class DeleteCommonFolderHandler
       return physicalFiles.length > 0;
     } catch (_error) {
       return false;
+    }
+  }
+
+  /**
+   * Checks if folder (recursively) contains any files in progress
+   * Security requirement 7: Prevent folder deletion with files in PENDING, UPLOADING, or COPYING status
+   */
+  private async checkForUploadingFiles(storagePath: string): Promise<boolean> {
+    try {
+      const bucket = this.configService.get<string>('storage.defaultBucket', 'nauto-console-dev');
+
+      // Get all files in this path and all subpaths (common area, any user)
+      const allFiles = await this.fileRepository.findByBucketAndPrefix(bucket, storagePath);
+
+      // Check if any file is in progress (PENDING, UPLOADING, COPYING)
+      const filesInProgress = allFiles.filter(
+        file => file.status.isPending() || file.status.isUploading() || file.status.isCopying(),
+      );
+
+      return filesInProgress.length > 0;
+    } catch (error) {
+      // If we can't check, be conservative and prevent deletion
+      console.warn(`Failed to check for uploading files in ${storagePath}:`, error);
+
+      return true;
     }
   }
 }

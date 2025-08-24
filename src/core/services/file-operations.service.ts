@@ -15,6 +15,7 @@ import {
 import { FileLockService } from './file-lock.service';
 import { FileAccessControlService } from './file-access-control.service';
 import { MultipartUploadService } from './multipart-upload.service';
+import { FileUploadValidationService } from './file-upload-validation.service';
 import { ILogger } from '@core/interfaces/logger.interface';
 
 import { FILE_REPOSITORY, STORAGE_SERVICE, LOGGER_SERVICE } from '@shared/constants/tokens';
@@ -82,6 +83,7 @@ export class FileOperationsService {
     private readonly fileLockService: FileLockService,
     private readonly fileAccessControlService: FileAccessControlService,
     private readonly multipartUploadService: MultipartUploadService,
+    private readonly fileUploadValidationService: FileUploadValidationService,
   ) {}
 
   private publishAndClearDomainEvents(file: File) {
@@ -90,10 +92,63 @@ export class FileOperationsService {
     file.clearDomainEvents?.();
   }
 
-  private async ensureDestinationAvailable(bucket: string, destKey: string, overwrite?: boolean) {
+  private async ensureDestinationAvailable(
+    bucket: string,
+    destKey: string,
+    overwrite?: boolean,
+    sourceKey?: string,
+  ) {
     const exists = await this.storageService.objectExists(bucket, destKey);
+
     if (exists && !overwrite) {
+      // Check if destination is actually the same file (by ETag) when source is provided
+      if (sourceKey) {
+        try {
+          // Check if source exists first
+          const sourceExists = await this.storageService.objectExists(bucket, sourceKey);
+          if (!sourceExists) {
+            // Source doesn't exist, but destination does - likely the file is already renamed physically
+            this.logger.log({
+              message:
+                'Source not found but destination exists - file likely already at destination',
+              sourceKey,
+              destKey,
+            });
+            // Allow the operation to proceed - the file might already be at destination
+
+            return;
+          }
+
+          const sourceStats = await this.storageService.getObjectMetadata(bucket, sourceKey);
+          const destStats = await this.storageService.getObjectMetadata(bucket, destKey);
+
+          // If ETags match, it's the same file - allow the operation
+          if (sourceStats.etag === destStats.etag) {
+            this.logger.log({
+              message: 'Destination exists but has same ETag - same file, allowing rename',
+              sourceKey,
+              destKey,
+              etag: sourceStats.etag,
+            });
+
+            return;
+          }
+        } catch (error) {
+          // If we can't get metadata, log and continue with normal conflict handling
+          this.logger.debug({
+            message: 'Could not compare ETags',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            sourceKey,
+            destKey,
+          });
+        }
+      }
+
       throw new InvalidFileOperationException('move/rename', 'Destination already exists', destKey);
+    }
+
+    if (exists && overwrite) {
+      await this.storageService.deleteObject(bucket, destKey);
     }
   }
 
@@ -108,6 +163,15 @@ export class FileOperationsService {
       const userPayload = { sub: userId };
       this.fileAccessControlService.validateFileAccess(file, userPayload, 'write');
 
+      // Security: Only UPLOADED files can be moved
+      if (!file.status.isUploaded()) {
+        throw new InvalidFileOperationException(
+          'move',
+          `File cannot be moved. Only UPLOADED files can be moved. Current status: ${file.status.toString()}`,
+          fileId,
+        );
+      }
+
       if (!file.canBeMoved()) {
         throw new InvalidFileOperationException('move', 'File cannot be moved', fileId);
       }
@@ -121,30 +185,73 @@ export class FileOperationsService {
 
       if (oldObjectKey === newObjectKey) return file;
 
-      // If not uploaded yet, just update path
-      if (!file.status.isUploaded()) {
-        file.move(newStoragePath);
-        const updated = await this.fileRepository.update(file);
-        this.publishAndClearDomainEvents(file);
+      // Database-first approach: update DB, then storage
+      await this.ensureDestinationAvailable(file.bucket, newObjectKey, overwrite, oldObjectKey);
 
-        return updated;
-      }
-
-      // Move in storage
-      await this.ensureDestinationAvailable(file.bucket, newObjectKey, overwrite);
+      // Step 1: Change file to COPYING status before physical move
+      file.markAsCopying();
+      file.move(newStoragePath);
+      const updated = await this.fileRepository.update(file);
 
       try {
-        await this.storageService.copyObject(file.bucket, oldObjectKey, file.bucket, newObjectKey);
+        // Step 2: Check if source exists in storage
+        const sourceExists = await this.storageService.objectExists(file.bucket, oldObjectKey);
 
-        file.move(newStoragePath);
-        const updated = await this.fileRepository.update(file);
+        if (!sourceExists) {
+          // File doesn't exist physically - mark as uploaded and we're done
+          this.logger.warn({
+            message:
+              'File marked as uploaded but not found in storage - database updated, physical move skipped',
+            fileId,
+            oldObjectKey,
+          });
+          updated.markAsUploaded();
+          const finalUpdated = await this.fileRepository.update(updated);
+          this.publishAndClearDomainEvents(finalUpdated);
 
-        await this.storageService.deleteObject(file.bucket, oldObjectKey);
-        this.publishAndClearDomainEvents(file);
+          return finalUpdated;
+        }
 
-        return updated;
+        // Step 3: Perform physical move in storage
+        await this.storageService.moveObject(file.bucket, oldObjectKey, file.bucket, newObjectKey);
+
+        // Step 4: Mark file as uploaded again after successful move
+        updated.markAsUploaded();
+        const finalUpdated = await this.fileRepository.update(updated);
+
+        // Step 5: Reapply ACL after move (some storage providers don't preserve ACLs)
+        try {
+          if (finalUpdated.isPublic) {
+            await this.storageService.setObjectPublic(
+              finalUpdated.bucket,
+              finalUpdated.objectKey.toString(),
+            );
+          } else {
+            await this.storageService.setObjectPrivate(
+              finalUpdated.bucket,
+              finalUpdated.objectKey.toString(),
+            );
+          }
+          this.logger.debug(`ACL reapplied after move for file ${fileId}`);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to reapply ACL after move for file ${fileId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+
+        this.publishAndClearDomainEvents(finalUpdated);
+
+        return finalUpdated;
       } catch (error) {
+        // Storage operation failed - let transaction rollback handle it
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error({
+          message: 'Storage move failed after database update - transaction will rollback',
+          fileId,
+          oldObjectKey,
+          newObjectKey,
+          error: errorMessage,
+        });
         throw new StorageOperationFailedException('move file', errorMessage, { fileId });
       }
     });
@@ -161,6 +268,15 @@ export class FileOperationsService {
       const userPayload = { sub: userId };
       this.fileAccessControlService.validateFileAccess(file, userPayload, 'write');
 
+      // Security: Only UPLOADED files can be renamed
+      if (!file.status.isUploaded()) {
+        throw new InvalidFileOperationException(
+          'rename',
+          `File cannot be renamed. Only UPLOADED files can be renamed. Current status: ${file.status.toString()}`,
+          fileId,
+        );
+      }
+
       if (!file.canBeRenamed()) {
         throw new InvalidFileOperationException(
           'rename',
@@ -169,62 +285,93 @@ export class FileOperationsService {
         );
       }
 
-      const newObjectKey = `${file.path}/${newFilename}`;
+      // Validate that the new filename extension is allowed according to the user's tier
+      const validationResult = await this.fileUploadValidationService.validateFileRename(
+        userId,
+        file.filename,
+        newFilename,
+        file.mimeType,
+      );
+
+      if (!validationResult.isValid) {
+        throw new InvalidFileOperationException('rename', validationResult.error!, fileId);
+      }
+
+      // First get the current object key and calculate the new one
       const oldObjectKey = file.objectKey.toString();
+      // Replace just the filename part (everything after the last slash)
+      const lastSlashIndex = oldObjectKey.lastIndexOf('/');
+      const newObjectKey =
+        lastSlashIndex !== -1
+          ? oldObjectKey.substring(0, lastSlashIndex + 1) + newFilename
+          : newFilename;
 
       if (oldObjectKey === newObjectKey) return file;
 
-      // If not uploaded yet, just update filename
-      if (!file.status.isUploaded()) {
-        file.rename(newFilename);
-        const updated = await this.fileRepository.update(file);
-        this.publishAndClearDomainEvents(file);
+      // Database-first approach: update database, then storage
+      await this.ensureDestinationAvailable(file.bucket, newObjectKey, overwrite, oldObjectKey);
 
-        return updated;
-      }
-
-      // Perform physical rename in bucket first (complete physical operation)
-      await this.ensureDestinationAvailable(file.bucket, newObjectKey, overwrite);
+      // Step 1: Change file to COPYING status before physical rename
+      file.markAsCopying();
+      file.renameFilename(newFilename);
+      const updated = await this.fileRepository.update(file);
 
       try {
-        // Step 1: Copy to new location
+        // Step 2: Verify the source file actually exists in storage before attempting rename
+        const sourceExists = await this.storageService.objectExists(file.bucket, oldObjectKey);
+
+        if (!sourceExists) {
+          // File doesn't exist physically - mark as uploaded and we're done
+          this.logger.warn({
+            message:
+              'File marked as uploaded but not found in storage - database updated, physical rename skipped',
+            fileId,
+            oldObjectKey,
+          });
+          updated.markAsUploaded();
+          const finalUpdated = await this.fileRepository.update(updated);
+          this.publishAndClearDomainEvents(finalUpdated);
+
+          return finalUpdated;
+        }
+
+        // Step 3: Perform physical rename in storage (using move operation)
+        await this.storageService.moveObject(file.bucket, oldObjectKey, file.bucket, newObjectKey);
+
+        // Step 4: Mark file as uploaded again after successful rename
+        updated.markAsUploaded();
+        const finalUpdated = await this.fileRepository.update(updated);
+
+        // Step 5: Reapply ACL after rename (some storage providers don't preserve ACLs)
+        try {
+          if (finalUpdated.isPublic) {
+            await this.storageService.setObjectPublic(
+              finalUpdated.bucket,
+              finalUpdated.objectKey.toString(),
+            );
+          } else {
+            await this.storageService.setObjectPrivate(
+              finalUpdated.bucket,
+              finalUpdated.objectKey.toString(),
+            );
+          }
+          this.logger.debug(`ACL reapplied after rename for file ${fileId}`);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to reapply ACL after rename for file ${fileId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+
         this.logger.log({
-          message: 'Starting physical file copy',
+          message: 'Physical rename completed successfully',
           fileId,
           oldObjectKey,
           newObjectKey,
         });
 
-        await this.storageService.copyObject(file.bucket, oldObjectKey, file.bucket, newObjectKey);
+        this.publishAndClearDomainEvents(finalUpdated);
 
-        // Step 2: Delete old file (complete physical rename)
-        this.logger.log({
-          message: 'Starting deletion of old file',
-          fileId,
-          oldObjectKey,
-        });
-
-        await this.storageService.deleteObject(file.bucket, oldObjectKey);
-
-        this.logger.log({
-          message: 'Physical rename completed in bucket',
-          fileId,
-          oldObjectKey,
-          newObjectKey,
-        });
-
-        // Step 3: Update database only after physical rename is complete
-        file.rename(newFilename);
-        const updated = await this.fileRepository.update(file);
-        this.publishAndClearDomainEvents(file);
-
-        this.logger.log({
-          message: 'File rename completed successfully',
-          fileId,
-          newFilename,
-        });
-
-        return updated;
+        return finalUpdated;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -243,7 +390,7 @@ export class FileOperationsService {
 
   /** Delete file */
   async deleteFile(params: IDeleteFileParams): Promise<void> {
-    const { fileId, userId, hardDelete = false } = params;
+    const { fileId, userId } = params;
 
     return this.fileLockService.withFileLock(fileId, async () => {
       const file = await this.fileRepository.findById(fileId);
@@ -251,6 +398,15 @@ export class FileOperationsService {
 
       const userPayload = { sub: userId };
       this.fileAccessControlService.validateFileAccess(file, userPayload, 'delete');
+
+      // Security requirement 6: Only UPLOADED files can be deleted
+      if (!file.canBeDeleted()) {
+        throw new InvalidFileOperationException(
+          'delete',
+          `Cannot delete file in status '${file.status.getValue()}'. Only UPLOADED files can be deleted.`,
+          fileId,
+        );
+      }
 
       // If file is uploading, abort the multipart upload first
       if (file.status.isUploading()) {
@@ -261,7 +417,12 @@ export class FileOperationsService {
         });
 
         try {
-          await this.multipartUploadService.abortUpload(fileId, 'File deletion requested');
+          await this.multipartUploadService.abortUpload(
+            file.userId,
+            fileId,
+            false,
+            'File deletion requested',
+          );
         } catch (abortError) {
           this.logger.warn({
             message: 'Failed to abort upload, proceeding with deletion',
@@ -278,16 +439,19 @@ export class FileOperationsService {
       }
 
       try {
-        if (file.status.isUploaded()) {
-          await this.storageService.deleteObject(file.bucket, file.objectKey.toString());
-        }
+        // Always hard delete from database to avoid objectKey conflicts
+        await this.fileRepository.delete(fileId);
+        this.logger.log(`Deleted file record ${fileId} from database`);
 
-        if (hardDelete) {
-          await this.fileRepository.delete(fileId);
-        } else {
-          file.markAsDeleted();
-          await this.fileRepository.update(file);
-          this.publishAndClearDomainEvents(file);
+        // Delete physical file only if it exists in storage
+        if (file.status.isUploaded()) {
+          const physicalExists = await this.storageService.objectExists(
+            file.bucket,
+            file.objectKey.toString(),
+          );
+          if (physicalExists) {
+            await this.storageService.deleteObject(file.bucket, file.objectKey.toString());
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -555,17 +719,16 @@ export class FileOperationsService {
 
         // Mark all selected files as deleted in database
         for (const file of filesToDelete) {
-          file.markAsDeleted();
-          await this.fileRepository.update(file);
-          this.publishAndClearDomainEvents(file);
+          // Hard delete from database to avoid objectKey conflicts
+          await this.fileRepository.delete(file.id);
+          this.logger.log(`Deleted file record ${file.id} from database`);
           deletedCount++;
         }
 
         // Check if folder is now empty and delete it if so
         const remainingFiles = await this.fileRepository.findByBucketAndPrefix(bucket, storagePath);
-        const activeRemainingFiles = remainingFiles.filter(f => !f.status.isDeleted());
 
-        if (activeRemainingFiles.length === 0) {
+        if (remainingFiles.length === 0) {
           await this.storageService.deleteFolder(bucket, storagePath);
           this.logger.log({
             message: 'Folder deleted after removing all accessible files',
@@ -584,7 +747,7 @@ export class FileOperationsService {
           companyId,
           deletedCount,
           totalFiles: files.length,
-          remainingFiles: activeRemainingFiles.length,
+          remainingFiles: remainingFiles.length,
         });
 
         return { deletedCount };
@@ -662,11 +825,10 @@ export class FileOperationsService {
               this.publishAndClearDomainEvents(file);
             } else {
               await this.ensureDestinationAvailable(bucket, newKey, overwrite);
-              await this.storageService.copyObject(bucket, oldKey, bucket, newKey);
+              await this.storageService.moveObject(bucket, oldKey, bucket, newKey);
 
               file.move(newPath, newFilename);
               await this.fileRepository.update(file);
-              await this.storageService.deleteObject(bucket, oldKey);
               this.publishAndClearDomainEvents(file);
             }
             moved++;
@@ -720,11 +882,10 @@ export class FileOperationsService {
             await this.storageService.deleteObjects(bucket, uploadedKeys);
           }
 
-          // Mark all as deleted in database
+          // Hard delete all from database to avoid objectKey conflicts
           for (const file of allowed) {
-            file.markAsDeleted();
-            await this.fileRepository.update(file);
-            this.publishAndClearDomainEvents(file);
+            await this.fileRepository.delete(file.id);
+            this.logger.log(`Deleted file record ${file.id} from database`);
           }
 
           return { deletedCount: allowed.length };

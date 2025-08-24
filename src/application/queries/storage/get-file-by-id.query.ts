@@ -2,21 +2,13 @@ import { IQuery, QueryHandler, IQueryHandler } from '@nestjs/cqrs';
 import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
-import { FileMapper } from '@application/mappers/file.mapper';
+import { EnhancedFileMapper } from '@application/mappers/enhanced-file.mapper';
 import { HierarchicalPath } from '@core/value-objects/hierarchical-path.vo';
+import { FileResponseDto } from '@application/dtos/_responses/storage/storage.swagger.dto';
 
-export interface IGetFileByIdResponse {
-  id: string;
-  filename: string;
-  originalName: string;
-  path: string;
-  size: number;
-  mimeType: string;
-  status: string;
-  isPublic: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  objectKey: string;
+export interface IGetFileByIdResponse extends FileResponseDto {
+  signedUrl?: string;
+  signedUrlExpiresAt?: Date;
 }
 
 export class GetFileByIdQuery implements IQuery {
@@ -33,6 +25,7 @@ export class GetFileByIdHandler implements IQueryHandler<GetFileByIdQuery, IGetF
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
+    private readonly enhancedFileMapper: EnhancedFileMapper,
   ) {}
 
   async execute(query: GetFileByIdQuery): Promise<IGetFileByIdResponse> {
@@ -56,6 +49,7 @@ export class GetFileByIdHandler implements IQueryHandler<GetFileByIdQuery, IGetF
       }
     }
 
-    return FileMapper.toResponse(file);
+    // Return file details with signed URL (only for uploaded files)
+    return this.enhancedFileMapper.toResponseWithSignedUrl(file);
   }
 }

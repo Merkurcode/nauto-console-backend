@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
   Request,
@@ -38,7 +39,6 @@ import { DeleteCommonFileCommand } from '@application/commands/storage/delete-co
 import { MoveCommonFileCommand } from '@application/commands/storage/move-common-file.command';
 import { RenameFileCommand } from '@application/commands/storage/rename-file.command';
 import { SetFileVisibilityCommand } from '@application/commands/storage/set-file-visibility.command';
-import { DeleteFileCommand } from '@application/commands/storage/delete-file.command';
 import { HeartbeatUploadCommand } from '@application/commands/storage/heartbeat-upload.command';
 import { ClearUserConcurrencySlotsCommand } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { GetFileByIdQuery } from '@application/queries/storage/get-file-by-id.query';
@@ -89,6 +89,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { StorageAreaType } from '@shared/types/storage-areas.types';
 import { StorageAreaUtils } from '@shared/utils/storage-area.utils';
+import { SecurityHeadersInterceptor } from '@shared/interceptors/security-headers.interceptor';
 
 interface IAuthenticatedRequest {
   user: {
@@ -108,6 +109,7 @@ interface IAuthenticatedRequest {
 @ApiBearerAuth('JWT-auth')
 @Controller('storage/common')
 @UseGuards(JwtAuthGuard, RolesGuard /* , ThrottlerGuard */)
+@UseInterceptors(SecurityHeadersInterceptor)
 export class StorageCommonController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -154,14 +156,16 @@ export class StorageCommonController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid request data or validation failed',
+    description: 'Invalid request data or invalid path',
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Insufficient permissions or quota exceeded',
+    description: 'Insufficient permissions',
   })
-  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
+  @ApiResponse({ status: HttpStatus.PAYLOAD_TOO_LARGE, description: 'Storage quota exceeded' })
+  @ApiResponse({ status: HttpStatus.UNSUPPORTED_MEDIA_TYPE, description: 'File type not allowed' })
+  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Concurrency limit exceeded' })
   async initiateCommonUpload(
     @Param('area') area: StorageAreaType,
     @Body() initiateUploadDto: InitiateMultipartUploadDto,
@@ -179,6 +183,7 @@ export class StorageCommonController {
         initiateUploadDto.size,
         req.user.sub,
         req.user.companyId,
+        initiateUploadDto.upsert || false,
       );
 
       return this.commandBus.execute(command);
@@ -212,6 +217,12 @@ export class StorageCommonController {
   @ApiParam({ name: 'fileId', description: 'Unique identifier for the file upload session' })
   @ApiParam({ name: 'partNumber', description: 'Part number (1-10000)' })
   @ApiQuery({
+    name: 'partSizeBytes',
+    required: true,
+    description: 'Size of the part to be uploaded in bytes (minimum 5MB except for last part)',
+    type: Number,
+  })
+  @ApiQuery({
     name: 'expirationSeconds',
     required: false,
     description: 'URL expiration time in seconds (default: 3600)',
@@ -233,10 +244,22 @@ export class StorageCommonController {
   async generatePartUrl(
     @Param('fileId') fileId: string,
     @Param('partNumber') partNumber: string,
+    @Query('partSizeBytes') partSizeBytes: string,
     @Query('expirationSeconds') expirationSeconds?: string,
   ): Promise<IGeneratePartUrlResponse> {
+    const partSize = parseInt(partSizeBytes, 10);
+    if (isNaN(partSize)) {
+      throw new Error('partSizeBytes must be a valid number');
+    }
+
+    // Validate part size doesn't exceed 5GB
+    const MAX_PART_SIZE = 5 * 1024 * 1024 * 1024; // 5GB in bytes
+    if (partSize > MAX_PART_SIZE) {
+      throw new Error(`Part size cannot exceed 5GB (${MAX_PART_SIZE} bytes)`);
+    }
+
     return this.transactionService.executeInTransaction(async () => {
-      const command = new GeneratePartUrlCommand(fileId, partNumber, expirationSeconds);
+      const command = new GeneratePartUrlCommand(fileId, partNumber, partSize, expirationSeconds);
 
       return this.commandBus.execute(command);
     });
@@ -638,8 +661,28 @@ export class StorageCommonController {
   @ApiProduces('application/json')
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'File details retrieved successfully',
-    type: FileResponseDto,
+    description: 'File details retrieved successfully with presigned URL',
+    schema: {
+      allOf: [
+        { $ref: '#/components/schemas/FileResponseDto' },
+        {
+          type: 'object',
+          properties: {
+            signedUrl: {
+              type: 'string',
+              description: 'Presigned URL for file access (only for uploaded files)',
+              nullable: true,
+            },
+            signedUrlExpiresAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Expiration date of the signed URL',
+              nullable: true,
+            },
+          },
+        },
+      ],
+    },
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to this file' })
@@ -648,7 +691,7 @@ export class StorageCommonController {
   async getFileById(
     @Param('fileId') fileId: string,
     @Request() req: IAuthenticatedRequest,
-  ): Promise<IFileResponse> {
+  ): Promise<IFileResponse & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
     const query = new GetFileByIdQuery(fileId, req.user.sub, req.user.companyId);
 
     return this.queryBus.execute(query);
@@ -875,35 +918,6 @@ export class StorageCommonController {
     });
   }
 
-  @Delete('files/:fileId')
-  @CanDelete('file')
-  @DenyForRootReadOnly()
-  @Throttle(60000, 20) // 20 deletions per minute
-  @ApiOperation({
-    summary: 'Delete file by ID in common areas',
-    description: 'Soft deletes a file by marking it as deleted in common areas',
-  })
-  @ApiParam({ name: 'fileId', description: 'File unique identifier' })
-  @ApiQuery({
-    name: 'hard',
-    required: false,
-    description: 'Perform hard delete (physical removal)',
-  })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'File deleted successfully',
-  })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
-  async deleteFileById(
-    @Param('fileId') fileId: string,
-    @Request() req: IAuthenticatedRequest,
-    @Query('hard') hard?: string,
-  ): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(new DeleteFileCommand(fileId, req.user.sub, hard));
-    });
-  }
-
   // ---------------------------
   // Storage Quota & Management
   // ---------------------------
@@ -972,7 +986,10 @@ export class StorageCommonController {
   @ApiOperation({
     summary: 'Clear user concurrency slots (ROOT)',
     description:
-      'Force-clears all active upload concurrency slots for a specific user in common areas',
+      'Force-clears all active upload concurrency slots for a specific user in common areas by aborting all uploading files. ' +
+      'Each file abort is processed in its own transaction with rollback logic for consistency. ' +
+      'If any upload fails to abort properly, the entire operation fails and concurrency slots are not cleared ' +
+      'to prevent negative count issues. This is an administrative operation that should be used with caution.',
   })
   @ApiParam({
     name: 'userId',
@@ -982,10 +999,31 @@ export class StorageCommonController {
     status: HttpStatus.NO_CONTENT,
     description: 'User concurrency slots cleared successfully',
   })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description:
+      'Failed to abort one or more uploads. Concurrency slots not cleared to prevent negative counts.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example:
+            'Failed to abort 2 out of 5 uploads. Concurrency slots not cleared to prevent negative counts.',
+        },
+        error: {
+          type: 'string',
+          example: 'Internal Server Error',
+        },
+        statusCode: {
+          type: 'number',
+          example: 500,
+        },
+      },
+    },
+  })
   async clearUserConcurrencySlots(@Param('userId') userId: string): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(new ClearUserConcurrencySlotsCommand(userId));
-    });
+    return this.commandBus.execute(new ClearUserConcurrencySlotsCommand(userId));
   }
 
   @Get('concurrency/health')

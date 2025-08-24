@@ -154,3 +154,23 @@ export class UserStorageConfigNotFoundException extends StorageDomainException {
     });
   }
 }
+
+export class UploadExpiredException extends StorageDomainException {
+  constructor(fileId: string, thresholdMinutes: number) {
+    super(
+      `Upload has expired and will be cleaned up soon. File inactive for more than ${thresholdMinutes - 1} minutes.`,
+      'UPLOAD_EXPIRED',
+      { fileId, thresholdMinutes },
+    );
+  }
+}
+
+export class DuplicatePathUploadException extends StorageDomainException {
+  constructor(fullPath: string, existingStatus: string) {
+    super(
+      `Cannot initiate upload: file already exists at path '${fullPath}' with status '${existingStatus}'. Use upsert flag to overwrite UPLOADED files.`,
+      'DUPLICATE_PATH_UPLOAD',
+      { fullPath, existingStatus },
+    );
+  }
+}

@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { File } from '@core/entities/file.entity';
 import { FileResponseDto } from '@application/dtos/_responses/storage/storage.swagger.dto';
 import { IStorageService } from '@core/repositories/storage.service.interface';
-import { STORAGE_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { STORAGE_SERVICE, LOGGER_SERVICE } from '@shared/constants/tokens';
 
 @Injectable()
 export class EnhancedFileMapper {
@@ -11,7 +12,11 @@ export class EnhancedFileMapper {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly configService: ConfigService,
-  ) {}
+    @Inject(LOGGER_SERVICE)
+    private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(EnhancedFileMapper.name);
+  }
 
   async toResponseWithSignedUrl(
     file: File,
@@ -19,7 +24,7 @@ export class EnhancedFileMapper {
     const baseResponse = this.toResponse(file);
 
     // Only generate signed URLs for uploaded files
-    if (file.status.isUploaded() && !file.isPublic) {
+    if (file.status.isUploaded() /*&& !file.isPublic*/) {
       try {
         const maxExpiryHours = this.configService.get<number>('storage.presign.maxExpiryHours', 24);
         const expirationSeconds = maxExpiryHours * 3600;
@@ -39,7 +44,9 @@ export class EnhancedFileMapper {
         };
       } catch (error) {
         // If signed URL generation fails, return without signed URL
-        console.warn(`Failed to generate signed URL for file ${file.id}:`, error);
+        this.logger.warn(
+          `Failed to generate signed URL for file ${file.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
       }
     }
 

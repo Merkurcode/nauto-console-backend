@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { FileResponseDto } from '@application/dtos/_responses/storage/storage.swagger.dto';
-import { FileMapper } from '@application/mappers/file.mapper';
+import { EnhancedFileMapper } from '@application/mappers/enhanced-file.mapper';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { FILE_REPOSITORY } from '@shared/constants/tokens';
 import { FileAccessControlService } from '@core/services/file-access-control.service';
@@ -16,14 +16,20 @@ export class GetFileQuery implements IQuery {
 
 @Injectable()
 @QueryHandler(GetFileQuery)
-export class GetFileHandler implements IQueryHandler<GetFileQuery, FileResponseDto> {
+export class GetFileHandler
+  implements
+    IQueryHandler<GetFileQuery, FileResponseDto & { signedUrl?: string; signedUrlExpiresAt?: Date }>
+{
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
     private readonly fileAccessControlService: FileAccessControlService,
+    private readonly enhancedFileMapper: EnhancedFileMapper,
   ) {}
 
-  async execute(query: GetFileQuery): Promise<FileResponseDto> {
+  async execute(
+    query: GetFileQuery,
+  ): Promise<FileResponseDto & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
     const { fileId, userId } = query;
 
     const file = await this.fileRepository.findById(fileId);
@@ -35,6 +41,7 @@ export class GetFileHandler implements IQueryHandler<GetFileQuery, FileResponseD
     const userPayload = userId ? { sub: userId } : null;
     this.fileAccessControlService.validateFileAccess(file, userPayload, 'read');
 
-    return FileMapper.toResponse(file);
+    // Return file details with signed URL (only for uploaded files)
+    return this.enhancedFileMapper.toResponseWithSignedUrl(file);
   }
 }

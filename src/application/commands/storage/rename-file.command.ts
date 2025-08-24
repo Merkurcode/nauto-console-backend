@@ -9,6 +9,7 @@ export class RenameFileCommand implements ICommand {
     public readonly fileId: string,
     public readonly newFilename: string,
     public readonly userId?: string,
+    //public readonly overwrite?: boolean,
   ) {}
 }
 
@@ -24,6 +25,7 @@ export class RenameFileHandler implements ICommandHandler<RenameFileCommand, Fil
       fileId,
       newFilename,
       userId,
+      overwrite: false,
     });
 
     return FileMapper.toResponse(file);

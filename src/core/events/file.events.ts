@@ -177,3 +177,20 @@ export class FileVisibilityChangedEvent extends DomainEvent {
     return 'file.visibility.changed';
   }
 }
+
+export class FileCopyInitiatedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly sourceFileId: string,
+    public readonly userId: string | null,
+    public readonly filename: string,
+    public readonly sizeInBytes: number,
+    public readonly destinationPath: string,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.copy.initiated';
+  }
+}

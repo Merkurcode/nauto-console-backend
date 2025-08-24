@@ -40,6 +40,7 @@ import { UserActivityLogRepository } from './repositories/user-activity-log.repo
 import { FileRepository } from './repositories/file.repository';
 import { TokenProvider } from './auth/token.provider';
 import { ConcurrencyService } from './services/concurrency.service';
+import { PathConcurrencyService } from '../infrastructure/services/path-concurrency.service';
 import { FileNamingService } from '@core/services/file-naming.service';
 
 // Tokens
@@ -72,6 +73,7 @@ import {
   TRANSACTION_MANAGER,
   LOGGER_SERVICE,
   CONCURRENCY_SERVICE,
+  PATH_CONCURRENCY_SERVICE,
   FILE_NAMING_SERVICE,
 } from '@shared/constants/tokens';
 
@@ -327,6 +329,10 @@ import {
       useClass: ConcurrencyService,
     },
     {
+      provide: PATH_CONCURRENCY_SERVICE,
+      useClass: PathConcurrencyService,
+    },
+    {
       provide: FILE_NAMING_SERVICE,
       useFactory: fileRepository => new FileNamingService(fileRepository),
       inject: [FILE_REPOSITORY],
@@ -361,6 +367,7 @@ import {
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,
     CONCURRENCY_SERVICE,
+    PATH_CONCURRENCY_SERVICE,
     FILE_NAMING_SERVICE,
     RequestCacheService,
 

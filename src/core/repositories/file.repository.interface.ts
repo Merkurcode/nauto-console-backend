@@ -36,6 +36,7 @@ export interface IFileRepository {
   // Object key operations
   findByObjectKey(bucket: string, objectKey: string): Promise<File | null>;
   findByPath(path: string): Promise<File[]>;
+  findByBucketPathAndFilename(bucket: string, path: string, filename: string): Promise<File[]>;
   updateObjectKeysByPrefix(userId: string, oldPrefix: string, newPrefix: string): Promise<number>;
 
   // Upload-specific operations
@@ -68,5 +69,4 @@ export interface IFileRepository {
 
   // Cleanup operations
   findExpiredUploads(olderThanMinutes: number): Promise<File[]>;
-  findOrphanedFiles(olderThanHours: number): Promise<File[]>;
 }

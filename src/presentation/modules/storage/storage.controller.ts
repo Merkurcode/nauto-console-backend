@@ -53,7 +53,6 @@ import { CompleteMultipartUploadCommand } from '@application/commands/storage/co
 import { AbortMultipartUploadCommand } from '@application/commands/storage/abort-multipart-upload.command';
 import { MoveFileCommand } from '@application/commands/storage/move-file.command';
 import { RenameFileCommand } from '@application/commands/storage/rename-file.command';
-import { DeleteFileCommand } from '@application/commands/storage/delete-file.command';
 import { SetFileVisibilityCommand } from '@application/commands/storage/set-file-visibility.command';
 import { ClearUserConcurrencySlotsCommand } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { HeartbeatUploadCommand } from '@application/commands/storage/heartbeat-upload.command';
@@ -70,6 +69,10 @@ import { GetConcurrencyStatsQuery } from '@application/queries/storage/get-concu
 import { GetUserConcurrentCountQuery } from '@application/queries/storage/get-user-concurrent-count.query';
 import { GetConcurrencyHealthQuery } from '@application/queries/storage/get-concurrency-health.query';
 import { GetDirectoryContentsQuery } from '@application/queries/storage/get-directory-contents.query';
+import {
+  GetAllUserFilesQuery,
+  IGetAllUserFilesResponse,
+} from '@application/queries/storage/get-all-user-files.query';
 
 // Guards & Decorators
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
@@ -81,6 +84,7 @@ import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
 import { RootReadOnlyGuard } from '@presentation/guards/root-readonly.guard';
 import { FileAuditInterceptor } from '@presentation/interceptors/file-audit.interceptor';
+import { SecurityHeadersInterceptor } from '@shared/interceptors/security-headers.interceptor';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
@@ -88,7 +92,7 @@ import { RolesEnum } from '@shared/constants/enums';
 @ApiTags('storage')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
-@UseInterceptors(FileAuditInterceptor)
+@UseInterceptors(FileAuditInterceptor, SecurityHeadersInterceptor)
 // @UseHealthGuard('storage') // Temporarily disabled for testing
 @Controller('storage')
 export class StorageController {
@@ -100,6 +104,55 @@ export class StorageController {
     private readonly transactionService: TransactionService,
   ) {
     this.logger.setContext(StorageController.name);
+  }
+
+  // ============================================================================
+  // FILE LISTING OPERATIONS
+  // ============================================================================
+
+  @Get('files/all')
+  @CanRead('file')
+  @ApiOperation({
+    summary: 'Get all user files',
+    description: 'Retrieves all files owned by the current user across all directories',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'List of all user files with presigned URLs',
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            allOf: [
+              { $ref: '#/components/schemas/FileResponseDto' },
+              {
+                type: 'object',
+                properties: {
+                  signedUrl: {
+                    type: 'string',
+                    description: 'Presigned URL for file access (only for uploaded files)',
+                    nullable: true,
+                  },
+                  signedUrlExpiresAt: {
+                    type: 'string',
+                    format: 'date-time',
+                    description: 'Expiration date of the signed URL',
+                    nullable: true,
+                  },
+                },
+              },
+            ],
+          },
+        },
+        totalCount: { type: 'number', description: 'Total number of files' },
+        totalSize: { type: 'number', description: 'Total size of all files in bytes' },
+      },
+    },
+  })
+  async getAllUserFiles(@CurrentUser() user: IJwtPayload): Promise<IGetAllUserFilesResponse> {
+    return this.queryBus.execute(new GetAllUserFilesQuery(user.sub, user.companyId || ''));
   }
 
   // ============================================================================
@@ -123,11 +176,13 @@ export class StorageController {
     description: 'Multipart upload initiated successfully',
     type: InitiateMultipartUploadResponseDto,
   })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid request data' })
   @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'File type not allowed or quota exceeded',
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid request data or invalid path',
   })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
+  @ApiResponse({ status: HttpStatus.PAYLOAD_TOO_LARGE, description: 'Storage quota exceeded' })
+  @ApiResponse({ status: HttpStatus.UNSUPPORTED_MEDIA_TYPE, description: 'File type not allowed' })
   @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Concurrency limit exceeded' })
   async initiateMultipartUpload(
     @Body() dto: InitiateMultipartUploadDto,
@@ -146,6 +201,7 @@ export class StorageController {
           dto.originalName,
           dto.mimeType,
           dto.size,
+          dto.upsert || false,
         ),
       );
     });
@@ -166,6 +222,12 @@ export class StorageController {
   @ApiParam({ name: 'fileId', description: 'File unique identifier' })
   @ApiParam({ name: 'partNumber', description: 'Part number (1-10000)' })
   @ApiQuery({
+    name: 'partSizeBytes',
+    required: true,
+    description: 'Size of the part to be uploaded in bytes (minimum 5MB except for last part)',
+    type: Number,
+  })
+  @ApiQuery({
     name: 'expirationSeconds',
     required: false,
     description: 'URL expiration time in seconds (default: 3600)',
@@ -183,10 +245,22 @@ export class StorageController {
   async generatePartUrl(
     @Param('fileId') fileId: string,
     @Param('partNumber') partNumber: string,
+    @Query('partSizeBytes') partSizeBytes: string,
     @Query('expirationSeconds') expirationSeconds?: string,
   ): Promise<GeneratePartUrlResponseDto> {
+    const partSize = parseInt(partSizeBytes, 10);
+    if (isNaN(partSize)) {
+      throw new Error('partSizeBytes must be a valid number');
+    }
+
+    // Validate part size doesn't exceed 5GB
+    const MAX_PART_SIZE = 5 * 1024 * 1024 * 1024; // 5GB in bytes
+    if (partSize > MAX_PART_SIZE) {
+      throw new Error(`Part size cannot exceed 5GB (${MAX_PART_SIZE} bytes)`);
+    }
+
     return this.commandBus.execute(
-      new GeneratePartUrlCommand(fileId, partNumber, expirationSeconds),
+      new GeneratePartUrlCommand(fileId, partNumber, partSize, expirationSeconds),
     );
   }
 
@@ -209,6 +283,11 @@ export class StorageController {
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File or upload not found' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid parts or upload state' })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Upload already completed' })
+  @ApiResponse({
+    status: HttpStatus.UNPROCESSABLE_ENTITY,
+    description: 'Upload failed to complete',
+  })
   async completeMultipartUpload(
     @Param('fileId') fileId: string,
     @Body() dto: CompleteMultipartUploadDto,
@@ -419,15 +498,35 @@ export class StorageController {
   @ApiParam({ name: 'fileId', description: 'File unique identifier' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'File details retrieved successfully',
-    type: FileResponseDto,
+    description: 'File details retrieved successfully with presigned URL',
+    schema: {
+      allOf: [
+        { $ref: '#/components/schemas/FileResponseDto' },
+        {
+          type: 'object',
+          properties: {
+            signedUrl: {
+              type: 'string',
+              description: 'Presigned URL for file access (only for uploaded files)',
+              nullable: true,
+            },
+            signedUrlExpiresAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Expiration date of the signed URL',
+              nullable: true,
+            },
+          },
+        },
+      ],
+    },
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to private file' })
   async getFile(
     @Param('fileId') fileId: string,
     @CurrentUser() user: IJwtPayload,
-  ): Promise<FileResponseDto> {
+  ): Promise<FileResponseDto & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
     return this.queryBus.execute(new GetFileQuery(fileId, user.sub));
   }
 
@@ -520,14 +619,22 @@ export class StorageController {
     type: FileResponseDto,
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid path' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Cannot move file in current state' })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Invalid file operation or destination exists',
+  })
+  @ApiResponse({ status: HttpStatus.UNPROCESSABLE_ENTITY, description: 'Storage operation failed' })
   async moveFile(
     @Param('fileId') fileId: string,
     @Body() dto: MoveFileDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
     return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(new MoveFileCommand(fileId, dto.newPath, user.sub));
+      return this.commandBus.execute(
+        new MoveFileCommand(fileId, dto.newPath, user.sub, user.companyId || ''),
+      );
     });
   }
 
@@ -546,6 +653,16 @@ export class StorageController {
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid filename' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Cannot rename file in current state' })
+  @ApiResponse({
+    status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+    description: 'New file extension not allowed',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Invalid file operation or filename exists',
+  })
+  @ApiResponse({ status: HttpStatus.UNPROCESSABLE_ENTITY, description: 'Storage operation failed' })
   async renameFile(
     @Param('fileId') fileId: string,
     @Body() dto: RenameFileDto,
@@ -581,40 +698,6 @@ export class StorageController {
   ): Promise<FileResponseDto> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(new SetFileVisibilityCommand(fileId, dto.isPublic, user.sub));
-    });
-  }
-
-  @Delete('files/:fileId')
-  @WriteOperation('file')
-  @CanDelete('file')
-  @Throttle(60000, 20) // 20 deletions per minute
-  @ApiOperation({
-    summary: 'Delete file',
-    description:
-      'Soft deletes a file by marking it as deleted without physical removal from storage. ' +
-      'Files can only be deleted if they are in COMPLETED or ERROR status. ' +
-      'Add ?hard=true for immediate physical deletion. ' +
-      'Soft-deleted files are permanently removed after 30 days.',
-  })
-  @ApiParam({ name: 'fileId', description: 'File unique identifier' })
-  @ApiQuery({
-    name: 'hard',
-    required: false,
-    description: 'Perform hard delete (physical removal)',
-  })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'File deleted successfully',
-  })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Cannot delete file in current state' })
-  async deleteFile(
-    @Param('fileId') fileId: string,
-    @CurrentUser() user: IJwtPayload,
-    @Query('hard') hard?: string,
-  ): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(new DeleteFileCommand(fileId, user.sub, hard));
     });
   }
 
@@ -682,7 +765,7 @@ export class StorageController {
   @CanRead('file')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
   @ApiOperation({
-    summary: 'Get concurrency statistics',
+    summary: 'Get concurrency statistics (ROOT)',
     description: 'Retrieves statistics about concurrent uploads across all users',
   })
   @ApiResponse({
@@ -702,7 +785,7 @@ export class StorageController {
   @CanRead('file')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
   @ApiOperation({
-    summary: 'Get user concurrent uploads count',
+    summary: 'Get user concurrent uploads count (ROOT)',
     description: 'Retrieves the current number of active uploads for a specific user',
   })
   @ApiParam({
@@ -727,8 +810,10 @@ export class StorageController {
   @ApiOperation({
     summary: 'Clear user concurrency slots (ROOT)',
     description:
-      'Force-clears all active upload concurrency slots for a specific user. ' +
-      'Use this to resolve stuck uploads or when a user reports upload issues. ' +
+      'Force-clears all active upload concurrency slots for a specific user by aborting all uploading files. ' +
+      'Each file abort is processed in its own transaction with rollback logic for consistency. ' +
+      'If any upload fails to abort properly, the entire operation fails and concurrency slots are not cleared ' +
+      'to prevent negative count issues. Use this to resolve stuck uploads or when a user reports upload issues. ' +
       'This is an administrative operation that should be used with caution.',
   })
   @ApiParam({
@@ -739,11 +824,32 @@ export class StorageController {
     status: HttpStatus.NO_CONTENT,
     description: 'User concurrency slots cleared successfully',
   })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description:
+      'Failed to abort one or more uploads. Concurrency slots not cleared to prevent negative counts.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example:
+            'Failed to abort 2 out of 5 uploads. Concurrency slots not cleared to prevent negative counts.',
+        },
+        error: {
+          type: 'string',
+          example: 'Internal Server Error',
+        },
+        statusCode: {
+          type: 'number',
+          example: 500,
+        },
+      },
+    },
+  })
   @Throttle(60000, 5) // Configured via environment
   async clearUserConcurrencySlots(@Param('userId') userId: string): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(new ClearUserConcurrencySlotsCommand(userId));
-    });
+    return this.commandBus.execute(new ClearUserConcurrencySlotsCommand(userId));
   }
 
   @Get('concurrency/health')

@@ -8,6 +8,7 @@ export class GeneratePartUrlCommand implements ICommand {
   constructor(
     public readonly fileId: string,
     public readonly partNumber: string,
+    public readonly partSizeBytes: number,
     public readonly expirationSeconds?: string,
   ) {}
 }
@@ -20,7 +21,7 @@ export class GeneratePartUrlHandler
   constructor(private readonly multipartUploadService: MultipartUploadService) {}
 
   async execute(command: GeneratePartUrlCommand): Promise<IGeneratePartUrlResponse> {
-    const { fileId, partNumber, expirationSeconds } = command;
+    const { fileId, partNumber, partSizeBytes, expirationSeconds } = command;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,6 +33,15 @@ export class GeneratePartUrlHandler
     const partNum = parseInt(partNumber, 10);
     if (isNaN(partNum)) {
       throw new InvalidParameterException('partNumber', partNumber, 'Must be a valid number');
+    }
+
+    // Validate part size
+    if (!Number.isInteger(partSizeBytes) || partSizeBytes <= 0) {
+      throw new InvalidParameterException(
+        'partSizeBytes',
+        partSizeBytes.toString(),
+        'Must be a positive integer',
+      );
     }
 
     // Validate expiration seconds if provided
@@ -47,7 +57,12 @@ export class GeneratePartUrlHandler
       }
     }
 
-    const result = await this.multipartUploadService.generatePartUrl(fileId, partNum, expiry);
+    const result = await this.multipartUploadService.generatePartUrl(
+      partSizeBytes,
+      fileId,
+      partNum,
+      expiry,
+    );
 
     return result;
   }

@@ -50,14 +50,14 @@ export class DeleteUserFileHandler implements ICommandHandler<DeleteUserFileComm
         hardDelete: true, // Force physical deletion
       });
     } else {
-      // File only exists physically in MinIO - delete directly from storage
+      // File only exists physically in MinIO - check existence first, then delete
       const physicalExists = await this.storageService.objectExists(bucket, objectKey);
 
       if (!physicalExists) {
         throw new EntityNotFoundException('File', filename);
       }
 
-      // Delete physical file directly
+      // Delete physical file directly (no database record to delete first)
       await this.storageService.deleteObject(bucket, objectKey);
     }
   }

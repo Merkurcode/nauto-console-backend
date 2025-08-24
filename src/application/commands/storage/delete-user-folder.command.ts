@@ -1,12 +1,14 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FileOperationsService } from '@core/services/file-operations.service';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { IStorageService } from '@core/repositories/storage.service.interface';
 import { FILE_REPOSITORY, STORAGE_SERVICE } from '@shared/constants/tokens';
+import {
+  EntityNotFoundException,
+  InvalidFileOperationException,
+} from '@core/exceptions/domain-exceptions';
 import { StoragePaths } from '@core/utils/storage-paths';
-import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 
 export class DeleteUserFolderCommand implements ICommand {
   constructor(
@@ -22,7 +24,6 @@ export class DeleteUserFolderHandler
   implements ICommandHandler<DeleteUserFolderCommand, { deletedCount: number }>
 {
   constructor(
-    private readonly fileOperationsService: FileOperationsService,
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
     @Inject(STORAGE_SERVICE)
@@ -35,103 +36,286 @@ export class DeleteUserFolderHandler
 
     // Build storage path: company-uuid/users/user-uuid/{path}
     const storagePath = StoragePaths.forUser(companyId, userId, path);
+
     const bucket = this.configService.get<string>('storage.defaultBucket', 'nauto-console-dev');
 
-    let totalDeletedCount = 0;
-
-    // 1. Delete files from database (user owns all files in their space)
-    try {
-      const dbResult = await this.fileOperationsService.deletePhysicalFolder({
-        storagePath,
-        userId,
-        companyId,
-      });
-      totalDeletedCount += dbResult.deletedCount;
-    } catch (error) {
-      // If folder doesn't exist in DB, that's OK - we'll check physical
-      if (!(error instanceof EntityNotFoundException)) {
-        throw error;
-      }
+    const hasContent = await this.checkFolderExistence(bucket, storagePath);
+    if (!hasContent) {
+      throw new EntityNotFoundException('Folder', path || 'root');
     }
 
-    // 2. Delete physical files that are not in database
-    const physicalDeletedCount = await this.deletePhysicalOnlyFiles(bucket, storagePath, userId);
-    totalDeletedCount += physicalDeletedCount;
-
-    // 3. If folder is now empty, delete the folder itself
-    if (totalDeletedCount > 0) {
-      try {
-        const remainingFiles = await this.fileRepository.findByBucketAndPrefix(bucket, storagePath);
-        const activeFiles = remainingFiles.filter(
-          file => !file.status.isDeleted() && file.userId === userId,
-        );
-
-        if (activeFiles.length === 0) {
-          // Check if there are any physical files left
-          const physicalFiles = await this.storageService.listObjectsByPrefix(
-            bucket,
-            `${storagePath}/`,
-          );
-          const actualFiles = physicalFiles.filter(key => !key.endsWith('/'));
-
-          if (actualFiles.length === 0) {
-            await this.storageService.deleteFolder(bucket, storagePath);
-          }
-        }
-      } catch (error) {
-        // If folder cleanup fails, don't fail the whole operation
-        console.warn('Failed to clean up empty folder:', error);
-      }
+    // Security requirement 7: Cannot delete folders with files in upload progress
+    const hasUploadingFiles = await this.checkForUploadingFiles(storagePath, userId);
+    if (hasUploadingFiles) {
+      throw new InvalidFileOperationException(
+        'delete folder',
+        'Cannot delete folder containing files in progress (PENDING, UPLOADING, or COPYING status). Files in progress will be ignored.',
+        path || 'root',
+      );
     }
 
-    // If no files were deleted at all, check if folder exists
-    if (totalDeletedCount === 0) {
-      const folderExists = await this.storageService.folderExists(bucket, storagePath);
-      if (!folderExists) {
-        throw new EntityNotFoundException('Folder', path || 'root');
-      }
-    }
+    const totalDeletedCount = await this.depthFirstDelete(bucket, storagePath, userId, companyId);
 
     return { deletedCount: totalDeletedCount };
   }
 
-  private async deletePhysicalOnlyFiles(
+  private async depthFirstDelete(
+    bucket: string,
+    currentPath: string,
+    userId: string,
+    companyId: string,
+    rootPath?: string,
+  ): Promise<number> {
+    let totalDeleted = 0;
+    const actualRootPath = rootPath || currentPath;
+    const rootDepth = this.getPathDepth(actualRootPath);
+    const currentDepth = this.getPathDepth(currentPath);
+
+    try {
+      const subfolders = await this.getImmediateSubfolders(bucket, currentPath);
+
+      for (const subfolderPath of subfolders) {
+        const subfolderDeleted = await this.depthFirstDelete(
+          bucket,
+          subfolderPath,
+          userId,
+          companyId,
+          actualRootPath,
+        );
+        totalDeleted += subfolderDeleted;
+      }
+
+      const dbDeleted = await this.deleteCurrentFolderFiles(currentPath, userId, companyId);
+      totalDeleted += dbDeleted;
+
+      const physicalDeleted = await this.deleteCurrentFolderPhysicalFiles(
+        bucket,
+        currentPath,
+        userId,
+      );
+      totalDeleted += physicalDeleted;
+
+      if (currentDepth >= rootDepth) {
+        await this.deleteCurrentFolderIfEmpty(bucket, currentPath, userId);
+      }
+
+      return totalDeleted;
+    } catch (error) {
+      console.warn(`Failed to process folder ${currentPath}:`, error);
+
+      return totalDeleted;
+    }
+  }
+
+  private getPathDepth(path: string): number {
+    const cleanPath = path.replace(/^\/+|\/+$/g, '');
+    if (cleanPath === '') {
+      return 0;
+    }
+
+    return cleanPath.split(/\/+/).filter(segment => segment.length > 0).length;
+  }
+
+  private async getImmediateSubfolders(bucket: string, parentPath: string): Promise<string[]> {
+    try {
+      const folderPrefix = parentPath.endsWith('/') ? parentPath : `${parentPath}/`;
+      const allObjects = await this.storageService.listObjectsByPrefix(bucket, folderPrefix);
+
+      const subfolders = new Set<string>();
+
+      for (const objectKey of allObjects) {
+        const relativePath = objectKey.replace(folderPrefix, '');
+
+        if (!relativePath) continue;
+
+        if (relativePath.includes('/')) {
+          const firstFolder = relativePath.split('/')[0];
+          if (firstFolder) {
+            subfolders.add(`${folderPrefix}${firstFolder}`);
+          }
+        }
+      }
+
+      const dbFiles = await this.fileRepository.findByBucketAndPrefix(bucket, parentPath);
+      for (const file of dbFiles) {
+        if (file.path !== parentPath && file.path.startsWith(folderPrefix)) {
+          const relativePath = file.path.replace(folderPrefix, '');
+          if (relativePath.includes('/')) {
+            const firstFolder = relativePath.split('/')[0];
+            if (firstFolder) {
+              subfolders.add(`${folderPrefix}${firstFolder}`);
+            }
+          }
+        }
+      }
+
+      return Array.from(subfolders);
+    } catch (error) {
+      console.warn(`Failed to get subfolders for ${parentPath}:`, error);
+
+      return [];
+    }
+  }
+
+  private async deleteCurrentFolderFiles(
+    storagePath: string,
+    userId: string,
+    _companyId: string,
+  ): Promise<number> {
+    try {
+      const files = await this.fileRepository.findByPath(storagePath);
+      // In user space, user owns all files, so delete all files in their space
+      const filesToDelete = files.filter(file => file.userId === userId);
+
+      if (filesToDelete.length === 0) {
+        return 0;
+      }
+
+      const bucket = this.configService.get<string>('storage.defaultBucket', 'nauto-console-dev');
+      let deletedCount = 0;
+
+      for (const file of filesToDelete) {
+        try {
+          if (file.status.isUploaded()) {
+            await this.storageService.deleteObject(bucket, file.objectKey.toString());
+          }
+
+          // Hard delete from database to avoid objectKey conflicts
+          await this.fileRepository.delete(file.id);
+          deletedCount++;
+        } catch (fileError) {
+          console.warn(`Failed to delete file ${file.id}:`, fileError);
+        }
+      }
+
+      return deletedCount;
+    } catch (error) {
+      console.warn(`Failed to delete DB files in ${storagePath}:`, error);
+
+      return 0;
+    }
+  }
+
+  private async deleteCurrentFolderPhysicalFiles(
     bucket: string,
     storagePath: string,
     userId: string,
   ): Promise<number> {
     try {
-      // Get all physical files in the folder
       const folderPrefix = storagePath.endsWith('/') ? storagePath : `${storagePath}/`;
-      const allPhysicalFiles = await this.storageService.listObjectsByPrefix(bucket, folderPrefix);
+      const allObjects = await this.storageService.listObjectsByPrefix(bucket, folderPrefix);
 
-      // Filter to get only files (not folder markers)
-      const actualFiles = allPhysicalFiles.filter(key => !key.endsWith('/'));
+      const directFiles = allObjects.filter(key => {
+        const relativePath = key.replace(folderPrefix, '');
 
-      if (actualFiles.length === 0) {
+        return relativePath.length > 0 && !relativePath.includes('/') && !key.endsWith('/');
+      });
+
+      if (directFiles.length === 0) {
         return 0;
       }
 
-      // Get all files from database in this path for this user
-      const dbFiles = await this.fileRepository.findByBucketAndPrefix(bucket, storagePath);
+      const dbFiles = await this.fileRepository.findByPath(storagePath);
+      // Filter by userId to only get files that belong to this user
       const userDbFiles = dbFiles.filter(file => file.userId === userId);
       const dbObjectKeys = new Set(userDbFiles.map(file => file.objectKey.toString()));
 
-      // Find physical files that are NOT in database
-      const physicalOnlyFiles = actualFiles.filter(objectKey => !dbObjectKeys.has(objectKey));
+      const orphanedFiles = directFiles.filter(objectKey => !dbObjectKeys.has(objectKey));
 
-      if (physicalOnlyFiles.length === 0) {
+      if (orphanedFiles.length === 0) {
         return 0;
       }
 
-      // Delete physical-only files (in user space, user can delete all physical files)
-      await this.storageService.deleteObjects(bucket, physicalOnlyFiles);
+      await this.storageService.deleteObjects(bucket, orphanedFiles);
 
-      return physicalOnlyFiles.length;
+      return orphanedFiles.length;
     } catch (error) {
-      console.warn('Failed to delete physical-only files:', error);
+      console.warn(`Failed to delete physical files in ${storagePath}:`, error);
 
       return 0;
+    }
+  }
+
+  private async deleteCurrentFolderIfEmpty(
+    bucket: string,
+    storagePath: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      const dbFiles = await this.fileRepository.findByPath(storagePath);
+      // In user space, only consider files owned by this user
+      const userDbFiles = dbFiles.filter(file => file.userId === userId);
+
+      if (userDbFiles.length > 0) {
+        return;
+      }
+
+      const folderPrefix = storagePath.endsWith('/') ? storagePath : `${storagePath}/`;
+      const physicalFiles = await this.storageService.listObjectsByPrefix(bucket, folderPrefix);
+      const directFiles = physicalFiles.filter(key => {
+        const relativePath = key.replace(folderPrefix, '');
+
+        return relativePath.length > 0 && !relativePath.includes('/') && !key.endsWith('/');
+      });
+
+      if (directFiles.length > 0) {
+        return;
+      }
+
+      try {
+        await this.storageService.deleteFolder(bucket, storagePath);
+      } catch (_error) {
+        // Folder might not exist as a marker, that's OK
+      }
+    } catch (error) {
+      console.warn(`Failed to check/delete empty folder ${storagePath}:`, error);
+    }
+  }
+
+  private async checkFolderExistence(bucket: string, storagePath: string): Promise<boolean> {
+    try {
+      const folderExists = await this.storageService.folderExists(bucket, storagePath);
+      if (folderExists) {
+        return true;
+      }
+
+      const dbFiles = await this.fileRepository.findByBucketAndPrefix(bucket, storagePath);
+      if (dbFiles.length > 0) {
+        return true;
+      }
+
+      const folderPrefix = storagePath.endsWith('/') ? storagePath : `${storagePath}/`;
+      const physicalFiles = await this.storageService.listObjectsByPrefix(bucket, folderPrefix);
+
+      return physicalFiles.length > 0;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if folder (recursively) contains any files in progress
+   * Security requirement 7: Prevent folder deletion with files in PENDING, UPLOADING, or COPYING status
+   */
+  private async checkForUploadingFiles(storagePath: string, userId: string): Promise<boolean> {
+    try {
+      const bucket = this.configService.get<string>('storage.defaultBucket', 'nauto-console-dev');
+
+      // Get all files in this path and all subpaths
+      const allFiles = await this.fileRepository.findByBucketAndPrefix(bucket, storagePath);
+
+      // Check if any file belongs to this user and is in progress (PENDING, UPLOADING, COPYING)
+      const userFiles = allFiles.filter(file => file.userId === userId);
+      const filesInProgress = userFiles.filter(
+        file => file.status.isPending() || file.status.isUploading() || file.status.isCopying(),
+      );
+
+      return filesInProgress.length > 0;
+    } catch (error) {
+      // If we can't check, be conservative and prevent deletion
+      console.warn(`Failed to check for uploading files in ${storagePath}:`, error);
+
+      return true;
     }
   }
 }

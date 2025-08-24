@@ -45,6 +45,8 @@ export interface IStorageService {
     bucket: string,
     objectKey: string,
     contentType: string,
+    maxBytes: number,
+    isPublic: boolean,
   ): Promise<IMultipartUploadResult>;
 
   generatePresignedPartUrl(
@@ -53,6 +55,8 @@ export interface IStorageService {
     uploadId: string,
     partNumber: number,
     expirationSeconds: number,
+    declaredPartSizeBytes: number, // tamaño declarado para ESTA parte
+    maxBytes: number, // permite override por upload
   ): Promise<IPresignedUrlResult>;
 
   completeMultipartUpload(
@@ -60,6 +64,7 @@ export interface IStorageService {
     objectKey: string,
     uploadId: string,
     parts: ICompletedPart[],
+    maxBytes: number,
   ): Promise<ICompleteUploadResult>;
 
   abortMultipartUpload(bucket: string, objectKey: string, uploadId: string): Promise<void>;
@@ -67,7 +72,7 @@ export interface IStorageService {
   listUploadParts(bucket: string, objectKey: string, uploadId: string): Promise<IListPartsResult>;
 
   // Object operations
-  copyObject(
+  moveObject(
     sourceBucket: string,
     sourceKey: string,
     destinationBucket: string,

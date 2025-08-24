@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Trim } from '@shared/decorators/trim.decorator';
 import {
   IsValidStoragePath,
   HasValidDirectoryDepth,
@@ -11,6 +12,7 @@ export class CreateFolderDto {
     example: 'documents/projects',
     maxLength: 255,
   })
+  @Trim()
   @IsString()
   @IsNotEmpty()
   @Length(1, 255)

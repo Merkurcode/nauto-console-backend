@@ -256,6 +256,48 @@ export class FileUploadValidationService {
     };
   }
 
+  /**
+   * Valida que una nueva extensión de archivo sea compatible con el MIME type original
+   * y esté permitida según el tier del usuario.
+   */
+  async validateFileRename(
+    userId: string,
+    currentFilename: string,
+    newFilename: string,
+    originalMimeType: string,
+  ): Promise<{ isValid: boolean; error?: string }> {
+    // 1) Obtener config del usuario + tier
+    const userConfig = await this.userStorageConfigRepository.findByUserIdWithTier(
+      UserId.create(userId),
+    );
+    if (!userConfig) {
+      throw new UserStorageConfigNotFoundException(userId);
+    }
+
+    // 2) Extraer extensiones
+    const currentExtension = this.extractFileExtension(currentFilename);
+    const newExtension = this.extractFileExtension(newFilename);
+
+    // 3) Si la extensión no cambió, permitir el rename
+    if (currentExtension === newExtension) {
+      return { isValid: true };
+    }
+
+    // 4) Validar que la nueva extensión sea compatible con el MIME type original
+    // y esté permitida según el tier
+    if (!userConfig.isMimeTypeAllowed(originalMimeType, newExtension)) {
+      return {
+        isValid: false,
+        error:
+          `Cannot rename to extension '.${newExtension}'. ` +
+          `File type '${originalMimeType}' with extension '.${newExtension}' is not allowed for your tier. ` +
+          `Allowed types: ${userConfig.getAllowedMimeTypes().join(', ')}`,
+      };
+    }
+
+    return { isValid: true };
+  }
+
   // ---------- helpers ----------
   private extractFileExtension(filename: string): string {
     const parts = (filename ?? '').split('.');

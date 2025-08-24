@@ -77,6 +77,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ['CANNOT_MODIFY_DEFAULT_AI_PERSONA', 403],
         ['CANNOT_DELETE_DEFAULT_AI_PERSONA', 403],
         ['AI_PERSONA_COMPANY_ASSIGNMENT_REMOVAL_FAILED', 500],
+
+        // Storage domain exceptions
+        ['INVALID_OBJECT_KEY', 400],
+        ['INVALID_HIERARCHICAL_PATH', 400],
+        ['CONCURRENCY_LIMIT_EXCEEDED', 429],
+        ['STORAGE_QUOTA_EXCEEDED', 413], // Payload Too Large
+        ['FILE_TYPE_NOT_ALLOWED', 415], // Unsupported Media Type
+        ['UPLOAD_NOT_FOUND', 404],
+        ['UPLOAD_ALREADY_COMPLETED', 409],
+        ['UPLOAD_FAILED', 422], // Unprocessable Entity
+        ['INVALID_FILE_STATE', 409],
+        ['INVALID_PART_NUMBER', 400],
+        ['STORAGE_OPERATION_FAILED', 422], // Unprocessable Entity (operation couldn't be completed)
+        ['INVALID_PATH', 400],
+        ['FOLDER_NOT_EMPTY', 409],
+        ['STORAGE_TIER_NOT_FOUND', 404],
+        ['STORAGE_TIER_NOT_ACTIVE', 403],
+        ['USER_STORAGE_CONFIG_NOT_FOUND', 404],
+
+        // File domain exceptions
+        ['INVALID_FILE_OPERATION', 409], // Conflict - file state doesn't allow operation
+        ['FILE_ACCESS_DENIED', 403], // Forbidden - user doesn't have access to file
+        ['FILE_NOT_OWNED_BY_USER', 403], // Forbidden - user doesn't own the file
       ]);
 
       const status = domainStatusMap.get(exception.code) || 500;
@@ -94,6 +117,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
             return 'Not Found';
           case 409:
             return 'Conflict';
+          case 413:
+            return 'Payload Too Large';
+          case 415:
+            return 'Unsupported Media Type';
+          case 422:
+            return 'Unprocessable Entity';
           case 429:
             return 'Too Many Requests';
           case 500:

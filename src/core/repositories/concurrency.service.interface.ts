@@ -37,6 +37,13 @@ export interface IConcurrencyService {
   getCurrentCount(userId: string): Promise<number>;
 
   /**
+   * Gets current value of a specific key
+   * @param key Redis key to check
+   * @returns Promise<number> Current value
+   */
+  getCurrentValue(key: string): Promise<number>;
+
+  /**
    * Clears all slots for a user (admin operation)
    * @param userId User identifier
    * @returns Promise<void>
@@ -101,6 +108,25 @@ export interface IConcurrencyService {
   refreshSlotIfValue?(key: string, value: string, ttlSeconds: number): Promise<boolean>;
 
   adjustCounterWithTtl(key: string, delta: number, ttlSeconds: number): Promise<number>;
+
+  /**
+   * Safely decrements a counter only if there's enough value reserved
+   * Prevents negative values by checking current value before decrementing
+   * @param key Counter key
+   * @param decrementAmount Amount to decrement
+   * @param ttlSeconds TTL to maintain on the key
+   * @returns Promise with operation result
+   */
+  safeDecrementCounter(
+    key: string,
+    decrementAmount: number,
+    ttlSeconds: number,
+  ): Promise<{
+    success: boolean;
+    remainingValue: number;
+    wasFullyReleased: boolean;
+  }>;
+
   deleteKey(key: string): Promise<void>;
   userKey(userId: string): string;
   activeUsersSet(): string;

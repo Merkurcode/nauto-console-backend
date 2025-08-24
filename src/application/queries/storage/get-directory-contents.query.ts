@@ -397,29 +397,7 @@ export class GetDirectoryContentsHandler
         try {
           const metadata = await this.storageService.getObjectMetadata(bucket, objectKey);
 
-          // Generate signed URL for physical file
-          let signedUrl: string | undefined;
-          let signedUrlExpiresAt: Date | undefined;
-
-          try {
-            const maxExpiryHours = this.configService.get<number>(
-              'storage.presign.maxExpiryHours',
-              24,
-            );
-            const expirationSeconds = maxExpiryHours * 3600;
-
-            const { url } = await this.storageService.generatePresignedGetUrl(
-              bucket,
-              objectKey,
-              expirationSeconds,
-            );
-
-            signedUrl = url;
-            signedUrlExpiresAt = new Date(Date.now() + expirationSeconds * 1000);
-          } catch (error) {
-            console.warn(`Failed to generate signed URL for physical file ${objectKey}:`, error);
-          }
-
+          // Physical files don't get signed URLs since they don't have UPLOADED status
           physicalFileItems.push({
             name: relativePath,
             type: 'file' as const,
@@ -429,8 +407,6 @@ export class GetDirectoryContentsHandler
             createdAt: metadata.lastModified,
             updatedAt: metadata.lastModified,
             status: 'PHYSICAL_ONLY', // Special status for files not in database
-            signedUrl,
-            signedUrlExpiresAt,
           });
         } catch (error) {
           console.warn(`Failed to get metadata for physical file ${objectKey}:`, error);

@@ -77,8 +77,6 @@ export class GetUploadStatusHandler
       }
     } else if (file.status.isUploaded()) {
       progress = 100;
-    } else if (file.status.isFailed()) {
-      progress = 0;
     }
 
     return {
@@ -90,10 +88,10 @@ export class GetUploadStatusHandler
       uploadId: file.getUploadIdString(),
       message: file.status.isUploaded()
         ? 'Upload completed'
-        : file.status.isFailed()
-          ? 'Upload failed'
-          : file.status.isUploading()
-            ? `Upload in progress (${completedParts}${totalParts ? `/${totalParts}` : ''} parts completed)`
+        : file.status.isUploading()
+          ? `Upload in progress (${completedParts}${totalParts ? `/${totalParts}` : ''} parts completed)`
+          : file.status.isCopying()
+            ? 'File copying in progress'
             : 'Upload pending',
     };
   }

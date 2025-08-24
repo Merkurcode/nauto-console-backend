@@ -75,9 +75,21 @@ export class MinioStorageService implements IStorageService {
     bucket: string,
     objectKey: string,
     contentType: string,
+    maxBytes: number,
+    isPublic: boolean,
   ): Promise<IMultipartUploadResult> {
     try {
-      this.logger.debug({ message: 'Initiating multipart upload', bucket, objectKey, contentType });
+      const effectiveMax = Math.floor(maxBytes!);
+
+      this.logger.debug({
+        message: 'Initiating multipart upload',
+        bucket,
+        objectKey,
+        contentType,
+        maxBytes,
+        effectiveMax,
+        isPublic,
+      });
       this.validateBucketName(bucket);
       this.validateSecureObjectKey(objectKey);
       await this.ensureBucketExists(bucket);
@@ -119,8 +131,18 @@ export class MinioStorageService implements IStorageService {
     uploadId: string,
     partNumber: number,
     expirationSeconds: number,
+    declaredPartSizeBytes: number,
+    maxBytes: number,
   ): Promise<IPresignedUrlResult> {
     try {
+      this.validateBucketName(bucket);
+      this.validateSecureObjectKey(objectKey);
+      if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10_000) {
+        throw new Error('partNumber must be an integer between 1 and 10000');
+      }
+
+      const effectiveMax = Math.floor(maxBytes!);
+
       this.logger.debug({
         message: 'Generating presigned part URL',
         bucket,
@@ -128,7 +150,32 @@ export class MinioStorageService implements IStorageService {
         uploadId,
         partNumber,
         expirationSeconds,
+        declaredPartSizeBytes,
+        maxBytes,
+        effectiveMax,
       });
+
+      const MIN_PART = 5 * 1024 * 1024;
+      if (declaredPartSizeBytes < MIN_PART) {
+        this.logger.warn(
+          `Part ${partNumber} declared with ${declaredPartSizeBytes}B (<5MiB). Ensure it is the last part.`,
+        );
+      }
+
+      // TOPE: (ya subido + esta parte) ≤ maxBytes
+      await this.ensureRemainingCapacity(
+        bucket,
+        objectKey,
+        uploadId,
+        declaredPartSizeBytes,
+        effectiveMax,
+      );
+
+      // Si quisieras bloquear >10k partes ANTES de que S3 lo rechace:
+      const current = await this.listUploadParts(bucket, objectKey, uploadId);
+      if (current.totalPartsCount >= 10_000) {
+        throw new Error('Maximum number of parts (10,000) reached');
+      }
 
       const url = await this.minioClient.presignedUrl(
         'PUT',
@@ -218,15 +265,34 @@ export class MinioStorageService implements IStorageService {
     objectKey: string,
     uploadId: string,
     parts: ICompletedPart[],
+    maxBytes: number,
   ): Promise<ICompleteUploadResult> {
     try {
+      const effectiveMax = Math.floor(maxBytes!);
+
       this.logger.debug({
         message: 'Completing multipart upload',
         bucket,
         objectKey,
         uploadId,
         partsCount: parts.length,
+        maxBytes,
+        effectiveMax,
       });
+
+      // Recalcula el total real subido (todas las partes) y corta si excede
+      const uploadedTotal = await this.getTotalUploadedBytes(bucket, objectKey, uploadId);
+      if (uploadedTotal > effectiveMax) {
+        this.logger.error({
+          message: `Upload exceeds max allowed size (${uploadedTotal} > ${effectiveMax} bytes)`,
+          bucket,
+          objectKey,
+        });
+        await this.abortMultipartUpload(bucket, objectKey, uploadId).catch(() => {});
+        throw new Error(
+          `Upload exceeds max allowed size (${uploadedTotal} > ${effectiveMax} bytes)`,
+        );
+      }
 
       // Orden S3 por PartNumber ascendente
       const sorted = [...parts].sort((a, b) => a.PartNumber - b.PartNumber);
@@ -278,7 +344,7 @@ export class MinioStorageService implements IStorageService {
   // PUBLIC API - OBJECT OPERATIONS
   // ============================================================================
 
-  async copyObject(
+  async moveObject(
     sourceBucket: string,
     sourceKey: string,
     destinationBucket: string,
@@ -286,21 +352,24 @@ export class MinioStorageService implements IStorageService {
   ): Promise<void> {
     try {
       this.logger.debug({
-        message: 'Copying object',
+        message: 'Moving object',
         sourceBucket,
         sourceKey,
         destinationBucket,
         destinationKey,
       });
 
-      // S3 requiere CopySource con "/" inicial y keys URL-encoded (excepto "/")
-      const encodedSrc = encodeURIComponent(sourceKey).replace(/%2F/g, '/');
-      const copySource = `/${sourceBucket}/${encodedSrc}`;
+      // MinIO/S3 doesn't have native move, so implement as copy + delete
+      const copySource = `/${sourceBucket}/${sourceKey}`;
 
+      // Step 1: Copy to destination
       await this.minioClient.copyObject(destinationBucket, destinationKey, copySource);
 
+      // Step 2: Delete source
+      await this.minioClient.removeObject(sourceBucket, sourceKey);
+
       this.logger.log({
-        message: 'Object copied successfully',
+        message: 'Object moved successfully',
         sourceBucket,
         sourceKey,
         destinationBucket,
@@ -308,7 +377,7 @@ export class MinioStorageService implements IStorageService {
       });
     } catch (error) {
       this.logAndThrow(
-        'Failed to copy object',
+        'Failed to move object',
         { sourceBucket, sourceKey, destinationBucket, destinationKey },
         error,
       );
@@ -665,6 +734,59 @@ export class MinioStorageService implements IStorageService {
       });
 
       return false;
+    }
+  }
+
+  /** Suma los bytes ya subidos (todas las partes) */
+  private async getTotalUploadedBytes(
+    bucket: string,
+    objectKey: string,
+    uploadId: string,
+  ): Promise<number> {
+    let total = 0;
+    let marker = 0;
+    let truncated = true;
+
+    while (truncated) {
+      const req: Record<string, string> = { uploadId, 'max-parts': '1000' };
+      if (marker > 0) req['part-number-marker'] = String(marker);
+
+      const xml = await this.s3SignedXmlRequest('GET', bucket, objectKey, req);
+      const doc = this.xml.parse(xml);
+      const result = doc?.ListPartsResult;
+      const list = Array.isArray(result?.Part) ? result.Part : result?.Part ? [result.Part] : [];
+
+      for (const p of list) total += Number(p.Size ?? 0);
+
+      truncated = String(result?.IsTruncated).toLowerCase() === 'true';
+      marker = Number(result?.NextPartNumberMarker ?? 0);
+    }
+
+    return total;
+  }
+
+  /** Verifica que (subido + aSubir) ≤ maxBytes; si no, aborta y lanza error */
+  private async ensureRemainingCapacity(
+    bucket: string,
+    objectKey: string,
+    uploadId: string,
+    aboutToUploadBytes: number,
+    maxBytes: number,
+  ): Promise<void> {
+    if (!Number.isFinite(aboutToUploadBytes) || aboutToUploadBytes < 0) {
+      throw new Error('declaredPartSizeBytes must be a non-negative finite number');
+    }
+    const uploaded = await this.getTotalUploadedBytes(bucket, objectKey, uploadId);
+    if (uploaded + aboutToUploadBytes > maxBytes) {
+      this.logger.error({
+        message: `Upload exceeded max allowed size (${uploaded + aboutToUploadBytes} > ${maxBytes} bytes)`,
+        bucket,
+        objectKey,
+      });
+      await this.abortMultipartUpload(bucket, objectKey, uploadId).catch(() => {});
+      throw new Error(
+        `Upload exceeded max allowed size (${uploaded + aboutToUploadBytes} > ${maxBytes} bytes)`,
+      );
     }
   }
 

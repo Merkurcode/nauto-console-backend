@@ -20,6 +20,6 @@ export class AbortMultipartUploadHandler
   async execute(command: AbortMultipartUploadCommand): Promise<void> {
     const { userId, fileId, reason } = command;
 
-    await this.multipartUploadService.abortUpload(userId, fileId, reason);
+    await this.multipartUploadService.abortUpload(userId, fileId, true, reason);
   }
 }

@@ -25,6 +25,6 @@ export class CompleteMultipartUploadHandler
   async execute(command: CompleteMultipartUploadCommand): Promise<void> {
     const { userId, fileId, parts } = command;
 
-    await this.multipartUploadService.completeUpload(userId, fileId, parts);
+    await this.multipartUploadService.completeUpload(userId, fileId, parts, true);
   }
 }

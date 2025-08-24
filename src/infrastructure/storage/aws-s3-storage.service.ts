@@ -79,9 +79,21 @@ export class AwsS3StorageService implements IStorageService {
     bucket: string,
     objectKey: string,
     contentType: string,
+    maxBytes: number,
+    isPublic: boolean,
   ): Promise<IMultipartUploadResult> {
     try {
-      this.logger.debug({ message: 'Initiating multipart upload', bucket, objectKey, contentType });
+      const effectiveMax = Math.floor(maxBytes!);
+
+      this.logger.debug({
+        message: 'Initiating multipart upload',
+        bucket,
+        objectKey,
+        contentType,
+        maxBytes,
+        effectiveMax,
+        isPublic,
+      });
 
       this.validateBucketName(bucket);
       this.validateObjectKey(objectKey);
@@ -91,6 +103,9 @@ export class AwsS3StorageService implements IStorageService {
         Bucket: bucket,
         Key: objectKey,
         ContentType: contentType || 'application/octet-stream',
+        // Guarda el límite como metadata informativa (no lo hace cumplir S3, pero ayuda a trazabilidad)
+        Metadata: { 'app-max-bytes': String(effectiveMax) },
+        ACL: isPublic ? 'public-read' : 'private',
       });
 
       const response = await this.s3Client.send(command);
@@ -121,8 +136,12 @@ export class AwsS3StorageService implements IStorageService {
     uploadId: string,
     partNumber: number,
     expirationSeconds: number,
+    declaredPartSizeBytes: number,
+    maxBytes: number,
   ): Promise<IPresignedUrlResult> {
     try {
+      const effectiveMax = Math.floor(maxBytes!);
+
       this.logger.debug({
         message: 'Generating presigned URL for part upload',
         bucket,
@@ -130,6 +149,9 @@ export class AwsS3StorageService implements IStorageService {
         uploadId: `${uploadId?.slice(0, 20)}...`,
         partNumber,
         expirationSeconds,
+        declaredPartSizeBytes,
+        maxBytes,
+        effectiveMax,
       });
 
       this.validateBucketName(bucket);
@@ -137,11 +159,39 @@ export class AwsS3StorageService implements IStorageService {
       this.validatePartNumber(partNumber);
       this.validateExpirationSeconds(expirationSeconds);
 
+      // Reglas S3: 5 MiB mínimo por parte salvo la última
+      if (declaredPartSizeBytes <= 0) throw new Error('declaredPartSizeBytes must be > 0');
+      const MIN_PART = 5 * 1024 * 1024;
+      if (declaredPartSizeBytes < MIN_PART) {
+        // Permitimos tamaños < 5 MiB solo si ya no queda más por subir, pero eso no lo sabemos aquí;
+        // así que obligamos al cliente a usar >= 5 MiB y dejar la última más pequeña.
+        this.logger.warn(
+          `Part ${partNumber} declared with ${declaredPartSizeBytes}B (<5MiB). Ensure it is the last part.`,
+        );
+      }
+
+      // Valida capacidad restante ANTES de firmar
+      await this.ensureRemainingCapacity(
+        bucket,
+        objectKey,
+        uploadId,
+        declaredPartSizeBytes,
+        effectiveMax,
+      );
+
+      // Si quisieras bloquear >10k partes ANTES de que S3 lo rechace:
+      const current = await this.listUploadParts(bucket, objectKey, uploadId);
+      if (current.totalPartsCount >= 10_000) {
+        throw new Error('Maximum number of parts (10,000) reached');
+      }
+
+      // Firma con ContentLength "fijo" para que el cliente tenga que enviar ese header exacto
       const command = new UploadPartCommand({
         Bucket: bucket,
         Key: objectKey,
         UploadId: uploadId,
         PartNumber: partNumber,
+        ContentLength: declaredPartSizeBytes, // <- esto obliga a que el PUT de la parte tenga ese Content-Length
       });
 
       const url = await getSignedUrl(this.s3Client, command, { expiresIn: expirationSeconds });
@@ -172,19 +222,38 @@ export class AwsS3StorageService implements IStorageService {
     objectKey: string,
     uploadId: string,
     parts: ICompletedPart[],
+    maxBytes: number,
   ): Promise<ICompleteUploadResult> {
     try {
+      const effectiveMax = Math.floor(maxBytes!);
+
       this.logger.debug({
         message: 'Completing multipart upload',
         bucket,
         objectKey,
         uploadId: `${uploadId?.slice(0, 20)}...`,
         partsCount: parts.length,
+        maxBytes,
+        effectiveMax,
       });
 
       this.validateBucketName(bucket);
       this.validateObjectKey(objectKey);
       this.validateCompletedParts(parts);
+
+      // TOPE DURO: lee el tamaño real de TODAS las partes subidas
+      const uploadedTotal = await this.getTotalUploadedBytes(bucket, objectKey, uploadId);
+      if (uploadedTotal > effectiveMax) {
+        this.logger.error({
+          message: `Upload exceeds max allowed size (${uploadedTotal} > ${effectiveMax} bytes)`,
+          bucket,
+          objectKey,
+        });
+        await this.abortMultipartUpload(bucket, objectKey, uploadId).catch(() => {});
+        throw new Error(
+          `Upload exceeds max allowed size (${uploadedTotal} > ${effectiveMax} bytes)`,
+        );
+      }
 
       const completedParts: CompletedPart[] = parts.map(p => ({
         ETag: p.ETag, // debe coincidir exactamente con el devuelto por UploadPart
@@ -330,7 +399,7 @@ export class AwsS3StorageService implements IStorageService {
   // OBJECT OPERATIONS
   // ============================================================================
 
-  async copyObject(
+  async moveObject(
     sourceBucket: string,
     sourceKey: string,
     destinationBucket: string,
@@ -338,7 +407,7 @@ export class AwsS3StorageService implements IStorageService {
   ): Promise<void> {
     try {
       this.logger.debug({
-        message: 'Copying object',
+        message: 'Moving object',
         sourceBucket,
         sourceKey,
         destinationBucket,
@@ -350,19 +419,26 @@ export class AwsS3StorageService implements IStorageService {
       this.validateObjectKey(sourceKey);
       this.validateObjectKey(destinationKey);
 
-      // CopySource debe ir URL-encoded
-      const copySource = `/${sourceBucket}/${encodeURIComponent(sourceKey).replace(/%2F/g, '/')}`;
+      // AWS S3 doesn't have native move, so implement as copy + delete
+      const copySource = `/${sourceBucket}/${sourceKey}`;
 
-      const command = new CopyObjectCommand({
+      // Step 1: Copy to destination
+      const copyCommand = new CopyObjectCommand({
         Bucket: destinationBucket,
         Key: destinationKey,
         CopySource: copySource,
       });
+      await this.s3Client.send(copyCommand);
 
-      await this.s3Client.send(command);
+      // Step 2: Delete source
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: sourceBucket,
+        Key: sourceKey,
+      });
+      await this.s3Client.send(deleteCommand);
 
       this.logger.debug({
-        message: 'Object copied successfully',
+        message: 'Object moved successfully',
         sourceBucket,
         sourceKey,
         destinationBucket,
@@ -370,14 +446,14 @@ export class AwsS3StorageService implements IStorageService {
       });
     } catch (error: any) {
       this.logger.error({
-        message: 'Failed to copy object',
+        message: 'Failed to move object',
         sourceBucket,
         sourceKey,
         destinationBucket,
         destinationKey,
         error: error?.message,
       });
-      throw new Error(`Failed to copy object: ${error?.message ?? String(error)}`);
+      throw new Error(`Failed to move object: ${error?.message ?? String(error)}`);
     }
   }
 
@@ -898,6 +974,57 @@ export class AwsS3StorageService implements IStorageService {
       });
 
       return false;
+    }
+  }
+
+  /** Suma tamaños de partes subidas hasta ahora */
+  private async getTotalUploadedBytes(
+    bucket: string,
+    objectKey: string,
+    uploadId: string,
+  ): Promise<number> {
+    let total = 0;
+    let partNumberMarker: string | undefined;
+    do {
+      const res = await this.s3Client.send(
+        new ListPartsCommand({
+          Bucket: bucket,
+          Key: objectKey,
+          UploadId: uploadId,
+          PartNumberMarker: partNumberMarker,
+          MaxParts: 1000,
+        }),
+      );
+      for (const p of res.Parts ?? []) total += p.Size ?? 0;
+      partNumberMarker = res.IsTruncated ? res.NextPartNumberMarker : undefined;
+    } while (partNumberMarker !== undefined);
+
+    return total;
+  }
+
+  /** Valida que (cargado + porSubir) no exceda maxBytes */
+  private async ensureRemainingCapacity(
+    bucket: string,
+    objectKey: string,
+    uploadId: string,
+    aboutToUploadBytes: number,
+    maxBytes: number,
+  ): Promise<void> {
+    if (!Number.isFinite(aboutToUploadBytes) || aboutToUploadBytes < 0) {
+      throw new Error('Declared part size must be a non-negative finite number');
+    }
+    const uploaded = await this.getTotalUploadedBytes(bucket, objectKey, uploadId);
+    if (uploaded + aboutToUploadBytes > maxBytes) {
+      this.logger.error({
+        message: `Upload exceeded max allowed size (${uploaded + aboutToUploadBytes} > ${maxBytes} bytes)`,
+        bucket,
+        objectKey,
+      });
+      // Corta de raíz: aborta la subida
+      await this.abortMultipartUpload(bucket, objectKey, uploadId).catch(() => {});
+      throw new Error(
+        `Upload exceeded max allowed size (${uploaded + aboutToUploadBytes} > ${maxBytes} bytes)`,
+      );
     }
   }
 

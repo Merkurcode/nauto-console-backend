@@ -157,6 +157,21 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     });
   }
 
+  async findByBucketPathAndFilename(bucket: string, path: string, filename: string): Promise<File[]> {
+    return this.executeWithErrorHandling('findByBucketPathAndFilename', async () => {
+      const files = await this.client.file.findMany({
+        where: { 
+          bucket,
+          path,
+          filename,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return files.map(file => this.mapToEntity(file));
+    });
+  }
+
   async save(file: File): Promise<File> {
     return this.executeWithErrorHandling('save', async () => {
       const fileData = await this.client.file.create({
@@ -392,22 +407,6 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     });
   }
 
-  async findOrphanedFiles(olderThanHours: number): Promise<File[]> {
-    return this.executeWithErrorHandling('findOrphanedFiles', async () => {
-      const expiredTime = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
-      const files = await this.client.file.findMany({
-        where: { 
-          status: $Enums.FileStatus.FAILED,
-          createdAt: {
-            lt: expiredTime
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      return files.map(file => this.mapToEntity(file));
-    });
-  }
 
   async findByCompanyIdAndFilters(params: {
     companyId: string;

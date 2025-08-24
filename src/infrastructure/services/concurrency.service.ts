@@ -1,3 +1,4 @@
+// concurrency.service.ts
 import { Inject, Injectable } from '@nestjs/common';
 import Redis, { Cluster } from 'ioredis';
 import { IConcurrencyService } from '@core/repositories/concurrency.service.interface';
@@ -6,115 +7,170 @@ import { ILogger } from '@core/interfaces/logger.interface';
 
 type RedisClient = Redis | Cluster;
 
-/**
- * ConcurrencyService
- *
- * - Controla concurrencia por usuario con contador en Redis.
- * - Mantiene un set de usuarios activos.
- * - Compatible con Redis Cluster usando hash-tags para co-ubicar keys.
- * - Limpia usuarios "fantasma" (sin contador) al calcular estadísticas.
- */
+type RedisWithCmds = RedisClient & {
+  acquireSlot(
+    key: string,
+    max: string | number,
+    ttl: string | number,
+  ): Promise<[number, number, number]>; // ok, n, transitionedUp
+  releaseSlot(key: string): Promise<[number, number, number]>; // ok, n, transitionedDown
+  safeDecrement(key: string, dec: string | number, ttl: string | number): Promise<[number, number]>;
+  unlockIfValueMatches(key: string, val: string): Promise<number>;
+  refreshIfValue(key: string, val: string, ttl: string | number): Promise<number>;
+  adjustCounterWithTtl(key: string, delta: string | number, ttl: string | number): Promise<number>;
+};
+
 @Injectable()
 export class ConcurrencyService implements IConcurrencyService {
-  // Hash-tag para co-ubicar todas las keys en el mismo slot (Cluster-safe).
-  // Nota: esto concentra la carga de "uploads" en un único slot/nodo.
+  /** Se mantiene para compatibilidad con código externo que lo consulte */
   public static readonly HASH_TAG = '{uploads}';
+
+  /** Si true, mantenemos un índice de usuarios activos (best-effort) */
+  private readonly useActiveIndex = true;
+  /** Set (global) para listar usuarios activos — mismo nombre que el viejito */
+  private readonly ACTIVE_SET_KEY = `${ConcurrencyService.HASH_TAG}:active_users`;
 
   constructor(
     @Inject('REDIS') private readonly redis: RedisClient,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
-  ) {}
+  ) {
+    // Registrar scripts como comandos (usa EVALSHA bajo el capó)
+    this.redis.defineCommand('acquireSlot', {
+      numberOfKeys: 1,
+      lua: ConcurrencyService.acquireLua,
+    });
+    this.redis.defineCommand('releaseSlot', {
+      numberOfKeys: 1,
+      lua: ConcurrencyService.releaseLua,
+    });
+    this.redis.defineCommand('safeDecrement', {
+      numberOfKeys: 1,
+      lua: ConcurrencyService.safeDecrementLua,
+    });
+    this.redis.defineCommand('unlockIfValueMatches', {
+      numberOfKeys: 1,
+      lua: ConcurrencyService.unlockIfValueMatchesLua,
+    });
+    this.redis.defineCommand('refreshIfValue', {
+      numberOfKeys: 1,
+      lua: `
+        if redis.call('GET', KEYS[1]) == ARGV[1] then
+          return redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+        else
+          return 0
+        end
+      `,
+    });
+    this.redis.defineCommand('adjustCounterWithTtl', {
+      numberOfKeys: 1,
+      lua: ConcurrencyService.adjustCounterWithTtlLua,
+    });
+  }
 
-  // ==== Keys helpers (mismo hash-slot) ====
+  private get R(): RedisWithCmds {
+    return this.redis as RedisWithCmds;
+  }
+
+  // =================== Keys (cluster-safe por usuario) ===================
+  /** Contador de concurrencia (hash-tag por usuario para distribuir carga) */
+  private static counterKey(userId: string) {
+    return `uploads:{${userId}}:inflight`;
+  }
+  /** Reserva de cuota por usuario (mismo slot del user) */
+  public static reservedQuotaKey(userId: string) {
+    return `uploads:{${userId}}:quota:reserved`;
+  }
+
+  // ===== Helpers de compatibilidad (mismo contrato público que el viejito) ====
+  /** Mantiene compat: el worker usa esto para construir el key de usuario */
   public userKey(userId: string): string {
-    return `${ConcurrencyService.HASH_TAG}:inflight:${userId}`;
+    return ConcurrencyService.counterKey(userId);
   }
+  /** Mantiene compat: el worker escanea este set */
   public activeUsersSet(): string {
-    return `${ConcurrencyService.HASH_TAG}:active_users`;
+    return this.ACTIVE_SET_KEY;
   }
 
-  // ==== Lua scripts (contador por usuario + set de usuarios activos) ====
-
-  // Lua: ajusta contador con TTL; elimina si queda <= 0
-  private static readonly adjustCounterWithTtlLua = `
+  // =================== Lua scripts ===================
+  // Acquire: retorna {ok, n, transitionedUp}
+  private static readonly acquireLua = `
     local key = KEYS[1]
-    local delta = tonumber(ARGV[1])
+    local max = tonumber(ARGV[1])
     local ttl = tonumber(ARGV[2])
 
-    if ttl <= 0 then
-      return tonumber(redis.call('GET', key) or '0')
-    end
-
-    local curr = tonumber(redis.call('GET', key) or '0')
-    local newv = curr + delta
-
-    if newv <= 0 then
-      redis.call('DEL', key)
-      return 0
-    else
-      redis.call('SET', key, newv, 'EX', ttl)
-      return newv
-    end
-  `;
-
-  /**
-   * acquire:
-   * - Si max <= 0 o ttl <= 0 => no adquiere (retorna {0, nActual})
-   * - Si n >= max => no adquiere (retorna {0, n})
-   * - Si n <  max => n++, SET EX ttl, SADD usersSet; retorna {1, n}
-   */
-  private static readonly acquireLua = `
-    local key      = KEYS[1]
-    local usersSet = KEYS[2]
-    local max      = tonumber(ARGV[1])
-    local ttl      = tonumber(ARGV[2])
-    local userId   = ARGV[3]
-
     if max <= 0 or ttl <= 0 then
-      return {0, tonumber(redis.call('GET', key) or '0')}
+      return {0, tonumber(redis.call('GET', key) or '0'), 0}
     end
 
-    local n = tonumber(redis.call('GET', key) or '0')
-    if n >= max then
-      return {0, n}
+    local prev = tonumber(redis.call('GET', key) or '0')
+    if prev >= max then
+      return {0, prev, 0}
     end
 
-    n = n + 1
-    -- Refresca TTL y asegura presencia en el set (idempotente)
+    local n = prev + 1
     redis.call('SET', key, n, 'EX', ttl)
-    redis.call('SADD', usersSet, userId)
-    return {1, n}
+    local transitioned = (prev == 0 and n == 1) and 1 or 0
+    return {1, n, transitioned}
   `;
 
-  /**
-   * release:
-   * - Si no existe => {0, 0}
-   * - Si n <= 1 => DEL key, SREM usersSet, {1, 0}
-   * - Si n >  1 => n--, KEEPTTL, {1, n}
-   */
+  // Release: retorna {ok, n, transitionedDown}
   private static readonly releaseLua = `
-    local key      = KEYS[1]
-    local usersSet = KEYS[2]
-    local userId   = ARGV[1]
-
+    local key = KEYS[1]
     local v = redis.call('GET', key)
-    if not v then return {0, 0} end
+    if not v then return {0, 0, 0} end
 
     local n = tonumber(v)
     if n <= 1 then
       redis.call('DEL', key)
-      redis.call('SREM', usersSet, userId)
-      return {1, 0}
+      return {1, 0, 1}
     else
       n = n - 1
-      redis.call('SET', key, n, 'KEEPTTL')
-      return {1, n}
+      local pttl = redis.call('PTTL', key)
+      if pttl and pttl > 0 then
+        redis.call('SET', key, n, 'PX', pttl)
+      else
+        redis.call('SET', key, n)
+      end
+      return {1, n, 0}
     end
   `;
 
-  /**
-   * unlock seguro: elimina la key solo si el valor coincide
-   */
+  private static readonly safeDecrementLua = `
+    local key = KEYS[1]
+    local dec = tonumber(ARGV[1])
+    local ttl = tonumber(ARGV[2])
+
+    if dec <= 0 then
+      local curr = tonumber(redis.call('GET', key) or '0')
+      return {0, curr}
+    end
+
+    local curr = tonumber(redis.call('GET', key) or '0')
+    if curr < dec then
+      return {0, curr}
+    end
+
+    local newv = curr - dec
+    if newv <= 0 then
+      redis.call('DEL', key)
+      return {1, 0}
+    else
+      if ttl > 0 then
+        -- CHANGED: si se especifica ttl, lo forzamos
+        redis.call('SET', key, newv, 'EX', ttl)
+      else
+        -- CHANGED: conservar TTL existente (si lo hay)
+        local pttl = redis.call('PTTL', key)
+        if pttl and pttl > 0 then
+          redis.call('SET', key, newv, 'PX', pttl)
+        else
+          redis.call('SET', key, newv)
+        end
+      end
+      return {1, newv}
+    end
+  `;
+
   private static readonly unlockIfValueMatchesLua = `
     if redis.call('GET', KEYS[1]) == ARGV[1] then
       redis.call('DEL', KEYS[1])
@@ -124,96 +180,71 @@ export class ConcurrencyService implements IConcurrencyService {
     end
   `;
 
-  async adjustCounterWithTtl(key: string, delta: number, ttlSeconds: number): Promise<number> {
-    try {
-      const res = await this.redis.eval(
-        ConcurrencyService.adjustCounterWithTtlLua,
-        1,
-        key,
-        String(delta),
-        String(ttlSeconds),
-      );
-      const n = typeof res === 'number' ? res : parseInt(String(res ?? 0), 10);
+  /** Ajusta un contador con TTL (permite delta ±, no deja < 0). */
+  private static readonly adjustCounterWithTtlLua = `
+    local key = KEYS[1]
+    local delta = tonumber(ARGV[1])
+    local ttl = tonumber(ARGV[2])
 
-      return Number.isFinite(n) ? n : 0;
-    } catch (err) {
-      this.logger.debug(`adjustCounterWithTtl error: ${(err as Error).message}`);
+    local curr = tonumber(redis.call('GET', key) or '0')
+    local newv = curr + delta
 
-      return 0; // política conservadora
-    }
-  }
+    if newv <= 0 then
+      redis.call('DEL', key)
+      return 0
+    else
+      if ttl > 0 then
+        redis.call('SET', key, newv, 'EX', ttl)
+      else
+        redis.call('SET', key, newv)
+      end
+      return newv
+    end
+  `;
 
-  async deleteKey(key: string): Promise<void> {
-    try {
-      await this.redis.del(key);
-    } catch (err) {
-      this.logger.debug(`deleteKey error: ${(err as Error).message}`);
-    }
-  }
+  // =================== API pública ===================
 
-  // ===================================================
-  // Adquisición de slot (retorna si adquirió y conteo actual)
-  // ===================================================
+  /** Limita concurrencia por usuario (atomiza ++ y TTL). */
   async tryAcquireSlot(
     userId: string,
     maxConcurrent: number,
     ttlSeconds = 7200,
   ): Promise<{ acquired: boolean; current: number }> {
-    if (!userId) return { acquired: false, current: 0 };
-    if (!Number.isFinite(maxConcurrent)) return { acquired: false, current: 0 };
-
-    const key = this.userKey(userId);
-    const usersSet = this.activeUsersSet();
-
+    if (!userId || !Number.isFinite(maxConcurrent) || maxConcurrent <= 0 || ttlSeconds <= 0) {
+      return { acquired: false, current: 0 };
+    }
     try {
-      const res = (await this.redis.eval(
-        ConcurrencyService.acquireLua,
-        2,
-        key,
-        usersSet,
-        String(maxConcurrent),
-        String(ttlSeconds),
-        userId,
-      )) as unknown as [number, number];
+      const [ok, n, transitionedUp] = await this.R.acquireSlot(
+        ConcurrencyService.counterKey(userId),
+        maxConcurrent,
+        ttlSeconds,
+      );
 
-      const acquired = Array.isArray(res) && res[0] === 1;
-      const currentRaw = Array.isArray(res) ? res[1] : 0;
-      const current =
-        typeof currentRaw === 'number' ? currentRaw : parseInt(String(currentRaw ?? 0), 10);
+      // Mantén índice de activos (best-effort) SIN bloquear el hot path
+      if (this.useActiveIndex && ok === 1 && transitionedUp === 1) {
+        this.redis.sadd(this.ACTIVE_SET_KEY, userId).catch(() => {});
+      }
 
-      return { acquired, current: Number.isFinite(current) ? current : 0 };
+      return { acquired: ok === 1, current: Math.max(0, Number(n) || 0) };
     } catch (e) {
-      // Política de caída: FAIL-CLOSED para no exceder concurrencia
-      // Si quisieras FAIL-OPEN, devuelve { acquired: true, current: 1 }
       this.logger.error(`tryAcquireSlot error for ${userId}: ${(e as Error).message}`);
 
       return { acquired: false, current: await this.getCurrentCount(userId).catch(() => 0) };
     }
   }
 
-  // ===================================================
-  // Liberación de slot (retorna conteo restante)
-  // ===================================================
+  /** Libera un slot (atomiza -- y conserva TTL restante). */
   async releaseSlot(userId: string): Promise<number> {
     if (!userId) return 0;
-
-    const key = this.userKey(userId);
-    const usersSet = this.activeUsersSet();
-
     try {
-      const res = (await this.redis.eval(
-        ConcurrencyService.releaseLua,
-        2,
-        key,
-        usersSet,
-        userId,
-      )) as unknown as [number, number];
+      const [, n, transitionedDown] = await this.R.releaseSlot(
+        ConcurrencyService.counterKey(userId),
+      );
+      if (this.useActiveIndex && transitionedDown === 1) {
+        this.redis.srem(this.ACTIVE_SET_KEY, userId).catch(() => {});
+      }
 
-      const currentRaw = Array.isArray(res) ? res[1] : 0;
-      const current =
-        typeof currentRaw === 'number' ? currentRaw : parseInt(String(currentRaw ?? 0), 10);
-
-      return Number.isFinite(current) ? current : 0;
+      return Math.max(0, Number(n) || 0);
     } catch (e) {
       this.logger.error(`releaseSlot error for ${userId}: ${(e as Error).message}`);
 
@@ -221,75 +252,59 @@ export class ConcurrencyService implements IConcurrencyService {
     }
   }
 
-  // ===================================================
-  // Conteo actual por usuario
-  // ===================================================
+  /** Decremento seguro (para consumir reservas sin quedar en negativo). */
+  async safeDecrementCounter(
+    key: string,
+    decrementAmount: number,
+    ttlSeconds: number,
+  ): Promise<{ success: boolean; remainingValue: number; wasFullyReleased: boolean }> {
+    try {
+      const [ok, val] = await this.R.safeDecrement(key, decrementAmount, ttlSeconds);
+      const remaining = Number(val) || 0;
+
+      return {
+        success: ok === 1,
+        remainingValue: remaining,
+        wasFullyReleased: ok === 1 && remaining === 0,
+      };
+    } catch (err) {
+      this.logger.debug(`safeDecrementCounter error: ${(err as Error).message}`);
+
+      return { success: false, remainingValue: 0, wasFullyReleased: false };
+    }
+  }
+
+  /** Ajusta contador con TTL (útil para reservas de cuota). */
+  async adjustCounterWithTtl(key: string, delta: number, ttlSeconds: number): Promise<number> {
+    try {
+      const res = await this.R.adjustCounterWithTtl(key, delta, ttlSeconds);
+      const n = typeof res === 'number' ? res : parseInt(String(res ?? 0), 10);
+
+      return Number.isFinite(n) ? n : 0;
+    } catch (err) {
+      this.logger.debug(`adjustCounterWithTtl error: ${(err as Error).message}`);
+
+      return 0;
+    }
+  }
+
+  /** Valor actual del contador de concurrencia para un usuario. */
   async getCurrentCount(userId: string): Promise<number> {
     if (!userId) return 0;
-    const val = await this.redis.get(this.userKey(userId));
+    const val = await this.redis.get(ConcurrencyService.counterKey(userId));
 
     return val ? parseInt(val as string, 10) || 0 : 0;
   }
 
-  // ===================================================
-  // Limpiar slots de un usuario (admin)
-  // ===================================================
-  async clearUserSlots(userId: string): Promise<void> {
-    if (!userId) return;
-    const key = this.userKey(userId);
-    await this.redis.del(key);
-    await this.redis.srem(this.activeUsersSet(), userId);
+  /** Compat: obtener valor de cualquier key numérica */
+  async getCurrentValue(key: string): Promise<number> {
+    if (!key) return 0;
+    const val = await this.redis.get(key);
+
+    return val ? parseInt(val as string, 10) || 0 : 0;
   }
 
-  // ===================================================
-  // Métricas globales sin KEYS (no bloqueante masivo)
-  // - Filtra y limpia usuarios fantasma (sin contador > 0)
-  // ===================================================
-  async getStats(): Promise<{
-    totalActiveUsers: number;
-    totalActiveUploads: number;
-    averageUploadsPerUser: number;
-  }> {
-    const users: string[] = (await this.redis.smembers(this.activeUsersSet())) ?? [];
-    let totalActiveUsers = 0;
-    let totalActiveUploads = 0;
-
-    if (users.length) {
-      const pipeline = this.redis.pipeline();
-      for (const u of users) {
-        pipeline.get(this.userKey(u));
-      }
-      const results = (await pipeline.exec()) as Array<[Error | null, string | null]>;
-
-      const cleanup: string[] = [];
-      results.forEach(([err, val], i) => {
-        if (err) return;
-        const n = val ? parseInt(val, 10) || 0 : 0;
-        if (n > 0) {
-          totalActiveUsers++;
-          totalActiveUploads += n;
-        } else {
-          // Usuario en el set pero sin contador -> limpiar
-          cleanup.push(users[i]);
-        }
-      });
-
-      if (cleanup.length) {
-        const p = this.redis.pipeline();
-        cleanup.forEach(u => p.srem(this.activeUsersSet(), u));
-        await p.exec();
-      }
-    }
-
-    const averageUploadsPerUser =
-      totalActiveUsers > 0 ? Math.round((totalActiveUploads / totalActiveUsers) * 100) / 100 : 0;
-
-    return { totalActiveUsers, totalActiveUploads, averageUploadsPerUser };
-  }
-
-  // ===================================================
-  // Lock simple con TTL (NX) y unlock seguro
-  // ===================================================
+  // ---- Locks para FileLockService (CAS) ----
   async setSlot(key: string, value: string, ttlSeconds: number): Promise<boolean> {
     try {
       if (!key || !value || ttlSeconds <= 0) return false;
@@ -306,11 +321,24 @@ export class ConcurrencyService implements IConcurrencyService {
   async releaseSlotWithValue(key: string, value: string): Promise<boolean> {
     try {
       if (!key || !value) return false;
-      const r = await this.redis.eval(ConcurrencyService.unlockIfValueMatchesLua, 1, key, value);
+      const r = await this.R.unlockIfValueMatches(key, value);
 
       return r === 1;
     } catch (err) {
       this.logger.debug(`releaseSlotWithValue error: ${(err as Error).message}`);
+
+      return false;
+    }
+  }
+
+  async refreshSlotIfValue(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    try {
+      if (!key || !value || ttlSeconds <= 0) return false;
+      const r = await this.R.refreshIfValue(key, value, ttlSeconds);
+
+      return r === 1;
+    } catch (err) {
+      this.logger.debug(`refreshSlotIfValue error: ${(err as Error).message}`);
 
       return false;
     }
@@ -329,18 +357,61 @@ export class ConcurrencyService implements IConcurrencyService {
     }
   }
 
-  // ===================================================
-  // Heartbeat opcional para cargas largas (extiende TTL sin tocar el contador)
-  // ===================================================
+  // ---- Admin / opcionales ----
+  async deleteKey(key: string): Promise<void> {
+    try {
+      await this.redis.del(key);
+    } catch (err) {
+      this.logger.debug(`deleteKey error: ${(err as Error).message}`);
+    }
+  }
+
+  /** Limpia el contador de concurrencia de un usuario (admin). */
+  async clearUserSlots(userId: string): Promise<void> {
+    if (!userId) return;
+    try {
+      await this.redis.del(ConcurrencyService.counterKey(userId));
+      if (this.useActiveIndex) {
+        await this.redis.srem(this.ACTIVE_SET_KEY, userId);
+      }
+    } catch (err) {
+      this.logger.debug(`clearUserSlots error: ${(err as Error).message}`);
+    }
+  }
+
+  /** Opcional: reservas de cuota */
+  async reserveQuota(userId: string, bytes: number, ttlSeconds: number): Promise<number> {
+    if (!userId || !Number.isFinite(bytes) || bytes <= 0 || ttlSeconds <= 0) return 0;
+
+    return this.adjustCounterWithTtl(
+      ConcurrencyService.reservedQuotaKey(userId),
+      bytes,
+      ttlSeconds,
+    );
+  }
+  async consumeQuota(userId: string, bytes: number, ttlSeconds: number) {
+    if (!userId || !Number.isFinite(bytes) || bytes <= 0 || ttlSeconds <= 0) {
+      return { success: false, remainingValue: 0, wasFullyReleased: false };
+    }
+
+    return this.safeDecrementCounter(
+      ConcurrencyService.reservedQuotaKey(userId),
+      bytes,
+      ttlSeconds,
+    );
+  }
+  async resetUserQuota(userId: string): Promise<void> {
+    if (!userId) return;
+    await this.deleteKey(ConcurrencyService.reservedQuotaKey(userId));
+  }
+
+  /** Mantiene viva la key de concurrencia sin cambiar su valor. */
   async heartbeat(userId: string, ttlSeconds = 7200): Promise<boolean> {
     try {
       if (!userId || ttlSeconds <= 0) return false;
-      const key = this.userKey(userId);
-      const exists = await this.redis.exists(key);
-      if (!exists) return false;
-      await this.redis.expire(key, ttlSeconds);
+      const ok = await this.redis.expire(ConcurrencyService.counterKey(userId), ttlSeconds);
 
-      return true;
+      return ok === 1;
     } catch (err) {
       this.logger.debug(`heartbeat error: ${(err as Error).message}`);
 
@@ -348,13 +419,10 @@ export class ConcurrencyService implements IConcurrencyService {
     }
   }
 
-  // ===================================================
-  // Health check
-  // ===================================================
   async healthCheck(): Promise<boolean> {
     try {
       await this.redis.ping();
-      const testKey = `${ConcurrencyService.HASH_TAG}:healthcheck:test`;
+      const testKey = `hc:{uploads}:test`;
       await this.redis.set(testKey, '1', 'EX', 5);
       const value = await this.redis.get(testKey);
       await this.redis.del(testKey);
@@ -367,29 +435,44 @@ export class ConcurrencyService implements IConcurrencyService {
     }
   }
 
-  // ===================================================
-  // Refresh TTL if value matches (CAS)
-  // ===================================================
-  async refreshSlotIfValue(key: string, value: string, ttlSeconds: number): Promise<boolean> {
-    try {
-      if (!key || !value || ttlSeconds <= 0) return false;
+  /** Métricas sencillas + limpieza de “fantasmas” (compat con el viejito) */
+  async getStats(): Promise<{
+    totalActiveUsers: number;
+    totalActiveUploads: number;
+    averageUploadsPerUser: number;
+  }> {
+    const setKey = this.activeUsersSet();
+    const users: string[] = (await this.redis.smembers(setKey)) ?? [];
+    let totalActiveUsers = 0;
+    let totalActiveUploads = 0;
 
-      // Lua script for atomic CAS + EXPIRE
-      const refreshLua = `
-        if redis.call('GET', KEYS[1]) == ARGV[1] then
-          return redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
-        else
-          return 0
-        end
-      `;
+    if (users.length) {
+      const pipeline = this.redis.pipeline();
+      for (const u of users) pipeline.get(this.userKey(u));
+      const results = (await pipeline.exec()) as Array<[Error | null, string | null]>;
 
-      const result = await this.redis.eval(refreshLua, 1, key, value, String(ttlSeconds));
+      const cleanup: string[] = [];
+      results.forEach(([err, val], i) => {
+        if (err) return;
+        const n = val ? parseInt(val, 10) || 0 : 0;
+        if (n > 0) {
+          totalActiveUsers++;
+          totalActiveUploads += n;
+        } else {
+          cleanup.push(users[i]);
+        }
+      });
 
-      return result === 1;
-    } catch (err) {
-      this.logger.debug(`refreshSlotIfValue error: ${(err as Error).message}`);
-
-      return false;
+      if (cleanup.length) {
+        const p2 = this.redis.pipeline();
+        cleanup.forEach(u => p2.srem(setKey, u));
+        await p2.exec();
+      }
     }
+
+    const averageUploadsPerUser =
+      totalActiveUsers > 0 ? Math.round((totalActiveUploads / totalActiveUsers) * 100) / 100 : 0;
+
+    return { totalActiveUsers, totalActiveUploads, averageUploadsPerUser };
   }
 }

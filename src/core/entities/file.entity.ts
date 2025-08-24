@@ -9,14 +9,12 @@ import {
   FilePendingEvent,
   FileUploadStartedEvent,
   FileUploadCompletedEvent,
-  FileUploadFailedEvent,
-  FileDeletedEvent,
-  FileCanceledEvent,
   FileStatusChangedEvent,
   FileUploadInitiatedEvent,
   FileMovedEvent,
   FileRenamedEvent,
   FileVisibilityChangedEvent,
+  FileCopyInitiatedEvent,
 } from '@core/events/file.events';
 import { InvalidFileStateException } from '@core/exceptions/storage-domain.exceptions';
 
@@ -159,6 +157,51 @@ export class File extends AggregateRoot {
     return file;
   }
 
+  public static createForCopy(params: {
+    filename: string;
+    originalName: string;
+    path: string;
+    objectKey: ObjectKey;
+    mimeType: string;
+    size: FileSize;
+    bucket: string;
+    userId: string;
+    isPublic: boolean;
+    sourceFileId: string;
+  }): File {
+    const file = new File(
+      uuidv4(),
+      params.filename,
+      params.originalName,
+      params.path,
+      params.objectKey,
+      params.mimeType,
+      params.size,
+      params.bucket,
+      params.userId,
+      params.isPublic,
+      FileStatus.copying(), // Start in COPYING state
+      null, // No upload ID for copies
+      null, // No ETag yet
+      new Date(),
+      new Date(),
+    );
+
+    // Emit domain event for copy initiation
+    file.addDomainEvent(
+      new FileCopyInitiatedEvent(
+        file._id,
+        params.sourceFileId,
+        file._userId,
+        file._filename,
+        file._size.getBytes(),
+        file._path,
+      ),
+    );
+
+    return file;
+  }
+
   // Factory method for reconstituting from persistence
   public static fromPersistence(data: {
     id: string;
@@ -213,16 +256,39 @@ export class File extends AggregateRoot {
   }
 
   public updateUser(userId: string | null): void {
-    if (this._status.isDeleted()) return;
     this._userId = userId;
     this._updatedAt = new Date();
   }
 
-  /** Solo cambia el nombre “original” (no el key real). */
+  /** Solo cambia el nombre "original" (no el key real). */
   public rename(newOriginalName: string): void {
-    if (this._status.isDeleted()) return;
     this._originalName = newOriginalName;
     this._updatedAt = new Date();
+  }
+
+  /** Cambia el filename y reconstruye el objectKey. */
+  public renameFilename(newFilename: string): void {
+    const oldFilename = this._filename;
+    const oldObjectKey = this._objectKey.toString();
+
+    this._filename = newFilename;
+    this._objectKey = ObjectKey.join(this._path, this._filename);
+    this._updatedAt = new Date();
+
+    const newObjectKey = this._objectKey.toString();
+
+    // Emitir evento de renombrado
+    this.addDomainEvent(
+      new FileRenamedEvent(
+        this._id,
+        this._userId,
+        this._path,
+        oldFilename,
+        newFilename,
+        oldObjectKey,
+        newObjectKey,
+      ),
+    );
   }
 
   public move(newPath: string, newFilename?: string): void {
@@ -269,14 +335,6 @@ export class File extends AggregateRoot {
 
   // Multipart upload methods
   public initiateUpload(uploadId: string): void {
-    if (this._status.isDeleted()) {
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'not-deleted',
-        'initiate upload',
-      );
-    }
     if (!this._status.isPending()) {
       throw new InvalidFileStateException(
         this._id,
@@ -332,77 +390,11 @@ export class File extends AggregateRoot {
     this.completeUpload();
   }
 
-  public failUpload(reason: string = 'Upload failed'): void {
-    if (this._status.isDeleted()) {
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'not-deleted',
-        'fail upload',
-      );
-    }
-    if (!this._status.isUploading() && !this._status.isPending()) {
-      // solo tiene sentido fallar si estaba en pending/uploading
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'pending|uploading',
-        'fail upload',
-      );
-    }
-
-    const oldStatus = this._status;
-    this._status = FileStatus.failed();
-    this._uploadId = null;
-    this._etag = null; // subir fallida → limpiar etag
-    this._updatedAt = new Date();
-
-    this.addDomainEvent(new FileUploadFailedEvent(this._id, this._userId, this._filename, reason));
-    this.addDomainEvent(
-      new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
-    );
-  }
-
-  public markAsFailed(): void {
-    this.failUpload();
-  }
-
   public updateLastActivity(): void {
     this._updatedAt = new Date();
   }
 
-  public markAsDeleted(): void {
-    if (this._status.isUploading()) {
-      // reforzamos la misma regla que aplicas en el servicio
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'not-uploading',
-        'delete',
-      );
-    }
-    if (!this._status.isDeleted()) {
-      const oldStatus = this._status;
-      this._status = FileStatus.deleted();
-      this._uploadId = null;
-      this._updatedAt = new Date();
-
-      this.addDomainEvent(new FileDeletedEvent(this._id, this._userId, this._filename));
-      this.addDomainEvent(
-        new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
-      );
-    }
-  }
-
   public markAsUploading(): void {
-    if (this._status.isDeleted()) {
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'not-deleted',
-        'mark uploading',
-      );
-    }
     if (!this._status.isUploading()) {
       const oldStatus = this._status;
       this._status = FileStatus.uploading();
@@ -418,14 +410,6 @@ export class File extends AggregateRoot {
   }
 
   public markAsPending(): void {
-    if (this._status.isDeleted()) {
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'not-deleted',
-        'mark pending',
-      );
-    }
     if (!this._status.isPending()) {
       const oldStatus = this._status;
       this._status = FileStatus.pending();
@@ -442,23 +426,12 @@ export class File extends AggregateRoot {
     }
   }
 
-  public markAsCanceled(reason: string = 'Upload canceled'): void {
-    if (this._status.isDeleted()) {
-      throw new InvalidFileStateException(
-        this._id,
-        this._status.getValue(),
-        'not-deleted',
-        'cancel upload',
-      );
-    }
-    if (!this._status.isCanceled()) {
+  public markAsCopying(): void {
+    if (!this._status.isCopying()) {
       const oldStatus = this._status;
-      this._status = FileStatus.canceled();
-      this._uploadId = null;
-      this._etag = null; // cancelar → limpiar etag
+      this._status = FileStatus.copying();
       this._updatedAt = new Date();
 
-      this.addDomainEvent(new FileCanceledEvent(this._id, this._userId, this._filename, reason));
       this.addDomainEvent(
         new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
       );
@@ -475,15 +448,18 @@ export class File extends AggregateRoot {
   }
 
   public canBeDeleted(): boolean {
-    return !this._status.isUploading();
+    // Security requirement 6: Only UPLOADED files can be deleted
+    return this._status.isUploaded();
   }
 
   public canBeMoved(): boolean {
-    return this._status.isUploaded() || this._status.isPending();
+    // Security requirement 5: Only UPLOADED files can be moved
+    return this._status.isUploaded() && !this._status.isCopying();
   }
 
   public canBeRenamed(): boolean {
-    return this._status.isUploaded() || this._status.isPending();
+    // Security requirement 4: Only UPLOADED files can be renamed
+    return this._status.isUploaded() && !this._status.isCopying();
   }
 
   // Utility methods

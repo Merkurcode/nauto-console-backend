@@ -37,9 +37,7 @@ enum FileStatus {
   PENDING
   UPLOADING
   UPLOADED
-  FAILED
-  CANCELED
-  DELETED
+  COPYING
 }
 
 enum UserActivityType {
@@ -445,6 +443,8 @@ model File {
 
   @@index([userId])
   @@index([status])
+  @@index([userId, status])
+  @@index([userId, bucket])
   @@unique([bucket, objectKey])
 }
 

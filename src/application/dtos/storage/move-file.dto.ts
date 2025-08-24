@@ -1,5 +1,6 @@
 import { IsString, IsOptional, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Trim } from '@shared/decorators/trim.decorator';
 import {
   IsValidStoragePath,
   HasValidDirectoryDepth,
@@ -10,6 +11,7 @@ export class MoveFileDto {
     description: 'New virtual folder path for the file',
     example: 'documents/archive',
   })
+  @Trim()
   @IsString()
   @IsOptional()
   @Length(0, 255)
