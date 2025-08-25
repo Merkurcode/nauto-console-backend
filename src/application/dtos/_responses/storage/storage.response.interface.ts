@@ -72,6 +72,7 @@ export interface ICreateFolderResponse {
 }
 
 export interface IDirectoryItem {
+  id?: string; // File ID (only present for files, not folders)
   name: string;
   type: 'file' | 'folder';
   path: string;

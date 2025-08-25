@@ -79,7 +79,7 @@ export class FileAccessControlService {
             canRead: false,
             canWrite: false,
             canDelete: false,
-            reason: 'Access denied - different company',
+            reason: 'Different company',
           };
         }
       }

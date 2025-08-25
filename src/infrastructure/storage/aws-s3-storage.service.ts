@@ -13,7 +13,7 @@ import {
   HeadObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
-  PutObjectAclCommand,
+  //PutObjectAclCommand,
   ListObjectsV2Command,
   CreateBucketCommand,
   HeadBucketCommand,
@@ -658,62 +658,72 @@ export class AwsS3StorageService implements IStorageService {
   // ============================================================================
 
   async setObjectPublic(bucket: string, objectKey: string): Promise<void> {
-    try {
-      this.logger.debug({ message: 'Setting object to public', bucket, objectKey });
-
-      this.validateBucketName(bucket);
-      this.validateObjectKey(objectKey);
-
-      const command = new PutObjectAclCommand({
-        Bucket: bucket,
-        Key: objectKey,
-        ACL: 'public-read',
-      });
-      await this.s3Client.send(command);
-    } catch (error: any) {
-      // Si el bucket usa ObjectOwnership=BucketOwnerEnforced, S3 rechaza cualquier ACL
-      const code = error?.name || error?.Code;
-      if (code === 'AccessControlListNotSupported' || code === 'InvalidRequest') {
-        throw new Error(
-          'ACLs are disabled for this bucket (BucketOwnerEnforced). ' +
-            'Switch visibility via bucket policy/CloudFront or use presigned URLs only.',
-        );
-      }
-      this.logger.error({
-        message: 'Failed to set object public',
-        bucket,
-        objectKey,
-        error: error?.message,
-      });
-      throw new Error(`Failed to set object public: ${error?.message ?? String(error)}`);
-    }
+    this.logger.log({
+      message: 'Object visibility is managed at application level (no storage changes)',
+      bucket,
+      objectKey,
+    });
+    //try {
+    //  this.logger.debug({ message: 'Setting object to public', bucket, objectKey });
+    //
+    //  this.validateBucketName(bucket);
+    //  this.validateObjectKey(objectKey);
+    //
+    //  const command = new PutObjectAclCommand({
+    //    Bucket: bucket,
+    //    Key: objectKey,
+    //    ACL: 'public-read',
+    //  });
+    //  await this.s3Client.send(command);
+    //} catch (error: any) {
+    //  // Si el bucket usa ObjectOwnership=BucketOwnerEnforced, S3 rechaza cualquier ACL
+    //  const code = error?.name || error?.Code;
+    //  if (code === 'AccessControlListNotSupported' || code === 'InvalidRequest') {
+    //    throw new Error(
+    //      'ACLs are disabled for this bucket (BucketOwnerEnforced). ' +
+    //        'Switch visibility via bucket policy/CloudFront or use presigned URLs only.',
+    //    );
+    //  }
+    //  this.logger.error({
+    //    message: 'Failed to set object public',
+    //    bucket,
+    //    objectKey,
+    //    error: error?.message,
+    //  });
+    //  throw new Error(`Failed to set object public: ${error?.message ?? String(error)}`);
+    //}
   }
 
   async setObjectPrivate(bucket: string, objectKey: string): Promise<void> {
-    try {
-      this.logger.debug({ message: 'Setting object to private', bucket, objectKey });
-
-      this.validateBucketName(bucket);
-      this.validateObjectKey(objectKey);
-
-      const command = new PutObjectAclCommand({ Bucket: bucket, Key: objectKey, ACL: 'private' });
-      await this.s3Client.send(command);
-    } catch (error: any) {
-      const code = error?.name || error?.Code;
-      if (code === 'AccessControlListNotSupported' || code === 'InvalidRequest') {
-        throw new Error(
-          'ACLs are disabled for this bucket (BucketOwnerEnforced). ' +
-            'Object privacy must be enforced via bucket policy/IAM, or use presigned URLs.',
-        );
-      }
-      this.logger.error({
-        message: 'Failed to set object private',
-        bucket,
-        objectKey,
-        error: error?.message,
-      });
-      throw new Error(`Failed to set object private: ${error?.message ?? String(error)}`);
-    }
+    this.logger.log({
+      message: 'Object visibility is managed at application level (no storage changes)',
+      bucket,
+      objectKey,
+    });
+    //try {
+    //  this.logger.debug({ message: 'Setting object to private', bucket, objectKey });
+    //
+    //  this.validateBucketName(bucket);
+    //  this.validateObjectKey(objectKey);
+    //
+    //  const command = new PutObjectAclCommand({ Bucket: bucket, Key: objectKey, ACL: 'private' });
+    //  await this.s3Client.send(command);
+    //} catch (error: any) {
+    //  const code = error?.name || error?.Code;
+    //  if (code === 'AccessControlListNotSupported' || code === 'InvalidRequest') {
+    //    throw new Error(
+    //      'ACLs are disabled for this bucket (BucketOwnerEnforced). ' +
+    //        'Object privacy must be enforced via bucket policy/IAM, or use presigned URLs.',
+    //    );
+    //  }
+    //  this.logger.error({
+    //    message: 'Failed to set object private',
+    //    bucket,
+    //    objectKey,
+    //    error: error?.message,
+    //  });
+    //  throw new Error(`Failed to set object private: ${error?.message ?? String(error)}`);
+    //}
   }
 
   async generatePresignedGetUrl(

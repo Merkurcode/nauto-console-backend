@@ -305,6 +305,7 @@ export class GetDirectoryContentsHandler
     const dbFileItems = await Promise.all(
       accessibleDbFiles.map(async file => {
         const item: IDirectoryItem = {
+          id: file.id,
           name: file.filename,
           type: 'file' as const,
           path: file.path,

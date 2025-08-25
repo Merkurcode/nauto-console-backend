@@ -306,6 +306,7 @@ export class GetCommonDirectoryContentsHandler
     const dbFileItems = await Promise.all(
       accessibleDbFiles.map(async file => {
         const item: IDirectoryItem = {
+          id: file.id,
           name: file.filename,
           type: 'file' as const,
           path: file.path,
@@ -316,8 +317,8 @@ export class GetCommonDirectoryContentsHandler
           status: file.status.getValue(),
         };
 
-        // Add signed URL for uploaded non-public files
-        if (file.status.isUploaded() && !file.isPublic) {
+        // Add signed URL for all uploaded files in common areas
+        if (file.status.isUploaded()) {
           try {
             const maxExpiryHours = this.configService.get<number>(
               'storage.presign.maxExpiryHours',
