@@ -24,7 +24,7 @@
     "i18n"
   ],
   "scripts": {
-    "build": "npx nest build",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "cross-env NODE_ENV=development NODE_OPTIONS=\"--max-old-space-size=2048 --max-semi-space-size=64\" nest start --watch",
@@ -95,10 +95,10 @@
     "reflect-metadata": "^0.2.2",
     "speakeasy": "^2.0.0",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "@nestjs/cli": "^11.0.5"
   },
   "devDependencies": {
-    "@nestjs/cli": "^11.0.5",
     "@nestjs/schematics": "^11.0.2",
     "@nestjs/testing": "^11.0.12",
     "@types/bcrypt": "^5.0.2",
