@@ -24,7 +24,7 @@
     "i18n"
   ],
   "scripts": {
-    "build": "nest build",
+    "build": "npx nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "cross-env NODE_ENV=development NODE_OPTIONS=\"--max-old-space-size=2048 --max-semi-space-size=64\" nest start --watch",
