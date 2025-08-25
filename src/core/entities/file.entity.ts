@@ -15,6 +15,7 @@ import {
   FileRenamedEvent,
   FileVisibilityChangedEvent,
   FileCopyInitiatedEvent,
+  FileTargetAppsChangedEvent,
 } from '@core/events/file.events';
 import { InvalidFileStateException } from '@core/exceptions/storage-domain.exceptions';
 
@@ -270,6 +271,19 @@ export class File extends AggregateRoot {
   public updateUser(userId: string | null): void {
     this._userId = userId;
     this._updatedAt = new Date();
+  }
+
+  public updateTargetApps(targetApps: string[]): void {
+    const oldTargetApps = [...this._targetApps];
+    this._targetApps = [...targetApps];
+    this._updatedAt = new Date();
+
+    // Emit domain event if target apps changed
+    if (JSON.stringify(oldTargetApps.sort()) !== JSON.stringify(targetApps.sort())) {
+      this.addDomainEvent(
+        new FileTargetAppsChangedEvent(this._id, this._userId, oldTargetApps, targetApps),
+      );
+    }
   }
 
   /** Solo cambia el nombre "original" (no el key real). */

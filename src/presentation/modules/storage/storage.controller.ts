@@ -33,6 +33,7 @@ import { CompleteMultipartUploadDto } from '@application/dtos/storage/complete-m
 import { MoveFileDto } from '@application/dtos/storage/move-file.dto';
 import { RenameFileDto } from '@application/dtos/storage/rename-file.dto';
 import { SetFileVisibilityDto } from '@application/dtos/storage/set-file-visibility.dto';
+import { UpdateFileTargetAppsDto } from '@application/dtos/storage/update-file-target-apps.dto';
 import { CreateFolderDto } from '@application/dtos/storage/create-folder.dto';
 
 // Response DTOs
@@ -54,6 +55,7 @@ import { AbortMultipartUploadCommand } from '@application/commands/storage/abort
 import { MoveFileCommand } from '@application/commands/storage/move-file.command';
 import { RenameFileCommand } from '@application/commands/storage/rename-file.command';
 import { SetFileVisibilityCommand } from '@application/commands/storage/set-file-visibility.command';
+import { UpdateFileTargetAppsCommand } from '@application/commands/storage/update-file-target-apps.command';
 import { ClearUserConcurrencySlotsCommand } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { HeartbeatUploadCommand } from '@application/commands/storage/heartbeat-upload.command';
 import { CreateUserFolderCommand } from '@application/commands/storage/create-user-folder.command';
@@ -725,6 +727,33 @@ export class StorageController {
   ): Promise<FileResponseDto> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(new SetFileVisibilityCommand(fileId, dto.isPublic, user.sub));
+    });
+  }
+
+  @Put('files/:fileId/target-apps')
+  @WriteOperation('file')
+  @CanWrite('file')
+  @ApiOperation({
+    summary: 'Update file target apps',
+    description: 'Updates the target applications with specific file size restrictions for a file',
+  })
+  @ApiParam({ name: 'fileId', description: 'File unique identifier' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'File target apps updated successfully',
+    type: FileResponseDto,
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to file' })
+  async updateFileTargetApps(
+    @Param('fileId') fileId: string,
+    @Body() dto: UpdateFileTargetAppsDto,
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<FileResponseDto> {
+    return this.transactionService.executeInTransaction(async () => {
+      return this.commandBus.execute(
+        new UpdateFileTargetAppsCommand(fileId, dto.targetApps, user.sub, user.companyId),
+      );
     });
   }
 

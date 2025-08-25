@@ -66,8 +66,6 @@ export interface IDeleteFolderParams {
 
 @Injectable()
 export class FileOperationsService {
-  private readonly MOVE_COPY_CONCURRENCY = 8;
-
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
@@ -895,6 +893,38 @@ export class FileOperationsService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new StorageOperationFailedException('delete folder', errorMessage, { pathPrefix });
     }
+  }
+
+  /**
+   * Update file target apps - restricts or allows specific applications
+   */
+  async updateFileTargetApps(
+    fileId: string,
+    targetApps: string[],
+    userId: string,
+    companyId: string,
+  ): Promise<File> {
+    const file = await this.fileRepository.findById(fileId);
+    if (!file) {
+      throw new EntityNotFoundException('File', fileId);
+    }
+
+    // Validate access to the file
+    const userPayload = { sub: userId, companyId };
+    this.fileAccessControlService.validateFileAccess(file, userPayload, 'write');
+
+    return await this.fileLockService.withFileLock(fileId, async () => {
+      // Update target apps
+      file.updateTargetApps(targetApps);
+
+      // Persist changes
+      const updatedFile = await this.fileRepository.update(file);
+
+      // Publish domain events
+      this.publishAndClearDomainEvents(updatedFile);
+
+      return updatedFile;
+    });
   }
 
   private async checkFolderExistence(bucket: string, storagePath: string): Promise<boolean> {

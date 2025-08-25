@@ -194,3 +194,18 @@ export class FileCopyInitiatedEvent extends DomainEvent {
     return 'file.copy.initiated';
   }
 }
+
+export class FileTargetAppsChangedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly userId: string | null,
+    public readonly oldTargetApps: string[],
+    public readonly newTargetApps: string[],
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.targetApps.changed';
+  }
+}

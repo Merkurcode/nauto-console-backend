@@ -18,6 +18,7 @@ import { AbortMultipartUploadHandler } from '@application/commands/storage/abort
 import { MoveFileHandler } from '@application/commands/storage/move-file.command';
 import { RenameFileHandler } from '@application/commands/storage/rename-file.command';
 import { SetFileVisibilityHandler } from '@application/commands/storage/set-file-visibility.command';
+import { UpdateFileTargetAppsHandler } from '@application/commands/storage/update-file-target-apps.command';
 import { ClearUserConcurrencySlotsHandler } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { HeartbeatUploadHandler } from '@application/commands/storage/heartbeat-upload.command';
 import { CreateUserFolderHandler } from '@application/commands/storage/create-user-folder.command';
@@ -65,6 +66,7 @@ const commandHandlers = [
   MoveFileHandler,
   RenameFileHandler,
   SetFileVisibilityHandler,
+  UpdateFileTargetAppsHandler,
   ClearUserConcurrencySlotsHandler,
   HeartbeatUploadHandler,
 ];

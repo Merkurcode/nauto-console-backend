@@ -21,12 +21,12 @@ interface IHttpExceptionResponse {
 
 /**
  * Unified Exception Filter - Handles all types of exceptions
- * 
+ *
  * Combines the functionality of DomainExceptionFilter and AllExceptionsFilter
  * into a single comprehensive exception handler that:
- * 
+ *
  * 1. Maps DomainException instances to appropriate HTTP status codes
- * 2. Handles HttpExceptions from NestJS 
+ * 2. Handles HttpExceptions from NestJS
  * 3. Maps Prisma database errors to user-friendly messages
  * 4. Provides fallback handling for unknown exceptions
  * 5. Adds special headers for rate limiting and user banning
