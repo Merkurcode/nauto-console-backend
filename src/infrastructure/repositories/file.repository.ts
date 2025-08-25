@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, Inject, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { TransactionContextService } from '../database/prisma/transaction-context.service';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
@@ -28,18 +29,24 @@ export interface IFileData {
   uploadId?: string | null;
   etag?: string | null;
   targetApps: string[];
+  storageDriver: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 @Injectable()
 export class FileRepository extends BaseRepository<File> implements IFileRepository {
+  private readonly currentStorageDriver: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    private readonly configService: ConfigService,
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
     super(logger);
+    // Get the current storage driver from config
+    this.currentStorageDriver = this.configService.get<string>('storage.provider', 'minio');
   }
 
   private get client() {
@@ -59,7 +66,10 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   async findByUserId(userId: string): Promise<File[]> {
     return this.executeWithErrorHandling('findByUserId', async () => {
       const files = await this.client.file.findMany({
-        where: { userId },
+        where: { 
+          userId,
+          storageDriver: this.currentStorageDriver,
+        },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -72,7 +82,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       const files = await this.client.file.findMany({
         where: { 
           userId,
-          status: status.toString() as $Enums.FileStatus
+          status: status.toString() as $Enums.FileStatus,
+          storageDriver: this.currentStorageDriver,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -89,7 +100,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           userId,
           status: {
             in: statusStrings as $Enums.FileStatus[]
-          }
+          },
+          storageDriver: this.currentStorageDriver,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -100,15 +112,19 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
 
   async findByUserIdPaginated(userId: string, limit: number, offset: number): Promise<{ files: File[]; total: number }> {
     return this.executeWithErrorHandling('findByUserIdPaginated', async () => {
+      const where = { 
+        userId,
+        storageDriver: this.currentStorageDriver,
+      };
       const [files, total] = await Promise.all([
         this.client.file.findMany({
-          where: { userId },
+          where,
           orderBy: { createdAt: 'desc' },
           take: limit,
           skip: offset,
         }),
         this.client.file.count({
-          where: { userId },
+          where,
         }),
       ]);
 
@@ -122,21 +138,20 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   async findByUserIdAndStatusPaginated(userId: string, status: FileStatus, limit: number, offset: number): Promise<{ files: File[]; total: number }> {
     return this.executeWithErrorHandling('findByUserIdAndStatusPaginated', async () => {
       const statusString = status.toString() as $Enums.FileStatus;
+      const where = { 
+        userId,
+        status: statusString,
+        storageDriver: this.currentStorageDriver,
+      };
       const [files, total] = await Promise.all([
         this.client.file.findMany({
-          where: { 
-            userId,
-            status: statusString
-          },
+          where,
           orderBy: { createdAt: 'desc' },
           take: limit,
           skip: offset,
         }),
         this.client.file.count({
-          where: { 
-            userId,
-            status: statusString
-          },
+          where,
         }),
       ]);
 
@@ -150,7 +165,10 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   async findByPath(path: string): Promise<File[]> {
     return this.executeWithErrorHandling('findByPath', async () => {
       const files = await this.client.file.findMany({
-        where: { path },
+        where: { 
+          path,
+          storageDriver: this.currentStorageDriver,
+        },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -165,6 +183,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           bucket,
           path,
           filename,
+          storageDriver: this.currentStorageDriver,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -191,6 +210,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           uploadId: file.getUploadIdString(),
           etag: file.getETagString(),
           targetApps: file.targetApps,
+          storageDriver: file.storageDriver,
         },
       });
 
@@ -215,6 +235,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           uploadId: file.getUploadIdString(),
           etag: file.getETagString(),
           targetApps: file.targetApps,
+          storageDriver: file.storageDriver,
           updatedAt: file.updatedAt,
         },
       });
@@ -236,7 +257,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       const fileData = await this.client.file.findFirst({
         where: { 
           bucket,
-          objectKey 
+          objectKey,
+          storageDriver: this.currentStorageDriver,
         },
       });
 
@@ -247,11 +269,12 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   async updateObjectKeysByPrefix(userId: string, oldPrefix: string, newPrefix: string): Promise<number> {
     return this.executeWithErrorHandling('updateObjectKeysByPrefix', async () => {
       const result = await this.client.$executeRawUnsafe(
-        `UPDATE "File" SET "objectKey" = REPLACE("objectKey", $1, $2) WHERE "userId" = $3 AND "objectKey" LIKE $4`,
+        `UPDATE "File" SET "objectKey" = REPLACE("objectKey", $1, $2) WHERE "userId" = $3 AND "objectKey" LIKE $4 AND "storageDriver" = $5`,
         oldPrefix,
         newPrefix,
         userId,
-        `${oldPrefix}%`
+        `${oldPrefix}%`,
+        this.currentStorageDriver
       );
 
       return Number(result);
@@ -261,7 +284,10 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
   async findByUploadId(uploadId: string): Promise<File | null> {
     return this.executeWithErrorHandling('findByUploadId', async () => {
       const fileData = await this.client.file.findFirst({
-        where: { uploadId },
+        where: { 
+          uploadId,
+          storageDriver: this.currentStorageDriver,
+        },
       });
 
       return fileData ? this.mapToEntity(fileData) : null;
@@ -273,7 +299,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       const files = await this.client.file.findMany({
         where: { 
           userId,
-          status: $Enums.FileStatus.UPLOADING
+          status: $Enums.FileStatus.UPLOADING,
+          storageDriver: this.currentStorageDriver,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -287,7 +314,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       const result = await this.client.file.aggregate({
         where: { 
           userId,
-          status: $Enums.FileStatus.UPLOADED
+          status: $Enums.FileStatus.UPLOADED,
+          storageDriver: this.currentStorageDriver,
         },
         _sum: {
           size: true
@@ -305,7 +333,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           userId,
           status: {
             in: [$Enums.FileStatus.UPLOADING, $Enums.FileStatus.PENDING]
-          }
+          },
+          storageDriver: this.currentStorageDriver,
         },
       });
 
@@ -320,7 +349,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           bucket,
           path: {
             startsWith: prefix
-          }
+          },
+          storageDriver: this.currentStorageDriver,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -335,7 +365,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
         where: {
           id: {
             in: ids
-          }
+          },
+          storageDriver: this.currentStorageDriver,
         }
       });
     });
@@ -350,7 +381,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           },
           user: {
             companyId: companyId
-          }
+          },
+          storageDriver: this.currentStorageDriver,
         }
       });
       
@@ -401,7 +433,8 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           },
           updatedAt: {
             lt: expiredTime
-          }
+          },
+          storageDriver: this.currentStorageDriver,
         },
         orderBy: { updatedAt: 'desc' },
       });
@@ -422,10 +455,11 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     const { companyId, pathPrefix, status, mimeType, page, limit } = params;
 
     return this.executeWithErrorHandling('findByCompanyIdAndFilters', async () => {
-      const whereClause: any = {
+      const whereClause: Record<string, unknown> = {
         user: {
           companyId: companyId,
         },
+        storageDriver: this.currentStorageDriver,
       };
 
       if (pathPrefix) {
@@ -473,6 +507,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       uploadId: fileData.uploadId,
       etag: fileData.etag,
       targetApps: fileData.targetApps || [],
+      storageDriver: fileData.storageDriver || 'minio',
       createdAt: fileData.createdAt,
       updatedAt: fileData.updatedAt,
     });

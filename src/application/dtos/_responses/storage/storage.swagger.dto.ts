@@ -141,6 +141,13 @@ export class FileResponseDto {
     type: [String],
   })
   targetApps: string[];
+
+  @ApiProperty({
+    description: 'Storage driver used for this file',
+    example: 'minio',
+    enum: ['minio', 'aws'],
+  })
+  storageDriver: string;
 }
 
 export class GetFileSignedUrlResponseDto {

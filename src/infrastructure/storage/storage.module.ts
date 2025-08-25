@@ -28,9 +28,10 @@ import { ILogger } from '@core/interfaces/logger.interface';
       useFactory: (
         prisma: PrismaService,
         transactionContext: TransactionContextService,
+        configService: ConfigService,
         logger: ILogger,
-      ) => new FileRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+      ) => new FileRepository(prisma, transactionContext, configService, logger),
+      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
     },
     {
       provide: USER_STORAGE_CONFIG_REPOSITORY,

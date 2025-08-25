@@ -34,6 +34,7 @@ export class File extends AggregateRoot {
   private _uploadId: UploadId | null;
   private _etag: ETag | null;
   private _targetApps: string[];
+  private _storageDriver: string;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -52,6 +53,7 @@ export class File extends AggregateRoot {
     uploadId: UploadId | null,
     etag: ETag | null,
     targetApps: string[],
+    storageDriver: string,
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -70,6 +72,7 @@ export class File extends AggregateRoot {
     this._uploadId = uploadId;
     this._etag = etag;
     this._targetApps = targetApps;
+    this._storageDriver = storageDriver;
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
   }
@@ -123,6 +126,9 @@ export class File extends AggregateRoot {
   get targetApps(): string[] {
     return this._targetApps;
   }
+  get storageDriver(): string {
+    return this._storageDriver;
+  }
 
   // Simple factory method - path and access already determined by endpoint
   public static createForUpload(
@@ -136,6 +142,7 @@ export class File extends AggregateRoot {
     userId: string,
     isPublic: boolean = false, // Determined by area (common = public, user = private)
     targetApps: string[] = [],
+    storageDriver: string = 'minio',
   ): File {
     const fileSize = FileSize.fromBytes(size);
     const objectKeyVo = ObjectKey.create(objectKey);
@@ -155,6 +162,7 @@ export class File extends AggregateRoot {
       null, // No upload ID yet
       null, // No ETag yet
       targetApps,
+      storageDriver,
       new Date(),
       new Date(),
     );
@@ -178,6 +186,7 @@ export class File extends AggregateRoot {
     isPublic: boolean;
     sourceFileId: string;
     targetApps?: string[];
+    storageDriver?: string;
   }): File {
     const file = new File(
       uuidv4(),
@@ -194,6 +203,7 @@ export class File extends AggregateRoot {
       null, // No upload ID for copies
       null, // No ETag yet
       params.targetApps || [],
+      params.storageDriver || 'minio',
       new Date(),
       new Date(),
     );
@@ -229,6 +239,7 @@ export class File extends AggregateRoot {
     uploadId?: string | null;
     etag?: string | null;
     targetApps?: string[];
+    storageDriver?: string;
     createdAt: Date | string;
     updatedAt: Date | string;
   }): File {
@@ -247,6 +258,7 @@ export class File extends AggregateRoot {
       data.uploadId ? UploadId.create(data.uploadId) : null,
       data.etag ? ETag.create(data.etag) : null,
       data.targetApps || [],
+      data.storageDriver || 'minio',
       new Date(data.createdAt),
       new Date(data.updatedAt),
     );

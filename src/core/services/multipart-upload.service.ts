@@ -224,6 +224,9 @@ export class MultipartUploadService {
       // Files in common areas (products/marketing) are public, user files are private
       const isPublic = storagePath.includes('/common/');
 
+      // Get current storage driver from config
+      const storageDriver = this.configService.get<string>('storage.provider', 'minio');
+
       const file = File.createForUpload(
         uniqueFileResult.filename,
         originalName,
@@ -235,6 +238,7 @@ export class MultipartUploadService {
         userId,
         isPublic,
         targetApps,
+        storageDriver,
       );
       savedFile = await this.fileRepository.save(file);
 

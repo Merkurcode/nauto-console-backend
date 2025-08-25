@@ -18,6 +18,7 @@ export class FileMapper {
       uploadId: file.getUploadIdString(),
       etag: file.getETagString(),
       targetApps: file.targetApps,
+      storageDriver: file.storageDriver,
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
     };
