@@ -32,6 +32,7 @@ export class File extends AggregateRoot {
   private _status: FileStatus;
   private _uploadId: UploadId | null;
   private _etag: ETag | null;
+  private _targetApps: string[];
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -49,6 +50,7 @@ export class File extends AggregateRoot {
     status: FileStatus,
     uploadId: UploadId | null,
     etag: ETag | null,
+    targetApps: string[],
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -66,6 +68,7 @@ export class File extends AggregateRoot {
     this._status = status;
     this._uploadId = uploadId;
     this._etag = etag;
+    this._targetApps = targetApps;
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
   }
@@ -116,6 +119,9 @@ export class File extends AggregateRoot {
   get updatedAt(): Date {
     return this._updatedAt;
   }
+  get targetApps(): string[] {
+    return this._targetApps;
+  }
 
   // Simple factory method - path and access already determined by endpoint
   public static createForUpload(
@@ -128,6 +134,7 @@ export class File extends AggregateRoot {
     bucket: string,
     userId: string,
     isPublic: boolean = false, // Determined by area (common = public, user = private)
+    targetApps: string[] = [],
   ): File {
     const fileSize = FileSize.fromBytes(size);
     const objectKeyVo = ObjectKey.create(objectKey);
@@ -146,6 +153,7 @@ export class File extends AggregateRoot {
       FileStatus.pending(),
       null, // No upload ID yet
       null, // No ETag yet
+      targetApps,
       new Date(),
       new Date(),
     );
@@ -168,6 +176,7 @@ export class File extends AggregateRoot {
     userId: string;
     isPublic: boolean;
     sourceFileId: string;
+    targetApps?: string[];
   }): File {
     const file = new File(
       uuidv4(),
@@ -183,6 +192,7 @@ export class File extends AggregateRoot {
       FileStatus.copying(), // Start in COPYING state
       null, // No upload ID for copies
       null, // No ETag yet
+      params.targetApps || [],
       new Date(),
       new Date(),
     );
@@ -217,6 +227,7 @@ export class File extends AggregateRoot {
     status: string;
     uploadId?: string | null;
     etag?: string | null;
+    targetApps?: string[];
     createdAt: Date | string;
     updatedAt: Date | string;
   }): File {
@@ -234,6 +245,7 @@ export class File extends AggregateRoot {
       FileStatus.fromString(data.status),
       data.uploadId ? UploadId.create(data.uploadId) : null,
       data.etag ? ETag.create(data.etag) : null,
+      data.targetApps || [],
       new Date(data.createdAt),
       new Date(data.updatedAt),
     );

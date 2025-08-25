@@ -88,6 +88,7 @@ import { SecurityHeadersInterceptor } from '@shared/interceptors/security-header
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
 
 @ApiTags('storage')
 @ApiBearerAuth('JWT-auth')
@@ -168,7 +169,11 @@ export class StorageController {
     summary: 'Initiate multipart upload',
     description:
       'Creates a new file record and initiates a multipart upload session with the storage service. ' +
-      'This endpoint validates file types, checks user quota, and manages concurrency limits. ' +
+      'This endpoint validates file types, checks user quota, manages concurrency limits, and performs app-specific validation.\n\n' +
+      '**App-Specific Validation:**\n' +
+      '- If `targetApps` includes "WhatsApp", validates file size against WhatsApp limits from user tier\n' +
+      '- Different file extensions have different size limits for WhatsApp (e.g., images: 5MB, documents: 100MB)\n' +
+      '- Use `targetApps: ["None"]` to skip app-specific validation\n\n' +
       'Returns a file ID and upload ID that must be used for subsequent part uploads.',
   })
   @ApiResponse({
@@ -198,10 +203,12 @@ export class StorageController {
           user.companyId,
           dto.path,
           dto.filename,
-          dto.originalName,
+          dto.originalName || dto.filename, // Use filename as default if originalName not provided
           dto.mimeType,
           dto.size,
           dto.upsert || false,
+          dto.autoRename || false,
+          dto.targetApps || [TargetAppsEnum.NONE],
         ),
       );
     });
@@ -322,11 +329,9 @@ export class StorageController {
     @Param('fileId') fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(
-        new AbortMultipartUploadCommand(user.sub, fileId, 'Aborted by user'),
-      );
-    });
+    return this.commandBus.execute(
+      new AbortMultipartUploadCommand(user.sub, fileId, 'Aborted by user'),
+    );
   }
 
   @Get('multipart/:fileId/status')
@@ -334,20 +339,42 @@ export class StorageController {
   @CanRead('file')
   @ApiOperation({
     summary: 'Get upload status',
-    description: 'Retrieves the current status of a multipart upload',
+    description:
+      'Retrieves comprehensive status information for a multipart upload in user space. ' +
+      'Returns detailed progress tracking including completed parts, uploaded bytes, and upload viability. ' +
+      'This endpoint provides real-time upload progress monitoring with part-level granularity.\n\n' +
+      '**Information Provided:**\n' +
+      '- Upload progress percentage based on bytes uploaded\n' +
+      '- Number of completed parts with ETags\n' +
+      '- Total parts detected in storage\n' +
+      '- Bytes uploaded and remaining quota\n' +
+      '- Next suggested part number for upload\n' +
+      '- Whether upload can be completed within quota limits\n' +
+      '- Detailed list of uploaded parts with sizes and ETags\n\n' +
+      '**Status Values:**\n' +
+      '- PENDING: Upload initiated but not started\n' +
+      '- UPLOADING: Active upload in progress\n' +
+      '- UPLOADED: Successfully completed\n' +
+      '- COPYING: File being copied from another location\n\n' +
+      '**Use Cases:**\n' +
+      '- Monitor upload progress in real-time\n' +
+      '- Detect missing or failed parts\n' +
+      '- Verify upload completion readiness\n' +
+      '- Track bandwidth usage and quotas',
   })
   @ApiParam({ name: 'fileId', description: 'File unique identifier' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Upload status retrieved successfully',
+    description: 'Upload status retrieved successfully with detailed progress information',
     type: GetUploadStatusResponseDto,
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to private file' })
   async getUploadStatus(
     @Param('fileId') fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<GetUploadStatusResponseDto | null> {
-    return this.queryBus.execute(new GetUploadStatusQuery(fileId, user.sub));
+    return this.queryBus.execute(new GetUploadStatusQuery(fileId, user.sub, user.companyId, false));
   }
 
   @Post('multipart/:fileId/heartbeat')

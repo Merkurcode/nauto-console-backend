@@ -30,6 +30,7 @@ import {
   IPresignedUrlResult,
   IListPartsResult,
   IUploadPart,
+  IUploadStatusResult,
 } from '@core/repositories/storage.service.interface';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
@@ -128,6 +129,65 @@ export class AwsS3StorageService implements IStorageService {
       });
       throw new Error(`Failed to initiate multipart upload: ${error?.message ?? String(error)}`);
     }
+  }
+
+  async getUploadStatus(
+    bucket: string,
+    objectKey: string,
+    uploadId: string,
+    maxBytes: number,
+  ): Promise<IUploadStatusResult> {
+    const { parts } = await this.listUploadParts(bucket, objectKey, uploadId);
+
+    const uploadedBytes = parts.reduce((a, p) => a + (p.Size ?? 0), 0);
+
+    // Construye un set de partes presentes
+    const present = new Set<number>();
+    const normalized = parts
+      .filter(p => typeof p.PartNumber === 'number')
+      .map(p => {
+        present.add(p.PartNumber!);
+
+        return {
+          partNumber: p.PartNumber!,
+          size: p.Size ?? 0,
+          etag: (p.ETag ?? '').replace(/"/g, ''),
+        };
+      })
+      .sort((a, b) => a.partNumber - b.partNumber);
+
+    // Sugerir el siguiente PartNumber:
+    // - Busca el primer hueco [1..max]
+    // - Si no hay huecos, sugiere (max+1)
+    let nextPartNumber = 1;
+    for (let i = 1; i <= normalized.length + 1; i++) {
+      if (!present.has(i)) {
+        nextPartNumber = i;
+        break;
+      }
+    }
+
+    const totalPartsCount = parts.length;
+    const completedPartsCount = normalized.length;
+
+    const vmaxBytes = Math.floor(maxBytes!);
+
+    const remainingBytes =
+      typeof vmaxBytes === 'number' ? Math.max(0, vmaxBytes - uploadedBytes) : undefined;
+
+    const canComplete = typeof vmaxBytes === 'number' ? uploadedBytes <= vmaxBytes : true; // si no hay tope, se puede completar (desde el punto de vista de tamaño)
+
+    return {
+      uploadId,
+      uploadedBytes,
+      parts: normalized,
+      totalPartsCount,
+      completedPartsCount,
+      nextPartNumber,
+      maxBytes: maxBytes,
+      remainingBytes,
+      canComplete,
+    };
   }
 
   async generatePresignedPartUrl(

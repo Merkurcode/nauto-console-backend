@@ -436,6 +436,7 @@ model File {
   status      FileStatus @default(PENDING)
   uploadId    String?   // S3 multipart uploadId (only during UPLOADING)
   etag        String?   // ETag of completed object
+  targetApps  String[]  @default([]) // Target applications with specific size restrictions
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

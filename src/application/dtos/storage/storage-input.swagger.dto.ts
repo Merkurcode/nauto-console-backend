@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiHideProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNumber,
@@ -7,9 +7,12 @@ import {
   Matches,
   IsArray,
   ValidateNested,
+  IsEnum,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { HasValidDirectoryDepth } from '@shared/validators/storage-path.validator';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
 
 export class InitiateUploadDtoSwagger {
   @ApiProperty({
@@ -33,13 +36,11 @@ export class InitiateUploadDtoSwagger {
   @MinLength(1)
   filename: string;
 
-  @ApiProperty({
-    description: 'Original file name as uploaded by user',
-    example: 'Invoice January 2025.pdf',
-  })
+  @ApiHideProperty()
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  originalName: string;
+  originalName?: string;
 
   @ApiProperty({
     description: 'MIME type of the file',
@@ -57,6 +58,16 @@ export class InitiateUploadDtoSwagger {
   @IsNumber()
   @Min(1)
   size: number;
+
+  @ApiProperty({
+    description: 'Target applications that have specific file size restrictions',
+    example: ['WhatsApp'],
+    isArray: true,
+    enum: TargetAppsEnum,
+  })
+  @IsArray()
+  @IsEnum(TargetAppsEnum, { each: true })
+  targetApps: TargetAppsEnum[];
 }
 
 export class InitiateUploadResponseDtoSwagger {

@@ -134,6 +134,13 @@ export class FileResponseDto {
     example: '2025-01-15T10:35:00.000Z',
   })
   updatedAt: Date;
+
+  @ApiProperty({
+    description: 'Target applications with specific size restrictions',
+    example: ['None'],
+    type: [String],
+  })
+  targetApps: string[];
 }
 
 export class GetFileSignedUrlResponseDto {
@@ -158,6 +165,13 @@ export class GetFileSignedUrlResponseDto {
 
 export class GetUploadStatusResponseDto {
   @ApiProperty({
+    description: 'Human-readable status message',
+    example: 'Upload in progress (3/5 parts completed)',
+    nullable: true,
+  })
+  message: string | null;
+
+  @ApiProperty({
     description: 'File unique identifier',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
@@ -165,32 +179,10 @@ export class GetUploadStatusResponseDto {
 
   @ApiProperty({
     description: 'Current upload status',
-    example: 'uploading',
-    enum: ['pending', 'uploading', 'uploaded', 'failed', 'canceled', 'deleted'],
+    example: 'UPLOADING',
+    enum: ['PENDING', 'UPLOADING', 'UPLOADED', 'COPYING'],
   })
   status: string;
-
-  @ApiProperty({
-    description: 'Upload progress percentage (0-100)',
-    example: 75,
-    minimum: 0,
-    maximum: 100,
-  })
-  progress: number;
-
-  @ApiProperty({
-    description: 'Number of completed parts',
-    example: 3,
-    minimum: 0,
-  })
-  completedParts: number;
-
-  @ApiProperty({
-    description: 'Total number of parts (null if not determined)',
-    example: 4,
-    nullable: true,
-  })
-  totalParts: number | null;
 
   @ApiProperty({
     description: 'Upload ID (null if not uploading)',
@@ -200,11 +192,87 @@ export class GetUploadStatusResponseDto {
   uploadId: string | null;
 
   @ApiProperty({
-    description: 'Status message',
-    example: 'Upload in progress',
+    description: 'Upload progress percentage (0-100)',
+    example: 60,
+    minimum: 0,
+    maximum: 100,
+  })
+  progress: number;
+
+  @ApiProperty({
+    description: 'Number of completed parts with ETag present',
+    example: 3,
+    minimum: 0,
+  })
+  completedPartsCount: number;
+
+  @ApiProperty({
+    description: 'Total number of parts detected in storage',
+    example: 5,
     nullable: true,
   })
-  message: string | null;
+  totalPartsCount: number;
+
+  @ApiProperty({
+    description: 'Total bytes uploaded so far',
+    example: 15728640,
+    nullable: true,
+  })
+  uploadedBytes: number;
+
+  @ApiProperty({
+    description: 'Suggested next part number to upload (first gap or last+1)',
+    example: 4,
+    nullable: true,
+  })
+  nextPartNumber: number;
+
+  @ApiProperty({
+    description: 'Maximum allowed bytes for this upload',
+    example: 52428800,
+    nullable: true,
+  })
+  maxBytes: number;
+
+  @ApiProperty({
+    description: 'Remaining bytes that can be uploaded',
+    example: 36700160,
+    nullable: true,
+  })
+  remainingBytes: number;
+
+  @ApiProperty({
+    description: 'Whether the upload can be completed (total <= maxBytes)',
+    example: true,
+    nullable: true,
+  })
+  canComplete: boolean;
+
+  @ApiProperty({
+    description: 'List of uploaded parts with details',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        partNumber: {
+          type: 'number',
+          description: 'Part number',
+          example: 1,
+        },
+        size: {
+          type: 'number',
+          description: 'Part size in bytes',
+          example: 5242880,
+        },
+        etag: {
+          type: 'string',
+          description: 'Part ETag',
+          example: 'd41d8cd98f00b204e9800998ecf8427e',
+        },
+      },
+    },
+  })
+  parts: Array<{ partNumber: number; size: number; etag: string }>;
 }
 
 export class PaginationInfoDto {

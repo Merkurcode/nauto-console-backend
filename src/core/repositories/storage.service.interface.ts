@@ -39,6 +39,19 @@ export interface IPresignedUrlResult {
   url: string;
 }
 
+// src/core/dtos/upload-status.dto.ts
+export interface IUploadStatusResult {
+  uploadId: string;
+  uploadedBytes: number;
+  parts: Array<{ partNumber: number; size: number; etag: string }>;
+  totalPartsCount: number; // detectadas en ListParts
+  completedPartsCount: number; // con ETag presente
+  nextPartNumber: number; // sugerencia (primer hueco o último+1)
+  maxBytes: number;
+  remainingBytes: number;
+  canComplete: boolean; // total <= maxBytes (si maxBytes está definido)
+}
+
 export interface IStorageService {
   // Multipart upload operations
   initiateMultipartUpload(
@@ -48,6 +61,13 @@ export interface IStorageService {
     maxBytes: number,
     isPublic: boolean,
   ): Promise<IMultipartUploadResult>;
+
+  getUploadStatus(
+    bucket: string,
+    objectKey: string,
+    uploadId: string,
+    maxBytes: number,
+  ): Promise<IUploadStatusResult>;
 
   generatePresignedPartUrl(
     bucket: string,

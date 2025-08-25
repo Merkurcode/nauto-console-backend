@@ -6,6 +6,7 @@ import { StoragePaths } from '@core/utils/storage-paths';
 import { CommonFolder } from '@shared/types/storage-areas.types';
 import { StorageAreaUtils } from '@shared/utils/storage-area.utils';
 import { IInitiateMultipartUploadResponse } from '@application/dtos/_responses/storage/storage.response.interface';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
 
 export class InitiateCommonUploadCommand implements ICommand {
   constructor(
@@ -19,6 +20,7 @@ export class InitiateCommonUploadCommand implements ICommand {
     public readonly companyId: string,
     public readonly upsert: boolean = false,
     public readonly autoRename: boolean = false,
+    public readonly targetApps: TargetAppsEnum[] = [TargetAppsEnum.NONE],
   ) {}
 }
 
@@ -44,6 +46,7 @@ export class InitiateCommonUploadHandler
       companyId,
       upsert,
       autoRename,
+      targetApps,
     } = command;
 
     // Simple path validation
@@ -64,6 +67,7 @@ export class InitiateCommonUploadHandler
         companyId,
         upsert,
         autoRename,
+        targetApps,
       },
       true,
     );

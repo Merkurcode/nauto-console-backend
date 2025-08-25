@@ -27,6 +27,7 @@ export interface IFileData {
   status: string;
   uploadId?: string | null;
   etag?: string | null;
+  targetApps: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -189,6 +190,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           status: file.status.toString() as $Enums.FileStatus,
           uploadId: file.getUploadIdString(),
           etag: file.getETagString(),
+          targetApps: file.targetApps,
         },
       });
 
@@ -212,6 +214,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           status: file.status.toString() as $Enums.FileStatus,
           uploadId: file.getUploadIdString(),
           etag: file.getETagString(),
+          targetApps: file.targetApps,
           updatedAt: file.updatedAt,
         },
       });
@@ -469,6 +472,7 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
       status: fileData.status,
       uploadId: fileData.uploadId,
       etag: fileData.etag,
+      targetApps: fileData.targetApps || [],
       createdAt: fileData.createdAt,
       updatedAt: fileData.updatedAt,
     });

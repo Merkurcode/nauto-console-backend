@@ -33,7 +33,6 @@ import { LoggingInterceptor } from '@presentation/interceptors/logging.intercept
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
 import { RequestCacheInterceptor } from '@infrastructure/caching/request-cache.interceptor';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
-import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { ThrottlerGuard } from '@presentation/guards/throttler.guard';
 import { UserBanService } from '@core/services/user-ban.service';
@@ -143,14 +142,10 @@ import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploa
       useClass: TransformInterceptor,
     },
 
-    // Global filters (order matters: more specific first)
+    // Global exception filter
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: DomainExceptionFilter,
     },
 
     {

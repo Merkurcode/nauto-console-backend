@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { MultipartUploadService } from '@core/services/multipart-upload.service';
 import { StoragePaths } from '@core/utils/storage-paths';
 import { IInitiateMultipartUploadResponse } from '@application/dtos/_responses/storage/storage.response.interface';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
 
 export class InitiateUserUploadCommand implements ICommand {
   constructor(
@@ -16,6 +17,7 @@ export class InitiateUserUploadCommand implements ICommand {
     public readonly size: number,
     public readonly upsert: boolean = false,
     public readonly autoRename: boolean = false,
+    public readonly targetApps: TargetAppsEnum[] = [TargetAppsEnum.NONE],
   ) {}
 }
 
@@ -30,8 +32,18 @@ export class InitiateUserUploadHandler
   ) {}
 
   async execute(command: InitiateUserUploadCommand): Promise<IInitiateMultipartUploadResponse> {
-    const { userId, companyId, path, filename, originalName, mimeType, size, upsert, autoRename } =
-      command;
+    const {
+      userId,
+      companyId,
+      path,
+      filename,
+      originalName,
+      mimeType,
+      size,
+      upsert,
+      autoRename,
+      targetApps,
+    } = command;
 
     // Simple path validation
     StoragePaths.validateUserPath(path);
@@ -51,6 +63,7 @@ export class InitiateUserUploadHandler
         companyId,
         upsert,
         autoRename,
+        targetApps,
       },
       true,
     );

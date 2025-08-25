@@ -3,19 +3,22 @@ import {
   IsNumber,
   IsOptional,
   IsBoolean,
+  IsArray,
+  IsEnum,
   MinLength,
   Min,
   Max,
   Matches,
   Length,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiHideProperty } from '@nestjs/swagger';
 import { Trim } from '@shared/decorators/trim.decorator';
 import {
   IsValidStoragePath,
   HasValidDirectoryDepth,
 } from '@shared/validators/storage-path.validator';
 import { IsSafeFilename } from '@shared/validators/safe-filename.validator';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
 
 export class InitiateMultipartUploadDto {
   @ApiProperty({
@@ -43,18 +46,16 @@ export class InitiateMultipartUploadDto {
   })
   filename: string;
 
-  @ApiProperty({
-    description: 'Original file name as uploaded by user',
-    example: 'Invoice January 2025.pdf',
-  })
+  @ApiHideProperty()
   @Trim()
   @IsString()
   @MinLength(1)
+  @IsOptional()
   @IsSafeFilename({
     message:
       "Original filename contains invalid characters. Use only alphanumeric, spaces, and !-_.*'() characters",
   })
-  originalName: string;
+  originalName?: string;
 
   @ApiProperty({
     description: 'MIME type of the file',
@@ -98,4 +99,15 @@ export class InitiateMultipartUploadDto {
   @IsOptional()
   @IsBoolean()
   autoRename?: boolean = false;
+
+  @ApiProperty({
+    description: 'Target applications that have specific file size restrictions',
+    example: ['None'],
+    required: true,
+    isArray: true,
+    enum: TargetAppsEnum,
+  })
+  @IsArray()
+  @IsEnum(TargetAppsEnum, { each: true })
+  targetApps: TargetAppsEnum[] = [TargetAppsEnum.NONE];
 }

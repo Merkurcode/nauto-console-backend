@@ -71,6 +71,7 @@ import {
   GeneratePartUrlResponseDto,
   CreateFolderResponseDto,
   FileResponseDto,
+  GetUploadStatusResponseDto,
 } from '@application/dtos/_responses/storage/storage.swagger.dto';
 
 // 3. Infrastructure imports
@@ -90,6 +91,7 @@ import { RolesEnum } from '@shared/constants/enums';
 import { StorageAreaType } from '@shared/types/storage-areas.types';
 import { StorageAreaUtils } from '@shared/utils/storage-area.utils';
 import { SecurityHeadersInterceptor } from '@shared/interceptors/security-headers.interceptor';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
 
 interface IAuthenticatedRequest {
   user: {
@@ -130,6 +132,10 @@ export class StorageCommonController {
     summary: 'Initiate multipart upload in common area (All authenticated users)',
     description:
       'Creates a new multipart upload session for files in the specified common area shared across the company.\n\n' +
+      '**App-Specific Validation:**\n' +
+      '- If `targetApps` includes "WhatsApp", validates file size against WhatsApp limits from user tier\n' +
+      '- Different file extensions have different size limits for WhatsApp (e.g., images: 5MB, documents: 100MB)\n' +
+      '- Use `targetApps: ["None"]` to skip app-specific validation\n\n' +
       '**Behavior by Role:**\n' +
       '- **Root**: Full access to initiate uploads in any common area\n' +
       '- **Admin**: Full access to initiate uploads in any common area\n' +
@@ -139,7 +145,7 @@ export class StorageCommonController {
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:write</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>\n\n' +
-      '⚠️ **Restrictions:** Uploads are subject to company storage quotas and file type restrictions. Root readonly users cannot perform write operations.',
+      '⚠️ **Restrictions:** Uploads are subject to company storage quotas, file type restrictions, and app-specific size limits. Root readonly users cannot perform write operations.',
   })
   @ApiParam({
     name: 'area',
@@ -178,12 +184,14 @@ export class StorageCommonController {
         commonFolder,
         initiateUploadDto.path,
         initiateUploadDto.filename,
-        initiateUploadDto.originalName,
+        initiateUploadDto.originalName || initiateUploadDto.filename, // Use filename as default if originalName not provided
         initiateUploadDto.mimeType,
         initiateUploadDto.size,
         req.user.sub,
         req.user.companyId,
         initiateUploadDto.upsert || false,
+        initiateUploadDto.autoRename || false,
+        initiateUploadDto.targetApps || [TargetAppsEnum.NONE],
       );
 
       return this.commandBus.execute(command);
@@ -350,11 +358,9 @@ export class StorageCommonController {
     @Param('fileId') fileId: string,
     @Request() req: IAuthenticatedRequest,
   ): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      const command = new AbortMultipartUploadCommand(req.user.sub, fileId, 'User aborted upload');
-
-      return this.commandBus.execute(command);
-    });
+    return this.commandBus.execute(
+      new AbortMultipartUploadCommand(req.user.sub, fileId, 'User aborted upload'),
+    );
   }
 
   @Get(':fileId/status')
@@ -362,16 +368,37 @@ export class StorageCommonController {
   @CanRead('file')
   @ApiOperation({
     summary: 'Get upload status in common areas',
-    description: 'Retrieves the current status of a multipart upload in common areas',
+    description:
+      'Retrieves comprehensive status information for a multipart upload in common areas. ' +
+      'Returns detailed progress tracking including completed parts, uploaded bytes, and upload viability. ' +
+      'This endpoint provides real-time upload progress monitoring with part-level granularity.\n\n' +
+      '**Information Provided:**\n' +
+      '- Upload progress percentage based on bytes uploaded\n' +
+      '- Number of completed parts with ETags\n' +
+      '- Total parts detected in storage\n' +
+      '- Bytes uploaded and remaining quota\n' +
+      '- Next suggested part number for upload\n' +
+      '- Whether upload can be completed within quota limits\n' +
+      '- Detailed list of uploaded parts with sizes and ETags\n\n' +
+      '**Behavior by Role:**\n' +
+      '- **All authenticated users**: Can check status of files they have access to\n\n' +
+      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:read</code>',
   })
   @ApiParam({ name: 'fileId', description: 'File unique identifier' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Upload status retrieved successfully',
+    description: 'Upload status retrieved successfully with detailed progress information',
+    type: GetUploadStatusResponseDto,
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
-  async getUploadStatus(@Param('fileId') fileId: string, @Request() req: IAuthenticatedRequest) {
-    return this.queryBus.execute(new GetUploadStatusQuery(fileId, req.user.sub));
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to file status' })
+  async getUploadStatus(
+    @Param('fileId') fileId: string,
+    @Request() req: IAuthenticatedRequest,
+  ): Promise<GetUploadStatusResponseDto | null> {
+    return this.queryBus.execute(
+      new GetUploadStatusQuery(fileId, req.user.sub, req.user.companyId, true),
+    );
   }
 
   @Post(':fileId/heartbeat')

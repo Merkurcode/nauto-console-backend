@@ -56,6 +56,20 @@ export class FileTypeNotAllowedException extends StorageDomainException {
   }
 }
 
+// App-specific file size exceptions
+export class AppFileSizeLimitExceededException extends StorageDomainException {
+  constructor(appName: string, fileSize: number, maxSize: number, fileExtension?: string) {
+    const maxSizeMB = Math.round(maxSize / 1024 / 1024);
+    const fileSizeMB = Math.round(fileSize / 1024 / 1024);
+    
+    super(
+      `File size exceeds maximum allowed for ${appName}: ${maxSizeMB}MB (file: ${fileSizeMB}MB)`,
+      'APP_FILE_SIZE_LIMIT_EXCEEDED',
+      { appName, fileSize, maxSize, fileExtension, maxSizeMB, fileSizeMB },
+    );
+  }
+}
+
 // Upload exceptions
 export class UploadNotFoundException extends StorageDomainException {
   constructor(uploadId: string, fileId?: string) {

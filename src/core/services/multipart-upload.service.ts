@@ -26,6 +26,7 @@ import {
   InvalidFileStateException,
   UploadExpiredException,
   DuplicatePathUploadException,
+  AppFileSizeLimitExceededException,
 } from '@core/exceptions/storage-domain.exceptions';
 import { InvalidFileOperationException } from '@core/exceptions/domain-exceptions';
 
@@ -37,6 +38,8 @@ import {
   LOGGER_SERVICE,
 } from '@shared/constants/tokens';
 import { FileStatus } from '@shared/constants/file-status.enum';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
+import { IAllowedFileConfig } from '@core/entities/user-storage-config.entity';
 
 export interface IInitiateUploadParams {
   bucket: string;
@@ -49,6 +52,7 @@ export interface IInitiateUploadParams {
   companyId: string;
   upsert?: boolean;
   autoRename?: boolean;
+  targetApps?: string[];
 }
 
 export interface IInitiateUploadResult {
@@ -108,6 +112,11 @@ export class MultipartUploadService {
       size,
     });
 
+    // 1.5) App-specific validation if targetApps specified
+    if (params.targetApps && params.targetApps.length > 0) {
+      await this.validateAppSpecificRequirements(params.targetApps, filename, size, userId);
+    }
+
     // 2) Execute with or without user lock based on parameter
     if (useLock) {
       return this.fileLockService.withUserLock(userId, () => this.executeInitiateUpload(params));
@@ -132,6 +141,7 @@ export class MultipartUploadService {
       userId,
       upsert = false,
       autoRename = false,
+      targetApps = [],
     } = params;
 
     // 1. Check for duplicate path uploads and handle auto-rename
@@ -224,6 +234,7 @@ export class MultipartUploadService {
         bucket,
         userId,
         isPublic,
+        targetApps,
       );
       savedFile = await this.fileRepository.save(file);
 
@@ -933,6 +944,65 @@ export class MultipartUploadService {
     const events = file.getDomainEvents?.();
     for (const e of events) this.eventBus.publish(e);
     file.clearDomainEvents?.();
+  }
+
+  /**
+   * Validates app-specific file size requirements
+   */
+  private async validateAppSpecificRequirements(
+    targetApps: string[],
+    filename: string,
+    size: number,
+    userId: string,
+  ): Promise<void> {
+    // Get user's tier configuration
+    const userConfig = await this.userStorageConfigRepository.findByUserIdWithTier(
+      UserId.create(userId),
+    );
+    if (!userConfig) {
+      throw new Error('User storage configuration not found');
+    }
+
+    // Extract file extension
+    const fileExtension = this.extractFileExtension(filename);
+    if (!fileExtension) {
+      throw new Error('File must have an extension for app-specific validation');
+    }
+
+    // Get allowed file config from user's tier
+    const allowedFileConfig = userConfig.allowedFileConfig;
+
+    // Parse the JSON if it's a string, otherwise use as object
+    let fileConfig: IAllowedFileConfig;
+    if (typeof allowedFileConfig === 'string') {
+      try {
+        fileConfig = JSON.parse(allowedFileConfig) as IAllowedFileConfig;
+      } catch (_error) {
+        throw new Error('Invalid allowed file configuration format');
+      }
+    } else {
+      fileConfig = allowedFileConfig;
+    }
+
+    const extensionConfig = fileConfig[fileExtension];
+    if (!extensionConfig) {
+      throw new Error(`File extension '${fileExtension}' is not allowed`);
+    }
+
+    // Check app-specific size limits
+    for (const targetApp of targetApps) {
+      if (targetApp === TargetAppsEnum.WHATSAPP) {
+        if (extensionConfig.whatsAppMaxBytes && size > extensionConfig.whatsAppMaxBytes) {
+          throw new AppFileSizeLimitExceededException(
+            'WhatsApp',
+            size,
+            extensionConfig.whatsAppMaxBytes,
+            fileExtension,
+          );
+        }
+      }
+      // Add more app validations here as needed
+    }
   }
 
   private extractFileExtension(filename: string): string {

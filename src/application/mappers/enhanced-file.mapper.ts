@@ -76,6 +76,7 @@ export class EnhancedFileMapper {
       status: file.status.getValue(),
       uploadId: file.getUploadIdString(),
       etag: file.getETagString(),
+      targetApps: file.targetApps,
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
     };

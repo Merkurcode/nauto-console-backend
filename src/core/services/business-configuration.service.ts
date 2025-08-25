@@ -31,7 +31,7 @@ export class BusinessConfigurationService implements OnModuleInit {
     RATE_LIMIT_LOCKOUT_MINUTES: { min: 1, max: 1440 },
     FILE_URL_EXPIRY_HOURS: { min: 1, max: 168 }, // 1 hour to 1 week
     // MAX_FILE_SIZE_MB: removed - now managed by StorageTiers
-    MAX_ACTIVE_SESSIONS: { min: 1, max: 100 },
+    // MAX_ACTIVE_SESSIONS: { min: 1, max: 100 },
     SESSION_INACTIVITY_TIMEOUT: { min: 5, max: 43200 }, // 5 minutes to 30 days (in minutes)
     OTP_MAX_ATTEMPTS: { min: 1, max: 10 },
     OTP_SECRET_LENGTH: { min: 16, max: 64 },
@@ -58,7 +58,7 @@ export class BusinessConfigurationService implements OnModuleInit {
       'PASSWORD_SALT_ROUNDS',
       'PASSWORD_MIN_LENGTH',
       'RATE_LIMIT_EMAIL_ATTEMPTS',
-      'MAX_ACTIVE_SESSIONS',
+      //'MAX_ACTIVE_SESSIONS',
     ]);
     this.logger.log('Business configuration service initialized with security validation');
   }
