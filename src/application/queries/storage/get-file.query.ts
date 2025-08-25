@@ -10,7 +10,7 @@ import { FileAccessControlService } from '@core/services/file-access-control.ser
 export class GetFileQuery implements IQuery {
   constructor(
     public readonly fileId: string,
-    public readonly userId?: string, // For access control
+    public readonly user?: any, // For access control - full user object or userId
   ) {}
 }
 
@@ -30,15 +30,17 @@ export class GetFileHandler
   async execute(
     query: GetFileQuery,
   ): Promise<FileResponseDto & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
-    const { fileId, userId } = query;
+    const { fileId, user } = query;
 
     const file = await this.fileRepository.findById(fileId);
     if (!file) {
       throw new EntityNotFoundException('File', fileId);
     }
 
+    // Handle both user object and string userId for backward compatibility
+    const userPayload = typeof user === 'string' ? { sub: user } : user;
+
     // Validate file access using business rules
-    const userPayload = userId ? { sub: userId } : null;
     this.fileAccessControlService.validateFileAccess(file, userPayload, 'read');
 
     // Return file details with signed URL (only for uploaded files)

@@ -222,7 +222,7 @@ export class MultipartUploadService {
 
       // 5) Create and persist file aggregate in "pending"
       // Files in common areas (products/marketing) are public, user files are private
-      const isPublic = storagePath.includes('/common/');
+      const isPublic = storagePath.startsWith(`${params.companyId}/common/`);
 
       // Get current storage driver from config
       const storageDriver = this.configService.get<string>('storage.provider', 'minio');
@@ -358,17 +358,19 @@ export class MultipartUploadService {
       this.configService.get<number>('storage.presign.expirySec', 3600) ??
       3600;
 
-    const { url } = await this.storageService.generatePresignedPartUrl(
-      file.bucket,
-      file.objectKey.toString(),
-      file.getUploadIdString()!,
-      partNumber,
-      expiry,
-      declaredPartSizeBytes,
-      file.size.getBytes(),
-    );
+    return await this.fileLockService.withFileLock(fileId, async () => {
+      const { url } = await this.storageService.generatePresignedPartUrl(
+        file.bucket,
+        file.objectKey.toString(),
+        file.getUploadIdString()!,
+        partNumber,
+        expiry,
+        declaredPartSizeBytes,
+        file.size.getBytes(),
+      );
 
-    return { url, partNumber, expirationSeconds: expiry };
+      return { url, partNumber, expirationSeconds: expiry };
+    });
   }
 
   /**

@@ -8,7 +8,8 @@ export class RenameFileCommand implements ICommand {
   constructor(
     public readonly fileId: string,
     public readonly newFilename: string,
-    public readonly userId?: string,
+    public readonly userId: string,
+    public readonly companyId: string,
     //public readonly overwrite?: boolean,
   ) {}
 }
@@ -19,12 +20,13 @@ export class RenameFileHandler implements ICommandHandler<RenameFileCommand, Fil
   constructor(private readonly fileOperationsService: FileOperationsService) {}
 
   async execute(command: RenameFileCommand): Promise<FileResponseDto> {
-    const { fileId, newFilename, userId } = command;
+    const { fileId, newFilename, userId, companyId } = command;
 
     const file = await this.fileOperationsService.renameFile({
       fileId,
       newFilename,
       userId,
+      companyId,
       overwrite: false,
     });
 

@@ -65,7 +65,7 @@ export class FileAccessControlService {
       const fileCompanyId = this.extractCompanyIdFromPath(file.path);
 
       // For common area files, check if user is from the same company
-      if (this.isCommonAreaFile(file)) {
+      if (this.isCommonAreaFile(file, fileCompanyId)) {
         if (userCompanyId && fileCompanyId && userCompanyId === fileCompanyId) {
           // Users from same company can read/write common area files
           return {
@@ -251,10 +251,10 @@ export class FileAccessControlService {
   /**
    * Checks if a file is in a common area (shared company folder)
    */
-  private isCommonAreaFile(file: File): boolean {
+  private isCommonAreaFile(file: File, companyId: string): boolean {
     // Check if the file path indicates it's in a common area
     // Format: company-uuid/common/folder-name/...
-    return file.path.includes('/common/');
+    return file.path.startsWith(`${companyId}/common/`);
   }
 
   /**

@@ -44,8 +44,9 @@ export class GetCommonDirectoryContentsHandler
   async execute(query: GetCommonDirectoryContentsQuery): Promise<IDirectoryContentsResponse> {
     const { userId, companyId, area, path, includePhysical } = query;
 
-    // Store current user ID for access control in helper methods
+    // Store current user ID and company ID for access control in helper methods
     this.currentUserId = userId;
+    this.currentCompanyId = companyId;
 
     // Parse includePhysical parameter (default: true)
     const shouldIncludePhysical = includePhysical !== 'false';
@@ -298,7 +299,12 @@ export class GetCommonDirectoryContentsHandler
 
         return true;
       } catch {
-        return false;
+        // In common areas, show files from same company even if not directly accessible
+        // This ensures files uploaded by other users in the company are visible
+        const userCompanyId = this.extractCompanyIdFromQuery();
+        const fileCompanyId = this.extractCompanyIdFromPath(file.path);
+
+        return userCompanyId && fileCompanyId && userCompanyId === fileCompanyId;
       }
     });
 
@@ -352,7 +358,7 @@ export class GetCommonDirectoryContentsHandler
       const physicalFiles = await this.getPhysicalFilesNotInDatabase(
         bucket,
         fullStoragePath,
-        accessibleDbFiles,
+        dbFiles, // Pass ALL database files, not just accessible ones, to properly exclude them from PHYSICAL_ONLY
       );
       fileItems.push(...physicalFiles);
     }
@@ -421,6 +427,18 @@ export class GetCommonDirectoryContentsHandler
     }
   }
 
-  // Store current user ID for access control
+  // Store current user ID and company ID for access control
   private currentUserId?: string;
+  private currentCompanyId?: string;
+
+  private extractCompanyIdFromQuery(): string | null {
+    return this.currentCompanyId || null;
+  }
+
+  private extractCompanyIdFromPath(filePath: string): string | null {
+    // Path format: companyId/common/area/... or companyId/users/userId/...
+    const pathSegments = filePath.split('/');
+
+    return pathSegments.length > 0 ? pathSegments[0] : null;
+  }
 }

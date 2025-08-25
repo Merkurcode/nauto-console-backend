@@ -16,6 +16,7 @@ import { GeneratePartUrlHandler } from '@application/commands/storage/generate-p
 import { CompleteMultipartUploadHandler } from '@application/commands/storage/complete-multipart-upload.command';
 import { AbortMultipartUploadHandler } from '@application/commands/storage/abort-multipart-upload.command';
 import { MoveFileHandler } from '@application/commands/storage/move-file.command';
+import { MoveCommonFileHandler } from '@application/commands/storage/move-common-file.command';
 import { RenameFileHandler } from '@application/commands/storage/rename-file.command';
 import { SetFileVisibilityHandler } from '@application/commands/storage/set-file-visibility.command';
 import { UpdateFileTargetAppsHandler } from '@application/commands/storage/update-file-target-apps.command';
@@ -64,6 +65,7 @@ const commandHandlers = [
   CompleteMultipartUploadHandler,
   AbortMultipartUploadHandler,
   MoveFileHandler,
+  MoveCommonFileHandler,
   RenameFileHandler,
   SetFileVisibilityHandler,
   UpdateFileTargetAppsHandler,

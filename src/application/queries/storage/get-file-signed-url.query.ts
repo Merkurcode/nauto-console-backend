@@ -10,12 +10,13 @@ import {
 } from '@core/exceptions/domain-exceptions';
 import { FileAccessControlService } from '@core/services/file-access-control.service';
 import { IGetFileSignedUrlResponse } from '@application/dtos/_responses/storage/storage.response.interface';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 export class GetFileSignedUrlQuery implements IQuery {
   constructor(
     public readonly fileId: string,
     public readonly expirationSeconds?: string,
-    public readonly userId?: string, // For access control
+    public readonly user?: IJwtPayload | string | any, // For access control - flexible user type
   ) {}
 }
 
@@ -33,7 +34,7 @@ export class GetFileSignedUrlHandler
   ) {}
 
   async execute(query: GetFileSignedUrlQuery): Promise<IGetFileSignedUrlResponse> {
-    const { fileId, expirationSeconds, userId } = query;
+    const { fileId, expirationSeconds, user } = query;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,8 +76,8 @@ export class GetFileSignedUrlHandler
       throw new EntityNotFoundException('File', fileId);
     }
 
-    // Create user payload from userId (if provided)
-    const userPayload = userId ? { sub: userId } : null;
+    // Handle both user object and string userId for backward compatibility
+    const userPayload = typeof user === 'string' ? { sub: user } : user;
 
     // Validate file access using business rules
     this.fileAccessControlService.validateFileAccess(file, userPayload, 'read');
@@ -84,7 +85,8 @@ export class GetFileSignedUrlHandler
     const url = await this.fileOperationsService.generateSignedUrl({
       fileId,
       expirationSeconds: expiry,
-      userId,
+      userId: typeof user === 'string' ? user : user?.sub,
+      userPayload: typeof user === 'string' ? { sub: user } : user,
     });
 
     return {

@@ -556,7 +556,7 @@ export class StorageController {
     @Param('fileId') fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
-    return this.queryBus.execute(new GetFileQuery(fileId, user.sub));
+    return this.queryBus.execute(new GetFileQuery(fileId, user));
   }
 
   @Get('directory')
@@ -698,7 +698,9 @@ export class StorageController {
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
     return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(new RenameFileCommand(fileId, dto.newFilename, user.sub));
+      return this.commandBus.execute(
+        new RenameFileCommand(fileId, dto.newFilename, user.sub, user.companyId),
+      );
     });
   }
 
@@ -787,7 +789,7 @@ export class StorageController {
     @CurrentUser() user: IJwtPayload,
     @Query('expirationSeconds') expirationSeconds?: string,
   ): Promise<GetFileSignedUrlResponseDto> {
-    return this.queryBus.execute(new GetFileSignedUrlQuery(fileId, expirationSeconds, user.sub));
+    return this.queryBus.execute(new GetFileSignedUrlQuery(fileId, expirationSeconds, user));
   }
 
   // ============================================================================

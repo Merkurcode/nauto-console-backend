@@ -31,6 +31,7 @@ export interface IRenameFileParams {
   fileId: string;
   newFilename: string;
   userId: string;
+  companyId: string;
   overwrite?: boolean;
 }
 
@@ -49,7 +50,8 @@ export interface ISetVisibilityParams {
 export interface IGenerateSignedUrlParams {
   fileId: string;
   expirationSeconds?: number;
-  userId: string;
+  userId?: string;
+  userPayload?: any; // Full user object for access control
 }
 
 export interface ICreateFolderParams {
@@ -257,14 +259,26 @@ export class FileOperationsService {
 
   /** Rename file */
   async renameFile(params: IRenameFileParams): Promise<File> {
-    const { fileId, newFilename, userId, overwrite } = params;
+    const { fileId, newFilename, userId, companyId, overwrite } = params;
 
     return this.fileLockService.withFileLock(fileId, async () => {
       const file = await this.fileRepository.findById(fileId);
       if (!file) throw new EntityNotFoundException('File', fileId);
 
-      const userPayload = { sub: userId };
-      this.fileAccessControlService.validateFileAccess(file, userPayload, 'write');
+      // Special logic for common area files - allow any company user to rename
+      const userPayload = { sub: userId, companyId };
+      const fileCompanyId = this.extractCompanyIdFromPath(file.path);
+
+      if (this.isCommonAreaFile(file, fileCompanyId)) {
+        // For common area files, check if user is from same company
+        if (!companyId || !fileCompanyId || companyId !== fileCompanyId) {
+          throw new InvalidFileOperationException('rename', 'Different company', fileId);
+        }
+        // Users from same company can rename common area files - skip normal access validation
+      } else {
+        // For non-common area files, use normal validation (owner-only)
+        this.fileAccessControlService.validateFileAccess(file, userPayload, 'write');
+      }
 
       // Security: Only UPLOADED files can be renamed
       if (!file.status.isUploaded()) {
@@ -495,13 +509,14 @@ export class FileOperationsService {
 
   /** Generate signed URL */
   async generateSignedUrl(params: IGenerateSignedUrlParams): Promise<string> {
-    const { fileId, expirationSeconds, userId } = params;
+    const { fileId, expirationSeconds, userId, userPayload } = params;
 
     const file = await this.fileRepository.findById(fileId);
     if (!file) throw new EntityNotFoundException('File', fileId);
 
-    const userPayload = { sub: userId };
-    this.fileAccessControlService.validateFileAccess(file, userPayload, 'read');
+    // Use full userPayload if provided, otherwise fallback to userId
+    const accessPayload = userPayload || (userId ? { sub: userId } : null);
+    this.fileAccessControlService.validateFileAccess(file, accessPayload, 'read');
 
     if (!file.status.isUploaded()) {
       throw new InvalidFileOperationException('generate URL', 'File must be uploaded', fileId);
@@ -949,5 +964,24 @@ export class FileOperationsService {
     } catch (_error) {
       return false;
     }
+  }
+
+  /**
+   * Checks if a file is in a common area (shared company folder)
+   */
+  private isCommonAreaFile(file: File, companyId: string): boolean {
+    // Check if the file path indicates it's in a common area
+    // Format: company-uuid/common/folder-name/...
+    return file.path.startsWith(`${companyId}/common/`);
+  }
+
+  /**
+   * Extracts company ID from hierarchical file path
+   */
+  private extractCompanyIdFromPath(path: string): string | null {
+    // Format: company-uuid/users/user-uuid/... or company-uuid/common/folder/...
+    const parts = path.split('/');
+
+    return parts.length > 0 ? parts[0] : null;
   }
 }

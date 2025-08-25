@@ -38,22 +38,15 @@ import { DeleteCommonFolderCommand } from '@application/commands/storage/delete-
 import { DeleteCommonFileCommand } from '@application/commands/storage/delete-common-file.command';
 import { MoveCommonFileCommand } from '@application/commands/storage/move-common-file.command';
 import { RenameFileCommand } from '@application/commands/storage/rename-file.command';
-import { SetFileVisibilityCommand } from '@application/commands/storage/set-file-visibility.command';
 import { HeartbeatUploadCommand } from '@application/commands/storage/heartbeat-upload.command';
-import { ClearUserConcurrencySlotsCommand } from '@application/commands/storage/clear-user-concurrency-slots.command';
 import { GetFileByIdQuery } from '@application/queries/storage/get-file-by-id.query';
 import { GetCommonDirectoryContentsQuery } from '@application/queries/storage/get-common-directory-contents.query';
 import { GetUploadStatusQuery } from '@application/queries/storage/get-upload-status.query';
 import { GetFileSignedUrlQuery } from '@application/queries/storage/get-file-signed-url.query';
-import { GetUserStorageQuotaQuery } from '@application/queries/storage/get-user-storage-quota.query';
-import { GetConcurrencyStatsQuery } from '@application/queries/storage/get-concurrency-stats.query';
-import { GetUserConcurrentCountQuery } from '@application/queries/storage/get-user-concurrent-count.query';
-import { GetConcurrencyHealthQuery } from '@application/queries/storage/get-concurrency-health.query';
 import { InitiateMultipartUploadDto, CompleteMultipartUploadDto } from '@application/dtos/storage';
 import { CreateCommonFolderDto } from '@application/dtos/storage/create-common-folder.dto';
 import { MoveFileDto } from '@application/dtos/storage/move-file.dto';
 import { RenameFileDto } from '@application/dtos/storage/rename-file.dto';
-import { SetFileVisibilityDto } from '@application/dtos/storage/set-file-visibility.dto';
 import {
   IInitiateMultipartUploadResponse,
   IFileResponse,
@@ -86,8 +79,6 @@ import { Throttle } from '@shared/decorators/throttle.decorator';
 import { CanRead, CanWrite, CanDelete } from '@shared/decorators/resource-permissions.decorator';
 import { DenyForRootReadOnly } from '@shared/decorators/root-readonly.decorator';
 import { DeleteOperation } from '@shared/decorators/write-operation.decorator';
-import { Roles } from '@shared/decorators/roles.decorator';
-import { RolesEnum } from '@shared/constants/enums';
 import { StorageAreaType } from '@shared/types/storage-areas.types';
 import { StorageAreaUtils } from '@shared/utils/storage-area.utils';
 import { SecurityHeadersInterceptor } from '@shared/interceptors/security-headers.interceptor';
@@ -202,167 +193,6 @@ export class StorageCommonController {
   // Shared Upload Operations (both areas)
   // ---------------------------
 
-  @Post(':fileId/part/:partNumber/url')
-  @HttpCode(HttpStatus.CREATED)
-  // @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 part URLs per minute
-  @CanWrite('file')
-  @DenyForRootReadOnly()
-  @ApiOperation({
-    summary: 'Generate presigned URL for part upload in common areas (All authenticated users)',
-    description:
-      'Generates a presigned URL for uploading a specific part of a multipart upload in common areas.\n\n' +
-      '**Behavior by Role:**\n' +
-      '- **Root**: Can generate part URLs for any file\n' +
-      '- **Admin**: Can generate part URLs for company files\n' +
-      '- **Manager**: Can generate part URLs for accessible files\n' +
-      '- **Sales Agent**: Can generate part URLs for accessible files\n' +
-      '- **Guest**: Can generate part URLs for accessible files\n\n' +
-      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:write</code>\n\n' +
-      '👥 **Roles with Access:**\n' +
-      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>\n\n' +
-      '⚠️ **Restrictions:** User must have access to the upload session. URLs have configurable expiration time. Root readonly users cannot perform write operations.',
-  })
-  @ApiParam({ name: 'fileId', description: 'Unique identifier for the file upload session' })
-  @ApiParam({ name: 'partNumber', description: 'Part number (1-10000)' })
-  @ApiQuery({
-    name: 'partSizeBytes',
-    required: true,
-    description: 'Size of the part to be uploaded in bytes (minimum 5MB except for last part)',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'expirationSeconds',
-    required: false,
-    description: 'URL expiration time in seconds (default: 3600)',
-  })
-  @ApiProduces('application/json')
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Presigned URL generated successfully',
-    type: GeneratePartUrlResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid part number or file not found',
-  })
-  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to this file' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Upload session not found' })
-  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
-  async generatePartUrl(
-    @Param('fileId') fileId: string,
-    @Param('partNumber') partNumber: string,
-    @Query('partSizeBytes') partSizeBytes: string,
-    @Query('expirationSeconds') expirationSeconds?: string,
-  ): Promise<IGeneratePartUrlResponse> {
-    const partSize = parseInt(partSizeBytes, 10);
-    if (isNaN(partSize)) {
-      throw new Error('partSizeBytes must be a valid number');
-    }
-
-    // Validate part size doesn't exceed 5GB
-    const MAX_PART_SIZE = 5 * 1024 * 1024 * 1024; // 5GB in bytes
-    if (partSize > MAX_PART_SIZE) {
-      throw new Error(`Part size cannot exceed 5GB (${MAX_PART_SIZE} bytes)`);
-    }
-
-    return this.transactionService.executeInTransaction(async () => {
-      const command = new GeneratePartUrlCommand(fileId, partNumber, partSize, expirationSeconds);
-
-      return this.commandBus.execute(command);
-    });
-  }
-
-  @Post(':fileId/complete')
-  @HttpCode(HttpStatus.OK)
-  // @Throttle({ default: { limit: 50, ttl: 60000 } }) // 50 completions per minute
-  @CanWrite('file')
-  @DenyForRootReadOnly()
-  @ApiOperation({
-    summary: 'Complete multipart upload in common areas (All authenticated users)',
-    description:
-      'Finalizes a multipart upload by assembling all uploaded parts in common areas.\n\n' +
-      '**Behavior by Role:**\n' +
-      '- **Root**: Can complete any upload session\n' +
-      '- **Admin**: Can complete company upload sessions\n' +
-      '- **Manager**: Can complete accessible upload sessions\n' +
-      '- **Sales Agent**: Can complete accessible upload sessions\n' +
-      '- **Guest**: Can complete accessible upload sessions\n\n' +
-      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:write</code>\n\n' +
-      '👥 **Roles with Access:**\n' +
-      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>\n\n' +
-      '⚠️ **Restrictions:** User must have initiated the upload session. All parts must be successfully uploaded. Root readonly users cannot perform write operations.',
-  })
-  @ApiParam({ name: 'fileId', description: 'Unique identifier for the file upload session' })
-  @ApiConsumes('application/json')
-  @ApiProduces('application/json')
-  @ApiBody({ type: CompleteUploadDtoSwagger })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Upload completed successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid parts data or upload already completed',
-  })
-  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to this file' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Upload session not found' })
-  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
-  async completeUpload(
-    @Param('fileId') fileId: string,
-    @Body() completeUploadDto: CompleteMultipartUploadDto,
-    @Request() req: IAuthenticatedRequest,
-  ): Promise<void> {
-    return this.transactionService.executeInTransaction(async () => {
-      const command = new CompleteMultipartUploadCommand(
-        req.user.sub,
-        fileId,
-        completeUploadDto.parts,
-      );
-
-      return this.commandBus.execute(command);
-    });
-  }
-
-  @Delete(':fileId/abort')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  // @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 aborts per minute
-  @CanWrite('file')
-  @DenyForRootReadOnly()
-  @ApiOperation({
-    summary: 'Abort multipart upload in common areas (All authenticated users)',
-    description:
-      'Cancels an ongoing multipart upload and cleans up temporary parts in common areas.\n\n' +
-      '**Behavior by Role:**\n' +
-      '- **Root**: Can abort any upload session\n' +
-      '- **Admin**: Can abort company upload sessions\n' +
-      '- **Manager**: Can abort accessible upload sessions\n' +
-      '- **Sales Agent**: Can abort accessible upload sessions\n' +
-      '- **Guest**: Can abort accessible upload sessions\n\n' +
-      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">file:write</code>\n\n' +
-      '👥 **Roles with Access:**\n' +
-      '- <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code>\n\n' +
-      '⚠️ **Restrictions:** User must have access to the upload session. All temporary parts will be permanently deleted. Root readonly users cannot perform write operations.',
-  })
-  @ApiParam({ name: 'fileId', description: 'Unique identifier for the file upload session' })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Upload aborted successfully',
-  })
-  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to this file' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Upload session not found' })
-  @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
-  async abortUpload(
-    @Param('fileId') fileId: string,
-    @Request() req: IAuthenticatedRequest,
-  ): Promise<void> {
-    return this.commandBus.execute(
-      new AbortMultipartUploadCommand(req.user.sub, fileId, 'User aborted upload'),
-    );
-  }
-
   @Get(':fileId/status')
   @HttpCode(HttpStatus.OK)
   @CanRead('file')
@@ -399,29 +229,6 @@ export class StorageCommonController {
     return this.queryBus.execute(
       new GetUploadStatusQuery(fileId, req.user.sub, req.user.companyId, true),
     );
-  }
-
-  @Post(':fileId/heartbeat')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @CanWrite('file')
-  @DenyForRootReadOnly()
-  @Throttle(60000, 60) // 60 heartbeats per minute (1 per second)
-  @ApiOperation({
-    summary: 'Send upload heartbeat in common areas',
-    description:
-      'Keeps an active multipart upload session alive in common areas by updating its last activity timestamp',
-  })
-  @ApiParam({ name: 'fileId', description: 'File unique identifier' })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Heartbeat processed successfully',
-  })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File or upload not found' })
-  async sendUploadHeartbeat(
-    @Param('fileId') fileId: string,
-    @Request() req: IAuthenticatedRequest,
-  ): Promise<void> {
-    return this.commandBus.execute(new HeartbeatUploadCommand(req.user.sub, fileId));
   }
 
   // ---------------------------
@@ -778,9 +585,7 @@ export class StorageCommonController {
     @Request() req: IAuthenticatedRequest,
     @Query('expirationSeconds') expirationSeconds?: string,
   ) {
-    return this.queryBus.execute(
-      new GetFileSignedUrlQuery(fileId, expirationSeconds, req.user.sub),
-    );
+    return this.queryBus.execute(new GetFileSignedUrlQuery(fileId, expirationSeconds, req.user));
   }
 
   @Put(':area/files/:fileId/move')
@@ -886,187 +691,63 @@ export class StorageCommonController {
   ) {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
-        new RenameFileCommand(fileId, renameFileDto.newFilename, req.user.sub),
+        new RenameFileCommand(fileId, renameFileDto.newFilename, req.user.sub, req.user.companyId),
       );
     });
   }
 
-  @Put('files/:fileId/visibility')
-  @CanWrite('file')
-  @DenyForRootReadOnly()
-  @ApiOperation({
-    summary: 'Set file visibility in common areas',
-    description: 'Changes whether a file is publicly accessible or private in common areas',
-  })
-  @ApiParam({ name: 'fileId', description: 'File unique identifier' })
-  @ApiConsumes('application/json')
-  @ApiProduces('application/json')
-  @ApiBody({
-    type: SetFileVisibilityDto,
-    description: 'File visibility settings',
-    examples: {
-      makePublic: {
-        summary: 'Make file public',
-        value: {
-          isPublic: true,
-        },
-      },
-      makePrivate: {
-        summary: 'Make file private',
-        value: {
-          isPublic: false,
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'File visibility updated successfully',
-    type: FileResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid visibility setting',
-  })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'Insufficient permissions to change file visibility',
-  })
-  async setFileVisibility(
-    @Param('fileId') fileId: string,
-    @Body() visibilityDto: SetFileVisibilityDto,
-    @Request() req: IAuthenticatedRequest,
-  ) {
-    return this.transactionService.executeInTransaction(async () => {
-      return this.commandBus.execute(
-        new SetFileVisibilityCommand(fileId, visibilityDto.isPublic, req.user.sub),
-      );
-    });
-  }
-
-  // ---------------------------
-  // Storage Quota & Management
-  // ---------------------------
-
-  @Get('quota')
-  @HttpCode(HttpStatus.OK)
-  @CanRead('file')
-  @ApiOperation({
-    summary: 'Get user storage quota in common areas',
-    description: 'Retrieves storage quota information and usage statistics for common areas',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Storage quota retrieved successfully',
-  })
-  async getUserStorageQuota(@Request() req: IAuthenticatedRequest) {
-    return this.queryBus.execute(new GetUserStorageQuotaQuery(req.user.sub));
-  }
-
-  // ---------------------------
-  // Concurrency Management (ROOT OPERATIONS)
-  // ---------------------------
-
-  @Get('concurrency/stats')
-  @HttpCode(HttpStatus.OK)
-  @CanRead('file')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
-  @ApiOperation({
-    summary: 'Get concurrency statistics (ROOT)',
-    description: 'Retrieves statistics about concurrent uploads across all users in common areas',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Concurrency statistics retrieved successfully',
-  })
-  async getConcurrencyStats() {
-    return this.queryBus.execute(new GetConcurrencyStatsQuery());
-  }
-
-  @Get('concurrency/user/:userId/count')
-  @HttpCode(HttpStatus.OK)
-  @CanRead('file')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
-  @ApiOperation({
-    summary: 'Get user concurrent uploads count (ROOT)',
-    description: 'Retrieves the current number of active uploads for a specific user',
-  })
-  @ApiParam({
-    name: 'userId',
-    description: 'User ID to check concurrent uploads for',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'User concurrent uploads count retrieved successfully',
-  })
-  async getUserConcurrentCount(@Param('userId') userId: string) {
-    return this.queryBus.execute(new GetUserConcurrentCountQuery(userId));
-  }
-
-  @Delete('concurrency/user/:userId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @CanDelete('file')
-  @Roles(RolesEnum.ROOT)
-  @DenyForRootReadOnly()
-  @Throttle(60000, 5) // 5 concurrency operations per minute
-  @ApiOperation({
-    summary: 'Clear user concurrency slots (ROOT)',
-    description:
-      'Force-clears all active upload concurrency slots for a specific user in common areas by aborting all uploading files. ' +
-      'Each file abort is processed in its own transaction with rollback logic for consistency. ' +
-      'If any upload fails to abort properly, the entire operation fails and concurrency slots are not cleared ' +
-      'to prevent negative count issues. This is an administrative operation that should be used with caution.',
-  })
-  @ApiParam({
-    name: 'userId',
-    description: 'User ID to clear concurrency slots for',
-  })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'User concurrency slots cleared successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description:
-      'Failed to abort one or more uploads. Concurrency slots not cleared to prevent negative counts.',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example:
-            'Failed to abort 2 out of 5 uploads. Concurrency slots not cleared to prevent negative counts.',
-        },
-        error: {
-          type: 'string',
-          example: 'Internal Server Error',
-        },
-        statusCode: {
-          type: 'number',
-          example: 500,
-        },
-      },
-    },
-  })
-  async clearUserConcurrencySlots(@Param('userId') userId: string): Promise<void> {
-    return this.commandBus.execute(new ClearUserConcurrencySlotsCommand(userId));
-  }
-
-  @Get('concurrency/health')
-  @HttpCode(HttpStatus.OK)
-  @CanRead('file')
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
-  @ApiOperation({
-    summary: 'Check concurrency service health (ROOT)',
-    description:
-      'Performs a comprehensive health check on the concurrency service for common areas',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Concurrency service health check result',
-  })
-  async getConcurrencyHealth() {
-    return this.queryBus.execute(new GetConcurrencyHealthQuery());
-  }
+  // En common no es necesario...
+  //@Put('files/:fileId/visibility')
+  //@CanWrite('file')
+  //@DenyForRootReadOnly()
+  //@ApiOperation({
+  //  summary: 'Set file visibility in common areas',
+  //  description: 'Changes whether a file is publicly accessible or private in common areas',
+  //})
+  //@ApiParam({ name: 'fileId', description: 'File unique identifier' })
+  //@ApiConsumes('application/json')
+  //@ApiProduces('application/json')
+  //@ApiBody({
+  //  type: SetFileVisibilityDto,
+  //  description: 'File visibility settings',
+  //  examples: {
+  //    makePublic: {
+  //      summary: 'Make file public',
+  //      value: {
+  //        isPublic: true,
+  //      },
+  //    },
+  //    makePrivate: {
+  //      summary: 'Make file private',
+  //      value: {
+  //        isPublic: false,
+  //      },
+  //    },
+  //  },
+  //})
+  //@ApiResponse({
+  //  status: HttpStatus.OK,
+  //  description: 'File visibility updated successfully',
+  //  type: FileResponseDto,
+  //})
+  //@ApiResponse({
+  //  status: HttpStatus.BAD_REQUEST,
+  //  description: 'Invalid visibility setting',
+  //})
+  //@ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
+  //@ApiResponse({
+  //  status: HttpStatus.FORBIDDEN,
+  //  description: 'Insufficient permissions to change file visibility',
+  //})
+  //async setFileVisibility(
+  //  @Param('fileId') fileId: string,
+  //  @Body() visibilityDto: SetFileVisibilityDto,
+  //  @Request() req: IAuthenticatedRequest,
+  //) {
+  //  return this.transactionService.executeInTransaction(async () => {
+  //    return this.commandBus.execute(
+  //      new SetFileVisibilityCommand(fileId, visibilityDto.isPublic, req.user.sub),
+  //    );
+  //  });
+  //}
 }
