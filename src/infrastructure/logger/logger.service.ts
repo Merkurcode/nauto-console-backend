@@ -12,10 +12,17 @@ import { ILogger } from '@core/interfaces/logger.interface';
 export class LoggerService implements NestLoggerService, ILogger {
   private context?: string;
   private static logLevels: LogLevel[] = ['error', 'warn', 'log', 'debug', 'verbose'];
+  private readonly apiVersion: string;
+  private readonly appVersion: string;
 
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     const env = this.configService.get<string>('env', 'development');
     const logLevel = this.configService.get<string>('logging.level', 'info');
+
+    // Cache version information for performance
+    this.apiVersion = this.configService.get<string>('apiVersion', 'v1');
+    this.appVersion = this.configService.get<string>('appVersion', '?.?.?');
+
     // Initialize log levels based on LOG_LEVEL environment variable
     LoggerService.logLevels = this.getLogLevels(env, logLevel);
   }
@@ -66,24 +73,34 @@ export class LoggerService implements NestLoggerService, ILogger {
       level,
       message: formattedMessage,
       context: context || 'Application',
+      apiVersion: this.apiVersion,
+      appVersion: this.appVersion,
     };
 
     if (stack) {
       Object.assign(logEntry, { stack });
     }
 
+    const versionInfo = `[API:${this.apiVersion}|APP:${this.appVersion}]`;
+
     if (level === 'error') {
       console.error(
-        `${timestamp} ${level.toUpperCase()} ${contextStr}:`,
+        `${timestamp} ${level.toUpperCase()} ${versionInfo} ${contextStr}:`,
         formattedMessage,
         stack || '',
       );
     } else if (level === 'warn') {
-      console.warn(`${timestamp} ${level.toUpperCase()} ${contextStr}:`, formattedMessage);
+      console.warn(
+        `${timestamp} ${level.toUpperCase()} ${versionInfo} ${contextStr}:`,
+        formattedMessage,
+      );
     } else {
       // For debug, verbose, and log levels in production, we use console.warn
       // to comply with linting rules that only allow console.warn and console.error
-      console.warn(`${timestamp} ${level.toUpperCase()} ${contextStr}:`, formattedMessage);
+      console.warn(
+        `${timestamp} ${level.toUpperCase()} ${versionInfo} ${contextStr}:`,
+        formattedMessage,
+      );
     }
   }
 

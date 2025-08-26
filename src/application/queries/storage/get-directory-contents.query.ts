@@ -30,7 +30,7 @@ export class GetDirectoryContentsHandler
   implements IQueryHandler<GetDirectoryContentsQuery, IDirectoryContentsResponse>
 {
   private readonly logger: ILogger;
-  
+
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
@@ -216,7 +216,8 @@ export class GetDirectoryContentsHandler
     } catch (error) {
       // If storage listing fails, return empty array
       this.logger.warn({
-        message: 'Failed to list physical folders from storage during user directory contents query',
+        message:
+          'Failed to list physical folders from storage during user directory contents query',
         bucket,
         basePath,
         error: error instanceof Error ? error.message : String(error),

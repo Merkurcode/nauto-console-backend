@@ -32,7 +32,7 @@ export class GetCommonDirectoryContentsHandler
   implements IQueryHandler<GetCommonDirectoryContentsQuery, IDirectoryContentsResponse>
 {
   private readonly logger: ILogger;
-  
+
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
@@ -219,7 +219,8 @@ export class GetCommonDirectoryContentsHandler
     } catch (error) {
       // If storage listing fails, return empty array
       this.logger.warn({
-        message: 'Failed to list physical folders from storage during common directory contents query',
+        message:
+          'Failed to list physical folders from storage during common directory contents query',
         bucket,
         basePath,
         error: error instanceof Error ? error.message : String(error),
@@ -261,7 +262,8 @@ export class GetCommonDirectoryContentsHandler
       return Array.from(folderSet);
     } catch (error) {
       this.logger.warn({
-        message: 'Failed to get virtual folders from database during common directory contents query',
+        message:
+          'Failed to get virtual folders from database during common directory contents query',
         basePath,
         error: error instanceof Error ? error.message : String(error),
       });
