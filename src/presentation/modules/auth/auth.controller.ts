@@ -228,6 +228,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   @NoBots()
   @HttpCode(HttpStatus.OK)
@@ -479,6 +480,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @Post('admin/change-password')
   @NoBots()
@@ -516,6 +518,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('change-password')
   @NoBots()
   @HttpCode(HttpStatus.OK)
@@ -558,6 +561,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('change-email')
   @NoBots()
   @HttpCode(HttpStatus.OK)
