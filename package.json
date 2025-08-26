@@ -31,7 +31,7 @@
     "start:dev:win": "powershell -ExecutionPolicy Bypass -File ./scripts/start-dev-simple.ps1",
     "start:dev:win-gc": "powershell -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
     "start:test": "cross-env NODE_ENV=test NODE_OPTIONS=\"--max-old-space-size=1024 --max-semi-space-size=32\" nest start --watch",
-    "start:prod": "cross-env NODE_ENV=production node --max-old-space-size=4096 --max-semi-space-size=128 --expose-gc dist/src/main",
+    "start:prod": "NODE_ENV=production node --max-old-space-size=4096 --max-semi-space-size=128 --expose-gc dist/src/main",
     "start:debug": "cross-env NODE_ENV=development NODE_OPTIONS=\"--max-old-space-size=2048 --max-semi-space-size=64\" nest start --debug --watch",
     "start:debug:win": "powershell -ExecutionPolicy Bypass -File ./scripts/start-debug.ps1",
     "lint": "eslint \"src/**/*.ts\" --ignore-pattern \"**/*.spec.ts\" --ignore-pattern \"**/*.test.ts\" --fix",
@@ -61,7 +61,8 @@
     "docker:status": "docker-compose ps",
     "docker:clean": "docker-compose down -v && docker system prune -f",
     "docker:dev": "./scripts/docker-dev.sh",
-    "prepare": "husky install",
+    "prepare": "node -e \"try { require('husky').install() } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\"",
+    "postinstall": "npm run db:generate",
     "wclaude": "npx win-claude-code@latest"
   },
   "dependencies": {
@@ -105,15 +106,16 @@
     "uuid": "^11.1.0",
     "bullmq": "^5.0.0",
     "redis": "^5.8.1"
+    "@nestjs/cli": "^11.0.5",
+    "@types/jest": "^29.5.14",
+    "cross-env": "^10.0.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^11.0.5",
     "@nestjs/schematics": "^11.0.2",
     "@nestjs/testing": "^11.0.12",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
-    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.17",
     "@types/nodemailer": "^6.4.17",
     "@types/passport-jwt": "^4.0.1",
@@ -122,7 +124,6 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.29.0",
-    "cross-env": "^10.0.0",
     "eslint": "^9.23.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.5",
