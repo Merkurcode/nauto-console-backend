@@ -63,17 +63,17 @@ export class UploadsMaintenanceWorker extends WorkerHost {
         }
 
         if (Date.now() - start > maxMs) {
-          this.logger.warn(
+          this.logger.log(
             `Cleanup parcial: checked=${checked}, removed=${removed}, continuará en próxima corrida`,
           );
           return { checked, removed, finished: false };
         }
       } while (cursor !== '0');
 
-      this.logger.warn(`Cleanup completo: checked=${checked}, removed=${removed}`);
+      this.logger.log(`Cleanup completo: checked=${checked}, removed=${removed}`);
       return { checked, removed, finished: true };
     } catch (err) {
-      this.logger.warn(`Cleanup error: ${(err as Error).message}`);
+      this.logger.error(`Cleanup error: ${(err as Error).message}`);
       return { checked, removed, finished: cursor === '0' };
     }
   }

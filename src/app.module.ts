@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -52,6 +52,8 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
 import { AuthEmailModuleQueue } from './queues/all/email/email.module';
 import { StaleUploadsCleanupModule } from './queues/all/stale-uploads-cleanup/stale-uploads-cleanup.module';
 import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploads-maintenance.module';
+import { CorrelationMiddleware } from '@infrastructure/logger/correlation/correlation.middleware';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Module({
   imports: [
@@ -131,7 +133,9 @@ import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploa
     // Global interceptors
     {
       provide: APP_INTERCEPTOR,
-      useClass: RequestCacheInterceptor,
+      useFactory: (requestCache: RequestCacheService, configService: ConfigService, logger?: ILogger) => 
+        new RequestCacheInterceptor(requestCache, configService, logger),
+      inject: [RequestCacheService, ConfigService, { token: LOGGER_SERVICE, optional: true }],
     },
     {
       provide: APP_INTERCEPTOR,
@@ -209,4 +213,8 @@ import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploa
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationMiddleware).forRoutes('*'); // Apply to all routes
+  }
+}

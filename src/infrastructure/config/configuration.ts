@@ -162,6 +162,9 @@ export default () => ({
   logging: {
     level: process.env.LOG_LEVEL || 'info',
     prismaLogsEnabled: process.env.PRISMA_LOGS_ENABLED === 'true',
+    apmEnabled: process.env.LOGGING_APM_ENABLED === 'true',
+    format: (process.env.LOGGING_FORMAT as 'json' | 'human') || 'human',
+    strictConsole: process.env.LOGGING_STRICT_CONSOLE === 'true',
   },
 
   // Queue System

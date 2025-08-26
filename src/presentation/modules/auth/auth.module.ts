@@ -96,7 +96,7 @@ const commandHandlers = [
     // JWT-specific repository (not in InfrastructureModule)
     {
       provide: JWT_USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, logger: ILogger) =>
+      useFactory: (prisma: PrismaService, logger?: ILogger) =>
         new UserAuthRepository(prisma, logger),
       inject: [PrismaService, { token: LOGGER_SERVICE, optional: true }],
     },
