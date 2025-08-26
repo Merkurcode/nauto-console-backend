@@ -180,9 +180,9 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     return this.executeWithErrorHandling('findByBucketPathAndFilename', async () => {
       const files = await this.client.file.findMany({
         where: { 
-          bucket,
-          path,
-          filename,
+          bucket: bucket,
+          path: path,
+          filename: filename,
           storageDriver: this.currentStorageDriver,
         },
         orderBy: { createdAt: 'desc' },

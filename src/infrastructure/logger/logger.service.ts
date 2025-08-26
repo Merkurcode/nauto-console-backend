@@ -39,7 +39,6 @@ export class LoggerService implements NestLoggerService, ILogger {
   private readonly environment: string;
   private readonly apmEnabled: boolean;
   private readonly format: LogFormat;
-  private readonly strictConsoleRouting: boolean;
 
   private static originalConsole?: {
     log: typeof console.log;
@@ -59,7 +58,6 @@ export class LoggerService implements NestLoggerService, ILogger {
     this.appName = this.config.get<string>('appName', 'app');
     this.apmEnabled = this.config.get<boolean>('logging.apmEnabled', false);
     this.format = this.apmEnabled ? 'json' : this.config.get<LogFormat>('logging.format', 'human');
-    this.strictConsoleRouting = this.config.get<boolean>('logging.strictConsole', false);
 
     LoggerService.logLevels = this.getLogLevels(this.environment, logLevel);
   }
@@ -160,11 +158,6 @@ export class LoggerService implements NestLoggerService, ILogger {
   }
 
   private routeByLevel(level: LogLevel, line: string): void {
-    if (this.strictConsoleRouting) {
-      if (level === 'error') return console.error(line);
-
-      return console.warn(line);
-    }
     switch (level) {
       case 'error':
         console.error(line);
