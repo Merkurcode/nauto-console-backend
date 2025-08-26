@@ -39,6 +39,7 @@ export interface IDeleteFileParams {
   fileId: string;
   userId: string;
   hardDelete?: boolean;
+  commonArea?: boolean;
 }
 
 export interface ISetVisibilityParams {
@@ -402,14 +403,16 @@ export class FileOperationsService {
 
   /** Delete file */
   async deleteFile(params: IDeleteFileParams): Promise<void> {
-    const { fileId, userId } = params;
+    const { fileId, userId, commonArea } = params;
 
     return this.fileLockService.withFileLock(fileId, async () => {
       const file = await this.fileRepository.findById(fileId);
       if (!file) throw new EntityNotFoundException('File', fileId);
 
-      const userPayload = { sub: userId };
-      this.fileAccessControlService.validateFileAccess(file, userPayload, 'delete');
+      if (commonArea !== true) {
+        const userPayload = { sub: userId };
+        this.fileAccessControlService.validateFileAccess(file, userPayload, 'delete');
+      }
 
       // Security requirement 6: Only UPLOADED files can be deleted
       if (!file.canBeDeleted()) {
@@ -453,7 +456,7 @@ export class FileOperationsService {
       try {
         // Always hard delete from database to avoid objectKey conflicts
         await this.fileRepository.delete(fileId);
-        this.logger.log(`Deleted file record ${fileId} from database`);
+        this.logger.log(`Deleted file record ${fileId} from database by: ${userId}`);
 
         // Delete physical file only if it exists in storage
         if (file.status.isUploaded()) {

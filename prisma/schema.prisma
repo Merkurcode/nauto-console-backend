@@ -447,6 +447,8 @@ model File {
   @@index([status])
   @@index([userId, status])
   @@index([userId, bucket])
+  @@index([path, bucket])
+  @@index([path, bucket, storageDriver])
   @@index([storageDriver])
   @@index([userId, storageDriver])
   @@index([storageDriver, status])

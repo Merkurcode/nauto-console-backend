@@ -42,7 +42,11 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
     const objectKey = path ? `${fullStoragePath}/${filename}` : `${fullStoragePath}/${filename}`;
 
     // Try to find file in database first
-    const dbFile = await this.findFileInDatabase(fullStoragePath, filename, userId);
+    const dbFile: File | undefined | null = await this.fileRepository.findByBucketPathAndFilename(
+      bucket,
+      fullStoragePath,
+      filename,
+    )?.[0];
 
     if (dbFile) {
       // File exists in database - use existing file operations service
@@ -50,6 +54,7 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
         fileId: dbFile.id.toString(),
         userId,
         hardDelete: true, // Force physical deletion
+        commonArea: true,
       });
     } else {
       // File only exists physically in MinIO - check existence first, then delete
@@ -70,27 +75,5 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
     const basePath = `${companyId}/common/${area}`;
 
     return path ? `${basePath}/${path}` : basePath;
-  }
-
-  private async findFileInDatabase(
-    storagePath: string,
-    filename: string,
-    userId: string,
-  ): Promise<File | null> {
-    try {
-      const files = await this.fileRepository.findByPath(storagePath);
-
-      // In common areas, only allow deletion if:
-      // 1. User owns the file, OR
-      // 2. File is public (anyone can delete public files)
-      return (
-        files.find(
-          file => file.filename === filename && (file.userId === userId || file.isPublic),
-        ) || null
-      );
-    } catch (_error) {
-      // File not found in database
-      return null;
-    }
   }
 }
