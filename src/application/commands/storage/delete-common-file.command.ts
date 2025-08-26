@@ -7,7 +7,6 @@ import { FileOperationsService } from '@core/services/file-operations.service';
 import { FILE_REPOSITORY, STORAGE_SERVICE } from '@shared/constants/tokens';
 import { StorageAreaType } from '@shared/types/storage-areas.types';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
-import { File } from '@core/entities/file.entity';
 
 export class DeleteCommonFileCommand implements ICommand {
   constructor(
@@ -39,14 +38,15 @@ export class DeleteCommonFileHandler implements ICommandHandler<DeleteCommonFile
     // Build full storage path for the file
     const fullStoragePath = this.buildCommonStoragePath(companyId, area, path);
     const bucket = this.configService.get<string>('storage.defaultBucket', 'nauto-console-dev');
-    const objectKey = path ? `${fullStoragePath}/${filename}` : `${fullStoragePath}/${filename}`;
+    const objectKey = `${fullStoragePath}/${filename}`;
 
     // Try to find file in database first
-    const dbFile: File | undefined | null = await this.fileRepository.findByBucketPathAndFilename(
+    const dbFiles = await this.fileRepository.findByBucketPathAndFilename(
       bucket,
       fullStoragePath,
       filename,
-    )?.[0];
+    );
+    const dbFile = dbFiles[0];
 
     if (dbFile) {
       // File exists in database - use existing file operations service

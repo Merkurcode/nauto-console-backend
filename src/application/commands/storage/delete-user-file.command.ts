@@ -37,7 +37,7 @@ export class DeleteUserFileHandler implements ICommandHandler<DeleteUserFileComm
     // Build full storage path for the file
     const fullStoragePath = this.buildUserStoragePath(companyId, userId, path);
     const bucket = this.configService.get<string>('storage.defaultBucket', 'nauto-console-dev');
-    const objectKey = path ? `${fullStoragePath}/${filename}` : `${fullStoragePath}/${filename}`;
+    const objectKey = `${fullStoragePath}/${filename}`;
 
     // Try to find file in database first
     const dbFile = await this.findFileInDatabase(fullStoragePath, filename, userId);

@@ -1,6 +1,6 @@
 /**
  * HTML Escape Utility
- * 
+ *
  * Escapes special characters in strings to prevent HTML injection
  * and ensure proper display of user-generated content in emails
  */
@@ -12,7 +12,7 @@
  */
 export function escapeHtml(text: string | undefined | null): string {
   if (!text) return '';
-  
+
   const htmlEscapeMap: Record<string, string> = {
     '&': '&amp;',
     '<': '&lt;',
@@ -33,10 +33,10 @@ export function escapeHtml(text: string | undefined | null): string {
  */
 export function escapeHtmlKeepBasicFormatting(text: string | undefined | null): string {
   if (!text) return '';
-  
+
   // First escape everything
   let escaped = escapeHtml(text);
-  
+
   // Then restore safe tags
   const safeTagPatterns = [
     { escaped: '&lt;b&gt;', original: '<b>' },
@@ -51,11 +51,11 @@ export function escapeHtmlKeepBasicFormatting(text: string | undefined | null): 
     { escaped: '&lt;br /&gt;', original: '<br />' },
     { escaped: '&lt;br/&gt;', original: '<br/>' },
   ];
-  
+
   safeTagPatterns.forEach(pattern => {
     escaped = escaped.replace(new RegExp(pattern.escaped, 'g'), pattern.original);
   });
-  
+
   return escaped;
 }
 
@@ -65,13 +65,13 @@ export function escapeHtmlKeepBasicFormatting(text: string | undefined | null): 
  */
 export function escapeHtmlAttribute(text: string | undefined | null): string {
   if (!text) return '';
-  
+
   // Escape HTML first
   let escaped = escapeHtml(text);
-  
+
   // Additional escaping for attributes
-  escaped = escaped.replace(/[\r\n]/g, '');  // Remove newlines
-  escaped = escaped.replace(/\s+/g, ' ');    // Normalize whitespace
-  
+  escaped = escaped.replace(/[\r\n]/g, ''); // Remove newlines
+  escaped = escaped.replace(/\s+/g, ' '); // Normalize whitespace
+
   return escaped;
 }

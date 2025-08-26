@@ -133,8 +133,11 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
     // Global interceptors
     {
       provide: APP_INTERCEPTOR,
-      useFactory: (requestCache: RequestCacheService, configService: ConfigService, logger?: ILogger) => 
-        new RequestCacheInterceptor(requestCache, configService, logger),
+      useFactory: (
+        requestCache: RequestCacheService,
+        configService: ConfigService,
+        logger?: ILogger,
+      ) => new RequestCacheInterceptor(requestCache, configService, logger),
       inject: [RequestCacheService, ConfigService, { token: LOGGER_SERVICE, optional: true }],
     },
     {
