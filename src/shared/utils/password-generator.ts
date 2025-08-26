@@ -4,7 +4,7 @@ export class PasswordGenerator {
   private static readonly LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
   private static readonly UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   private static readonly NUMBERS = '0123456789';
-  private static readonly SYMBOLS = '!@#$%^&*(),.?":{}|<>_';
+  private static readonly SYMBOLS = '!@#$%^&*()_+-=[]';
 
   /**
    * Generates a random password that meets the application's requirements
