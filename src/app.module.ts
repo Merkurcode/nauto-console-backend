@@ -60,7 +60,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
     // Global Config
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      envFilePath: '.env',
       load: [configuration],
     }),
 
