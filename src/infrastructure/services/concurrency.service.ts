@@ -2,7 +2,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import Redis, { Cluster } from 'ioredis';
 import { IConcurrencyService } from '@core/repositories/concurrency.service.interface';
-import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { LOGGER_SERVICE, REDIS_CLIENT } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 
 type RedisClient = Redis | Cluster;
@@ -31,7 +31,7 @@ export class ConcurrencyService implements IConcurrencyService {
   private readonly ACTIVE_SET_KEY = `${ConcurrencyService.HASH_TAG}:active_users`;
 
   constructor(
-    @Inject('REDIS') private readonly redis: RedisClient,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
     // Registrar scripts como comandos (usa EVALSHA bajo el capó)

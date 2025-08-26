@@ -66,6 +66,7 @@ export const BOT_TOKEN_PROVIDER = Symbol('IBotTokenProvider');
 export const DATABASE_HEALTH = Symbol('IDatabaseHealth');
 export const AUDIT_LOG_SERVICE = Symbol('AuditLogService');
 export const TRANSACTION_MANAGER = Symbol('TransactionManager');
+export const REDIS_CLIENT = Symbol('RedisClient');
 
 // Storage service tokens
 export const STORAGE_SERVICE = Symbol('StorageService');

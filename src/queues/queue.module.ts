@@ -13,6 +13,7 @@ import { QueueEventsController } from './controllers/queue-events.controller';
 import { getQueueConfig } from './config/queue.config';
 import { IEventHandler, IRedisConfig, IQueueDefinition } from './types';
 import { HandlerRegistry } from './registry/event-registry';
+import { setConfigService } from './validation/event-validation';
 
 @Injectable()
 class QueueRegistrationService implements OnApplicationBootstrap {
@@ -150,7 +151,7 @@ export class QueueModule {
       if ('streams' in queue && queue.streams) {
         baseQueue.streams = { events: queue.streams };
       } else {
-        // Add default streams configuration
+        // Add default streams configuration with fallback values
         baseQueue.streams = {
           events: {
             maxLen: parseInt(process.env.QUEUE_EVENTS_STREAM_MAXLEN || '20000', 10),
@@ -173,6 +174,17 @@ export class QueueModule {
       providers.push(HealthService);
       exportsArr.push(HealthService);
       controllers.push(QueueHealthController, QueueEventsController);
+
+      // Initialize event validation with ConfigService
+      providers.push({
+        provide: 'EVENT_VALIDATION_INITIALIZER',
+        useFactory: (configService: ConfigService) => {
+          setConfigService(configService);
+
+          return true;
+        },
+        inject: [ConfigService],
+      });
 
       // Register event bus adapters dynamically
       if (options.queues && options.queues.length > 0) {

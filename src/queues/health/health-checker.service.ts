@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
@@ -22,12 +23,12 @@ type MultiQueueHealthSummary = {
 export class HealthService implements OnModuleInit, OnModuleDestroy {
   private readonly logger: ILogger;
 
-  private readonly CHECK_INTERVAL_MS = parseInt(process.env.HEALTH_CHECK_INTERVAL_MS || '2000', 10);
-  private readonly MAX_BACKLOG = parseInt(process.env.BQ_MAX_BACKLOG || '5000', 10);
-  private readonly MAX_ACTIVE = parseInt(process.env.BQ_MAX_ACTIVE || '200', 10);
-  private readonly REDIS_MAX_FILL_PCT = parseFloat(process.env.REDIS_MAX_FILL_PCT || '0.85');
-  private readonly REDIS_MAX_USED_MB = parseInt(process.env.REDIS_MAX_USED_MB || '2048', 10);
-  private readonly STALE_MS = this.CHECK_INTERVAL_MS * 6;
+  private readonly CHECK_INTERVAL_MS: number;
+  private readonly MAX_BACKLOG: number;
+  private readonly MAX_ACTIVE: number;
+  private readonly REDIS_MAX_FILL_PCT: number;
+  private readonly REDIS_MAX_USED_MB: number;
+  private readonly STALE_MS: number;
 
   private timer?: NodeJS.Timeout;
   private running = false;
@@ -37,8 +38,28 @@ export class HealthService implements OnModuleInit, OnModuleDestroy {
   private queueStatuses: Map<string, QueueHealthSummary> = new Map();
   private pingFailures: Map<string, number> = new Map();
 
-  constructor(@Inject(LOGGER_SERVICE) logger: ILogger) {
+  constructor(
+    @Inject(LOGGER_SERVICE) logger: ILogger,
+    private readonly configService: ConfigService,
+  ) {
     this.logger = logger.setContext(HealthService.name);
+
+    // Initialize configuration values
+    this.CHECK_INTERVAL_MS = this.configService.get<number>(
+      'queue.performance.healthCheckIntervalMs',
+      2000,
+    );
+    this.MAX_BACKLOG = this.configService.get<number>('queue.performance.maxBacklog', 5000);
+    this.MAX_ACTIVE = this.configService.get<number>('queue.performance.maxActive', 200);
+    this.REDIS_MAX_FILL_PCT = this.configService.get<number>(
+      'queue.performance.redisMaxFillPct',
+      0.85,
+    );
+    this.REDIS_MAX_USED_MB = this.configService.get<number>(
+      'queue.performance.redisMaxUsedMb',
+      2048,
+    );
+    this.STALE_MS = this.CHECK_INTERVAL_MS * 6;
   }
 
   async onModuleInit() {

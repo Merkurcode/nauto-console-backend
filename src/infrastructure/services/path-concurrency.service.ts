@@ -2,6 +2,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import Redis, { Cluster } from 'ioredis';
 import { randomUUID } from 'crypto';
+import { REDIS_CLIENT } from '@shared/constants/tokens';
 
 // 👇 importa SOLO tipos para evitar ciclos en runtime (ajusta la ruta)
 import type {
@@ -60,7 +61,7 @@ type RedisWithCmds = RedisClient & {
 
 @Injectable()
 export class PathConcurrencyService implements IPathConcurrencyService {
-  constructor(@Inject('REDIS') private readonly redis: RedisClient) {
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: RedisClient) {
     // Registrar scripts con defineCommand (usa EVALSHA bajo el capó)
     this.redis.defineCommand('pathLockAcquire', {
       numberOfKeys: 2, // KEYS[1]=selfLock, KEYS[2]=selfDesc

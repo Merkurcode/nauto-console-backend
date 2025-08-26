@@ -30,20 +30,16 @@ import {
 
 // 2. Application imports
 import { InitiateCommonUploadCommand } from '@application/commands/storage/initiate-common-upload.command';
-import { CompleteMultipartUploadCommand } from '@application/commands/storage/complete-multipart-upload.command';
-import { AbortMultipartUploadCommand } from '@application/commands/storage/abort-multipart-upload.command';
-import { GeneratePartUrlCommand } from '@application/commands/storage/generate-part-url.command';
 import { CreateCommonFolderCommand } from '@application/commands/storage/create-common-folder.command';
 import { DeleteCommonFolderCommand } from '@application/commands/storage/delete-common-folder.command';
 import { DeleteCommonFileCommand } from '@application/commands/storage/delete-common-file.command';
 import { MoveCommonFileCommand } from '@application/commands/storage/move-common-file.command';
 import { RenameFileCommand } from '@application/commands/storage/rename-file.command';
-import { HeartbeatUploadCommand } from '@application/commands/storage/heartbeat-upload.command';
 import { GetFileByIdQuery } from '@application/queries/storage/get-file-by-id.query';
 import { GetCommonDirectoryContentsQuery } from '@application/queries/storage/get-common-directory-contents.query';
 import { GetUploadStatusQuery } from '@application/queries/storage/get-upload-status.query';
 import { GetFileSignedUrlQuery } from '@application/queries/storage/get-file-signed-url.query';
-import { InitiateMultipartUploadDto, CompleteMultipartUploadDto } from '@application/dtos/storage';
+import { InitiateMultipartUploadDto } from '@application/dtos/storage';
 import { CreateCommonFolderDto } from '@application/dtos/storage/create-common-folder.dto';
 import { MoveFileDto } from '@application/dtos/storage/move-file.dto';
 import { RenameFileDto } from '@application/dtos/storage/rename-file.dto';
@@ -51,17 +47,14 @@ import {
   IInitiateMultipartUploadResponse,
   IFileResponse,
   ICreateFolderResponse,
-  IGeneratePartUrlResponse,
   IDirectoryContentsResponse,
 } from '@application/dtos/_responses/storage';
 import {
   InitiateUploadDtoSwagger,
-  CompleteUploadDtoSwagger,
   CreateFolderDtoSwagger,
 } from '@application/dtos/storage/storage-input.swagger.dto';
 import {
   InitiateMultipartUploadResponseDto,
-  GeneratePartUrlResponseDto,
   CreateFolderResponseDto,
   FileResponseDto,
   GetUploadStatusResponseDto,

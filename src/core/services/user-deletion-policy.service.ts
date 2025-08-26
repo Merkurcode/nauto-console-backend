@@ -14,7 +14,7 @@ export class UserDeletionPolicyService {
    * Business Rule: User deletion via API is only allowed in development environment
    */
   canDeleteUser(): boolean {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'production');
+    const nodeEnv = this.configService.get<string>('env', 'production');
 
     return nodeEnv === 'development';
   }
@@ -36,7 +36,7 @@ export class UserDeletionPolicyService {
    * Gets the current environment for audit/logging purposes
    */
   getCurrentEnvironment(): string {
-    return this.configService.get<string>('NODE_ENV', 'production');
+    return this.configService.get<string>('env', 'production');
   }
 
   /**

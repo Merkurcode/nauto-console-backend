@@ -2,6 +2,13 @@ export class BaseEvent {
   constructor(public readonly aggregateId: string) {}
 }
 
+import { ConfigService } from '@nestjs/config';
+
+let configService: ConfigService;
+export function setConfigService(config: ConfigService) {
+  configService = config;
+}
+
 export function validateEvent(event: Record<string, unknown>): void {
   if (!event || typeof event !== 'object') {
     throw new Error('Event must be an object');
@@ -12,7 +19,7 @@ export function validateEvent(event: Record<string, unknown>): void {
   }
 
   const eventString = JSON.stringify(event);
-  const maxBytes = parseInt(process.env.EVENT_MAX_BYTES || '262144', 10); // 256KB default
+  const maxBytes = configService?.get<number>('queue.performance.eventMaxBytes', 262144) ?? 262144; // 256KB default
 
   if (Buffer.byteLength(eventString, 'utf8') > maxBytes) {
     throw new Error(`Event size exceeds maximum allowed size of ${maxBytes} bytes`);

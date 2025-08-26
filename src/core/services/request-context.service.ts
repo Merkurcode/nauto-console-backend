@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * Domain service responsible for extracting context information from HTTP requests
@@ -6,6 +7,7 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class RequestContextService {
+  constructor(private readonly configService: ConfigService) {}
   /**
    * Extracts the client's IP address from various request sources
    * Business Rule: Prioritize direct IP over proxied addresses
@@ -66,7 +68,7 @@ export class RequestContextService {
   isValidIpAddress(ipAddress: string): boolean {
     // Business rule: Don't allow operations from unknown or localhost in production
     if (ipAddress === 'unknown' || ipAddress === '127.0.0.1' || ipAddress === '::1') {
-      return process.env.NODE_ENV === 'development';
+      return this.configService.get<string>('env') === 'development';
     }
 
     return true;

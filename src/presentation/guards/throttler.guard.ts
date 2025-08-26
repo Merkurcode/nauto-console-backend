@@ -19,7 +19,8 @@ export class ThrottlerGuard implements CanActivate {
 
     // Skip throttling in test/development environments if configured
     const testingMode = this.configService.get<boolean>('throttler.disableForTesting', false);
-    if (testingMode && process.env.NODE_ENV !== 'production') {
+    const currentEnv = this.configService.get<string>('env', 'development');
+    if (testingMode && currentEnv !== 'production') {
       return true;
     }
 

@@ -799,7 +799,7 @@ return await this.userRepository.findByEmail(emailVO.getValue());
   }
 
   async hashPassword(password: string): Promise<string> {
-    const saltRounds = this.configService.get<number>('security.password.saltRounds', 12);
+    const saltRounds = this.configService.get<number>('business.password.saltRounds', 12);
     const salt = await bcrypt.genSalt(saltRounds);
 
     return bcrypt.hash(password, salt);

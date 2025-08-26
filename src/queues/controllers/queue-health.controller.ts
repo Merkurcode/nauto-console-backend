@@ -90,7 +90,7 @@ export class QueueHealthController {
       queue: queueName || 'all',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      version: process.env.npm_package_version || 'unknown',
+      version: this.configService.get<string>('apiVersion', 'v1'),
     };
   }
 
@@ -341,7 +341,7 @@ export class QueueHealthController {
         },
         limits: summary.limits,
         environment: {
-          nodeEnv: process.env.NODE_ENV,
+          nodeEnv: this.configService.get<string>('env', 'development'),
           healthCheckInterval: perf.HEALTH_CHECK_INTERVAL,
           maxBacklog: perf.MAX_BACKLOG,
           maxActive: perf.MAX_ACTIVE,
@@ -377,7 +377,7 @@ export class QueueHealthController {
         },
         queues: queueDetails,
         environment: {
-          nodeEnv: process.env.NODE_ENV,
+          nodeEnv: this.configService.get<string>('env', 'development'),
           healthCheckInterval: perf.HEALTH_CHECK_INTERVAL,
           maxBacklog: perf.MAX_BACKLOG,
           maxActive: perf.MAX_ACTIVE,

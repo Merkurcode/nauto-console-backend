@@ -5,12 +5,12 @@ import { Inject } from '@nestjs/common';
 import Redis, { Cluster } from 'ioredis';
 import { IConcurrencyService } from '@core/repositories/concurrency.service.interface';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { LOGGER_SERVICE, CONCURRENCY_SERVICE } from '@shared/constants/tokens';
+import { LOGGER_SERVICE, CONCURRENCY_SERVICE, REDIS_CLIENT } from '@shared/constants/tokens';
 
 @Processor('uploads-maint', { concurrency: 1 })
 export class UploadsMaintenanceWorker extends WorkerHost {
   constructor(
-    @Inject('REDIS') private readonly redis: Redis | Cluster,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis | Cluster,
     @Inject(CONCURRENCY_SERVICE) private readonly conc: IConcurrencyService,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
   ) {
