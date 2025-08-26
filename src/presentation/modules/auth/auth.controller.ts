@@ -74,6 +74,7 @@ import { UseHealthGuard } from 'src/queues/guards/health.guard';
 @ApiTags('auth')
 @Throttle(60, 5) // 5 requests per minute
 @Controller('auth')
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard, RootAssignmentGuard)
 export class AuthController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -97,7 +98,6 @@ export class AuthController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard, RootAssignmentGuard)
   @RequirePermissions('auth:write')
   @WriteOperation('auth')
   @PreventRootAssignment()
@@ -297,7 +297,6 @@ export class AuthController {
     });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
@@ -317,7 +316,6 @@ export class AuthController {
     };
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Post('email/send-verification')
   @NoBots()
   @HttpCode(HttpStatus.OK)
@@ -378,7 +376,6 @@ export class AuthController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get('email/status/:email')
   @NoBots()
   @HttpCode(HttpStatus.OK)
