@@ -5,7 +5,14 @@
       "Bash(npm run lint)",
       "Bash(find:*)",
       "Bash(npm run build:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(rmdir:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(npm run start:dev:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }
