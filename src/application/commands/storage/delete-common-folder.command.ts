@@ -1,9 +1,10 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { IStorageService } from '@core/repositories/storage.service.interface';
-import { FILE_REPOSITORY, STORAGE_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { FILE_REPOSITORY, STORAGE_SERVICE, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { StorageAreaType } from '@shared/types/storage-areas.types';
 import {
   EntityNotFoundException,
@@ -24,13 +25,18 @@ export class DeleteCommonFolderCommand implements ICommand {
 export class DeleteCommonFolderHandler
   implements ICommandHandler<DeleteCommonFolderCommand, { deletedCount: number }>
 {
+  private readonly logger: ILogger;
+
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly configService: ConfigService,
-  ) {}
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+  ) {
+    this.logger = logger?.setContext(DeleteCommonFolderHandler.name);
+  }
 
   async execute(command: DeleteCommonFolderCommand): Promise<{ deletedCount: number }> {
     const { area, path, userId, companyId } = command;
@@ -99,7 +105,11 @@ export class DeleteCommonFolderHandler
 
       return totalDeleted;
     } catch (error) {
-      console.warn(`Failed to process folder ${currentPath}:`, error);
+      this.logger.warn({
+        message: 'Failed to process folder during deletion',
+        currentPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return totalDeleted;
     }
@@ -149,7 +159,11 @@ export class DeleteCommonFolderHandler
 
       return Array.from(subfolders);
     } catch (error) {
-      console.warn(`Failed to get subfolders for ${parentPath}:`, error);
+      this.logger.warn({
+        message: 'Failed to get subfolders during deletion',
+        parentPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return [];
     }
@@ -181,13 +195,21 @@ export class DeleteCommonFolderHandler
           await this.fileRepository.delete(file.id);
           deletedCount++;
         } catch (fileError) {
-          console.warn(`Failed to delete file ${file.id}:`, fileError);
+          this.logger.warn({
+            message: 'Failed to delete file during folder deletion',
+            fileId: file.id.toString(),
+            error: fileError instanceof Error ? fileError.message : String(fileError),
+          });
         }
       }
 
       return deletedCount;
     } catch (error) {
-      console.warn(`Failed to delete DB files in ${storagePath}:`, error);
+      this.logger.warn({
+        message: 'Failed to delete database files during folder deletion',
+        storagePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return 0;
     }
@@ -224,7 +246,11 @@ export class DeleteCommonFolderHandler
 
       return orphanedFiles.length;
     } catch (error) {
-      console.warn(`Failed to delete physical files in ${storagePath}:`, error);
+      this.logger.warn({
+        message: 'Failed to delete physical files during folder deletion',
+        storagePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return 0;
     }
@@ -257,7 +283,11 @@ export class DeleteCommonFolderHandler
         // Folder might not exist as a marker, that's OK
       }
     } catch (error) {
-      console.warn(`Failed to check/delete empty folder ${storagePath}:`, error);
+      this.logger.warn({
+        message: 'Failed to check or delete empty folder',
+        storagePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -301,7 +331,11 @@ export class DeleteCommonFolderHandler
       return filesInProgress.length > 0;
     } catch (error) {
       // If we can't check, be conservative and prevent deletion
-      console.warn(`Failed to check for uploading files in ${storagePath}:`, error);
+      this.logger.warn({
+        message: 'Failed to check for uploading files, preventing deletion as safety measure',
+        storagePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return true;
     }

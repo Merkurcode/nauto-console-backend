@@ -261,6 +261,6 @@ export class HealthService {
   }
 
   private getApplicationVersion(): string {
-    return this.configService.get<string>('apiVersion', 'v1');
+    return this.configService.get<string>('appVersion', '?.?.?');
   }
 }

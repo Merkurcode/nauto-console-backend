@@ -1,11 +1,12 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { IStorageService } from '@core/repositories/storage.service.interface';
 import { File } from '@core/entities/file.entity';
 import { FileAccessControlService } from '@core/services/file-access-control.service';
-import { FILE_REPOSITORY, STORAGE_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { FILE_REPOSITORY, STORAGE_SERVICE, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { InvalidParameterException } from '@core/exceptions/domain-exceptions';
 import {
   IDirectoryContentsResponse,
@@ -28,6 +29,8 @@ export class GetDirectoryContentsQuery implements IQuery {
 export class GetDirectoryContentsHandler
   implements IQueryHandler<GetDirectoryContentsQuery, IDirectoryContentsResponse>
 {
+  private readonly logger: ILogger;
+  
   constructor(
     @Inject(FILE_REPOSITORY)
     private readonly fileRepository: IFileRepository,
@@ -37,7 +40,10 @@ export class GetDirectoryContentsHandler
 
     private readonly fileAccessControlService: FileAccessControlService,
     private readonly configService: ConfigService,
-  ) {}
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+  ) {
+    this.logger = logger?.setContext(GetDirectoryContentsHandler.name);
+  }
 
   async execute(query: GetDirectoryContentsQuery): Promise<IDirectoryContentsResponse> {
     const { userId, companyId, path, includePhysical } = query;
@@ -209,7 +215,12 @@ export class GetDirectoryContentsHandler
       return Array.from(folderSet);
     } catch (error) {
       // If storage listing fails, return empty array
-      console.warn('Failed to list physical folders from storage:', error);
+      this.logger.warn({
+        message: 'Failed to list physical folders from storage during user directory contents query',
+        bucket,
+        basePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return [];
     }
@@ -246,7 +257,11 @@ export class GetDirectoryContentsHandler
 
       return Array.from(folderSet);
     } catch (error) {
-      console.warn('Failed to get virtual folders from database:', error);
+      this.logger.warn({
+        message: 'Failed to get virtual folders from database during user directory contents query',
+        basePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return [];
     }
@@ -260,7 +275,12 @@ export class GetDirectoryContentsHandler
       // Filter to only files belonging to this user and in the exact path
       return allFiles.filter(file => file.userId === userId && file.path === storagePath);
     } catch (error) {
-      console.warn('Failed to get files from database:', error);
+      this.logger.warn({
+        message: 'Failed to get files from database during user directory contents query',
+        userId,
+        storagePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return [];
     }
@@ -336,7 +356,14 @@ export class GetDirectoryContentsHandler
             item.signedUrlExpiresAt = expiresAt;
           } catch (error) {
             // If signed URL generation fails, file is returned without signed URL
-            console.warn(`Failed to generate signed URL for file ${file.id}:`, error);
+            this.logger.warn({
+              message: 'Failed to generate signed URL for file in user directory',
+              fileId: file.id.toString(),
+              userId,
+              bucket: file.bucket,
+              objectKey: file.objectKey.toString(),
+              error: error instanceof Error ? error.message : String(error),
+            });
           }
         }
 
@@ -410,13 +437,24 @@ export class GetDirectoryContentsHandler
             status: 'PHYSICAL_ONLY', // Special status for files not in database
           });
         } catch (error) {
-          console.warn(`Failed to get metadata for physical file ${objectKey}:`, error);
+          this.logger.warn({
+            message: 'Failed to get metadata for physical file in user directory',
+            bucket,
+            objectKey,
+            fullStoragePath,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
 
       return physicalFileItems;
     } catch (error) {
-      console.warn('Failed to get physical files from storage:', error);
+      this.logger.warn({
+        message: 'Failed to get physical files from storage during user directory contents query',
+        bucket,
+        fullStoragePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return [];
     }

@@ -90,7 +90,7 @@ export class QueueHealthController {
       queue: queueName || 'all',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      version: this.configService.get<string>('apiVersion', 'v1'),
+      version: this.configService.get<string>('appVersion', '?.?.?'),
     };
   }
 

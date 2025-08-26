@@ -50,7 +50,7 @@ export class UserActivityLogService {
       ipAddress,
       userAgent,
       metadata,
-      version: this.configService.get<string>('apiVersion', 'v1'),
+      version: this.configService.get<string>('appVersion', '?.?.?'),
     });
 
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
@@ -394,7 +394,7 @@ export class UserActivityLogService {
           ipAddress: options?.ipAddress,
           userAgent: options?.userAgent,
           metadata: options?.metadata,
-          version: this.configService.get<string>('apiVersion', 'v1'),
+          version: this.configService.get<string>('appVersion', '?.?.?'),
         });
 
         // Save and publish events asynchronously

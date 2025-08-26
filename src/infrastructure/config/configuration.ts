@@ -5,6 +5,7 @@ export default () => ({
   appName: process.env.APP_NAME || 'NestJS Template',
   apiUrl: process.env.API_URL || 'http://localhost:3001',
   apiVersion: process.env.API_VERSION || 'v1',
+  appVersion: process.env.APP_VERSION || '?.?.?',
 
   // Database
   database: {
