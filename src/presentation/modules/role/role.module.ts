@@ -77,47 +77,7 @@ const commandHandlers = [
       provide: REPOSITORY_TOKENS.USER_REPOSITORY,
       useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
         new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService, BusinessConfigurationService],
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
-    },
-    {
-      provide: USER_REPOSITORY,
-      useClass: UserRepository,
+      inject: [PrismaService, TransactionContextService],
     },
     {
       provide: USER_REPOSITORY,

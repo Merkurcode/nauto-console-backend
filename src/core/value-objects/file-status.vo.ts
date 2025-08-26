@@ -35,16 +35,8 @@ export class FileStatus extends ValueObject<FileStatusEnum> {
     return new FileStatus(FileStatusEnum.UPLOADED);
   }
 
-  static failed(): FileStatus {
-    return new FileStatus(FileStatusEnum.FAILED);
-  }
-
-  static canceled(): FileStatus {
-    return new FileStatus(FileStatusEnum.CANCELED);
-  }
-
-  static deleted(): FileStatus {
-    return new FileStatus(FileStatusEnum.DELETED);
+  static copying(): FileStatus {
+    return new FileStatus(FileStatusEnum.COPYING);
   }
 
   isPending(): boolean {
@@ -59,26 +51,13 @@ export class FileStatus extends ValueObject<FileStatusEnum> {
     return this.getValue() === FileStatusEnum.UPLOADED;
   }
 
-  isFailed(): boolean {
-    return this.getValue() === FileStatusEnum.FAILED;
-  }
-
-  isCanceled(): boolean {
-    return this.getValue() === FileStatusEnum.CANCELED;
-  }
-
-  isDeleted(): boolean {
-    return this.getValue() === FileStatusEnum.DELETED;
+  isCopying(): boolean {
+    return this.getValue() === FileStatusEnum.COPYING;
   }
 
   isActive(): boolean {
-    const value = this.getValue();
-
-    return (
-      value === FileStatusEnum.PENDING ||
-      value === FileStatusEnum.UPLOADING ||
-      value === FileStatusEnum.UPLOADED
-    );
+    // All statuses are now active since we delete failed records
+    return true;
   }
 
   toString(): string {

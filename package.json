@@ -54,6 +54,13 @@
     "db:studio": "npx prisma studio",
     "db:studio:test": "cross-env NODE_ENV=test npx prisma studio",
     "db:studio:prod": "cross-env NODE_ENV=production npx prisma studio",
+    "docker:start": "docker-compose up -d",
+    "docker:start:admin": "docker-compose --profile admin up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:status": "docker-compose ps",
+    "docker:clean": "docker-compose down -v && docker system prune -f",
+    "docker:dev": "./scripts/docker-dev.sh",
     "prepare": "node -e \"try { require('husky').install() } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\"",
     "postinstall": "npm run db:generate",
     "wclaude": "npx win-claude-code@latest"
@@ -62,6 +69,7 @@
     "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/lib-storage": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
+    "@nestjs/bullmq": "^11.0.3",
     "@nestjs/common": "^11.0.15",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.12",
@@ -96,6 +104,8 @@
     "speakeasy": "^2.0.0",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
+    "bullmq": "^5.0.0",
+    "redis": "^5.8.1"
     "@nestjs/cli": "^11.0.5",
     "@types/jest": "^29.5.14",
     "cross-env": "^10.0.0"

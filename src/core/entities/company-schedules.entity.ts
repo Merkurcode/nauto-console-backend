@@ -12,6 +12,16 @@ export interface ICompanySchedulesProps {
 }
 
 export class CompanySchedules {
+  private static readonly DAYS = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
+
   private constructor(
     private readonly _id: CompanyScheduleId,
     private readonly _props: ICompanySchedulesProps,
@@ -58,9 +68,7 @@ export class CompanySchedules {
   }
 
   public get dayOfWeekName(): string {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-    return days[this._props.dayOfWeek];
+    return CompanySchedules.DAYS[this._props.dayOfWeek];
   }
 
   public get startTime(): Date {

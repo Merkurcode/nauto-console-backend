@@ -121,6 +121,162 @@ export class UserStorageConfigRepository
     });
   }
 
+  async findByUserIdWithTier(userId: UserId): Promise<UserStorageConfig | null> {
+    return this.executeWithErrorHandling('findByUserIdWithTier', async () => {
+      try {
+        const userStorageConfig = await this.client.userStorageConfig.findUnique({
+          where: { userId: userId.getValue() },
+          include: {
+            storageTier: true,
+          },
+        });
+
+        return userStorageConfig ? UserStorageConfigMapper.toDomain(userStorageConfig) : null;
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async findAll(): Promise<UserStorageConfig[]> {
+    return this.executeWithErrorHandling('findAll', async () => {
+      try {
+        const userStorageConfigs = await this.client.userStorageConfig.findMany({
+          include: { storageTier: true },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        return userStorageConfigs.map(config => UserStorageConfigMapper.toDomain(config));
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async findByCompanyId(companyId: string): Promise<UserStorageConfig[]> {
+    return this.executeWithErrorHandling('findByCompanyId', async () => {
+      try {
+        const userStorageConfigs = await this.client.userStorageConfig.findMany({
+          where: {
+            user: {
+              companyId: companyId,
+            },
+          },
+          include: { storageTier: true },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        return userStorageConfigs.map(config => UserStorageConfigMapper.toDomain(config));
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async getUserTierInfo(userId: UserId): Promise<{
+    maxStorageBytes: bigint;
+    maxSimultaneousFiles: number;
+    allowedFileConfig: Record<string, string[]>;
+    tierName: string;
+    tierLevel: string;
+  } | null> {
+    return this.executeWithErrorHandling('getUserTierInfo', async () => {
+      try {
+        const userConfig = await this.client.userStorageConfig.findUnique({
+          where: { userId: userId.getValue() },
+          include: {
+            storageTier: true,
+          },
+        });
+
+        if (!userConfig || !userConfig.storageTier) {
+          return null;
+        }
+
+        return {
+          maxStorageBytes: BigInt(userConfig.storageTier.maxStorageBytes),
+          maxSimultaneousFiles: userConfig.storageTier.maxSimultaneousFiles,
+          allowedFileConfig: userConfig.allowedFileConfig as Record<string, string[]>,
+          tierName: userConfig.storageTier.name,
+          tierLevel: userConfig.storageTier.level,
+        };
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async findByStorageTierId(storageTierId: string): Promise<UserStorageConfig[]> {
+    return this.executeWithErrorHandling('findByStorageTierId', async () => {
+      try {
+        const userStorageConfigs = await this.client.userStorageConfig.findMany({
+          where: { storageTierId },
+          include: { storageTier: true },
+        });
+
+        return userStorageConfigs.map(config => UserStorageConfigMapper.toDomain(config));
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async updateStorageTierForUsers(userIds: UserId[], newStorageTierId: string): Promise<number> {
+    return this.executeWithErrorHandling('updateStorageTierForUsers', async () => {
+      try {
+        const userIdStrings = userIds.map(userId => userId.getValue());
+        const result = await this.client.userStorageConfig.updateMany({
+          where: {
+            userId: {
+              in: userIdStrings,
+            },
+          },
+          data: {
+            storageTierId: newStorageTierId,
+            updatedAt: new Date(),
+          },
+        });
+
+        return result.count;
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async getUsersWithoutStorageConfig(): Promise<string[]> {
+    return this.executeWithErrorHandling('getUsersWithoutStorageConfig', async () => {
+      try {
+        const users = await this.client.user.findMany({
+          where: {
+            storageConfig: null,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        return users.map(user => user.id);
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
+  async countUsersByTier(storageTierId: string): Promise<number> {
+    return this.executeWithErrorHandling('countUsersByTier', async () => {
+      try {
+        const count = await this.client.userStorageConfig.count({
+          where: { storageTierId },
+        });
+
+        return count;
+      } catch (error) {
+        throw error;
+      }
+    });
+  }
+
   private toPersistence(userStorageConfig: UserStorageConfig) {
     return {
       id: userStorageConfig.id,

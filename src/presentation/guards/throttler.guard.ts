@@ -17,6 +17,13 @@ export class ThrottlerGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
+    // Skip throttling in test/development environments if configured
+    const testingMode = this.configService.get<boolean>('throttler.disableForTesting', false);
+    const currentEnv = this.configService.get<string>('env', 'development');
+    if (testingMode && currentEnv !== 'production') {
+      return true;
+    }
+
     // Check if this is a BOT request (set by BotOptimizationGuard)
     if (request.skipThrottling || request.isBotRequest) {
       return true;

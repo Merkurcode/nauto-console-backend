@@ -37,9 +37,7 @@ enum FileStatus {
   PENDING
   UPLOADING
   UPLOADED
-  FAILED
-  CANCELED
-  DELETED
+  COPYING
 }
 
 enum UserActivityType {
@@ -428,13 +426,18 @@ model File {
   id          String    @id @default(uuid())
   filename    String
   originalName String
-  path        String
+  path        String    // Virtual folder path (e.g., "invoices/2025/aug")
+  objectKey   String    // Full S3/MinIO object key (path + filename)
   mimeType    String
-  size        Int
+  size        Int       // Final size in bytes
   bucket      String
   userId      String?
   isPublic    Boolean   @default(false)
   status      FileStatus @default(PENDING)
+  uploadId    String?   // S3 multipart uploadId (only during UPLOADING)
+  etag        String?   // ETag of completed object
+  targetApps  String[]  @default([]) // Target applications with specific size restrictions
+  storageDriver String  @default("minio") // Storage driver used (minio, aws)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -442,6 +445,14 @@ model File {
 
   @@index([userId])
   @@index([status])
+  @@index([userId, status])
+  @@index([userId, bucket])
+  @@index([path, bucket])
+  @@index([path, bucket, storageDriver])
+  @@index([storageDriver])
+  @@index([userId, storageDriver])
+  @@index([storageDriver, status])
+  @@unique([bucket, objectKey, storageDriver])
 }
 
 model StorageTiers {

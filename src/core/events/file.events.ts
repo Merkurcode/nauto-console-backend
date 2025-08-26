@@ -16,6 +16,21 @@ export class FilePendingEvent extends DomainEvent {
   }
 }
 
+export class FileUploadInitiatedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly userId: string | null,
+    public readonly filename: string,
+    public readonly uploadId: string,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.upload.initiated';
+  }
+}
+
 export class FileUploadStartedEvent extends DomainEvent {
   constructor(
     public readonly fileId: string,
@@ -31,12 +46,14 @@ export class FileUploadStartedEvent extends DomainEvent {
   }
 }
 
+/** Añadimos etag opcional (no rompe suscriptores actuales si lo ignoran) */
 export class FileUploadCompletedEvent extends DomainEvent {
   constructor(
     public readonly fileId: string,
     public readonly userId: string | null,
     public readonly filename: string,
     public readonly size: number,
+    public readonly etag?: string,
   ) {
     super();
   }
@@ -102,5 +119,93 @@ export class FileStatusChangedEvent extends DomainEvent {
 
   getEventName(): string {
     return 'file.status.changed';
+  }
+}
+
+/* ---------- NUEVOS EVENTOS PARA OPERACIONES DE METADATOS ---------- */
+
+/** Se emite cuando cambia path y/o filename (movimiento o rename). */
+export class FileMovedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly userId: string | null,
+    public readonly oldPath: string,
+    public readonly oldFilename: string,
+    public readonly newPath: string,
+    public readonly newFilename: string,
+    public readonly oldObjectKey: string,
+    public readonly newObjectKey: string,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.moved';
+  }
+}
+
+/** Sugar específico de rename (por si quieres suscriptores dedicados). */
+export class FileRenamedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly userId: string | null,
+    public readonly path: string,
+    public readonly oldFilename: string,
+    public readonly newFilename: string,
+    public readonly oldObjectKey: string,
+    public readonly newObjectKey: string,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.renamed';
+  }
+}
+
+/** Se emite al cambiar `isPublic`. */
+export class FileVisibilityChangedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly userId: string | null,
+    public readonly isPublic: boolean,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.visibility.changed';
+  }
+}
+
+export class FileCopyInitiatedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly sourceFileId: string,
+    public readonly userId: string | null,
+    public readonly filename: string,
+    public readonly sizeInBytes: number,
+    public readonly destinationPath: string,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.copy.initiated';
+  }
+}
+
+export class FileTargetAppsChangedEvent extends DomainEvent {
+  constructor(
+    public readonly fileId: string,
+    public readonly userId: string | null,
+    public readonly oldTargetApps: string[],
+    public readonly newTargetApps: string[],
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'file.targetApps.changed';
   }
 }

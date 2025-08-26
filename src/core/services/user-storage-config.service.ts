@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { IUserStorageConfigRepository } from '@core/repositories/user-storage-config.repository.interface';
 import { USER_STORAGE_CONFIG_REPOSITORY } from '@shared/constants/tokens';
-import { UserStorageConfig } from '@core/entities/user-storage-config.entity';
+import { UserStorageConfig, IAllowedFileConfig } from '@core/entities/user-storage-config.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
 import {
   EntityNotFoundException,
@@ -33,7 +33,7 @@ export class UserStorageConfigService {
   async createUserStorageConfig(
     userId: string,
     storageTierId: string,
-    allowedFileConfig?: Record<string, string[]>,
+    allowedFileConfig?: IAllowedFileConfig,
   ): Promise<UserStorageConfig> {
     const userIdVO = UserId.fromString(userId);
 
@@ -43,7 +43,21 @@ export class UserStorageConfigService {
       throw new EntityAlreadyExistsException('UserStorageConfig', 'userId');
     }
 
-    const userStorageConfig = UserStorageConfig.create(userIdVO, storageTierId, allowedFileConfig);
+    // If no allowedFileConfig provided, get it from the tier
+    const finalAllowedFileConfig = allowedFileConfig;
+    if (!finalAllowedFileConfig) {
+      // TODO: Get default config from the tier itself
+      // For now, we'll require it to be passed explicitly
+      throw new Error(
+        'allowedFileConfig must be provided - it should come from the tier configuration',
+      );
+    }
+
+    const userStorageConfig = UserStorageConfig.create(
+      userIdVO,
+      storageTierId,
+      finalAllowedFileConfig,
+    );
 
     return await this.userStorageConfigRepository.save(userStorageConfig);
   }
@@ -52,7 +66,7 @@ export class UserStorageConfigService {
     userId: string,
     updates: {
       storageTierId?: string;
-      allowedFileConfig?: Record<string, string[]>;
+      allowedFileConfig?: IAllowedFileConfig;
     },
   ): Promise<UserStorageConfig> {
     const config = await this.getUserStorageConfigByUserIdOrThrow(userId);
@@ -74,22 +88,15 @@ export class UserStorageConfigService {
   }
 
   async getAllUserStorageConfigs(): Promise<UserStorageConfig[]> {
-    // This method would need to be implemented in the repository
-    // For now, throwing an error to indicate it needs implementation
-    throw new Error('Method not implemented - repository needs findAll method');
+    return await this.userStorageConfigRepository.findAll();
   }
 
-  async getUserStorageConfigsByCompany(_companyId: string): Promise<UserStorageConfig[]> {
-    // This method would need to be implemented in the repository
-    // For now, throwing an error to indicate it needs implementation
-    throw new Error('Method not implemented - repository needs findByCompanyId method');
+  async getUserStorageConfig(userId: string): Promise<UserStorageConfig | null> {
+    return await this.userStorageConfigRepository.findByUserId(UserId.fromString(userId));
   }
 
-  // Helper methods for FileUploadLimitGuard
-  async getUserActiveFileCount(_userId: string): Promise<number> {
-    // This would be implemented in the service that knows about files
-    // For now, we'll keep this logic in the guard
-    throw new Error('Method not implemented - use StorageService for file operations');
+  async getUserStorageConfigsByCompany(companyId: string): Promise<UserStorageConfig[]> {
+    return await this.userStorageConfigRepository.findByCompanyId(companyId);
   }
 
   async validateUserCanUpload(userId: string, fileCount: number = 1): Promise<boolean> {

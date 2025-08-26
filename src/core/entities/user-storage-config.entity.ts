@@ -6,8 +6,13 @@ import {
   UserStorageConfigUpdatedEvent,
 } from '@core/events/user-storage-config.events';
 
+// New format with app-specific limits
 export interface IAllowedFileConfig {
-  [extension: string]: string[]; // extension -> array of mime types
+  [extension: string]: {
+    mimes: string[];
+    whatsAppMaxBytes?: number;
+    // Future apps can be added here
+  };
 }
 
 export interface IUserStorageConfigCreateOptions {
@@ -136,13 +141,13 @@ export class UserStorageConfig extends AggregateRoot {
 
   isMimeTypeAllowed(mimeType: string, fileExtension: string): boolean {
     const extension = fileExtension.toLowerCase().replace('.', '');
-    const allowedMimeTypes = this._allowedFileConfig[extension];
+    const extensionConfig = this._allowedFileConfig[extension];
 
-    if (!allowedMimeTypes) {
+    if (!extensionConfig || !extensionConfig.mimes) {
       return false;
     }
 
-    return allowedMimeTypes.includes(mimeType.toLowerCase());
+    return extensionConfig.mimes.includes(mimeType.toLowerCase());
   }
 
   canUploadFiles(fileCount: number): boolean {
@@ -174,20 +179,33 @@ export class UserStorageConfig extends AggregateRoot {
   }
 
   getAllowedMimeTypes(): string[] {
-    return Object.values(this._allowedFileConfig).flat();
+    const allMimeTypes: string[] = [];
+
+    Object.values(this._allowedFileConfig).forEach(config => {
+      if (config.mimes && Array.isArray(config.mimes)) {
+        allMimeTypes.push(...config.mimes);
+      }
+    });
+
+    return [...new Set(allMimeTypes)]; // Remove duplicates
   }
 
   getMimeTypesForExtension(extension: string): string[] {
     const ext = extension.toLowerCase().replace('.', '');
+    const extensionConfig = this._allowedFileConfig[ext];
 
-    return this._allowedFileConfig[ext] || [];
+    if (!extensionConfig || !extensionConfig.mimes) {
+      return [];
+    }
+
+    return extensionConfig.mimes;
   }
 
   // Factory method
   static create(
     userId: UserId,
     storageTierId: string,
-    allowedFileConfig: IAllowedFileConfig = UserStorageConfig.getDefaultFileConfig(),
+    allowedFileConfig: IAllowedFileConfig,
   ): UserStorageConfig {
     const config = new UserStorageConfig(
       crypto.randomUUID(),
@@ -203,21 +221,6 @@ export class UserStorageConfig extends AggregateRoot {
     return config;
   }
 
-  static getDefaultFileConfig(): IAllowedFileConfig {
-    return {
-      jpg: ['image/jpeg'],
-      jpeg: ['image/jpeg'],
-      png: ['image/png'],
-      pdf: ['application/pdf'],
-      doc: ['application/msword'],
-      docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      xls: ['application/vnd.ms-excel'],
-      xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
-      txt: ['text/plain'],
-      csv: ['text/csv', 'application/csv'],
-    };
-  }
-
   // Invariants validation
   private validateInvariants(): void {
     this.validateFileConfig(this._allowedFileConfig);
@@ -229,8 +232,8 @@ export class UserStorageConfig extends AggregateRoot {
     }
 
     // Validate that each extension has at least one mime type
-    for (const [extension, mimeTypes] of Object.entries(fileConfig)) {
-      if (!mimeTypes || mimeTypes.length === 0) {
+    for (const [extension, config] of Object.entries(fileConfig)) {
+      if (!config || !config.mimes || config.mimes.length === 0) {
         throw new Error(`Extension '${extension}' must have at least one mime type`);
       }
     }

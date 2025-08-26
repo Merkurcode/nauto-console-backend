@@ -6,6 +6,7 @@ import {
   Inject,
   Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { tap, finalize } from 'rxjs/operators';
 import { RequestCacheService } from './request-cache.service';
@@ -24,6 +25,7 @@ import { LOGGER_SERVICE } from '@shared/constants/tokens';
 export class RequestCacheInterceptor implements NestInterceptor {
   constructor(
     private readonly requestCache: RequestCacheService,
+    private readonly configService: ConfigService,
     @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
   ) {}
 
@@ -41,7 +43,7 @@ export class RequestCacheInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         // Optional: Log cache performance on successful requests
-        if (process.env.NODE_ENV === 'development' && this.logger) {
+        if (this.configService.get<string>('env') === 'development' && this.logger) {
           const stats = this.requestCache.getStats();
           if (stats.totalEntries > 0) {
             this.logger.debug({
@@ -60,7 +62,11 @@ export class RequestCacheInterceptor implements NestInterceptor {
           const stats = this.requestCache.getStats();
 
           // Log cache effectiveness for monitoring
-          if (stats.totalEntries > 0 && process.env.NODE_ENV === 'development' && this.logger) {
+          if (
+            stats.totalEntries > 0 &&
+            this.configService.get<string>('env') === 'development' &&
+            this.logger
+          ) {
             this.logger.debug({
               message: 'Request cache cleanup',
               url: request.url,

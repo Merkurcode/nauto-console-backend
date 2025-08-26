@@ -61,14 +61,56 @@ export class RegisterUserCommandHandler implements ICommandHandler<RegisterUserC
     }
 
     // Create default UserStorageConfig with basic tier
-    const defaultStorageTierLevel = this.configService.get<string>(
-      'DEFAULT_STORAGE_TIER_LEVEL',
-      '1',
+    const defaultStorageTierLevel = this.configService.get<number>(
+      'business.storageTiers.defaultTierLevel',
+      1,
     );
-    const storageTier =
-      await this.storageTiersService.getStorageTierByLevelOrThrow(defaultStorageTierLevel);
+    const storageTier = await this.storageTiersService.getStorageTierByLevelOrThrow(
+      defaultStorageTierLevel.toString(),
+    );
 
-    await this.userStorageConfigService.createUserStorageConfig(user.id.getValue(), storageTier.id);
+    // Get allowed file config from environment configuration (structured)
+    const defaultAllowedFileConfigJson = this.configService.get<string>(
+      'business.storageTiers.defaultAllowedFileConfig',
+    );
+
+    if (!defaultAllowedFileConfigJson) {
+      throw new Error(
+        'DEFAULT_ALLOWED_FILE_CONFIG environment variable is not configured. This must be set to a valid JSON string with allowed file types.',
+      );
+    }
+
+    let allowedFileConfig;
+    try {
+      allowedFileConfig = JSON.parse(defaultAllowedFileConfigJson);
+
+      // Validate the structure has the expected format: {"ext": {"mimes": ["mime"], ...}}
+      for (const [extension, config] of Object.entries(allowedFileConfig)) {
+        if (
+          !config ||
+          typeof config !== 'object' ||
+          !('mimes' in config) ||
+          !Array.isArray((config as any).mimes)
+        ) {
+          throw new Error(
+            `Invalid format for extension "${extension}" - must have a 'mimes' array`,
+          );
+        }
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(
+          'DEFAULT_ALLOWED_FILE_CONFIG is not valid JSON. Please check the environment variable.',
+        );
+      }
+      throw error;
+    }
+
+    await this.userStorageConfigService.createUserStorageConfig(
+      user.id.getValue(),
+      storageTier.id,
+      allowedFileConfig,
+    );
 
     // Use the mapper to convert to response DTO
     return UserMapper.toBaseResponse(user);

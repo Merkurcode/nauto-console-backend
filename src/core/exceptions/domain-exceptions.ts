@@ -46,6 +46,20 @@ export class InvalidInputException extends DomainException {
   }
 }
 
+export class InvalidParameterException extends DomainException {
+  constructor(parameterName: string, value: string, reason: string) {
+    super(
+      `Invalid parameter '${parameterName}' with value '${value}': ${reason}`,
+      'INVALID_PARAMETER',
+      {
+        parameterName,
+        value,
+        reason,
+      },
+    );
+  }
+}
+
 export class InvalidValueObjectException extends DomainException {
   constructor(message: string, valueObjectType?: string) {
     super(message, 'INVALID_VALUE_OBJECT', { valueObjectType });

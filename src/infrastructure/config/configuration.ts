@@ -5,6 +5,7 @@ export default () => ({
   appName: process.env.APP_NAME || 'NestJS Template',
   apiUrl: process.env.API_URL || 'http://localhost:3001',
   apiVersion: process.env.API_VERSION || 'v1',
+  appVersion: process.env.APP_VERSION || '?.?.?',
 
   // Database
   database: {
@@ -100,23 +101,38 @@ export default () => ({
 
   // Storage
   storage: {
-    provider: process.env.STORAGE_DRIVER || 'local',
+    provider: process.env.STORAGE_DRIVER || 'minio',
+    defaultBucket: process.env.STORAGE_DEFAULT_BUCKET || 'files',
+    concurrency: {
+      globalMaxSimultaneousFiles: parseInt(process.env.GLOBAL_MAX_SIMULTANEOUS_FILES || '5', 10),
+      redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+      slotTtlSec: parseInt(process.env.SLOT_TTL_SECONDS || '7200', 10),
+      bookingTtlSec: parseInt(process.env.RESERVATION_TTL || '7200', 10),
+    },
+    presign: {
+      expirySec: parseInt(process.env.PRESIGN_EXPIRY_SEC || '3600', 10),
+      maxExpiryHours: parseInt(process.env.PRESIGN_MAX_EXPIRY_HOURS || '24', 10),
+      minExpirySeconds: parseInt(process.env.PRESIGN_MIN_EXPIRY_SECONDS || '60', 10),
+    },
     minio: {
-      endPoint: process.env.MINIO_ENDPOINT,
+      endpoint: process.env.MINIO_ENDPOINT || 'http://127.0.0.1:9000',
       port: parseInt(process.env.MINIO_PORT || '9000', 10),
       useSSL: process.env.MINIO_USE_SSL === 'true',
-      accessKey: process.env.MINIO_ACCESS_KEY,
-      secretKey: process.env.MINIO_SECRET_KEY,
+      accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
       region: process.env.MINIO_REGION || 'us-east-1',
-      bucketName: process.env.MINIO_BUCKET_NAME,
+      bucketName: process.env.STORAGE_DEFAULT_BUCKET || 'files',
+      forcePathStyle: process.env.MINIO_FORCE_PATH_STYLE === 'true',
       publicFolder: 'public',
       privateFolder: 'private',
     },
     aws: {
-      region: process.env.AWS_REGION,
+      endpoint: process.env.AWS_S3_ENDPOINT,
+      region: process.env.AWS_REGION || 'us-east-1',
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      bucketName: process.env.AWS_S3_BUCKET_NAME,
+      bucketName: process.env.STORAGE_DEFAULT_BUCKET || 'files',
+      forcePathStyle: process.env.AWS_S3_FORCE_PATH_STYLE === 'true',
     },
   },
 
@@ -130,6 +146,7 @@ export default () => ({
   throttler: {
     ttl: parseInt(process.env.THROTTLER_TTL || '60', 10), // 60 seconds window
     limit: parseInt(process.env.THROTTLER_LIMIT || '100', 10), // 100 requests per minute (reasonable for API)
+    disableForTesting: process.env.THROTTLER_DISABLE_FOR_TESTING === 'true', // Disable throttling in test environments
   },
 
   // i18n
@@ -145,6 +162,46 @@ export default () => ({
   logging: {
     level: process.env.LOG_LEVEL || 'info',
     prismaLogsEnabled: process.env.PRISMA_LOGS_ENABLED === 'true',
+    apmEnabled: process.env.LOGGING_APM_ENABLED === 'true',
+    format: (process.env.LOGGING_FORMAT as 'json' | 'human') || 'human',
+  },
+
+  // Queue System
+  queue: {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      db: parseInt(process.env.REDIS_DB || '0', 10),
+      username: process.env.REDIS_USER,
+      password: process.env.REDIS_PASSWORD,
+      tls: {
+        enabled: process.env.REDIS_TLS === 'true',
+        rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false',
+        servername: process.env.REDIS_TLS_SERVERNAME,
+      },
+    },
+    bullmq: {
+      prefix: process.env.BULLMQ_PREFIX || 'nauto:queues',
+    },
+    performance: {
+      healthCheckIntervalMs: parseInt(process.env.HEALTH_CHECK_INTERVAL_MS || '2000', 10),
+      maxBacklog: parseInt(process.env.BQ_MAX_BACKLOG || '5000', 10),
+      maxActive: parseInt(process.env.BQ_MAX_ACTIVE || '200', 10),
+      redisMaxFillPct: parseFloat(process.env.REDIS_MAX_FILL_PCT || '0.85'),
+      redisMaxUsedMb: parseInt(process.env.REDIS_MAX_USED_MB || '2048', 10),
+      eventMaxBytes: parseInt(process.env.EVENT_MAX_BYTES || '262144', 10), // 256KB
+    },
+    events: {
+      defaultQueue: 'events',
+      retryWindowHours: 6,
+      concurrency: 10,
+      attempts: 5,
+      backoffDelay: 5000,
+    },
+    streams: {
+      maxLen: parseInt(process.env.QUEUE_EVENTS_STREAM_MAXLEN || '20000', 10),
+      approximate: process.env.QUEUE_EVENTS_STREAM_APPROX !== 'false',
+    },
   },
 
   // Business Logic Configuration

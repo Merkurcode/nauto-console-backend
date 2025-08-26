@@ -36,6 +36,13 @@ import { UserStorageConfigService } from './services/user-storage-config.service
 import { StorageTiersService } from './services/storage-tiers.service';
 import { AuditLogService } from './services/audit-log.service';
 import { UserActivityLogService } from './services/user-activity-log.service';
+import { FileAccessControlService } from './services/file-access-control.service';
+import { FileLockService } from './services/file-lock.service';
+import { FolderLockService } from './services/folder-lock.service';
+import { FileQuotaService } from './services/file-quota.service';
+import { FileUploadValidationService } from './services/file-upload-validation.service';
+import { MultipartUploadService } from './services/multipart-upload.service';
+import { FileNamingService } from './services/file-naming.service';
 
 /**
  * Core Domain Module
@@ -81,6 +88,13 @@ import { UserActivityLogService } from './services/user-activity-log.service';
     // Additional domain services
     AuditLogService,
     UserActivityLogService,
+    FileAccessControlService,
+    FileLockService,
+    FolderLockService,
+    FileQuotaService,
+    FileUploadValidationService,
+    MultipartUploadService,
+    FileNamingService,
   ],
   exports: [
     // Export all domain services
@@ -119,6 +133,13 @@ import { UserActivityLogService } from './services/user-activity-log.service';
     // Additional domain services
     AuditLogService,
     UserActivityLogService,
+    FileAccessControlService,
+    FileLockService,
+    FolderLockService,
+    FileQuotaService,
+    FileUploadValidationService,
+    MultipartUploadService,
+    FileNamingService,
   ],
 })
 export class CoreModule {}

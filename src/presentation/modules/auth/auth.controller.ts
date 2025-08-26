@@ -69,6 +69,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
+import { UseHealthGuard } from 'src/queues/guards/health.guard';
 
 @ApiTags('auth')
 @Throttle(60, 5) // 5 requests per minute
@@ -104,6 +105,7 @@ export class AuthController {
   @NoBots()
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth('JWT-auth')
+  @UseHealthGuard('auth-emails')
   @ApiBody({
     type: RegisterDto,
     description: 'User registration data including email, password, name, company, and optional profile/address information. Roles can be specified using RolesEnum values.',
@@ -226,6 +228,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   @NoBots()
   @HttpCode(HttpStatus.OK)
@@ -477,6 +480,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @Post('admin/change-password')
   @NoBots()
@@ -514,6 +518,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('change-password')
   @NoBots()
   @HttpCode(HttpStatus.OK)
@@ -556,6 +561,7 @@ export class AuthController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('change-email')
   @NoBots()
   @HttpCode(HttpStatus.OK)

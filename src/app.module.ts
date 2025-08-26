@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -21,8 +21,11 @@ import { CompanySchedulesModule } from '@presentation/modules/company-schedules/
 import { BotModule } from '@presentation/modules/bot/bot.module';
 import { UserActivityLogModule } from '@presentation/modules/user-activity-log/user-activity-log.module';
 import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
+import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
+import { QueueModule } from './queues/queue.module';
+import { Queues } from './queues/all/queues';
 // import { ValidatorsModule } from '@shared/validators/validators.module'; // Removed - validation moved to domain services
 
 // Global providers
@@ -30,7 +33,6 @@ import { LoggingInterceptor } from '@presentation/interceptors/logging.intercept
 import { TransformInterceptor } from '@presentation/interceptors/transform.interceptor';
 import { RequestCacheInterceptor } from '@infrastructure/caching/request-cache.interceptor';
 import { AllExceptionsFilter } from '@presentation/filters/all-exceptions.filter';
-import { DomainExceptionFilter } from '@presentation/filters/domain-exception.filter';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { ThrottlerGuard } from '@presentation/guards/throttler.guard';
 import { UserBanService } from '@core/services/user-ban.service';
@@ -46,13 +48,19 @@ import configuration from '@infrastructure/config/configuration';
 import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guard';
 import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
 import { ThrottlerService } from '@infrastructure/services/throttler.service';
+// import { UsersModuleQueuesTest } from './queues/examples/controller/users.module';
+import { AuthEmailModuleQueue } from './queues/all/email/email.module';
+import { StaleUploadsCleanupModule } from './queues/all/stale-uploads-cleanup/stale-uploads-cleanup.module';
+import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploads-maintenance.module';
+import { CorrelationMiddleware } from '@infrastructure/logger/correlation/correlation.middleware';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Module({
   imports: [
     // Global Config
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      envFilePath: '.env',
       load: [configuration],
     }),
 
@@ -95,6 +103,18 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     CoreModule,
     InfrastructureModule,
 
+    // Queue System (for both API and Worker processes)
+    QueueModule.withQueues('both', Queues, {
+      eventHandlers: 'auto-detect',
+      includeConfigModule: false, // Already loaded above
+    }),
+
+    //UsersModuleQueuesTest,
+
+    AuthEmailModuleQueue,
+    StaleUploadsCleanupModule,
+    UploadsMaintenanceModule,
+
     // Other Feature Modules
     UserModule,
     RoleModule,
@@ -106,13 +126,19 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     BotModule,
     UserActivityLogModule,
     AIPersonaModule,
+    StorageModule,
   ],
   controllers: [],
   providers: [
     // Global interceptors
     {
       provide: APP_INTERCEPTOR,
-      useClass: RequestCacheInterceptor,
+      useFactory: (
+        requestCache: RequestCacheService,
+        configService: ConfigService,
+        logger?: ILogger,
+      ) => new RequestCacheInterceptor(requestCache, configService, logger),
+      inject: [RequestCacheService, ConfigService, { token: LOGGER_SERVICE, optional: true }],
     },
     {
       provide: APP_INTERCEPTOR,
@@ -123,14 +149,10 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
       useClass: TransformInterceptor,
     },
 
-    // Global filters (order matters: more specific first)
+    // Global exception filter
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: DomainExceptionFilter,
     },
 
     {
@@ -194,4 +216,8 @@ import { ThrottlerService } from '@infrastructure/services/throttler.service';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationMiddleware).forRoutes('*'); // Apply to all routes
+  }
+}

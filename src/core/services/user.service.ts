@@ -36,6 +36,8 @@ import { ILogger } from '@core/interfaces/logger.interface';
 import { AuthFailureReason, IAuthValidationResult } from '@shared/constants/auth-failure-reason.enum';
 import { BusinessConfigurationService } from './business-configuration.service';
 import { IUpdateUserProfileServiceInput } from '@core/interfaces/user/update-user-profile-service-input.interface';
+import { AuthEmailEventBusAdapter } from 'src/queues/all/email';
+import { AuthEmailUserRegisteredEvent } from 'src/queues/all/email/event-handlers/auth-email-user-registered.handler';
 
 @Injectable()
 export class UserService {
@@ -59,6 +61,7 @@ export class UserService {
     private readonly configService: ConfigService,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
+    private readonly authEmailEventBusAdapter: AuthEmailEventBusAdapter
   ) {
     this.logger.setContext(UserService.name);
   }
@@ -318,58 +321,20 @@ export class UserService {
 
     // Send welcome email with password - only if user was created successfully
     if (savedUser) {
-      try {
-        const roleNames = user.roles?.map(role => role.name) || [];
-        this.logger.log({
-          message: 'Sending welcome email with extended data',
-          email: emailStr,
+      const roleNames = user.roles?.map(role => role.name) || [];
+
+      // Use email queue to send email and sms
+      await this.authEmailEventBusAdapter.publish(
+        new AuthEmailUserRegisteredEvent(
+          savedUser.id.getValue(),
+          emailStr,
           firstName,
-          roles: roleNames,
-          companyName: options?.companyName,
-        });
-        await this.emailService.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, options?.companyName, roleNames);
-      } catch (error) {
-        this.logger.error({
-          message: 'Error sending welcome email',
-          email: emailStr,
-          error: error.message,
-        });
-        // Continue even if email sending fails
-      }
-
-      // Send welcome SMS if user has phone number
-      try {
-        if (savedUser.profile?.phone) {
-          this.logger.log({
-            message: 'Sending welcome SMS to user with extended data',
-            phone: savedUser.profile.phone,
-            firstName,
-          });
-          const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
-          const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
-          const dashboardUrl = `${frontendUrl}${dashboardPath}`;
-
-          await this.smsService.sendWelcomeSms(
-            savedUser.profile.phone,
-            firstName,
-            actualPassword!,
-            dashboardUrl,
-            savedUser.id.getValue(),
-          );
-        } else {
-          this.logger.debug({
-            message: 'User has no phone configured, skipping welcome SMS',
-            email: emailStr,
-          });
-        }
-      } catch (error) {
-        this.logger.error({
-          message: 'Error sending welcome SMS',
-          phone: savedUser.profile?.phone,
-          error: error.message,
-        });
-        // Continue even if SMS sending fails
-      }
+          actualPassword!,
+          roleNames,
+          savedUser.profile?.phone,
+          options?.companyName
+        )
+      );
     }
 
     return savedUser;
@@ -834,7 +799,7 @@ return await this.userRepository.findByEmail(emailVO.getValue());
   }
 
   async hashPassword(password: string): Promise<string> {
-    const saltRounds = this.configService.get<number>('security.password.saltRounds', 12);
+    const saltRounds = this.configService.get<number>('business.password.saltRounds', 12);
     const salt = await bcrypt.genSalt(saltRounds);
 
     return bcrypt.hash(password, salt);

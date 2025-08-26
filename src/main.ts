@@ -308,7 +308,7 @@ async function bootstrap() {
       schema: {
         type: 'string',
         format: 'uuid',
-        example: '550e8400-e29b-41d4-a716-446655440000',
+        example: null,
         description: 'Tenant ID for multi-tenant operations (optional, usually extracted from JWT)',
       },
     })

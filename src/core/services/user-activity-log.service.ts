@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventBus } from '@nestjs/cqrs';
 import { UserActivityLog } from '@core/entities/user-activity-log.entity';
 import {
@@ -25,6 +26,7 @@ export class UserActivityLogService {
     private readonly eventBus: EventBus,
     private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    private readonly configService: ConfigService,
   ) {
     this.logger.setContext(UserActivityLogService.name);
   }
@@ -48,6 +50,7 @@ export class UserActivityLogService {
       ipAddress,
       userAgent,
       metadata,
+      version: this.configService.get<string>('appVersion', '?.?.?'),
     });
 
     const savedLog = await this.userActivityLogRepository.save(userActivityLog);
@@ -391,6 +394,7 @@ export class UserActivityLogService {
           ipAddress: options?.ipAddress,
           userAgent: options?.userAgent,
           metadata: options?.metadata,
+          version: this.configService.get<string>('appVersion', '?.?.?'),
         });
 
         // Save and publish events asynchronously

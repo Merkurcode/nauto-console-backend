@@ -100,7 +100,7 @@ export class UserActivityLog extends AggregateRoot {
   ): UserActivityLog {
     const id = this.generateId();
     const timestamp = props.timestamp || new Date();
-    const version = props.version || process.env.API_VERSION || '1.0.0';
+    const version = props.version || process.env.APP_VERSION;
 
     const instance = new UserActivityLog(
       id,
