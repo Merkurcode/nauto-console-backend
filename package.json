@@ -106,11 +106,11 @@
     "uuid": "^11.1.0",
     "bullmq": "^5.0.0",
     "redis": "^5.8.1"
-    "@nestjs/cli": "^11.0.5",
-    "@types/jest": "^29.5.14",
-    "cross-env": "^10.0.0"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.5",
+    "@types/jest": "^29.5.14",
+    "cross-env": "^10.0.0",
     "@nestjs/schematics": "^11.0.2",
     "@nestjs/testing": "^11.0.12",
     "@types/bcrypt": "^5.0.2",

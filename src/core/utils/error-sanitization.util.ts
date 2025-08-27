@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Security utility for sanitizing error information to prevent information disclosure
  *

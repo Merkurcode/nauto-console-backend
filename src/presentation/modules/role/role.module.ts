@@ -19,7 +19,7 @@ import { REPOSITORY_TOKENS, USER_REPOSITORY } from '@shared/constants/tokens';
 import { RoleService } from '@core/services/role.service';
 import { PermissionService } from '@core/services/permission.service';
 import { PermissionExcludeService } from '@core/services/permission-exclude.service';
-import { BusinessConfigurationService } from '@core/services/business-configuration.service';
+// import { BusinessConfigurationService } from '@core/services/business-configuration.service';
 
 // Query Handlers
 import { GetRolesQueryHandler } from '@application/queries/role/get-roles.query';

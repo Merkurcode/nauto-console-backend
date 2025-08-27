@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { Queue, JobsOptions } from 'bullmq';
 import { createHash } from 'crypto';

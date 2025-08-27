@@ -1,19 +1,16 @@
 export interface IEventConstructor<T = unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   new (...args: any[]): T;
   __eventName?: string;
   __isSerializableEvent?: boolean;
 }
 
 export interface IHandlerConstructor<T = unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   new (...args: any[]): T;
   __handlesEvents?: string[];
   __isSerializableHandler?: boolean;
 }
 
 export interface IEventHandler {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handle(event: any): Promise<void>;
 }
 
@@ -75,7 +72,7 @@ export interface IBaseJobData {
 
 export interface IEventJobData extends IBaseJobData {
   eventName: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   payload: Record<string, any>;
   eventId: string;
   timestamp: number;
