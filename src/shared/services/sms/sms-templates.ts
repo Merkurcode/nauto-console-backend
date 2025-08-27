@@ -5,8 +5,12 @@ export class SmsTemplates {
    * @param appName Application name
    * @returns SMS message string
    */
-  static verificationCode(code: string, appName: string = 'Nauto Console'): string {
-    return `Tu código de verificación es: ${code}. Este código expira en 5 minutos. ${appName}`;
+  static verificationCode(
+    code: string,
+    appName: string = 'Nauto Console',
+    expirationMinutes: number = 5,
+  ): string {
+    return `Tu código de verificación es: ${code}. Este código expira en ${expirationMinutes} minutos. ${appName}`;
   }
 
   /**

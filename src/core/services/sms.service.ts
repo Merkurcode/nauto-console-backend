@@ -112,7 +112,8 @@ export class SmsService {
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
-    const message = SmsTemplates.verificationCode(code, appName);
+    const expirationMinutes = this.configService.get<number>('otp.expiration', 5);
+    const message = SmsTemplates.verificationCode(code, appName, expirationMinutes);
 
     // Get user's country phone code from database if userId is provided
     let countryCode = '52'; // Default to Mexico

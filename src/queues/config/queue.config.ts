@@ -35,46 +35,58 @@ export const getQueueConfig = (
 ) => {
   const host = validateHost(configService.get<string>('queue.redis.host')!);
   const port = validatePort(configService.get<number>('queue.redis.port')!);
-  const db = validatePort(configService.get<number>('queue.redis.db')!);
+  const db = Number(configService.get<number>('queue.redis.db') ?? 0); // Render: DB 0
 
   const tlsEnabled = configService.get<boolean>('queue.redis.tls.enabled');
+  const isProd = process.env.NODE_ENV === 'production';
+
   const tls = tlsEnabled
     ? {
-        rejectUnauthorized: configService.get<boolean>('queue.redis.tls.rejectUnauthorized'),
+        // En prod valida el cert; en dev puedes desactivarlo si usas self-signed.
+        rejectUnauthorized: isProd
+          ? (configService.get<boolean>('queue.redis.tls.rejectUnauthorized') ?? true)
+          : false,
         servername: configService.get<string>('queue.redis.tls.servername') || host,
-        checkServerIdentity: process.env.NODE_ENV === 'production' ? undefined : () => undefined,
+        // Evita desactivar la verificación en prod:
+        checkServerIdentity: isProd ? undefined : () => undefined,
       }
     : undefined;
 
   const prefix = validatePrefix(configService.get<string>('queue.bullmq.prefix')!);
+
+  const isWorker = processType !== 'api';
 
   return {
     prefix,
     connection: {
       host,
       port,
-      db,
+      db, // Render suele permitir solo DB 0
       username: configService.get<string>('queue.redis.username'),
       password: configService.get<string>('queue.redis.password'),
       tls,
 
-      // Network
+      // TCP sane defaults para cloud
       family: 4,
-      keepAlive: 300,
+      keepAlive: 60_000,
       noDelay: true,
 
-      // Connection
-      lazyConnect: true,
-      enableReadyCheck: false,
-      enableOfflineQueue: true,
+      // Arranque: workers deberían fallar rápido si no hay Redis
+      lazyConnect: !isWorker, // api:true, worker:false
+      enableReadyCheck: true, // si el proveedor bloquea INFO -> poner false
+      enableOfflineQueue: !isWorker, // api:true, worker:false (no buffer en RAM del worker)
+
       connectionName: `bullmq-${processType}-${process.pid}`,
 
-      maxLoadingTimeout: 5000,
+      // Tiempos y reintentos
+      connectTimeout: 60_000,
+      maxLoadingTimeout: 10_000,
+      // IMPORTANTE para BullMQ en managed Redis:
+      maxRetriesPerRequest: null, // evita MaxRetriesPerRequestError en micro-cortes
+      retryStrategy: (times: number) => Math.min(1_000 + times * 2_000, 10_000),
 
-      // Timeouts / retries
-      connectTimeout: 30000,
-      maxRetriesPerRequest: null,
-      retryStrategy: (times: number) => Math.min(100 * times, 5000),
+      // ioredis v5+ admite timeouts por comando:
+      commandTimeout: 30_000, // opcional: aborta comandos colgados
     },
   };
 };

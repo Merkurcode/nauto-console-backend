@@ -14,19 +14,36 @@ export class UploadsMaintenanceService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // Programa un job repetible cada 5 minutos
+    // Get configurable values with Render-optimized defaults
+    const intervalMinutes = parseInt(process.env.UPLOADS_MAINTENANCE_INTERVAL_MIN || '5', 10);
+    const scanCount = parseInt(process.env.UPLOADS_MAINTENANCE_SCAN_COUNT || '500', 10);
+    const maxMs = parseInt(process.env.UPLOADS_MAINTENANCE_MAX_MS || '4000', 10);
+    const attempts = parseInt(process.env.UPLOADS_MAINTENANCE_ATTEMPTS || '1', 10);
+
+    // Programa un job repetible con configuraciones optimizadas para Render
     await this.queue.add(
       'cleanup-active-users',
-      { scanCount: 500, maxMs: 4000 },
+      { scanCount, maxMs },
       {
         jobId: 'uploads-maint:cleanup-active-users', // <- clave
-        repeat: { every: 5 * 60 * 1000 },
-        removeOnComplete: { age: 60 * 60, count: 1000 },
-        removeOnFail: { age: 24 * 60 * 60, count: 1000 },
-        attempts: 1,
+        repeat: { every: intervalMinutes * 60 * 1000 }, // Configurable interval
+        // TTL-based cleanup optimized for Render deployment
+        removeOnComplete: {
+          age: 3 * 60 * 60, // Keep completed jobs for 3 hours (in seconds)
+          count: 100, // Keep max 100 completed jobs (memory optimization)
+        },
+        removeOnFail: {
+          age: 12 * 60 * 60, // Keep failed jobs for 12 hours (in seconds)
+          count: 50, // Keep max 50 failed jobs (memory optimization)
+        },
+        attempts,
+        backoff: { type: 'exponential', delay: 10000 }, // Added backoff for failures
+        priority: 3, // Low priority maintenance task
       },
     );
 
-    this.logger.log('Repeatable job "cleanup-active-users" programado cada 5m');
+    this.logger.log(
+      `Repeatable job "cleanup-active-users" programado cada ${intervalMinutes}m (scan: ${scanCount}, maxMs: ${maxMs})`,
+    );
   }
 }

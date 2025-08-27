@@ -1,9 +1,37 @@
+// Helper function to construct API URL based on environment
+const getApiUrl = (): string => {
+  const env = process.env.NODE_ENV || 'development';
+  const baseUrl = process.env.API_URL || 'http://localhost:3001';
+
+  // In test and production environments, don't include port in URL
+  if (env === 'test' || env === 'production') {
+    // Remove port from URL if present (e.g., :3001, :8080, etc.)
+    return baseUrl.replace(/:\d+$/, '');
+  }
+
+  return baseUrl;
+};
+
+// Helper function to construct frontend URL based on environment
+const getFrontendUrl = (): string => {
+  const env = process.env.NODE_ENV || 'development';
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  // In test and production environments, don't include port in URL
+  if (env === 'test' || env === 'production') {
+    // Remove port from URL if present (e.g., :3000, :8080, etc.)
+    return baseUrl.replace(/:\d+$/, '');
+  }
+
+  return baseUrl;
+};
+
 export default () => ({
   // Application
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
   appName: process.env.APP_NAME || 'NestJS Template',
-  apiUrl: process.env.API_URL || 'http://localhost:3001',
+  apiUrl: getApiUrl(),
   apiVersion: process.env.API_VERSION || 'v1',
   appVersion: process.env.APP_VERSION || '?.?.?',
 
@@ -31,15 +59,26 @@ export default () => ({
     digits: parseInt(process.env.OTP_DIGITS || '6', 10),
   },
 
-  // SMTP/Email
-  smtp: {
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    user: process.env.SMTP_USER,
-    password: process.env.SMTP_PASSWORD,
-    from: process.env.SMTP_FROM,
-    secure: process.env.SMTP_SECURE === 'true',
-  },
+  // SMTP/Email - ONLY for development environment
+  smtp:
+    process.env.NODE_ENV === 'development'
+      ? {
+          host: process.env.SMTP_HOST,
+          port: parseInt(process.env.SMTP_PORT || '587', 10),
+          user: process.env.SMTP_USER,
+          password: process.env.SMTP_PASSWORD,
+          from: process.env.SMTP_FROM,
+          secure: process.env.SMTP_SECURE === 'true',
+        }
+      : {
+          // Non-development: Return null values to prevent SMTP usage
+          host: null,
+          port: null,
+          user: null,
+          password: null,
+          from: null,
+          secure: false,
+        },
 
   // Email providers
   email: {
@@ -70,7 +109,7 @@ export default () => ({
 
   // Frontend
   frontend: {
-    url: process.env.FRONTEND_URL || 'http://localhost:3000',
+    url: getFrontendUrl(), // Automatically handles port removal for test/production
     loginPath: process.env.FRONTEND_LOGIN_PATH || '/login',
     passwordResetPath: process.env.FRONTEND_PASSWORD_RESET_PATH || '/reset-password',
     emailVerificationPath: process.env.FRONTEND_EMAIL_VERIFICATION_PATH || '/verify-email',
@@ -197,6 +236,20 @@ export default () => ({
       concurrency: 10,
       attempts: 5,
       backoffDelay: 5000,
+    },
+    // Email queue specific configuration for Render deployment
+    email: {
+      concurrency: parseInt(process.env.EMAIL_QUEUE_CONCURRENCY || '3', 10),
+      attempts: parseInt(process.env.EMAIL_QUEUE_ATTEMPTS || '8', 10),
+      retryWindowHours: parseInt(process.env.EMAIL_QUEUE_RETRY_WINDOW_HOURS || '2', 10),
+      delayBetweenJobs: parseInt(process.env.EMAIL_QUEUE_DELAY_MS || '2000', 10),
+      maxEmailsPerMinute: parseInt(process.env.EMAIL_RATE_LIMIT_PER_MINUTE || '30', 10),
+      maxEmailsPerHour: parseInt(process.env.EMAIL_RATE_LIMIT_PER_HOUR || '500', 10),
+      removeCompletedAge:
+        parseInt(process.env.EMAIL_QUEUE_COMPLETED_TTL_HOURS || '24', 10) * 60 * 60,
+      removeFailedAge: parseInt(process.env.EMAIL_QUEUE_FAILED_TTL_DAYS || '7', 10) * 24 * 60 * 60,
+      removeCompletedCount: parseInt(process.env.EMAIL_QUEUE_COMPLETED_COUNT || '500', 10),
+      removeFailedCount: parseInt(process.env.EMAIL_QUEUE_FAILED_COUNT || '100', 10),
     },
     streams: {
       maxLen: parseInt(process.env.QUEUE_EVENTS_STREAM_MAXLEN || '20000', 10),

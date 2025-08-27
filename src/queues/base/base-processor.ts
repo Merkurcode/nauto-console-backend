@@ -27,7 +27,7 @@ export abstract class BaseProcessor<T = IBaseJobData> extends WorkerHost {
   constructor(module: IQueueModuleConfig, @Inject(LOGGER_SERVICE) logger: ILogger) {
     super();
     this.module = { ...module };
-    this.logger = logger.setContext(BaseProcessor.name);
+    this.logger = logger.setContext((this as any).constructor?.name ?? BaseProcessor.name);
   }
 
   abstract processJob(job: Job<T>): Promise<void>;
@@ -55,7 +55,7 @@ export abstract class BaseProcessor<T = IBaseJobData> extends WorkerHost {
 
     return (
       jobData?.retryUntil ??
-      (job.timestamp ?? Date.now()) + (this.module.queue.retryWindowMs || 6 * 60 * 60 * 1000)
+      (job.timestamp ?? Date.now()) + (this.module.queue.retryWindowMs ?? 6 * 60 * 60 * 1000)
     );
   }
 

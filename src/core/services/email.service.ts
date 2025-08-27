@@ -41,42 +41,63 @@ export class EmailService {
     const emailProvider = this.configService.get<string>('email.provider', 'mailhog');
     const nodeEnv = this.configService.get<string>('env', 'development');
 
-    // Use MailHog for development/local testing
-    if (nodeEnv === 'development' || emailProvider === 'mailhog') {
-      this.transporter = nodemailer.createTransport({
-        host: this.configService.get<string>('smtp.host', 'localhost'),
-        port: this.configService.get<number>('smtp.port', 1025),
-        secure: false, // MailHog doesn't use SSL
-        auth: undefined, // MailHog doesn't require auth
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
-      this.logger.log('Email service initialized with MailHog for development');
+    // SMTP configuration ONLY for development environment
+    if (nodeEnv === 'development') {
+      if (emailProvider === 'mailhog') {
+        this.transporter = nodemailer.createTransport({
+          host: this.configService.get<string>('smtp.host', 'localhost'),
+          port: this.configService.get<number>('smtp.port', 1025),
+          secure: false, // MailHog doesn't use SSL
+          auth: undefined, // MailHog doesn't require auth
+          tls: {
+            rejectUnauthorized: false,
+          },
+        });
+        this.logger.log('Email service initialized with MailHog for development');
+      } else {
+        // Development SMTP configuration (only when NODE_ENV=development)
+        this.transporter = nodemailer.createTransport({
+          host: this.configService.get<string>('smtp.host', 'localhost'),
+          port: this.configService.get<number>('smtp.port', 587),
+          secure: this.configService.get<boolean>('smtp.secure', false),
+          auth: {
+            user: this.configService.get<string>('smtp.user'),
+            pass: this.configService.get<string>('smtp.password'),
+          },
+        });
+        this.logger.log('Email service initialized with development SMTP');
+      }
     } else {
-      // Production SMTP configuration
-      this.transporter = nodemailer.createTransport({
-        host: this.configService.get<string>('smtp.host'),
-        port: this.configService.get<number>('smtp.port', 587),
-        secure: this.configService.get<boolean>('smtp.secure', false),
-        auth: {
-          user: this.configService.get<string>('smtp.user'),
-          pass: this.configService.get<string>('smtp.password'),
-        },
-      });
-      this.logger.log('Email service initialized with production SMTP');
+      // Non-development environments: DO NOT use SMTP variables
+      // Initialize with null transporter - forces use of provider-specific APIs only
+      this.transporter = null;
+      this.logger.log(
+        'Email service initialized for production (SMTP disabled, API-based providers only)',
+      );
     }
   }
 
   async sendEmail(options: IEmailOptions): Promise<boolean> {
     const emailProvider = this.configService.get<string>('email.provider', 'mailhog');
+    const nodeEnv = this.configService.get<string>('env', 'development');
 
-    // Use provider specified in environment config
+    // Route to appropriate provider based on environment and configuration
     if (emailProvider === 'resend') {
+      // Use Resend API in any environment
       return this.sendEmailWithResend(options);
     }
 
-    // Use MailHog or SMTP for other providers
+    // Non-development environments: only API-based providers allowed
+    if (nodeEnv !== 'development') {
+      this.logger.error(
+        `Unsupported email provider '${emailProvider}' in ${nodeEnv} environment. Only API-based providers are allowed.`,
+      );
+      throw new Error(
+        `Email provider '${emailProvider}' is not supported in ${nodeEnv} environment. Use 'resend' or other API-based providers.`,
+      );
+    }
+
+    // Development environment: use MailHog or SMTP for non-resend providers
     return this.sendEmailWithNodemailer(options);
   }
 
@@ -136,6 +157,21 @@ export class EmailService {
   }
 
   private async sendEmailWithNodemailer(options: IEmailOptions): Promise<boolean> {
+    const nodeEnv = this.configService.get<string>('env', 'development');
+
+    // Prevent SMTP usage in non-development environments
+    if (nodeEnv !== 'development') {
+      this.logger.error('SMTP/Nodemailer is not available in non-development environments');
+      throw new Error(
+        `SMTP/Nodemailer is disabled in ${nodeEnv} environment. Use API-based email providers only.`,
+      );
+    }
+
+    if (!this.transporter) {
+      this.logger.error('Email transporter is not initialized');
+      throw new Error('Email transporter is not available. Check SMTP configuration.');
+    }
+
     try {
       const mailOptions = {
         from: this.configService.get<string>('smtp.from', 'noreply@example.com'),
@@ -170,8 +206,9 @@ export class EmailService {
   async sendVerificationEmail(email: string, code: string): Promise<boolean> {
     const appName = this.configService.get<string>('appName');
     const primaryColor = this.getPrimaryColor();
+    const expirationMinutes = this.configService.get<number>('otp.expiration', 5);
 
-    const html = EmailTemplates.verificationEmail(code, primaryColor, appName);
+    const html = EmailTemplates.verificationEmail(code, primaryColor, appName, expirationMinutes);
 
     return this.sendEmail({
       to: email,
@@ -185,9 +222,18 @@ export class EmailService {
     const passwordResetPath = this.configService.get<string>('frontend.passwordResetPath');
     const appName = this.configService.get<string>('appName');
     const primaryColor = this.getPrimaryColor();
+    const expirationMinutes = this.configService.get<number>(
+      'business.password.resetExpiryMinutes',
+      30,
+    );
     const resetLink = `${frontendUrl}${passwordResetPath}?token=${resetToken}`;
 
-    const html = EmailTemplates.passwordResetEmail(resetLink, primaryColor, appName);
+    const html = EmailTemplates.passwordResetEmail(
+      resetLink,
+      primaryColor,
+      appName,
+      expirationMinutes,
+    );
 
     this.logger.log({
       message: 'Sending password reset email',

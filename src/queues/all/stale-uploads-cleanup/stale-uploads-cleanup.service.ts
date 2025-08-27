@@ -14,20 +14,38 @@ export class StaleUploadsCleanupService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // Schedule a repeatable job every 10 minutes
+    // Get configurable values with Render-optimized defaults
+    const intervalMinutes = parseInt(process.env.STALE_UPLOADS_CLEANUP_INTERVAL_MIN || '10', 10);
+    const inactivityThreshold = parseInt(
+      process.env.STALE_UPLOADS_INACTIVITY_THRESHOLD_MIN || '15',
+      10,
+    );
+    const attempts = parseInt(process.env.STALE_UPLOADS_CLEANUP_ATTEMPTS || '3', 10);
+
+    // Schedule a repeatable job with Render-optimized settings
     await this.queue.add(
       'cleanup-stale-uploads',
-      { inactivityThresholdMinutes: 15 }, // Clean uploads inactive for 15+ minutes
+      { inactivityThresholdMinutes: inactivityThreshold },
       {
         jobId: 'stale-uploads-cleanup:cleanup-stale-uploads',
-        repeat: { every: 10 * 60 * 1000 }, // Every 10 minutes
-        removeOnComplete: { age: 60 * 60, count: 100 },
-        removeOnFail: { age: 24 * 60 * 60, count: 100 },
-        attempts: 3,
+        repeat: { every: intervalMinutes * 60 * 1000 }, // Configurable interval
+        // TTL-based cleanup optimized for Render deployment
+        removeOnComplete: {
+          age: 6 * 60 * 60, // Keep completed jobs for 6 hours (in seconds)
+          count: 50, // Keep max 50 completed jobs (memory optimization)
+        },
+        removeOnFail: {
+          age: 24 * 60 * 60, // Keep failed jobs for 24 hours (in seconds)
+          count: 20, // Keep max 20 failed jobs (memory optimization)
+        },
+        attempts,
         backoff: { type: 'exponential', delay: 30000 },
+        priority: 5, // Low priority background task
       },
     );
 
-    this.logger.log('Repeatable job "cleanup-stale-uploads" scheduled every 10m');
+    this.logger.log(
+      `Repeatable job "cleanup-stale-uploads" scheduled every ${intervalMinutes}m (threshold: ${inactivityThreshold}m)`,
+    );
   }
 }

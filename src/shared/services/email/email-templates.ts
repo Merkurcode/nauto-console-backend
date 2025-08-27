@@ -136,6 +136,7 @@ export class EmailTemplates {
     code: string,
     primaryColor: string = '#007bff',
     _appName: string = 'Nuestra Aplicación',
+    expirationMinutes: number = 5,
   ): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -144,7 +145,7 @@ export class EmailTemplates {
         <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
           <h1 style="color: ${primaryColor}; margin: 0; font-size: 32px; letter-spacing: 5px;">${escapeHtml(code)}</h1>
         </div>
-        <p>Este código expira en 5 minutos.</p>
+        <p>Este código expira en ${expirationMinutes} minutos.</p>
         <p>Si no solicitaste este código, puedes ignorar este email.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         <p style="color: #666; font-size: 12px;">Este es un email automático, por favor no respondas.</p>
@@ -156,6 +157,7 @@ export class EmailTemplates {
     resetLink: string,
     primaryColor: string = '#007bff',
     _appName: string = 'Nuestra Aplicación',
+    expirationMinutes: number = 60,
   ): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -169,7 +171,7 @@ export class EmailTemplates {
             Restablecer Contraseña
           </a>
         </div>
-        <p>Este enlace expirará en 1 hora.</p>
+        <p>Este enlace expirará en ${expirationMinutes >= 60 ? Math.floor(expirationMinutes / 60) + ' hora' + (Math.floor(expirationMinutes / 60) > 1 ? 's' : '') : expirationMinutes + ' minutos'}.</p>
         <p>Si no solicitaste restablecer tu contraseña, puedes ignorar este email o contactar a soporte.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         <p style="color: #666; font-size: 12px;">Este es un email automático, por favor no respondas.</p>
