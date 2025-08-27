@@ -8,7 +8,7 @@ import * as aIAssistantsFeaturesSeeder from './seed-ai-assistants-features';
 import * as aIPersonasSeeder from './seed-ai-personas';
 import * as storageTiersSeeder from './seed-storage-tiers';
 import * as userStorageConfigsSeeder from './seed-user-storage-configs';
-import * as prodRootUserSeeder from './seed-production-root-user';
+import * as prodRootUserSeeder from './_seed-production-root-user';
 import * as readline from 'readline';
 
 import * as devSeeder from './dev-seeds/seed';
