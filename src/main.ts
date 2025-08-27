@@ -326,20 +326,18 @@ async function bootstrap() {
     .build();
 
   // Basic Auth for Swagger in production
-  if (configService.get<string>('env') === 'production') {
-    app.use(
-      '/docs',
-      basicAuth({
-        challenge: true,
-        users: {
-          [configService.get<string>('swagger.user', 'admin')]: configService.get<string>(
-            'swagger.password',
-            'admin',
-          ),
-        },
-      }),
-    );
-  }
+  app.use(
+    '/docs',
+    basicAuth({
+      challenge: true,
+      users: {
+        [configService.get<string>('swagger.user', 'admin')]: configService.get<string>(
+          'swagger.password',
+          'admin',
+        ),
+      },
+    }),
+  );
 
   // Create and setup Swagger document
   const document = SwaggerModule.createDocument(app, config);

@@ -4,7 +4,7 @@ const storageTiers = [
   {
     name: 'Basic',
     level: '1',
-    maxStorageBytes: BigInt(200 * 1024 * 1024), // 200MB
+    maxStorageBytes: BigInt(10 * 1024 * 1024 * 1024), // 10GB
     maxSimultaneousFiles: 5,
     isActive: true,
   },
@@ -29,7 +29,7 @@ export default async function main(prisma: PrismaClient) {
         data: tierData,
       });
 
-      console.log(`✓ Created storage tier: ${tier.name} (level ${tier.level}) - ${Number(tier.maxStorageBytes) / (1024 * 1024)}MB`);
+      console.log(`✓ Created storage tier: ${tier.name} (level ${tier.level}) - ${Number(tier.maxStorageBytes) / (1024 * 1024 * 1024)}GB`);
     } catch (error) {
       console.error(`✗ Failed to create storage tier ${tierData.name}:`, error);
     }

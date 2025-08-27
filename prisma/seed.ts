@@ -8,6 +8,7 @@ import * as aIAssistantsFeaturesSeeder from './seed-ai-assistants-features';
 import * as aIPersonasSeeder from './seed-ai-personas';
 import * as storageTiersSeeder from './seed-storage-tiers';
 import * as userStorageConfigsSeeder from './seed-user-storage-configs';
+import * as prodRootUserSeeder from './seed-production-root-user';
 import * as readline from 'readline';
 
 import * as devSeeder from './dev-seeds/seed';
@@ -69,36 +70,42 @@ async function main() {
   console.log('Seeding database...');
 
   // Create roles
-  await rolesSeeder.default(prisma);
+  await rolesSeeder.default(prisma); // ok
 
   // Create permissions
-  await permissionsSeeder.default(prisma);
+  await permissionsSeeder.default(prisma); // ok
 
   // Assign permissions to roles
-  await rolePermissionsMapSeeder.default(prisma);
+  await rolePermissionsMapSeeder.default(prisma); // warn
 
   // Create default countries and states
-  await countriesSeeder.default(prisma);
+  await countriesSeeder.default(prisma); // ok
 
   // Create AI assistants
-  await aIAssistantsSeeder.default(prisma);
+  await aIAssistantsSeeder.default(prisma); // ok
 
   // Create AI assistants features
-  await aIAssistantsFeaturesSeeder.default(prisma);
+  await aIAssistantsFeaturesSeeder.default(prisma); // ok
 
   // Create default AI personas
-  await aIPersonasSeeder.default(prisma);
+  await aIPersonasSeeder.default(prisma); // ok
 
   // Create default storage tiers
-  await storageTiersSeeder.default(prisma);
+  await storageTiersSeeder.default(prisma); // ok
 
   if (process.env.NODE_ENV === 'development')
   {
     await devSeeder.default(prisma);
   }
 
+  // ok
+  if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'production')
+  {
+    await prodRootUserSeeder.default(prisma);
+  }
+
   // Create default user storage configurations
-  await userStorageConfigsSeeder.default(prisma);
+  await userStorageConfigsSeeder.default(prisma); // ok
 
   console.log('Seeding completed successfully!');
 }

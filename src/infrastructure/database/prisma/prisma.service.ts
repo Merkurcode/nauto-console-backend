@@ -47,7 +47,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$disconnect();
   }
 
-  async cleanDatabase() {
+  /*async cleanDatabase() {
     if (this.configService.get<string>('env') === 'production') {
       return;
     }
@@ -60,5 +60,5 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         return this[modelKey as string].deleteMany();
       }),
     );
-  }
+  }*/
 }

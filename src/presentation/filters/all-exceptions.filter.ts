@@ -241,7 +241,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     );
 
     // SECURITY: Don't expose internal errors in production
-    const isProduction = this.configService.get<string>('env') === 'production';
+    const isProduction = this.configService.get<string>('env') === 'production' || this.configService.get<string>('env') === 'test';
     const safeMessage =
       isProduction && status === 500 ? 'An error occurred processing your request' : message;
 
