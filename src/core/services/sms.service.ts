@@ -1,14 +1,13 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
-import { USER_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { SmsTemplates } from '@shared/services/sms/sms-templates';
 
 export interface ISmsOptions {
   phoneNumber: string;
   message: string;
-  countryCode?: string;
+  countryCode: string;
 }
 
 @Injectable()
@@ -17,26 +16,8 @@ export class SmsService {
     private readonly configService: ConfigService,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
   ) {
     this.logger.setContext(SmsService.name);
-  }
-
-  private async getUserPhoneCountryCode(userId: string): Promise<string> {
-    try {
-      const phoneCode = await this.userRepository.getUserPhoneCountryCode(userId);
-
-      return phoneCode || '52'; // Default to Mexico if not found
-    } catch (error) {
-      this.logger.warn({
-        message: 'Failed to get user phone country code',
-        userId,
-        error: error.message,
-      });
-
-      return '52'; // Default to Mexico
-    }
   }
 
   async sendSms(options: ISmsOptions): Promise<boolean> {
@@ -53,8 +34,14 @@ export class SmsService {
         return false;
       }
 
-      // Use provided country code or default to Mexico
-      const countryCode = options.countryCode || '52';
+      // Use provided country code
+      const countryCode = options.countryCode;
+
+      if (!countryCode) {
+        this.logger.warn('countryCode not configured, skipping SMS sending');
+
+        return false;
+      }
 
       // Clean phone number (remove any non-digit characters except +)
       const cleanPhoneNumber = options.phoneNumber.replace(/[^\d+]/g, '');
@@ -103,32 +90,21 @@ export class SmsService {
     }
   }
 
-  async sendVerificationSms(phoneNumber: string, code: string, userId?: string): Promise<boolean> {
+  async sendVerificationSms(
+    phoneNumber: string,
+    code: string,
+    countryCode: string,
+  ): Promise<boolean> {
     this.logger.debug({
       message: 'sendVerificationSms called',
       phoneNumber,
       codeLength: code?.length,
-      userId,
+      countryCode,
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
     const expirationMinutes = this.configService.get<number>('otp.expiration', 5);
     const message = SmsTemplates.verificationCode(code, appName, expirationMinutes);
-
-    // Get user's country phone code from database if userId is provided
-    let countryCode = '52'; // Default to Mexico
-    if (userId) {
-      this.logger.debug({
-        message: 'Getting country code for verification SMS',
-        userId,
-      });
-      countryCode = await this.getUserPhoneCountryCode(userId);
-      this.logger.debug({
-        message: 'Country code retrieved for verification SMS',
-        userId,
-        countryCode,
-      });
-    }
 
     this.logger.debug({
       message: 'Calling sendSms for verification',
@@ -156,34 +132,19 @@ export class SmsService {
     phoneNumber: string,
     firstName: string,
     password: string,
+    countryCode: string,
     dashboardUrl?: string,
-    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendWelcomeSms called',
       phoneNumber,
       firstName,
       hasDashboardUrl: !!dashboardUrl,
-      userId,
+      countryCode,
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.welcomeWithPassword(firstName, appName, password, dashboardUrl);
-
-    // Get user's country phone code from database if userId is provided
-    let countryCode = '52'; // Default to Mexico
-    if (userId) {
-      this.logger.debug({
-        message: 'Getting country code for welcome SMS',
-        userId,
-      });
-      countryCode = await this.getUserPhoneCountryCode(userId);
-      this.logger.debug({
-        message: 'Country code retrieved for welcome SMS',
-        userId,
-        countryCode,
-      });
-    }
 
     this.logger.debug({
       message: 'Calling sendSms for welcome message',
@@ -210,34 +171,19 @@ export class SmsService {
   async sendWelcomeSmsWithoutPassword(
     phoneNumber: string,
     firstName: string,
+    countryCode: string,
     dashboardUrl?: string,
-    userId?: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendWelcomeSmsWithoutPassword called',
       phoneNumber,
       firstName,
       hasDashboardUrl: !!dashboardUrl,
-      userId,
+      countryCode,
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.welcome(firstName, appName, dashboardUrl);
-
-    // Get user's country phone code from database if userId is provided
-    let countryCode = '52'; // Default to Mexico
-    if (userId) {
-      this.logger.debug({
-        message: 'Getting country code for welcome SMS without password',
-        userId,
-      });
-      countryCode = await this.getUserPhoneCountryCode(userId);
-      this.logger.debug({
-        message: 'Country code retrieved for welcome SMS without password',
-        userId,
-        countryCode,
-      });
-    }
 
     this.logger.debug({
       message: 'Calling sendSms for welcome message without password',
@@ -264,23 +210,17 @@ export class SmsService {
   async sendPasswordResetNotificationSms(
     phoneNumber: string,
     firstName: string,
-    userId?: string,
+    countryCode: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendPasswordResetNotificationSms called',
       phoneNumber,
       firstName,
-      userId,
+      countryCode,
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.passwordReset(firstName, appName);
-
-    // Get user's country phone code from database if userId is provided
-    let countryCode = '52'; // Default to Mexico
-    if (userId) {
-      countryCode = await this.getUserPhoneCountryCode(userId);
-    }
 
     const result = await this.sendSms({
       phoneNumber,
@@ -300,23 +240,17 @@ export class SmsService {
   async sendAccountActivatedSms(
     phoneNumber: string,
     firstName: string,
-    userId?: string,
+    countryCode: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendAccountActivatedSms called',
       phoneNumber,
       firstName,
-      userId,
+      countryCode,
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.accountActivated(firstName, appName);
-
-    // Get user's country phone code from database if userId is provided
-    let countryCode = '52'; // Default to Mexico
-    if (userId) {
-      countryCode = await this.getUserPhoneCountryCode(userId);
-    }
 
     const result = await this.sendSms({
       phoneNumber,
@@ -337,24 +271,18 @@ export class SmsService {
     phoneNumber: string,
     firstName: string,
     action: string,
-    userId?: string,
+    countryCode: string,
   ): Promise<boolean> {
     this.logger.debug({
       message: 'sendSecurityAlertSms called',
       phoneNumber,
       firstName,
       action,
-      userId,
+      countryCode,
     });
 
     const appName = this.configService.get('appName', 'Nauto Console');
     const message = SmsTemplates.securityAlert(firstName, appName, action);
-
-    // Get user's country phone code from database if userId is provided
-    let countryCode = '52'; // Default to Mexico
-    if (userId) {
-      countryCode = await this.getUserPhoneCountryCode(userId);
-    }
 
     const result = await this.sendSms({
       phoneNumber,

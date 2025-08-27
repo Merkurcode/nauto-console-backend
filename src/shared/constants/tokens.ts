@@ -67,6 +67,7 @@ export const DATABASE_HEALTH = Symbol('IDatabaseHealth');
 export const AUDIT_LOG_SERVICE = Symbol('AuditLogService');
 export const TRANSACTION_MANAGER = Symbol('TransactionManager');
 export const REDIS_CLIENT = Symbol('RedisClient');
+export const EVENT_HANDLERS = Symbol('EventHandlers');
 
 // Storage service tokens
 export const STORAGE_SERVICE = Symbol('StorageService');

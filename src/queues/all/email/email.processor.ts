@@ -4,7 +4,7 @@ import { IEventHandler } from '@nestjs/cqrs';
 import { Inject, OnModuleDestroy } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { GenericEventProcessor } from 'src/queues/processors/generic-event-processor';
-import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { LOGGER_SERVICE, EVENT_HANDLERS } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { IEventJobData } from 'src/queues/types';
 
@@ -51,7 +51,7 @@ export class AuthEmailEventProcessor extends GenericEventProcessor implements On
   private metricsInterval: NodeJS.Timeout | null = null;
 
   constructor(
-    @Inject('EVENT_HANDLERS') eventHandlers: IEventHandler<unknown>[],
+    @Inject(EVENT_HANDLERS) eventHandlers: IEventHandler<unknown>[],
     @Inject(LOGGER_SERVICE) logger: ILogger,
   ) {
     super(ModuleConfig, logger);

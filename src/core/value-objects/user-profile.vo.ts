@@ -17,7 +17,7 @@ export class UserProfile {
     this.validate(phone, phoneCountryCode, avatarUrl, bio, birthDate);
 
     this._phone = phone?.trim();
-    this._phoneCountryCode = phoneCountryCode?.trim() || '52';
+    this._phoneCountryCode = phoneCountryCode?.trim();
     this._avatarUrl = avatarUrl?.trim();
     this._bio = bio?.trim();
     this._birthDate = birthDate?.trim();

@@ -20,6 +20,7 @@ export class AuthEmailUserRegisteredEvent {
     public readonly roleNames: string[],
     public readonly profilePhone?: string,
     public readonly companyName?: string,
+    public readonly profilePhoneCountryCode?: string,
   ) {}
 
   static fromJSON(data: Record<string, any>): AuthEmailUserRegisteredEvent {
@@ -31,6 +32,7 @@ export class AuthEmailUserRegisteredEvent {
       Array.isArray(data.roleNames) ? data.roleNames : [data.roleNames].filter(Boolean),
       data.profilePhone,
       data.companyName,
+      data.profilePhoneCountryCode,
     );
   }
 
@@ -43,6 +45,7 @@ export class AuthEmailUserRegisteredEvent {
       roleNames: this.roleNames,
       profilePhone: this.profilePhone,
       companyName: this.companyName,
+      profilePhoneCountryCode: this.profilePhoneCountryCode,
     };
   }
 }
@@ -92,11 +95,6 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
     // Send welcome SMS if user has phone number
     try {
       if (event.profilePhone) {
-        this.logger.log({
-          message: 'Sending welcome SMS to user with extended data by queue job',
-          phone: event.profilePhone,
-          firstName: event.firstName,
-        });
 
         const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
         const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
@@ -106,8 +104,8 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
           event.profilePhone,
           event.firstName,
           event.actualPassword!,
+          event.profilePhoneCountryCode,
           dashboardUrl,
-          event.userId,
         );
       } else {
         this.logger.debug({

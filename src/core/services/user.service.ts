@@ -66,100 +66,6 @@ export class UserService {
     this.logger.setContext(UserService.name);
   }
 
-  async createUser(
-    emailStr: string,
-    passwordStr: string | undefined,
-    firstName: string,
-    lastName: string,
-  ): Promise<User> {
-    // Validate email using value object
-    const email = new Email(emailStr);
-
-    // Generate password if not provided
-    let actualPassword = passwordStr;
-
-    if (!passwordStr) {
-      actualPassword = PasswordGenerator.generateSecurePassword();
-    }
-
-    // Validate password using value object
-    const password = new Password(actualPassword!);
-
-    // Check if user already exists
-    const existingUser = await this.userRepository.findByEmail(email.getValue());
-    if (existingUser) {
-      throw new EntityAlreadyExistsException('User', 'email');
-    }
-
-    // Hash the password
-    const passwordHash = await this.hashPassword(password.getValue());
-
-    // Create a new user with value objects for name
-    const user = User.create(email, passwordHash, new FirstName(firstName), new LastName(lastName));
-
-    // Mark email as verified (removing email verification requirement)
-    user.markEmailAsVerified();
-
-    // Assign default role
-    const defaultRole = await this.roleRepository.findDefaultRole();
-    if (defaultRole) {
-      user.addRole(defaultRole);
-    }
-
-    // Save the user
-    const savedUser = await this.userRepository.create(user);
-
-    // Send welcome email with password
-    try {
-      const roleNames = user.roles?.map(role => role.name) || [];
-      this.logger.log({
-        message: 'Sending welcome email',
-        email: emailStr,
-        firstName,
-        roles: roleNames,
-      });
-      await this.emailService.sendWelcomeEmailWithPassword(emailStr, firstName, actualPassword!, undefined, roleNames);
-    } catch (error) {
-      this.logger.error({
-        message: 'Error sending welcome email',
-        email: emailStr,
-        error: error.message,
-      });
-      // Continue even if email sending fails
-    }
-
-    // Send welcome SMS if user has phone number
-    try {
-      if (savedUser.profile?.phone) {
-        this.logger.log({
-          message: 'Sending welcome SMS to user',
-          phone: savedUser.profile.phone,
-          firstName,
-        });
-        const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
-        const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
-        const dashboardUrl = `${frontendUrl}${dashboardPath}`;
-
-        await this.smsService.sendWelcomeSms(
-          savedUser.profile.phone,
-          firstName,
-          actualPassword!,
-          dashboardUrl,
-          savedUser.id.getValue(),
-        );
-      }
-    } catch (error) {
-      this.logger.error({
-        message: 'Error sending welcome SMS',
-        phone: savedUser.profile?.phone,
-        error: error.message,
-      });
-      // Continue even if SMS sending fails
-    }
-
-    return savedUser;
-  }
-
   async createUserWithExtendedData(
     emailStr: string,
     passwordStr: string | undefined,
@@ -324,6 +230,7 @@ export class UserService {
       const roleNames = user.roles?.map(role => role.name) || [];
 
       // Use email queue to send email and sms
+
       await this.authEmailEventBusAdapter.publish(
         new AuthEmailUserRegisteredEvent(
           savedUser.id.getValue(),
@@ -332,7 +239,8 @@ export class UserService {
           actualPassword!,
           roleNames,
           savedUser.profile?.phone,
-          options?.companyName
+          options?.companyName,
+          savedUser.profile?.phoneCountryCode,
         )
       );
     }

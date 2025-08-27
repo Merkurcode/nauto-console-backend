@@ -56,7 +56,7 @@ export class GenericEventProcessor extends BaseProcessor<IEventJobData> {
     );
 
     for (const cls of classes) {
-      const inst = this.eventHandlers.find(h => h.constructor === cls);
+      const inst = this.eventHandlers?.find(h => h.constructor === cls);
       if (inst && !doneHandlers.has(inst.constructor.name)) selected.push(inst);
     }
 

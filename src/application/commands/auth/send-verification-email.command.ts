@@ -74,11 +74,10 @@ export class SendVerificationEmailCommandHandler
       // Verify the provided phone number matches the user's registered phone
       if (targetUser.profile.phone === phoneNumber) {
         this.logger.debug('Phone numbers match, sending SMS verification');
-        smsSent = await this.smsService.sendVerificationSms(
-          phoneNumber,
-          code,
-          targetUser.id.getValue(),
-        );
+        // Get user's country code from profile or default to Mexico
+        const countryCode = targetUser.profile.phoneCountryCode;
+
+        smsSent = await this.smsService.sendVerificationSms(phoneNumber, code, countryCode);
         this.logger.debug(`SMS verification result - sent: ${smsSent}`);
       } else {
         this.logger.debug('Phone numbers do not match - SMS not sent');

@@ -1,4 +1,11 @@
-import { Module, DynamicModule, Type, Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Module,
+  DynamicModule,
+  Type,
+  Injectable,
+  OnApplicationBootstrap,
+  Scope,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { CqrsModule } from '@nestjs/cqrs';
@@ -13,6 +20,8 @@ import { getQueueConfig } from './config/queue.config';
 import { IEventHandler, IRedisConfig, IQueueDefinition } from './types';
 import { HandlerRegistry } from './registry/event-registry';
 import { setConfigService } from './validation/event-validation';
+import { EVENT_HANDLERS, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { SmsService } from '@core/services/sms.service';
 
 @Injectable()
 class QueueRegistrationService implements OnApplicationBootstrap {
@@ -28,7 +37,7 @@ class QueueRegistrationService implements OnApplicationBootstrap {
     for (const queueName of queueNames) {
       try {
         const queue = this.moduleRef.get(`BullQueue_${queueName}`, { strict: false });
-        if (queue) {
+        if (queue && typeof this.healthService.registerQueue === 'function') {
           this.healthService.registerQueue(queueName, queue);
           registeredCount++;
         }
@@ -130,12 +139,13 @@ export class QueueModule {
     // 2) BullMQ connection
     imports.push(
       BullModule.forRootAsync({
+        // Después (mejor para procesos mixtos)
         useFactory: async (configService: ConfigService) => {
-          return getQueueConfig(
-            configService,
-            options.processType === 'both' ? 'api' : options.processType,
-          );
+          const effective = options.processType === 'both' ? 'worker' : options.processType;
+
+          return getQueueConfig(configService, effective);
         },
+
         inject: [ConfigService],
       }),
     );
@@ -230,11 +240,23 @@ export class QueueModule {
         });
       }
 
+      // Add queue-specific SMS service (no repository dependencies)
+      providers.push({
+        provide: SmsService,
+        useFactory: (configService: ConfigService, logger: any) => {
+          return new SmsService(configService, logger);
+        },
+        inject: [ConfigService, LOGGER_SERVICE],
+        scope: Scope.DEFAULT,
+      });
+      exportsArr.push(SmsService);
+
       // Register handlers globally
       providers.push(...handlersToUse, {
-        provide: 'EVENT_HANDLERS',
+        provide: EVENT_HANDLERS,
         useFactory: (...handlers: unknown[]) => handlers,
         inject: handlersToUse,
+        scope: Scope.DEFAULT,
       });
     }
 

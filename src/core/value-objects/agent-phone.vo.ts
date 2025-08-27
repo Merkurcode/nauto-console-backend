@@ -7,7 +7,7 @@ export class AgentPhone {
   constructor(value: string, countryCode?: string) {
     this.validate(value, countryCode);
     this._value = value.trim();
-    this._countryCode = countryCode?.trim() || '52';
+    this._countryCode = countryCode?.trim();
   }
 
   private validate(value: string, countryCode?: string): void {
