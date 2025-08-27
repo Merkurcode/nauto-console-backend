@@ -68,7 +68,7 @@ async function bootstrap() {
               baseUri: ["'self'"],
               formAction: ["'self'"],
               frameAncestors: ["'none'"],
-              upgradeInsecureRequests: isProduction ? [] : undefined,
+              ...(isProduction && { upgradeInsecureRequests: [] }),
             },
           },
       crossOriginEmbedderPolicy: !isDevelopment,

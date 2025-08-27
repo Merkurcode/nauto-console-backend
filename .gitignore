@@ -36,13 +36,7 @@ lerna-debug.log*
 
 # Environment
 .env
-.env.local
-.env.development
-.env.production
-.env.staging
-.env.test
-.env.dev
-.env.prod
+.env.*
 
 # Docker volumes
 /postgres_data
