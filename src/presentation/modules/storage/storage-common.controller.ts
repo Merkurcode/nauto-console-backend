@@ -76,6 +76,7 @@ import { StorageAreaType } from '@shared/types/storage-areas.types';
 import { StorageAreaUtils } from '@shared/utils/storage-area.utils';
 import { SecurityHeadersInterceptor } from '@shared/interceptors/security-headers.interceptor';
 import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
+import { CompanyAssignmentGuard } from '@presentation/guards/company-assignment.guard';
 
 interface IAuthenticatedRequest {
   user: {
@@ -94,7 +95,7 @@ interface IAuthenticatedRequest {
 @ApiTags('storage-common-areas')
 @ApiBearerAuth('JWT-auth')
 @Controller('storage/common')
-@UseGuards(JwtAuthGuard, RolesGuard /* , ThrottlerGuard */)
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyAssignmentGuard)
 @UseInterceptors(SecurityHeadersInterceptor)
 export class StorageCommonController {
   constructor(
@@ -109,7 +110,7 @@ export class StorageCommonController {
 
   @Post(':area/multipart/initiate')
   @HttpCode(HttpStatus.CREATED)
-  // @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 uploads per minute
+  @Throttle(60000, 10) // 10 uploads per minute
   @CanWrite('file')
   @DenyForRootReadOnly()
   @ApiOperation({
@@ -230,7 +231,7 @@ export class StorageCommonController {
 
   @Post(':area/folders')
   @HttpCode(HttpStatus.CREATED)
-  // @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 folders per minute
+  @Throttle(60000, 20) // 20 folders per minute
   @CanWrite('file')
   @DenyForRootReadOnly()
   @ApiOperation({
@@ -467,7 +468,7 @@ export class StorageCommonController {
 
   @Get(':fileId')
   @HttpCode(HttpStatus.OK)
-  // @Throttle({ default: { limit: 200, ttl: 60000 } }) // 200 requests per minute
+  @Throttle(60000, 200) // 200 requests per minute
   @CanRead('file')
   @ApiOperation({
     summary: 'Get file details from common areas (All authenticated users)',
@@ -688,59 +689,4 @@ export class StorageCommonController {
       );
     });
   }
-
-  // En common no es necesario...
-  //@Put('files/:fileId/visibility')
-  //@CanWrite('file')
-  //@DenyForRootReadOnly()
-  //@ApiOperation({
-  //  summary: 'Set file visibility in common areas',
-  //  description: 'Changes whether a file is publicly accessible or private in common areas',
-  //})
-  //@ApiParam({ name: 'fileId', description: 'File unique identifier' })
-  //@ApiConsumes('application/json')
-  //@ApiProduces('application/json')
-  //@ApiBody({
-  //  type: SetFileVisibilityDto,
-  //  description: 'File visibility settings',
-  //  examples: {
-  //    makePublic: {
-  //      summary: 'Make file public',
-  //      value: {
-  //        isPublic: true,
-  //      },
-  //    },
-  //    makePrivate: {
-  //      summary: 'Make file private',
-  //      value: {
-  //        isPublic: false,
-  //      },
-  //    },
-  //  },
-  //})
-  //@ApiResponse({
-  //  status: HttpStatus.OK,
-  //  description: 'File visibility updated successfully',
-  //  type: FileResponseDto,
-  //})
-  //@ApiResponse({
-  //  status: HttpStatus.BAD_REQUEST,
-  //  description: 'Invalid visibility setting',
-  //})
-  //@ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
-  //@ApiResponse({
-  //  status: HttpStatus.FORBIDDEN,
-  //  description: 'Insufficient permissions to change file visibility',
-  //})
-  //async setFileVisibility(
-  //  @Param('fileId') fileId: string,
-  //  @Body() visibilityDto: SetFileVisibilityDto,
-  //  @Request() req: IAuthenticatedRequest,
-  //) {
-  //  return this.transactionService.executeInTransaction(async () => {
-  //    return this.commandBus.execute(
-  //      new SetFileVisibilityCommand(fileId, visibilityDto.isPublic, req.user.sub),
-  //    );
-  //  });
-  //}
 }

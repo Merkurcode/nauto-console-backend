@@ -91,10 +91,11 @@ import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
+import { CompanyAssignmentGuard } from '@presentation/guards/company-assignment.guard';
 
 @ApiTags('storage')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, CompanyAssignmentGuard)
 @UseInterceptors(FileAuditInterceptor, SecurityHeadersInterceptor)
 // @UseHealthGuard('storage') // Temporarily disabled for testing
 @Controller('storage')
