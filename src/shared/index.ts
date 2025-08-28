@@ -12,3 +12,7 @@ export * from './validators/storage-path.validator';
 // Templates
 export * from './services/email/email-templates';
 export * from './services/sms/sms-templates';
+
+// Company assignment decorators
+export * from './decorators/skip-company-assignment.decorator';
+export * from './decorators/require-company-assignment.decorator';
