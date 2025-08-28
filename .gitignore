@@ -57,3 +57,4 @@ nul
 # Development notes and session summaries
 dev-notes/
 /.claude
+.claude/
