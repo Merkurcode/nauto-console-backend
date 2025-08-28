@@ -144,6 +144,7 @@ export class CompanyScheduleService {
         dayOfWeek,
         startTime,
         endTime,
+        existingSchedule.id, // Exclude the current schedule from conflict check
       );
 
       if (hasConflict) {
@@ -155,8 +156,16 @@ export class CompanyScheduleService {
 
     // Update the schedule
     if (updates.dayOfWeek !== undefined) existingSchedule.updateDayOfWeek(updates.dayOfWeek);
-    if (updates.startTime !== undefined) existingSchedule.updateStartTime(updates.startTime);
-    if (updates.endTime !== undefined) existingSchedule.updateEndTime(updates.endTime);
+
+    // Handle time updates - use updateTimeRange if both are provided
+    if (updates.startTime !== undefined && updates.endTime !== undefined) {
+      existingSchedule.updateTimeRange(updates.startTime, updates.endTime);
+    } else if (updates.startTime !== undefined) {
+      existingSchedule.updateStartTime(updates.startTime);
+    } else if (updates.endTime !== undefined) {
+      existingSchedule.updateEndTime(updates.endTime);
+    }
+
     if (updates.isActive !== undefined) existingSchedule.updateIsActive(updates.isActive);
 
     // Validate domain entity after updates
