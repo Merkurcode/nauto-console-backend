@@ -13,6 +13,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -96,7 +97,7 @@ export class CompanySchedulesController {
   })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async createSchedule(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
     @Body() createScheduleDto: CreateCompanyScheduleDto,
     @CurrentUser() currentUser: IJwtPayload,
   ): Promise<ICompanyScheduleResponse> {
@@ -161,7 +162,7 @@ export class CompanySchedulesController {
   })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async getSchedules(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
     @Query('isActive') isActive?: boolean,
     @Query('dayOfWeek', new ParseIntPipe({ optional: true })) dayOfWeek?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
@@ -207,7 +208,7 @@ export class CompanySchedulesController {
   })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async getWeeklySchedule(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
   ): Promise<ICompanyWeeklyScheduleResponse> {
     const query = this.mapper.toGetWeeklyScheduleQuery(companyId);
     const result = await this.queryBus.execute(query);
@@ -249,8 +250,8 @@ export class CompanySchedulesController {
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Time conflict with existing schedule' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async updateSchedule(
-    @Param('companyId') companyId: string,
-    @Param('scheduleId') scheduleId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
+    @Param('scheduleId', TrimStringPipe) scheduleId: string,
     @Body() updateScheduleDto: UpdateCompanyScheduleDto,
     @CurrentUser() currentUser: IJwtPayload,
   ): Promise<ICompanyScheduleResponse> {
@@ -294,8 +295,8 @@ export class CompanySchedulesController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Schedule not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions' })
   async deleteSchedule(
-    @Param('companyId') companyId: string,
-    @Param('scheduleId') scheduleId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
+    @Param('scheduleId', TrimStringPipe) scheduleId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
     return this.transactionService.executeInTransaction(async () => {

@@ -1,13 +1,9 @@
-import {
-  IsString,
-  IsBoolean,
-  IsOptional,
-  MaxLength,
-  Matches,
-  IsNotEmpty,
-  IsUUID,
-} from 'class-validator';
+import { IsString, IsBoolean, IsOptional, Matches, IsNotEmpty, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class CreateAIPersonaDto {
   @ApiProperty({
@@ -16,8 +12,8 @@ export class CreateAIPersonaDto {
     example: 'Friendly',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 10 })
   @IsNotEmpty()
-  @MaxLength(10)
   name: string;
 
   @ApiProperty({
@@ -26,8 +22,8 @@ export class CreateAIPersonaDto {
     example: 'warm and welcoming',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 255 })
   @IsNotEmpty()
-  @MaxLength(255)
   @Matches(/^(\S+\s*){1,3}$/, {
     message: 'Tone must contain at most 3 words',
   })
@@ -39,8 +35,8 @@ export class CreateAIPersonaDto {
     example: 'helpful cheerful professional',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 255 })
   @IsNotEmpty()
-  @MaxLength(255)
   @Matches(/^(\S+\s*){1,3}$/, {
     message: 'Personality must contain at most 3 words',
   })
@@ -53,8 +49,8 @@ export class CreateAIPersonaDto {
       'Provide excellent customer service with personalized attention and effective solutions',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 100 })
   @IsNotEmpty()
-  @MaxLength(100)
   objective: string;
 
   @ApiProperty({
@@ -63,8 +59,8 @@ export class CreateAIPersonaDto {
     example: 'Brief description of this AI persona',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 75 })
   @IsNotEmpty()
-  @MaxLength(75)
   shortDetails: string;
 
   @ApiProperty({
@@ -81,5 +77,6 @@ export class CreateAIPersonaDto {
   })
   @IsOptional()
   @IsUUID(4, { message: 'Company ID must be a valid UUID' })
+  @TrimString()
   companyId?: string | null;
 }

@@ -1,5 +1,6 @@
 import { IsString, IsUUID, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class AssignUserToCompanyDto {
   @ApiProperty({
@@ -9,6 +10,7 @@ export class AssignUserToCompanyDto {
   @IsString()
   @IsUUID()
   @IsNotEmpty()
+  @TrimString()
   userId: string;
 
   @ApiProperty({
@@ -18,5 +20,6 @@ export class AssignUserToCompanyDto {
   @IsString()
   @IsUUID()
   @IsNotEmpty()
+  @TrimString()
   companyId: string;
 }

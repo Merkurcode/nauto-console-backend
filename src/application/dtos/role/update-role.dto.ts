@@ -1,21 +1,24 @@
 import { IsOptional, IsString, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class UpdateRoleDto {
   @ApiPropertyOptional({
     description: 'Role name',
     example: 'moderator',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   name?: string;
 
   @ApiPropertyOptional({
     description: 'Role description',
     example: 'Moderator role with limited access',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   description?: string;
 
   @ApiPropertyOptional({

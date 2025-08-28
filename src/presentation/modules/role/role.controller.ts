@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { QueryBus, CommandBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
@@ -231,7 +232,7 @@ export class RoleController {
   })
   async getAssignablePermissionsToRole(
     @CurrentUser() currentUser: IJwtPayload,
-    @Param('targetRoleName') targetRoleName: string,
+    @Param('targetRoleName', TrimStringPipe) targetRoleName: string,
   ): Promise<IAssignablePermissionResponse[]> {
     // Check permissions that can be assigned to the specific target role
     return await this.queryBus.execute(
@@ -301,7 +302,7 @@ export class RoleController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have required permissions',
   })
-  async getRoleById(@Param('id') id: string) {
+  async getRoleById(@Param('id', TrimStringPipe) id: string) {
     return this.queryBus.execute(new GetRoleQuery(id));
   }
 
@@ -369,7 +370,7 @@ export class RoleController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have required permission',
   })
-  async updateRole(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
+  async updateRole(@Param('id', TrimStringPipe) id: string, @Body() updateRoleDto: UpdateRoleDto) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
         new UpdateRoleCommand(
@@ -400,7 +401,7 @@ export class RoleController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have required permission',
   })
-  async deleteRole(@Param('id') id: string) {
+  async deleteRole(@Param('id', TrimStringPipe) id: string) {
     await this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(new DeleteRoleCommand(id));
     });
@@ -436,8 +437,8 @@ export class RoleController {
     description: 'User does not have required permission',
   })
   async assignPermissionToRole(
-    @Param('roleId') roleId: string,
-    @Param('permissionId') permissionId: string,
+    @Param('roleId', TrimStringPipe) roleId: string,
+    @Param('permissionId', TrimStringPipe) permissionId: string,
   ) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(new AssignPermissionCommand(roleId, permissionId));
@@ -472,8 +473,8 @@ export class RoleController {
     description: 'User does not have required permission',
   })
   async removePermissionFromRole(
-    @Param('roleId') roleId: string,
-    @Param('permissionId') permissionId: string,
+    @Param('roleId', TrimStringPipe) roleId: string,
+    @Param('permissionId', TrimStringPipe) permissionId: string,
   ) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(new RemovePermissionCommand(roleId, permissionId));

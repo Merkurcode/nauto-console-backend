@@ -1,6 +1,7 @@
 import { IsArray, IsString, IsNumber, ValidateNested, Min, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class CompletedPartDto {
   @ApiProperty({
@@ -8,6 +9,7 @@ export class CompletedPartDto {
     example: '"9bb58f26192e4ba00f01e2e7b136bbd8"',
   })
   @IsString()
+  @TrimString()
   ETag: string;
 
   @ApiProperty({

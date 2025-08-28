@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { RolesEnum } from '@shared/constants/enums';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class CreateRoleDto {
   @ApiProperty({
@@ -29,6 +30,7 @@ export class CreateRoleDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   description!: string;
 
   @ApiProperty({
@@ -64,7 +66,8 @@ export class CreateRoleDto {
     example: ['550e8400-e29b-41d4-a716-446655440000', 'role:read'],
     type: [String],
   })
-  @IsArray()
   @IsOptional()
+  @IsArray()
+  @TrimString()
   permissionIds?: string[];
 }

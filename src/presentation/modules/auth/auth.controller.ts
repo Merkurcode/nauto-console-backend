@@ -12,6 +12,8 @@ import {
   Inject,
   ForbiddenException,
 } from '@nestjs/common';
+import { NormalizeEmailParamPipe } from '@shared/pipes/normalize-email-param.pipe';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ILogger } from '@core/interfaces/logger.interface';
@@ -412,7 +414,7 @@ export class AuthController {
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
   async checkEmailVerificationStatus(
-    @Param('email') email: string,
+    @Param('email', TrimStringPipe, NormalizeEmailParamPipe) email: string,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
     const isVerified = await this.commandBus.execute(

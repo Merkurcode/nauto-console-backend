@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -252,7 +253,7 @@ export class UserActivityLogController {
     description: 'User not authenticated',
   })
   async getUserActivityLogs(
-    @Param('userId') targetUserId: string,
+    @Param('userId', TrimStringPipe) targetUserId: string,
     @Query() filters: GetUserActivityLogsDto,
     @CurrentUser() currentUser: IJwtPayload,
   ): Promise<IUserActivityLogPaginatedResponse> {

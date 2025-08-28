@@ -12,7 +12,10 @@ import {
   Length,
 } from 'class-validator';
 import { ApiProperty, ApiHideProperty } from '@nestjs/swagger';
-import { Trim } from '@shared/decorators/trim.decorator';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 import {
   IsValidStoragePath,
   HasValidDirectoryDepth,
@@ -25,8 +28,8 @@ export class InitiateMultipartUploadDto {
     description: 'Virtual folder path for the file',
     example: 'documents/invoices',
   })
-  @Trim()
   @IsString()
+  @TrimAndValidateLength({ min: 0, max: 255 })
   @IsOptional()
   @Length(0, 255)
   @IsValidStoragePath()
@@ -37,8 +40,8 @@ export class InitiateMultipartUploadDto {
     description: 'File name with extension',
     example: 'invoice-2025-001.pdf',
   })
-  @Trim()
   @IsString()
+  @TrimAndValidateLength({ min: 1 })
   @MinLength(1)
   @IsSafeFilename({
     message:
@@ -47,8 +50,8 @@ export class InitiateMultipartUploadDto {
   filename: string;
 
   @ApiHideProperty()
-  @Trim()
   @IsString()
+  @TrimAndValidateLength({ min: 1 })
   @MinLength(1)
   @IsOptional()
   @IsSafeFilename({
@@ -61,8 +64,8 @@ export class InitiateMultipartUploadDto {
     description: 'MIME type of the file',
     example: 'application/pdf',
   })
-  @Trim()
   @IsString()
+  @TrimAndValidateLength({ min: 1 })
   @MinLength(1)
   @Matches(/^[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_.]*$/, {
     message: 'Invalid MIME type format.',

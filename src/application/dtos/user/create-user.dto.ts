@@ -8,6 +8,10 @@ import {
   IsArray,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -16,6 +20,7 @@ export class CreateUserDto {
   })
   @IsEmail()
   @IsNotEmpty()
+  @TrimString()
   email!: string;
 
   @ApiProperty({
@@ -24,6 +29,7 @@ export class CreateUserDto {
     minLength: 8,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 8 })
   @IsNotEmpty()
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
@@ -38,6 +44,7 @@ export class CreateUserDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   firstName!: string;
 
   @ApiProperty({
@@ -46,6 +53,7 @@ export class CreateUserDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   lastName!: string;
 
   @ApiPropertyOptional({
@@ -53,7 +61,7 @@ export class CreateUserDto {
     example: ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'],
     type: [String],
   })
-  @IsArray()
   @IsOptional()
+  @IsArray()
   roleIds?: string[];
 }

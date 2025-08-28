@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { QueryBus, CommandBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -163,7 +164,10 @@ export class UserController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have permission to access this user',
   })
-  async getUserById(@Param('id') id: string, @CurrentUser() currentUser: IJwtPayload) {
+  async getUserById(
+    @Param('id', TrimStringPipe) id: string,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
     return this.queryBus.execute(new GetUserWithAuthorizationQuery(id, currentUser.sub));
   }
 
@@ -205,7 +209,7 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async updateUser(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe) id: string,
     @Body() updateUserDto: UpdateUserProfileDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
@@ -239,7 +243,10 @@ export class UserController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have required permissions',
   })
-  async deleteUser(@Param('id') id: string, @CurrentUser() currentUser: IJwtPayload) {
+  async deleteUser(
+    @Param('id', TrimStringPipe) id: string,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
     // Check if user deletion is allowed in current environment
     this.userDeletionPolicyService.enforceUserDeletionPolicy();
 
@@ -278,7 +285,7 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async activateUser(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe) id: string,
     @Body() activateUserDto: ActivateUserDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
@@ -323,7 +330,7 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async assignRoleToUser(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe) id: string,
     @Body() assignRoleDto: AssignRoleDto,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
@@ -363,8 +370,8 @@ export class UserController {
     description: 'User does not have required permissions',
   })
   async removeRoleFromUser(
-    @Param('id') id: string,
-    @Param('roleId') roleId: string,
+    @Param('id', TrimStringPipe) id: string,
+    @Param('roleId', TrimStringPipe) roleId: string,
     @CurrentUser() currentUser: IJwtPayload,
   ) {
     return this.executeInTransactionWithContext(async () => {

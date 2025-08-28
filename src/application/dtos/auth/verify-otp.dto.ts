@@ -1,5 +1,9 @@
 import { IsNotEmpty, IsString, Length, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class VerifyOtpDto {
   @ApiProperty({
@@ -9,6 +13,7 @@ export class VerifyOtpDto {
   @IsString()
   @IsNotEmpty()
   @IsUUID()
+  @TrimString()
   userId!: string;
 
   @ApiProperty({
@@ -16,6 +21,7 @@ export class VerifyOtpDto {
     example: '123456',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 6, max: 6 })
   @IsNotEmpty()
   @Length(6, 6)
   otp!: string;

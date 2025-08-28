@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -150,7 +151,7 @@ export class AIAssistantController {
     },
   })
   async getCompanyAssistants(
-    @Param('companyIdentifier') companyIdentifier: string,
+    @Param('companyIdentifier', TrimStringPipe) companyIdentifier: string,
     @Query() query: GetAvailableAssistantsDto,
   ): Promise<ICompanyAIAssistantResponse[]> {
     return this.queryBus.execute(new GetCompanyAssistantsQuery(companyIdentifier, query.lang));

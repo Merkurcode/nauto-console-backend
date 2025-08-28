@@ -1,5 +1,9 @@
 import { IsString, MinLength, Matches, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class ChangePasswordDto {
   @ApiProperty({
@@ -7,6 +11,7 @@ export class ChangePasswordDto {
     example: 'OldPassword123!',
   })
   @IsString()
+  @TrimString()
   @IsNotEmpty()
   currentPassword!: string;
 
@@ -16,6 +21,7 @@ export class ChangePasswordDto {
     minLength: 8,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 8 })
   @IsNotEmpty()
   @MinLength(8)
   @Matches(

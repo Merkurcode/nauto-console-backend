@@ -11,6 +11,7 @@ import {
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AuditLogLevel, AuditLogType } from '@core/entities/audit-log.entity';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class AuditLogQueryDto {
   @ApiPropertyOptional({
@@ -22,6 +23,7 @@ export class AuditLogQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @TrimString()
   @IsIn(['info', 'warn', 'error', 'debug', 'critical'], { each: true })
   level?: AuditLogLevel[];
 
@@ -46,6 +48,7 @@ export class AuditLogQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @TrimString()
   @IsIn(
     [
       'auth',
@@ -70,6 +73,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   userId?: string;
 
   @ApiPropertyOptional({
@@ -80,6 +84,7 @@ export class AuditLogQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @TrimString()
   context?: string[];
 
   @ApiPropertyOptional({
@@ -104,6 +109,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   ipAddress?: string;
 
   @ApiPropertyOptional({
@@ -112,6 +118,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   userAgent?: string;
 
   @ApiPropertyOptional({
@@ -120,6 +127,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   sessionId?: string;
 
   @ApiPropertyOptional({
@@ -128,6 +136,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   resource?: string;
 
   @ApiPropertyOptional({
@@ -136,6 +145,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   errorCode?: string;
 
   @ApiPropertyOptional({
@@ -144,6 +154,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   search?: string;
 
   @ApiPropertyOptional({
@@ -180,6 +191,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   @IsIn(['timestamp', 'level', 'type', 'context'])
   sortBy?: 'timestamp' | 'level' | 'type' | 'context' = 'timestamp';
 
@@ -191,6 +203,7 @@ export class AuditLogQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 }

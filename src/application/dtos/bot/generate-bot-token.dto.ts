@@ -1,5 +1,6 @@
 import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class GenerateBotTokenDto {
   @ApiProperty({
@@ -7,6 +8,7 @@ export class GenerateBotTokenDto {
     example: 'chatbot-external-001',
   })
   @IsString()
+  @TrimString()
   botAlias: string;
 
   @ApiProperty({
@@ -14,5 +16,6 @@ export class GenerateBotTokenDto {
     example: 'SecureP@ssw0rd123!',
   })
   @IsString()
+  @TrimString()
   password: string;
 }

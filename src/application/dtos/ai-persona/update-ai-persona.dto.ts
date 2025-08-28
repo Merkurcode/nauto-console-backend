@@ -1,5 +1,6 @@
-import { IsString, MaxLength, Matches, IsNotEmpty } from 'class-validator';
+import { IsString, Matches, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class UpdateAIPersonaDto {
   @ApiProperty({
@@ -8,8 +9,8 @@ export class UpdateAIPersonaDto {
     example: 'warm and welcoming',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 255 })
   @IsNotEmpty()
-  @MaxLength(255)
   @Matches(/^(\S+\s*){1,3}$/, {
     message: 'Tone must contain at most 3 words',
   })
@@ -21,8 +22,8 @@ export class UpdateAIPersonaDto {
     example: 'helpful cheerful professional',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 255 })
   @IsNotEmpty()
-  @MaxLength(255)
   @Matches(/^(\S+\s*){1,3}$/, {
     message: 'Personality must contain at most 3 words',
   })
@@ -35,8 +36,8 @@ export class UpdateAIPersonaDto {
       'Provide excellent customer service with personalized attention and effective solutions',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 100 })
   @IsNotEmpty()
-  @MaxLength(100)
   objective: string;
 
   @ApiProperty({
@@ -45,7 +46,7 @@ export class UpdateAIPersonaDto {
     example: 'Brief description of this AI persona',
   })
   @IsString()
+  @TrimAndValidateLength({ max: 75 })
   @IsNotEmpty()
-  @MaxLength(75)
   shortDetails: string;
 }

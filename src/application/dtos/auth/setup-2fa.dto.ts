@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class Setup2FADto {
   @ApiProperty({
@@ -8,6 +9,7 @@ export class Setup2FADto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   userId!: string;
 }
 
@@ -18,6 +20,7 @@ export class Verify2FADto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   userId!: string;
 
   @ApiProperty({
@@ -26,6 +29,7 @@ export class Verify2FADto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   token!: string;
 }
 
@@ -36,6 +40,7 @@ export class Disable2FADto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   userId!: string;
 }
 
@@ -46,5 +51,6 @@ export class Generate2FADto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   userId!: string;
 }

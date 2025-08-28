@@ -1,5 +1,6 @@
 import { IsUUID, IsBoolean, IsString, IsOptional, ValidateIf } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class ToggleAssistantStatusDto {
   @ApiProperty({
@@ -11,6 +12,7 @@ export class ToggleAssistantStatusDto {
   @IsOptional()
   @ValidateIf(o => !o.companyName)
   @IsUUID()
+  @TrimString()
   companyId?: string;
 
   @ApiProperty({
@@ -21,6 +23,7 @@ export class ToggleAssistantStatusDto {
   @IsOptional()
   @ValidateIf(o => !o.companyId)
   @IsString()
+  @TrimString()
   companyName?: string;
 
   @ApiProperty({
@@ -33,6 +36,7 @@ export class ToggleAssistantStatusDto {
   @IsOptional()
   @ValidateIf(o => !o.aiAssistantName)
   @IsUUID()
+  @TrimString()
   aiAssistantId?: string;
 
   @ApiProperty({
@@ -44,6 +48,7 @@ export class ToggleAssistantStatusDto {
   @IsOptional()
   @ValidateIf(o => !o.aiAssistantId)
   @IsString()
+  @TrimString()
   aiAssistantName?: string;
 
   @ApiProperty({

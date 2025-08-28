@@ -1,6 +1,6 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Trim } from '@shared/decorators/trim.decorator';
+import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 import { IsSafeFilename } from '@shared/validators/safe-filename.validator';
 
 export class RenameFileDto {
@@ -8,9 +8,8 @@ export class RenameFileDto {
     description: "New filename (only alphanumeric and !-_.*'() characters allowed)",
     example: 'updated-document.pdf',
   })
-  @Trim()
   @IsString()
-  @MinLength(1)
+  @TrimAndValidateLength({ min: 1 })
   @IsSafeFilename({
     message:
       "Filename contains invalid characters. Use only alphanumeric, spaces, and !-_.*'() characters",

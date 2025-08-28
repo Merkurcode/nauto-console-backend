@@ -13,12 +13,17 @@ import {
 import { Type } from 'class-transformer';
 import { HasValidDirectoryDepth } from '@shared/validators/storage-path.validator';
 import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class InitiateUploadDtoSwagger {
   @ApiProperty({
     description: 'Virtual folder path for the file (e.g., "documents/invoices")',
     example: 'documents/invoices',
   })
+  @TrimString()
   @IsString()
   @MinLength(0)
   @Matches(/^[a-zA-Z0-9\-_\/.]*$/, {
@@ -32,11 +37,13 @@ export class InitiateUploadDtoSwagger {
     description: 'File name with extension',
     example: 'invoice-2025-001.pdf',
   })
+  @TrimAndValidateLength({ min: 1 })
   @IsString()
   @MinLength(1)
   filename: string;
 
   @ApiHideProperty()
+  @TrimAndValidateLength({ min: 1 })
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -46,6 +53,7 @@ export class InitiateUploadDtoSwagger {
     description: 'MIME type of the file',
     example: 'application/pdf',
   })
+  @TrimAndValidateLength({ min: 1 })
   @IsString()
   @MinLength(1)
   mimeType: string;
@@ -104,6 +112,7 @@ export class PartInfo {
     description: 'ETag returned from upload part',
     example: '"e1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6"',
   })
+  @TrimAndValidateLength({ min: 1 })
   @IsString()
   @MinLength(1)
   ETag: string;
@@ -125,6 +134,7 @@ export class CreateFolderDtoSwagger {
     description: 'Folder path to create',
     example: 'documents/invoices/2025',
   })
+  @TrimString()
   @IsString()
   @MinLength(1)
   @Matches(/^[a-zA-Z0-9\-_\/.]*$/, {

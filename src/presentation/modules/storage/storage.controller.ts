@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -253,10 +254,10 @@ export class StorageController {
     description: 'Invalid part number or upload state',
   })
   async generatePartUrl(
-    @Param('fileId') fileId: string,
-    @Param('partNumber') partNumber: string,
-    @Query('partSizeBytes') partSizeBytes: string,
-    @Query('expirationSeconds') expirationSeconds?: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
+    @Param('partNumber', TrimStringPipe) partNumber: string,
+    @Query('partSizeBytes', TrimStringPipe) partSizeBytes: string,
+    @Query('expirationSeconds', TrimStringPipe) expirationSeconds?: string,
   ): Promise<GeneratePartUrlResponseDto> {
     const partSize = parseInt(partSizeBytes, 10);
     if (isNaN(partSize)) {
@@ -299,7 +300,7 @@ export class StorageController {
     description: 'Upload failed to complete',
   })
   async completeMultipartUpload(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() dto: CompleteMultipartUploadDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
@@ -329,7 +330,7 @@ export class StorageController {
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File or upload not found' })
   async abortMultipartUpload(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
     return this.commandBus.execute(
@@ -374,7 +375,7 @@ export class StorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to private file' })
   async getUploadStatus(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<GetUploadStatusResponseDto | null> {
     return this.queryBus.execute(new GetUploadStatusQuery(fileId, user.sub, user.companyId, false));
@@ -399,7 +400,7 @@ export class StorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File or upload not found' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Upload not in progress' })
   async sendUploadHeartbeat(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
     return this.commandBus.execute(new HeartbeatUploadCommand(user.sub, fileId));
@@ -503,8 +504,8 @@ export class StorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to delete file' })
   async deleteUserFileByName(
-    @Param('filename') filename: string,
-    @Query('path') path: string = '',
+    @Param('filename', TrimStringPipe) filename: string,
+    @Query('path', TrimStringPipe) path: string = '',
     @CurrentUser() user: IJwtPayload,
   ): Promise<void> {
     return this.transactionService.executeInTransaction(async () => {
@@ -554,7 +555,7 @@ export class StorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to private file' })
   async getFile(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
     return this.queryBus.execute(new GetFileQuery(fileId, user));
@@ -657,7 +658,7 @@ export class StorageController {
   })
   @ApiResponse({ status: HttpStatus.UNPROCESSABLE_ENTITY, description: 'Storage operation failed' })
   async moveFile(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() dto: MoveFileDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
@@ -694,7 +695,7 @@ export class StorageController {
   })
   @ApiResponse({ status: HttpStatus.UNPROCESSABLE_ENTITY, description: 'Storage operation failed' })
   async renameFile(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() dto: RenameFileDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
@@ -724,7 +725,7 @@ export class StorageController {
     description: 'Cannot change visibility in current state',
   })
   async setFileVisibility(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() dto: SetFileVisibilityDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
@@ -749,7 +750,7 @@ export class StorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to file' })
   async updateFileTargetApps(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() dto: UpdateFileTargetAppsDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FileResponseDto> {
@@ -786,9 +787,9 @@ export class StorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to private file' })
   async getFileSignedUrl(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @CurrentUser() user: IJwtPayload,
-    @Query('expirationSeconds') expirationSeconds?: string,
+    @Query('expirationSeconds', TrimStringPipe) expirationSeconds?: string,
   ): Promise<GetFileSignedUrlResponseDto> {
     return this.queryBus.execute(new GetFileSignedUrlQuery(fileId, expirationSeconds, user));
   }
@@ -856,7 +857,7 @@ export class StorageController {
     description: 'User concurrent uploads count retrieved successfully',
   })
   async getUserConcurrentCount(
-    @Param('userId') userId: string,
+    @Param('userId', TrimStringPipe) userId: string,
   ): Promise<{ userId: string; activeUploads: number }> {
     return this.queryBus.execute(new GetUserConcurrentCountQuery(userId));
   }
@@ -907,7 +908,7 @@ export class StorageController {
     },
   })
   @Throttle(60000, 5) // Configured via environment
-  async clearUserConcurrencySlots(@Param('userId') userId: string): Promise<void> {
+  async clearUserConcurrencySlots(@Param('userId', TrimStringPipe) userId: string): Promise<void> {
     return this.commandBus.execute(new ClearUserConcurrencySlotsCommand(userId));
   }
 

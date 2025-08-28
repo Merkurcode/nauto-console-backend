@@ -10,6 +10,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class UpdateAddressDto {
   @ApiProperty({
@@ -18,6 +22,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @IsOptional()
   @Length(1, 50)
   country?: string;
@@ -28,6 +33,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @IsOptional()
   @Length(1, 50)
   state?: string;
@@ -38,6 +44,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @IsOptional()
   @Length(1, 50)
   city?: string;
@@ -48,6 +55,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 100 })
   @IsOptional()
   @Length(1, 100)
   street?: string;
@@ -58,6 +66,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 10 })
   @IsOptional()
   @Length(1, 10)
   exteriorNumber?: string;
@@ -68,6 +77,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 10 })
   @IsOptional()
   @Length(1, 10)
   interiorNumber?: string;
@@ -78,6 +88,7 @@ export class UpdateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 10 })
   @IsOptional()
   @Length(1, 10)
   postalCode?: string;
@@ -89,6 +100,7 @@ export class UpdateAddressDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   googleMapsUrl?: string;
 }
 
@@ -99,6 +111,7 @@ export class UpdateCompanyDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 2, max: 100 })
   @IsOptional()
   @Length(2, 100)
   name?: string;
@@ -109,6 +122,7 @@ export class UpdateCompanyDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 10, max: 500 })
   @IsOptional()
   @Length(10, 500)
   description?: string;
@@ -119,6 +133,7 @@ export class UpdateCompanyDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 3, max: 255 })
   @IsOptional()
   @Length(3, 255)
   host?: string;
@@ -160,6 +175,7 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsUUID()
+  @TrimString()
   parentCompanyId?: string;
 
   @ApiProperty({
@@ -169,6 +185,7 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @Length(1, 50)
   timezone?: string;
 
@@ -179,6 +196,7 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsString()
+  @TrimAndValidateLength({ min: 3, max: 3 })
   @Length(3, 3)
   currency?: string;
 
@@ -189,6 +207,7 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsString()
+  @TrimAndValidateLength({ min: 2, max: 10 })
   @Length(2, 10)
   language?: string;
 
@@ -199,6 +218,7 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   logoUrl?: string;
 
   @ApiProperty({
@@ -208,6 +228,7 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   websiteUrl?: string;
 
   @ApiProperty({
@@ -217,5 +238,6 @@ export class UpdateCompanyDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   privacyPolicyUrl?: string;
 }

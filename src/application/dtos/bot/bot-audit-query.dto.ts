@@ -1,6 +1,7 @@
 import { IsOptional, IsString, IsInt, Min, Max, IsDate, IsUUID } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class BotAuditQueryDto {
   @ApiProperty({
@@ -10,6 +11,7 @@ export class BotAuditQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   botAlias?: string;
 
   @ApiProperty({
@@ -19,6 +21,7 @@ export class BotAuditQueryDto {
   })
   @IsOptional()
   @IsUUID()
+  @TrimString()
   companyId?: string;
 
   @ApiProperty({
@@ -28,6 +31,7 @@ export class BotAuditQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   tokenId?: string;
 
   @ApiProperty({
@@ -37,6 +41,7 @@ export class BotAuditQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   method?: string;
 
   @ApiProperty({
@@ -46,6 +51,7 @@ export class BotAuditQueryDto {
   })
   @IsOptional()
   @IsString()
+  @TrimString()
   path?: string;
 
   @ApiProperty({

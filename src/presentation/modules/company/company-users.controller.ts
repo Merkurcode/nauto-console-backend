@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
@@ -126,7 +127,7 @@ export class CompanyUsersController {
       'User does not have company-user:remove permission, insufficient hierarchy level, admin trying to remove from unauthorized company, or Root readonly users cannot perform write operations',
   })
   async removeUserFromCompany(
-    @Param('userId', ParseUUIDPipe) userId: string,
+    @Param('userId', TrimStringPipe, ParseUUIDPipe) userId: string,
     @CurrentUser() currentUser: IJwtPayload,
   ): Promise<void> {
     await this.executeInTransactionWithContext(async () => {

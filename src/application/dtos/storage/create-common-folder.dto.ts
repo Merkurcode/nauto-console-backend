@@ -1,6 +1,6 @@
-import { IsString, IsNotEmpty, Length } from 'class-validator';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Trim } from '@shared/decorators/trim.decorator';
+import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 import {
   IsValidStoragePath,
   HasValidDirectoryDepth,
@@ -12,10 +12,9 @@ export class CreateCommonFolderDto {
     example: 'catalogs/2025',
     maxLength: 255,
   })
-  @Trim()
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 255 })
   @IsNotEmpty()
-  @Length(1, 255)
   @IsValidStoragePath()
   @HasValidDirectoryDepth(100)
   path: string;

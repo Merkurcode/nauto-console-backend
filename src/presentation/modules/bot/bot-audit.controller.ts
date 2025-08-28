@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 
 // Guards and decorators
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
@@ -137,8 +138,8 @@ export class BotAuditController {
   })
   async getBotStatistics(
     @CurrentUser() user: IJwtPayload,
-    @Query('fromDate') fromDate?: string,
-    @Query('toDate') toDate?: string,
+    @Query('fromDate', TrimStringPipe) fromDate?: string,
+    @Query('toDate', TrimStringPipe) toDate?: string,
   ): Promise<IBotStatisticsResponse> {
     const from = fromDate ? new Date(fromDate) : new Date(Date.now() - 24 * 60 * 60 * 1000);
     const to = toDate ? new Date(toDate) : new Date();

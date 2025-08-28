@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
@@ -213,7 +214,7 @@ export class BotManagementController {
   })
   async revokeBotToken(
     @CurrentUser() user: IJwtPayload,
-    @Param('tokenId') tokenId: string,
+    @Param('tokenId', TrimStringPipe) tokenId: string,
   ): Promise<void> {
     await this.commandBus.execute(new RevokeBotTokenCommand(user.sub, tokenId));
   }

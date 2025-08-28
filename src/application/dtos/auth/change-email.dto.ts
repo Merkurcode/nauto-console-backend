@@ -1,14 +1,16 @@
 import { IsString, IsEmail, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { NormalizeEmail } from '@shared/decorators/normalize-email.decorator';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class ChangeEmailDto {
   @ApiProperty({
-    description: 'New email address',
+    description: 'New email address (case-insensitive, automatically trimmed)',
     example: 'newemail@example.com',
   })
-  @IsString()
+  @NormalizeEmail()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsNotEmpty()
-  @IsEmail()
   newEmail!: string;
 
   @ApiProperty({
@@ -17,6 +19,7 @@ export class ChangeEmailDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   currentPassword!: string;
 
   @ApiProperty({
@@ -24,7 +27,8 @@ export class ChangeEmailDto {
     example: '123e4567-e89b-12d3-a456-426614174000',
     required: false,
   })
-  @IsUUID()
   @IsOptional()
+  @IsUUID()
+  @TrimString()
   targetUserId?: string;
 }

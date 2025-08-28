@@ -13,6 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -123,7 +124,7 @@ export class AIPersonaController {
   })
   async create(
     @Body() dto: CreateAIPersonaDto,
-    @Param('language') language: string,
+    @Param('language', TrimStringPipe) language: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaResponse> {
     return this.transactionService.executeInTransaction(async () => {
@@ -195,9 +196,9 @@ export class AIPersonaController {
     description: 'User is not authenticated',
   })
   async findAll(
-    @Query('isActive') isActive?: string,
-    @Query('isDefault') isDefault?: string,
-    @Query('companyId') companyId?: string,
+    @Query('isActive', TrimStringPipe) isActive?: string,
+    @Query('isDefault', TrimStringPipe) isDefault?: string,
+    @Query('companyId', TrimStringPipe) companyId?: string,
     @CurrentUser() user?: IJwtPayload,
   ): Promise<IAIPersonaResponse[]> {
     const filters: Record<string, unknown> = {};
@@ -254,7 +255,7 @@ export class AIPersonaController {
     description: 'User is not authenticated',
   })
   async findByCompany(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaResponse[]> {
     return this.queryBus.execute(new GetCompanyAIPersonasQuery(companyId, user.sub));
@@ -296,7 +297,7 @@ export class AIPersonaController {
     description: 'User is not authenticated',
   })
   async getCompanyActivePersona(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaResponse | null> {
     return this.queryBus.execute(new GetCompanyActiveAIPersonaQuery(companyId, user.sub));
@@ -340,7 +341,7 @@ export class AIPersonaController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated',
   })
-  async findOne(@Param('id') id: string): Promise<IAIPersonaResponse> {
+  async findOne(@Param('id', TrimStringPipe) id: string): Promise<IAIPersonaResponse> {
     return this.queryBus.execute(new GetAIPersonaByIdQuery(id));
   }
 
@@ -399,8 +400,8 @@ export class AIPersonaController {
     description: 'User is not authenticated',
   })
   async update(
-    @Param('id') id: string,
-    @Param('language') language: string,
+    @Param('id', TrimStringPipe) id: string,
+    @Param('language', TrimStringPipe) language: string,
     @Body() dto: UpdateAIPersonaDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaResponse> {
@@ -459,7 +460,7 @@ export class AIPersonaController {
     description: 'User is not authenticated',
   })
   async remove(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe) id: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaDeleteResponse> {
     return this.transactionService.executeInTransaction(async () => {
@@ -516,7 +517,7 @@ export class AIPersonaController {
     description: 'User is not authenticated',
   })
   async assignToCompany(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
     @Body() dto: AssignAIPersonaDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaAssignmentResponse> {
@@ -569,7 +570,7 @@ export class AIPersonaController {
     description: 'Only Root users can update AI persona status',
   })
   async updateStatus(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe) id: string,
     @Body() dto: UpdateAIPersonaStatusDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaResponse> {
@@ -622,7 +623,7 @@ export class AIPersonaController {
     description: 'User does not have access to update assignments for this company',
   })
   async updateCompanyAssignmentStatus(
-    @Param('companyId') companyId: string,
+    @Param('companyId', TrimStringPipe) companyId: string,
     @Body() dto: UpdateCompanyAIPersonaStatusDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<IAIPersonaAssignmentResponse> {

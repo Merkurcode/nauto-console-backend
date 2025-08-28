@@ -1,12 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
+import { NormalizeEmail } from '@shared/decorators/normalize-email.decorator';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class RequestPasswordResetDto {
   @ApiProperty({
-    description: 'The email address of the account',
+    description: 'The email address of the account (case-insensitive, automatically trimmed)',
     example: 'user@example.com',
   })
-  @IsEmail()
+  @NormalizeEmail()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsNotEmpty()
   email!: string;
 
@@ -16,6 +22,7 @@ export class RequestPasswordResetDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   captchaToken!: string;
 }
 
@@ -26,6 +33,7 @@ export class ResetPasswordDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   token!: string;
 
   @ApiProperty({
@@ -33,6 +41,7 @@ export class ResetPasswordDto {
     example: 'StrongP@ssw0rd123',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 8 })
   @IsNotEmpty()
   @MinLength(8)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {

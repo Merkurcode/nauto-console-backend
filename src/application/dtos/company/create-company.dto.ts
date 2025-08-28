@@ -11,6 +11,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class CreateAddressDto {
   @ApiProperty({
@@ -18,6 +22,7 @@ export class CreateAddressDto {
     description: 'Country name',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @IsNotEmpty()
   @Length(1, 50)
   country: string;
@@ -27,6 +32,7 @@ export class CreateAddressDto {
     description: 'State name',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @IsNotEmpty()
   @Length(1, 50)
   state: string;
@@ -36,6 +42,7 @@ export class CreateAddressDto {
     description: 'City name',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @IsNotEmpty()
   @Length(1, 50)
   city: string;
@@ -45,6 +52,7 @@ export class CreateAddressDto {
     description: 'Street name',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 100 })
   @IsNotEmpty()
   @Length(1, 100)
   street: string;
@@ -54,6 +62,7 @@ export class CreateAddressDto {
     description: 'Exterior number',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 10 })
   @IsNotEmpty()
   @Length(1, 10)
   exteriorNumber: string;
@@ -64,6 +73,7 @@ export class CreateAddressDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 10 })
   @Length(1, 10)
   interiorNumber?: string;
 
@@ -72,6 +82,7 @@ export class CreateAddressDto {
     description: 'Postal code',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 10 })
   @IsNotEmpty()
   @Length(1, 10)
   postalCode: string;
@@ -83,6 +94,7 @@ export class CreateAddressDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   googleMapsUrl?: string;
 }
 
@@ -92,6 +104,7 @@ export class CreateCompanyDto {
     description: 'Company name',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 2, max: 100 })
   @IsNotEmpty()
   @Length(2, 100)
   name: string;
@@ -101,6 +114,7 @@ export class CreateCompanyDto {
     description: 'Company description',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 10, max: 500 })
   @IsNotEmpty()
   @Length(10, 500)
   description: string;
@@ -110,6 +124,7 @@ export class CreateCompanyDto {
     description: 'Company host domain',
   })
   @IsString()
+  @TrimAndValidateLength({ min: 3, max: 255 })
   @IsNotEmpty()
   @Length(3, 255)
   host: string;
@@ -149,6 +164,7 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsUUID()
+  @TrimString()
   parentCompanyId?: string;
 
   @ApiProperty({
@@ -158,6 +174,7 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsString()
+  @TrimAndValidateLength({ min: 1, max: 50 })
   @Length(1, 50)
   timezone?: string;
 
@@ -168,6 +185,7 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsString()
+  @TrimAndValidateLength({ min: 3, max: 3 })
   @Length(3, 3)
   currency?: string;
 
@@ -178,6 +196,7 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsString()
+  @TrimAndValidateLength({ min: 2, max: 10 })
   @Length(2, 10)
   language?: string;
 
@@ -188,6 +207,7 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   logoUrl?: string;
 
   @ApiProperty({
@@ -197,6 +217,7 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   websiteUrl?: string;
 
   @ApiProperty({
@@ -206,5 +227,6 @@ export class CreateCompanyDto {
   })
   @IsOptional()
   @IsUrl()
+  @TrimString()
   privacyPolicyUrl?: string;
 }

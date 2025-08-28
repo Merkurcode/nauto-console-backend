@@ -12,6 +12,11 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { NormalizeEmail } from '@shared/decorators/normalize-email.decorator';
+import {
+  TrimString,
+  TrimAndValidateLength,
+} from '@shared/decorators/trim-and-validate-length.decorator';
 // import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
 // import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
 import {
@@ -26,8 +31,9 @@ export class ProfileDto {
     description: 'User phone number',
     example: '2211778811',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   phone?: string;
 
   @ApiPropertyOptional({
@@ -35,32 +41,36 @@ export class ProfileDto {
     example: '52',
     default: '52',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   phoneCountryCode?: string;
 
   @ApiPropertyOptional({
     description: 'User avatar URL',
     example: 'https://example.com/avatar.jpg',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   avatarUrl?: string;
 
   @ApiPropertyOptional({
     description: 'User bio',
     example: 'Software developer with 5 years of experience',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   bio?: string;
 
   @ApiPropertyOptional({
     description: 'User birth date',
     example: '1990-01-01',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   birthDate?: string;
 }
 
@@ -69,8 +79,9 @@ export class AddressDto {
     description: 'Country name (requires state when provided)',
     example: 'México',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   // @CountryExists() // Validation moved to UserService
   country?: string;
 
@@ -78,8 +89,9 @@ export class AddressDto {
     description: 'State name (required when country is provided)',
     example: 'Puebla',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   // @StateExists() // Validation moved to UserService
   state?: string;
 
@@ -87,57 +99,64 @@ export class AddressDto {
     description: 'City name',
     example: 'Puebla',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   city?: string;
 
   @ApiPropertyOptional({
     description: 'Street name',
     example: 'Calle 5 de Mayo',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   street?: string;
 
   @ApiPropertyOptional({
     description: 'Exterior number',
     example: '123',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   exteriorNumber?: string;
 
   @ApiPropertyOptional({
     description: 'Interior number',
     example: 'A',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   interiorNumber?: string;
 
   @ApiPropertyOptional({
     description: 'Postal code',
     example: '72000',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   postalCode?: string;
 
   @ApiPropertyOptional({
     description: 'Google Maps URL for the address',
     example: 'https://maps.google.com/?q=Calle+5+de+Mayo+123,Puebla,Puebla,Mexico',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   googleMapsUrl?: string;
 }
 
 export class RegisterDto {
   @ApiProperty({
-    description: 'User email address',
+    description: 'User email address (case-insensitive, automatically trimmed)',
     example: 'user@example.com',
   })
-  @IsEmail()
+  @NormalizeEmail()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsNotEmpty()
   email!: string;
 
@@ -149,6 +168,7 @@ export class RegisterDto {
     required: false,
   })
   @IsString()
+  @TrimAndValidateLength({ min: 8 })
   @IsOptional()
   @MinLength(8)
   @Matches(
@@ -166,6 +186,7 @@ export class RegisterDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   firstName!: string;
 
   @ApiProperty({
@@ -174,14 +195,16 @@ export class RegisterDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   lastName!: string;
 
   @ApiPropertyOptional({
     description: 'User second last name',
     example: 'Smith',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   secondLastName?: string;
 
   @ApiPropertyOptional({
@@ -214,16 +237,18 @@ export class RegisterDto {
     description: 'Reason for ban',
     example: null,
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   banReason?: string;
 
   @ApiPropertyOptional({
     description: 'Agent phone number',
     example: '1234567890',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   // @AgentPhoneUniqueForCompany() // TODO: Fix dependency injection for validator
   agentPhone?: string;
 
@@ -232,8 +257,9 @@ export class RegisterDto {
     example: '52',
     default: '52',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   agentPhoneCountryCode?: string;
 
   @ApiProperty({
@@ -242,6 +268,7 @@ export class RegisterDto {
   })
   @IsString()
   @IsNotEmpty()
+  @TrimString()
   company!: string;
 
   @ApiPropertyOptional({
@@ -251,9 +278,10 @@ export class RegisterDto {
     isArray: true,
     enumName: 'RolesEnum',
   })
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @IsOptional()
+  @TrimString()
   roles?: string[];
 
   @ApiPropertyOptional({

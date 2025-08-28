@@ -16,6 +16,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import {
   ApiTags,
   ApiOperation,
@@ -217,7 +218,7 @@ export class StorageCommonController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Access denied to file status' })
   async getUploadStatus(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Request() req: IAuthenticatedRequest,
   ): Promise<GetUploadStatusResponseDto | null> {
     return this.queryBus.execute(
@@ -517,7 +518,7 @@ export class StorageCommonController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.TOO_MANY_REQUESTS, description: 'Rate limit exceeded' })
   async getFileById(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Request() req: IAuthenticatedRequest,
   ): Promise<IFileResponse & { signedUrl?: string; signedUrlExpiresAt?: Date }> {
     const query = new GetFileByIdQuery(fileId, req.user.sub, req.user.companyId);
@@ -575,9 +576,9 @@ export class StorageCommonController {
     description: 'Insufficient permissions to access file',
   })
   async getFileSignedUrl(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Request() req: IAuthenticatedRequest,
-    @Query('expirationSeconds') expirationSeconds?: string,
+    @Query('expirationSeconds', TrimStringPipe) expirationSeconds?: string,
   ) {
     return this.queryBus.execute(new GetFileSignedUrlQuery(fileId, expirationSeconds, req.user));
   }
@@ -624,8 +625,8 @@ export class StorageCommonController {
     description: 'Insufficient permissions to move file',
   })
   async moveFile(
-    @Param('area') area: StorageAreaType,
-    @Param('fileId') fileId: string,
+    @Param('area', TrimStringPipe) area: StorageAreaType,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() moveFileDto: MoveFileDto,
     @Request() req: IAuthenticatedRequest,
   ) {
@@ -679,7 +680,7 @@ export class StorageCommonController {
     description: 'Cannot rename file while uploading or insufficient permissions',
   })
   async renameFile(
-    @Param('fileId') fileId: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
     @Body() renameFileDto: RenameFileDto,
     @Request() req: IAuthenticatedRequest,
   ) {

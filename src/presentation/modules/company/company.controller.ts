@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
@@ -110,7 +111,7 @@ export class CompanyController {
     status: HttpStatus.NOT_FOUND,
     description: 'Company not found',
   })
-  async getCompanyByHost(@Param('host') host: string): Promise<ICompanyResponse> {
+  async getCompanyByHost(@Param('host', TrimStringPipe) host: string): Promise<ICompanyResponse> {
     const hostVO = new Host(host);
 
     return this.queryBus.execute(new GetCompanyByHostQuery(hostVO));
@@ -154,7 +155,7 @@ export class CompanyController {
     description: 'Company not found',
   })
   @RequirePermissions('company:read')
-  async getCompany(@Param('id', ParseUUIDPipe) id: string): Promise<ICompanyResponse> {
+  async getCompany(@Param('id', TrimStringPipe, ParseUUIDPipe) id: string): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
     return this.queryBus.execute(new GetCompanyQuery(companyId));
@@ -261,7 +262,7 @@ export class CompanyController {
     description: 'User does not have sufficient permissions or Admin users can only update their own company',
   })
   async updateCompany(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
     @CurrentUser() currentUserPayload: IJwtPayload,
   ): Promise<ICompanyResponse> {
@@ -332,7 +333,7 @@ export class CompanyController {
     status: HttpStatus.FORBIDDEN,
     description: 'User does not have Root role or Root readonly users cannot perform write operations',
   })
-  async deleteCompany(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+  async deleteCompany(@Param('id', TrimStringPipe, ParseUUIDPipe) id: string): Promise<void> {
     await this.executeInTransactionWithContext(async () => {
       const companyId = CompanyId.fromString(id);
 
@@ -358,7 +359,7 @@ export class CompanyController {
   })
   @RequirePermissions('company:read')
   async getCompanySubsidiaries(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @CurrentUser() currentUserPayload: IJwtPayload,
   ): Promise<ICompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
@@ -384,7 +385,7 @@ export class CompanyController {
   })
   @RequirePermissions('company:read')
   async getCompanyHierarchy(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @CurrentUser() currentUserPayload: IJwtPayload,
   ): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);

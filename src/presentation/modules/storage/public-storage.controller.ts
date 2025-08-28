@@ -10,6 +10,7 @@ import {
 import { Throttle } from '@shared/decorators/throttle.decorator';
 import { Public } from '@shared/decorators/public.decorator';
 import { QueryBus } from '@nestjs/cqrs';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 import { GetPublicFileSignedUrlQuery } from '@application/queries/storage/get-public-file-signed-url.query';
@@ -57,8 +58,8 @@ export class PublicStorageController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'File not found' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'File is private or access denied' })
   async getPublicFileSignedUrl(
-    @Param('fileId') fileId: string,
-    @Query('expirationSeconds') expirationSeconds?: string,
+    @Param('fileId', TrimStringPipe) fileId: string,
+    @Query('expirationSeconds', TrimStringPipe) expirationSeconds?: string,
   ): Promise<GetFileSignedUrlResponseDto> {
     return this.queryBus.execute(new GetPublicFileSignedUrlQuery(fileId, expirationSeconds));
   }

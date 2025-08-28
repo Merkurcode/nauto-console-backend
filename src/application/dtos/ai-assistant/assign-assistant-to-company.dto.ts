@@ -10,6 +10,7 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AssistantAreaEnum } from '@shared/constants/enums';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class AssignAssistantFeatureDto {
   @ApiProperty({
@@ -22,6 +23,7 @@ export class AssignAssistantFeatureDto {
   @IsOptional()
   @ValidateIf(o => !o.featureKeyName)
   @IsUUID()
+  @TrimString()
   featureId?: string;
 
   @ApiProperty({
@@ -35,6 +37,7 @@ export class AssignAssistantFeatureDto {
   @IsOptional()
   @ValidateIf(o => !o.featureId)
   @IsString()
+  @TrimString()
   featureKeyName?: string;
 
   @ApiProperty({
@@ -57,6 +60,7 @@ export class AssignAssistantToCompanyDto {
   @IsOptional()
   @ValidateIf(o => !o.companyName)
   @IsUUID()
+  @TrimString()
   companyId?: string;
 
   @ApiProperty({
@@ -68,6 +72,7 @@ export class AssignAssistantToCompanyDto {
   @IsOptional()
   @ValidateIf(o => !o.companyId)
   @IsString()
+  @TrimString()
   companyName?: string;
 
   @ApiProperty({
@@ -80,6 +85,7 @@ export class AssignAssistantToCompanyDto {
   @IsOptional()
   @ValidateIf(o => !o.aiAssistantName)
   @IsUUID()
+  @TrimString()
   aiAssistantId?: string;
 
   @ApiProperty({
@@ -91,6 +97,7 @@ export class AssignAssistantToCompanyDto {
   @IsOptional()
   @ValidateIf(o => !o.aiAssistantId)
   @IsString()
+  @TrimString()
   aiAssistantName?: string;
 
   @ApiPropertyOptional({

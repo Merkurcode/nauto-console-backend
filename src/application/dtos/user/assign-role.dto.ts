@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsUUID } from 'class-validator';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 
 export class AssignRoleDto {
   @ApiProperty({
@@ -8,5 +9,6 @@ export class AssignRoleDto {
   })
   @IsUUID()
   @IsNotEmpty()
+  @TrimString()
   roleId!: string;
 }

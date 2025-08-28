@@ -1,6 +1,7 @@
 import { IsString, IsOptional, IsBoolean, IsDateString, ValidateNested } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
 // import { CountryExists, StateExists } from '@shared/validators/country-state.validator';
 // import { AgentPhoneUniqueForCompany } from '@shared/validators/agent-phone.validator';
 import {
@@ -14,8 +15,9 @@ export class ProfileDto {
     description: 'User phone number',
     example: '2211778811',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   phone?: string;
 
   @ApiPropertyOptional({
@@ -23,32 +25,36 @@ export class ProfileDto {
     example: '52',
     default: '52',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   phoneCountryCode?: string;
 
   @ApiPropertyOptional({
     description: 'User avatar URL',
     example: 'https://example.com/avatar.jpg',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   avatarUrl?: string;
 
   @ApiPropertyOptional({
     description: 'User bio',
     example: 'Software developer with 5 years of experience',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   bio?: string;
 
   @ApiPropertyOptional({
     description: 'User birth date',
     example: '1990-01-01',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   birthDate?: string;
 }
 
@@ -57,8 +63,9 @@ export class AddressDto {
     description: 'Country name (requires state when provided)',
     example: 'México',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   // @CountryExists() // Validation moved to UserService
   country?: string;
 
@@ -66,8 +73,9 @@ export class AddressDto {
     description: 'State name (required when country is provided)',
     example: 'Puebla',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   // @StateExists() // Validation moved to UserService
   state?: string;
 
@@ -75,48 +83,54 @@ export class AddressDto {
     description: 'City name',
     example: 'Puebla',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   city?: string;
 
   @ApiPropertyOptional({
     description: 'Street name',
     example: 'Calle 5 de Mayo',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   street?: string;
 
   @ApiPropertyOptional({
     description: 'Exterior number',
     example: '123',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   exteriorNumber?: string;
 
   @ApiPropertyOptional({
     description: 'Interior number',
     example: 'A',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   interiorNumber?: string;
 
   @ApiPropertyOptional({
     description: 'Postal code',
     example: '72000',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   postalCode?: string;
 
   @ApiPropertyOptional({
     description: 'Google Maps URL for the address',
     example: 'https://maps.google.com/?q=Calle+5+de+Mayo+123,Puebla,Puebla,Mexico',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   googleMapsUrl?: string;
 }
 
@@ -125,24 +139,27 @@ export class UpdateUserProfileDto {
     description: 'User first name',
     example: 'John',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   firstName?: string;
 
   @ApiPropertyOptional({
     description: 'User last name',
     example: 'Doe',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   lastName?: string;
 
   @ApiPropertyOptional({
     description: 'User second last name',
     example: 'Smith',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   secondLastName?: string;
 
   @ApiPropertyOptional({
@@ -150,8 +167,8 @@ export class UpdateUserProfileDto {
     example: true,
     default: true,
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 
   @ApiPropertyOptional({
@@ -159,32 +176,34 @@ export class UpdateUserProfileDto {
     example: false,
     default: false,
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   emailVerified?: boolean;
 
   @ApiPropertyOptional({
     description: 'Date until user is banned',
     example: null,
   })
-  @IsDateString()
   @IsOptional()
+  @IsDateString()
   bannedUntil?: string;
 
   @ApiPropertyOptional({
     description: 'Reason for ban',
     example: null,
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   banReason?: string;
 
   @ApiPropertyOptional({
     description: 'Agent phone number',
     example: '1234567890',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   // @AgentPhoneUniqueForCompany() // Validation moved to UserService
   agentPhone?: string;
 
@@ -193,8 +212,9 @@ export class UpdateUserProfileDto {
     example: '52',
     default: '52',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
+  @TrimString()
   agentPhoneCountryCode?: string;
 
   @ApiPropertyOptional({
