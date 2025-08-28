@@ -12,7 +12,8 @@
       "Bash(curl:*)",
       "Bash(rm:*)",
       "Bash(npm run start:dev:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": []
   }

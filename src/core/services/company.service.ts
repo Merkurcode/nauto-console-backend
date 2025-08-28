@@ -160,7 +160,7 @@ export class CompanyService {
       }
     }
 
-    // Update company
+    // Update company fields only if provided
     if (updates.name) company.updateName(updates.name);
     if (updates.description) company.updateDescription(updates.description);
     if (updates.address) company.updateAddress(updates.address);
@@ -177,7 +177,7 @@ export class CompanyService {
       company.updateIndustryOperationChannel(updates.industryOperationChannel);
 
     // Save updated company
-    return await this.companyRepository.save(company);
+    return await this.companyRepository.update(company);
   }
 
   async deleteCompany(companyId: CompanyId): Promise<void> {
