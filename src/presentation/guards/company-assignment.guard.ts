@@ -82,13 +82,13 @@ export class CompanyAssignmentGuard implements CanActivate {
       );
     }
 
-    //this.logger.debug({
-    //  message: 'Company assignment validation passed',
-    //  userId: user.sub,
-    //  companyId: user.companyId,
-    //  tenantId: user.tenantId,
-    //  path: request.url,
-    //});
+    this.logger.debug({
+      message: 'Company assignment validation passed',
+      userId: user.sub,
+      companyId: user.companyId,
+      tenantId: user.tenantId,
+      path: request.url,
+    });
 
     return true;
   }
