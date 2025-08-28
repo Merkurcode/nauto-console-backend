@@ -74,6 +74,7 @@ export class SmsService {
         message: 'SMS sent successfully',
         to: options.phoneNumber,
         countryCode,
+        messageLength: options.message?.length,
         response: result,
       });
 

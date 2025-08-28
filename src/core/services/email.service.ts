@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { SecurityLogger } from '@shared/utils/security-logger.util';
 import { EmailTemplates } from '@shared/services/email/email-templates';
 
 export interface IEmailOptions {
@@ -238,7 +239,8 @@ export class EmailService {
     this.logger.log({
       message: 'Sending password reset email',
       email,
-      resetLink,
+      resetLinkProvided: !!resetLink,
+      resetLinkDomain: resetLink ? new URL(resetLink).hostname : null,
     });
 
     return this.sendEmail({

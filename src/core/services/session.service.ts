@@ -6,6 +6,7 @@ import { InvalidSessionException } from '@core/exceptions/domain-exceptions';
 import { SESSION_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { BusinessConfigurationService } from './business-configuration.service';
+import { SecurityLogger } from '@shared/utils/security-logger.util';
 
 @Injectable()
 export class SessionService {
@@ -119,11 +120,11 @@ export class SessionService {
   }
 
   async revokeSession(sessionToken: string): Promise<void> {
-    this.logger.debug({ message: 'Revoking session', sessionToken });
+    this.logger.debug({ message: 'Revoking session', sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken) });
 
     const session = await this.sessionRepository.findBySessionToken(sessionToken);
     if (!session) {
-      this.logger.warn({ message: 'Session not found for revocation', sessionToken });
+      this.logger.warn({ message: 'Session not found for revocation', sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken) });
 
       return;
     }

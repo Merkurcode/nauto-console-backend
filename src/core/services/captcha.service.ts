@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { SecurityLogger } from '@shared/utils/security-logger.util';
 
 @Injectable()
 export class CaptchaService {
@@ -18,7 +19,7 @@ export class CaptchaService {
    * @returns Promise<boolean> indicating if captcha is valid
    */
   async validateCaptcha(captchaToken: string): Promise<boolean> {
-    this.logger.log({ message: 'Validating captcha token', token: captchaToken });
+    this.logger.log({ message: 'Validating captcha token', tokenHash: SecurityLogger.maskToken(captchaToken) });
 
     // Simulate captcha validation
     // In production, you would call the actual captcha service API
@@ -26,7 +27,7 @@ export class CaptchaService {
 
     this.logger.log({
       message: 'Captcha validation result',
-      token: captchaToken,
+      tokenHash: SecurityLogger.maskToken(captchaToken),
       isValid,
     });
 
