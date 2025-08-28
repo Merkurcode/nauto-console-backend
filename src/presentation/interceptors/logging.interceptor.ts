@@ -9,7 +9,7 @@ import { SecurityLogger } from '@shared/utils/security-logger.util';
 export class LoggingInterceptor implements NestInterceptor {
   private readonly sensitiveFields = [
     'password',
-    'newPassword', 
+    'newPassword',
     'currentPassword',
     'oldPassword',
     'confirmPassword',
@@ -28,22 +28,22 @@ export class LoggingInterceptor implements NestInterceptor {
     'privateKey',
     'publicKey',
     'key',
-    'authorization'
+    'authorization',
   ];
 
   constructor(@Inject(LOGGER_SERVICE) private readonly logger: ILogger) {
     this.logger.setContext(LoggingInterceptor.name);
   }
 
-  private sanitizeObject(obj: any, depth = 0): any {
+  private sanitizeObject(obj: unknown, depth = 0): unknown {
     if (depth > 10 || obj === null || obj === undefined) return obj;
-    
+
     if (Array.isArray(obj)) {
       return obj.map(item => this.sanitizeObject(item, depth + 1));
     }
-    
+
     if (typeof obj === 'object') {
-      const sanitized: any = {};
+      const sanitized: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         const lowerKey = key.toLowerCase();
         if (this.sensitiveFields.some(field => lowerKey.includes(field))) {
@@ -56,9 +56,10 @@ export class LoggingInterceptor implements NestInterceptor {
           sanitized[key] = this.sanitizeObject(value, depth + 1);
         }
       }
+
       return sanitized;
     }
-    
+
     return obj;
   }
 

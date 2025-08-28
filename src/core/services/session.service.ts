@@ -120,11 +120,17 @@ export class SessionService {
   }
 
   async revokeSession(sessionToken: string): Promise<void> {
-    this.logger.debug({ message: 'Revoking session', sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken) });
+    this.logger.debug({
+      message: 'Revoking session',
+      sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken),
+    });
 
     const session = await this.sessionRepository.findBySessionToken(sessionToken);
     if (!session) {
-      this.logger.warn({ message: 'Session not found for revocation', sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken) });
+      this.logger.warn({
+        message: 'Session not found for revocation',
+        sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken),
+      });
 
       return;
     }

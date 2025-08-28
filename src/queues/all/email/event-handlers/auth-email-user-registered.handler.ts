@@ -95,7 +95,6 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
     // Send welcome SMS if user has phone number
     try {
       if (event.profilePhone) {
-
         const frontendUrl = this.configService.get('frontend.url', 'http://localhost:3000');
         const dashboardPath = this.configService.get('frontend.dashboardPath', '/dashboard');
         const dashboardUrl = `${frontendUrl}${dashboardPath}`;

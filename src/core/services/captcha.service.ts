@@ -19,7 +19,10 @@ export class CaptchaService {
    * @returns Promise<boolean> indicating if captcha is valid
    */
   async validateCaptcha(captchaToken: string): Promise<boolean> {
-    this.logger.log({ message: 'Validating captcha token', tokenHash: SecurityLogger.maskToken(captchaToken) });
+    this.logger.log({
+      message: 'Validating captcha token',
+      tokenHash: SecurityLogger.maskToken(captchaToken),
+    });
 
     // Simulate captcha validation
     // In production, you would call the actual captcha service API

@@ -12,6 +12,7 @@ export class SecurityLogger {
   static maskSensitiveData(data: string | null | undefined, visibleChars: number = 6): string {
     if (!data) return 'none';
     if (data.length <= visibleChars) return '***';
+
     return data.substring(0, visibleChars) + '***';
   }
 
@@ -40,6 +41,7 @@ export class SecurityLogger {
    */
   static maskVerificationCode(code: string | null | undefined): string {
     if (!code) return 'none';
+
     return '***' + code.slice(-2); // Show last 2 digits only
   }
 
@@ -59,14 +61,14 @@ export class SecurityLogger {
    */
   static maskSensitiveUrl(url: string | null | undefined): string {
     if (!url) return 'none';
-    
+
     try {
       const urlObj = new URL(url);
       const params = urlObj.searchParams;
-      
+
       // Mask common sensitive parameters
       const sensitiveParams = ['token', 'code', 'key', 'secret', 'password', 'auth'];
-      
+
       sensitiveParams.forEach(param => {
         if (params.has(param)) {
           const value = params.get(param);
@@ -75,7 +77,7 @@ export class SecurityLogger {
           }
         }
       });
-      
+
       return urlObj.toString();
     } catch {
       // If URL parsing fails, mask the entire thing after domain
@@ -83,6 +85,7 @@ export class SecurityLogger {
       if (domainMatch) {
         return domainMatch[1] + '/***';
       }
+
       return '***';
     }
   }
@@ -94,20 +97,32 @@ export class SecurityLogger {
    */
   static createSafeLogData(logData: Record<string, any>): Record<string, any> {
     const safeData = { ...logData };
-    
+
     // List of fields that should always be masked
     const sensitiveFields = [
-      'password', 'token', 'sessionToken', 'refreshToken', 'accessToken',
-      'secret', 'key', 'apiKey', 'code', 'verificationCode', 'resetToken',
-      'authToken', 'bearerToken', 'resetLink', 'verificationLink'
+      'password',
+      'token',
+      'sessionToken',
+      'refreshToken',
+      'accessToken',
+      'secret',
+      'key',
+      'apiKey',
+      'code',
+      'verificationCode',
+      'resetToken',
+      'authToken',
+      'bearerToken',
+      'resetLink',
+      'verificationLink',
     ];
-    
+
     sensitiveFields.forEach(field => {
       if (safeData[field]) {
         safeData[field] = this.maskSensitiveData(safeData[field]);
       }
     });
-    
+
     // Special handling for URLs
     if (safeData.resetLink || safeData.verificationLink) {
       if (safeData.resetLink) {
@@ -117,7 +132,7 @@ export class SecurityLogger {
         safeData.verificationLink = this.maskSensitiveUrl(safeData.verificationLink);
       }
     }
-    
+
     return safeData;
   }
 }
