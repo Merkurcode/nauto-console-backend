@@ -302,7 +302,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             industrySector: company.industrySector.value,
             industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
-            parentCompanyId: company.parentCompany?.id.getValue(),
+            parentCompanyId: company.parentCompany ? company.parentCompany.id.getValue() : null,
             createdAt: company.createdAt,
             updatedAt: company.updatedAt,
             address: {
@@ -358,7 +358,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             industrySector: company.industrySector.value,
             industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
-            parentCompanyId: company.parentCompany?.id.getValue(),
+            parentCompanyId: company.parentCompany ? company.parentCompany.id.getValue() : null,
             updatedAt: company.updatedAt,
             address: {
               update: {
