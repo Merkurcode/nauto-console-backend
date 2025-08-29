@@ -8,7 +8,7 @@ import { AIPersonaMapper } from '@application/mappers/ai-persona.mapper';
 export class GetCompanyActiveAIPersonaQuery {
   constructor(
     public readonly companyId: string,
-    public readonly userId: string,
+    public readonly userId: string | null,
   ) {}
 }
 
@@ -23,8 +23,10 @@ export class GetCompanyActiveAIPersonaQueryHandler
   ) {}
 
   async execute(query: GetCompanyActiveAIPersonaQuery): Promise<IAIPersonaResponse | null> {
-    // Get current user
-    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(query.userId);
+    // Get current user if userId is provided
+    const currentUser = query.userId
+      ? await this.userAuthorizationService.getCurrentUserSafely(query.userId)
+      : null;
 
     const aiPersona = await this.aiPersonaService.getCompanyActiveAIPersona(
       query.companyId,

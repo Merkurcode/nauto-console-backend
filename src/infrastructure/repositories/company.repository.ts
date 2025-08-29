@@ -37,6 +37,7 @@ interface IPrismaCompanyRecord {
     exteriorNumber: string;
     interiorNumber?: string;
     postalCode: string;
+    googleMapsUrl?: string;
   };
   parentCompany?: IPrismaCompanyRecord;
   subsidiaries?: IPrismaCompanyRecord[];
@@ -313,6 +314,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
                 exteriorNumber: company.address.exteriorNumber,
                 interiorNumber: company.address.interiorNumber,
                 postalCode: company.address.postalCode,
+                googleMapsUrl: company.address.googleMapsUrl,
               },
             },
           },
@@ -367,6 +369,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
                 exteriorNumber: company.address.exteriorNumber,
                 interiorNumber: company.address.interiorNumber,
                 postalCode: company.address.postalCode,
+                googleMapsUrl: company.address.googleMapsUrl,
               },
             },
           },
@@ -469,6 +472,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       exteriorNumber: string;
       interiorNumber?: string;
       postalCode: string;
+      googleMapsUrl?: string;
     };
     parentCompany?: {
       id: string;
@@ -494,6 +498,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         exteriorNumber: string;
         interiorNumber?: string;
         postalCode: string;
+        googleMapsUrl?: string;
       };
     } | null;
     subsidiaries?: Array<{
@@ -520,6 +525,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         exteriorNumber: string;
         interiorNumber?: string;
         postalCode: string;
+        googleMapsUrl?: string;
       };
     }>;
   }): Company {
@@ -551,6 +557,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           exteriorNumber: data.parentCompany.address.exteriorNumber,
           interiorNumber: data.parentCompany.address.interiorNumber,
           postalCode: data.parentCompany.address.postalCode,
+          googleMapsUrl: data.parentCompany.address.googleMapsUrl,
         },
         isActive: data.parentCompany.isActive,
         createdAt: data.parentCompany.createdAt,
@@ -585,6 +592,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             exteriorNumber: sub.address.exteriorNumber,
             interiorNumber: sub.address.interiorNumber,
             postalCode: sub.address.postalCode,
+            googleMapsUrl: sub.address.googleMapsUrl,
           },
           isActive: sub.isActive,
           createdAt: sub.createdAt,
@@ -616,6 +624,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         exteriorNumber: data.address.exteriorNumber,
         interiorNumber: data.address.interiorNumber,
         postalCode: data.address.postalCode,
+        googleMapsUrl: data.address.googleMapsUrl,
       },
       isActive: data.isActive,
       createdAt: data.createdAt,

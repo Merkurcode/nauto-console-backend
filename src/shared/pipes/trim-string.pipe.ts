@@ -2,7 +2,7 @@ import { Injectable, PipeTransform, ArgumentMetadata } from '@nestjs/common';
 
 @Injectable()
 export class TrimStringPipe implements PipeTransform {
-  transform(value: any, metadata: ArgumentMetadata): any {
+  transform(value: any, _metadata: ArgumentMetadata): any {
     if (typeof value === 'string') {
       return value.trim();
     }

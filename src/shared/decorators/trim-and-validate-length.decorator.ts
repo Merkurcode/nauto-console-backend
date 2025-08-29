@@ -106,6 +106,7 @@ export function TrimString() {
         if (typeof item !== 'string') {
           return item;
         }
+
         return item.trim();
       });
     }

@@ -140,7 +140,8 @@ export class UpdateCompanyDto {
 
   @ApiProperty({
     type: UpdateAddressDto,
-    description: 'Company address',
+    description:
+      'Company address. You can update individual address fields without providing all fields. Omitted fields will keep their current values.',
     required: false,
   })
   @ValidateNested()
@@ -170,13 +171,13 @@ export class UpdateCompanyDto {
 
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'Parent company ID (for subsidiaries)',
+    description: 'Parent company ID (for subsidiaries). Set to null to remove parent company.',
     required: false,
   })
   @IsOptional()
   @IsUUID()
   @TrimString()
-  parentCompanyId?: string;
+  parentCompanyId?: string | null;
 
   @ApiProperty({
     example: 'America/Mexico_City',

@@ -1,10 +1,14 @@
-import { IQuery, QueryHandler, IQueryHandler } from '@nestjs/cqrs';
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { IQuery, QueryHandler, IQueryHandler, QueryBus } from '@nestjs/cqrs';
+import { Injectable, ForbiddenException, Inject, Optional } from '@nestjs/common';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { CompanyService } from '@core/services/company.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { CompanyMapper } from '@application/mappers/company.mapper';
 import { ICompanyResponse } from '@application/dtos/_responses/company/company.response';
+import { GetCompanyWeeklyScheduleQuery } from '../company-schedules/get-company-weekly-schedule.query';
+import { GetCompanyActiveAIPersonaQuery } from '../ai-persona/get-company-active-ai-persona.query';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
 
 export class GetCompanyHierarchyQuery implements IQuery {
   constructor(
@@ -17,10 +21,16 @@ export class GetCompanyHierarchyQuery implements IQuery {
 @Injectable()
 @QueryHandler(GetCompanyHierarchyQuery)
 export class GetCompanyHierarchyQueryHandler implements IQueryHandler<GetCompanyHierarchyQuery> {
+  private readonly logger: ILogger;
+
   constructor(
     private readonly companyService: CompanyService,
     private readonly userAuthorizationService: UserAuthorizationService,
-  ) {}
+    private readonly queryBus: QueryBus,
+    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+  ) {
+    this.logger = logger?.setContext(GetCompanyHierarchyQueryHandler.name);
+  }
 
   async execute(query: GetCompanyHierarchyQuery): Promise<ICompanyResponse> {
     // Get the user to check their authorization level
@@ -29,11 +39,15 @@ export class GetCompanyHierarchyQueryHandler implements IQueryHandler<GetCompany
     // Check if user has root-level access
     const canAccessRootFeatures = this.userAuthorizationService.canAccessRootFeatures(user);
 
+    let rootCompany;
+    let assistants;
     if (canAccessRootFeatures) {
       // Root users can see hierarchy of any company
-      const rootCompany = await this.companyService.getCompanyWithHierarchy(query.companyId);
-
-      return CompanyMapper.toResponse(rootCompany);
+      const result = await this.companyService.getCompanyWithHierarchyAndAssistants(
+        query.companyId,
+      );
+      rootCompany = result.rootCompany;
+      assistants = result.assistants;
     } else {
       // Non-root users can only see hierarchy of their own company
       if (!query.userTenantId) {
@@ -47,9 +61,42 @@ export class GetCompanyHierarchyQueryHandler implements IQueryHandler<GetCompany
         throw new ForbiddenException('You can only view hierarchy of your own company');
       }
 
-      const rootCompany = await this.companyService.getCompanyWithHierarchy(query.companyId);
-
-      return CompanyMapper.toResponse(rootCompany);
+      const result = await this.companyService.getCompanyWithHierarchyAndAssistants(
+        query.companyId,
+      );
+      rootCompany = result.rootCompany;
+      assistants = result.assistants;
     }
+
+    // Fetch weekly schedule and active AI persona for the root company
+    const companyId = rootCompany.id.getValue();
+
+    let weeklySchedule;
+    try {
+      weeklySchedule = await this.queryBus.execute(new GetCompanyWeeklyScheduleQuery(companyId));
+    } catch (error) {
+      this.logger?.error(
+        `Error fetching weekly schedule for company ${companyId}`,
+        error?.stack,
+        GetCompanyHierarchyQueryHandler.name,
+      );
+    }
+
+    let activeAIPersona;
+    try {
+      activeAIPersona = await this.queryBus.execute(
+        new GetCompanyActiveAIPersonaQuery(companyId, null),
+      );
+    } catch (error) {
+      this.logger?.error(
+        `Error fetching active AI persona for company ${companyId}`,
+        error?.stack,
+        GetCompanyHierarchyQueryHandler.name,
+      );
+    }
+
+    // For hierarchy response, we include schedules and AI persona only for the root company
+    // Subsidiaries in the hierarchy will be basic responses
+    return CompanyMapper.toResponse(rootCompany, assistants, weeklySchedule, activeAIPersona);
   }
 }

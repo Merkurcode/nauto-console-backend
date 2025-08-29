@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
-import { SecurityLogger } from '@shared/utils/security-logger.util';
 import { EmailTemplates } from '@shared/services/email/email-templates';
 
 export interface IEmailOptions {

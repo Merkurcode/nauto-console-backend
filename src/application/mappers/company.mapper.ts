@@ -4,11 +4,18 @@ import {
   IAddressResponse,
   IAssistantResponse,
 } from '@application/dtos/_responses/company/company.response';
+import { ICompanyWeeklyScheduleResponse } from '@application/dtos/_responses/company-schedules/company-schedule.response.interface';
+import { IAIPersonaResponse } from '@application/dtos/_responses/ai-persona/ai-persona.response.interface';
 
 import { IAssistantAssignment } from '@core/repositories/company.repository.interface';
 
 export class CompanyMapper {
-  static toResponse(company: Company, assistants?: IAssistantAssignment[]): ICompanyResponse {
+  static toResponse(
+    company: Company,
+    assistants?: IAssistantAssignment[],
+    weeklySchedule?: ICompanyWeeklyScheduleResponse,
+    activeAIPersona?: IAIPersonaResponse | null,
+  ): ICompanyResponse {
     return {
       id: company.id.getValue(),
       name: company.name.getValue(),
@@ -33,6 +40,8 @@ export class CompanyMapper {
           : undefined,
       hierarchyLevel: company.getHierarchyLevel(),
       assistants: assistants ? this.mapAssistants(assistants) : undefined,
+      weeklySchedule: weeklySchedule,
+      activeAIPersona: activeAIPersona,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };
@@ -64,9 +73,16 @@ export class CompanyMapper {
   static toListResponse(
     companies: Company[],
     assistantsMap?: Map<string, IAssistantAssignment[]>,
+    weeklyScheduleMap?: Map<string, ICompanyWeeklyScheduleResponse>,
+    activeAIPersonaMap?: Map<string, IAIPersonaResponse | null>,
   ): ICompanyResponse[] {
     return companies.map(company =>
-      this.toResponse(company, assistantsMap?.get(company.id.getValue())),
+      this.toResponse(
+        company,
+        assistantsMap?.get(company.id.getValue()),
+        weeklyScheduleMap?.get(company.id.getValue()),
+        activeAIPersonaMap?.get(company.id.getValue()),
+      ),
     );
   }
 
@@ -96,6 +112,7 @@ export class CompanyMapper {
     exteriorNumber: string;
     interiorNumber?: string;
     postalCode: string;
+    googleMapsUrl?: string;
     getFullAddress(): string;
   }): IAddressResponse {
     return {
@@ -107,6 +124,7 @@ export class CompanyMapper {
       interiorNumber: address.interiorNumber,
       postalCode: address.postalCode,
       fullAddress: address.getFullAddress(),
+      googleMapsUrl: address.googleMapsUrl,
     };
   }
 }

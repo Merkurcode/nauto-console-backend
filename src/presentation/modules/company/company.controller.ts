@@ -30,12 +30,7 @@ import { GetCompanySubsidiariesQuery } from '@application/queries/company/get-co
 import { GetRootCompaniesQuery } from '@application/queries/company/get-root-companies.query';
 import { GetCompanyHierarchyQuery } from '@application/queries/company/get-company-hierarchy.query';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { CompanyName } from '@core/value-objects/company-name.vo';
-import { CompanyDescription } from '@core/value-objects/company-description.vo';
-import { Address } from '@core/value-objects/address.vo';
 import { Host } from '@core/value-objects/host.vo';
-import { IndustrySector } from '@core/value-objects/industry-sector.value-object';
-import { IndustryOperationChannel } from '@core/value-objects/industry-operation-channel.value-object';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
@@ -79,11 +74,12 @@ export class CompanyController {
     summary: 'Get companies',
     description: 'Root users can see all companies, other users can only see their own company\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>\n\n' +
+      '🔍 **Response includes:** Company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'List of companies retrieved successfully',
+    description: 'List of companies with complete information including assistants, schedules, and AI persona',
     type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
@@ -100,11 +96,12 @@ export class CompanyController {
     description:
       'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>\n\n' +
+      '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Company retrieved successfully',
+    description: 'Company retrieved successfully with complete information including assistants, schedules, and AI persona',
     type: CompanySwaggerDto,
   })
   @ApiResponse({
@@ -125,11 +122,12 @@ export class CompanyController {
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
-      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>',
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n\n' +
+      '🔍 **Response includes:** Company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Root companies retrieved successfully',
+    description: 'Root companies retrieved successfully with complete information including assistants, schedules, and AI persona',
     type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
@@ -143,11 +141,12 @@ export class CompanyController {
     summary: 'Get company by ID (All authenticated users)',
     description: 'Get detailed information about a specific company\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
+      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>\n\n' +
+      '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Company retrieved successfully',
+    description: 'Company retrieved successfully with complete information including assistants, schedules, and AI persona',
     type: CompanySwaggerDto,
   })
   @ApiResponse({
@@ -175,11 +174,12 @@ export class CompanyController {
       'Creates a new company which will serve as a tenant in the multi-tenant system. The company ID returned will be used as the tenant ID for all multi-tenant operations.\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:write</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
-      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation\n\n' +
+      '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Company created successfully',
+    description: 'Company created successfully with complete information including assistants, schedules, and AI persona',
     type: CompanySwaggerDto,
   })
   @ApiResponse({
@@ -196,32 +196,7 @@ export class CompanyController {
   })
   async createCompany(@Body() createCompanyDto: CreateCompanyDto): Promise<ICompanyResponse> {
     return this.executeInTransactionWithContext(async () => {
-      const { name, description, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = createCompanyDto;
-
-      const command = new CreateCompanyCommand(
-        new CompanyName(name),
-        new CompanyDescription(description),
-        new Address(
-          address.country,
-          address.state,
-          address.city,
-          address.street,
-          address.exteriorNumber,
-          address.postalCode,
-          address.interiorNumber,
-          address.googleMapsUrl,
-        ),
-        new Host(host),
-        timezone,
-        currency,
-        language,
-        logoUrl,
-        websiteUrl,
-        privacyPolicyUrl,
-        industrySector ? IndustrySector.create(industrySector) : undefined,
-        industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
-        parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
-      );
+      const command = new CreateCompanyCommand(createCompanyDto);
 
       return this.commandBus.execute(command);
     });
@@ -242,11 +217,12 @@ export class CompanyController {
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can update any company\n' +
       '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can only update their own company\n\n' +
-      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation',
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation\n\n' +
+      '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Company updated successfully',
+    description: 'Company updated successfully with complete information including assistants, schedules, and AI persona',
     type: CompanySwaggerDto,
   })
   @ApiResponse({
@@ -269,41 +245,10 @@ export class CompanyController {
     return this.executeInTransactionWithContext(async () => {
       const companyId = CompanyId.fromString(id);
 
-      const { name, description, address, host, timezone, currency, language, logoUrl, websiteUrl, privacyPolicyUrl, industrySector, industryOperationChannel, parentCompanyId } = updateCompanyDto;
-
       const command = new UpdateCompanyCommand(
         companyId,
         currentUserPayload.sub,
-        name ? new CompanyName(name) : undefined,
-        description ? new CompanyDescription(description) : undefined,
-        address &&
-        address.country &&
-        address.state &&
-        address.city &&
-        address.street &&
-        address.exteriorNumber &&
-        address.postalCode
-          ? new Address(
-            address.country,
-            address.state,
-            address.city,
-            address.street,
-            address.exteriorNumber,
-            address.postalCode,
-            address.interiorNumber,
-            address.googleMapsUrl,
-          )
-          : undefined,
-        host ? new Host(host) : undefined,
-        timezone,
-        currency,
-        language,
-        logoUrl,
-        websiteUrl,
-        privacyPolicyUrl,
-        industrySector ? IndustrySector.create(industrySector) : undefined,
-        industryOperationChannel ? IndustryOperationChannel.create(industryOperationChannel) : undefined,
-        parentCompanyId ? CompanyId.fromString(parentCompanyId) : undefined,
+        updateCompanyDto,
       );
 
       return this.commandBus.execute(command);
@@ -350,11 +295,12 @@ export class CompanyController {
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
       '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
-      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>',
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n\n' +
+      '🔍 **Response includes:** Company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Company subsidiaries retrieved successfully',
+    description: 'Company subsidiaries retrieved successfully with complete information including assistants, schedules, and AI persona',
     type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
@@ -376,11 +322,12 @@ export class CompanyController {
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
       '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n' +
-      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>',
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>\n\n' +
+      '🔍 **Response includes:** Complete company hierarchy, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Company hierarchy retrieved successfully',
+    description: 'Company hierarchy retrieved successfully with complete information including assistants, schedules, and AI persona',
     type: CompanySwaggerDto,
   })
   @RequirePermissions('company:read')

@@ -373,25 +373,6 @@ export class AuthenticationValidationService {
   ): ILoginFlowResult {
     const duration = startTime ? performance.now() - startTime : 0;
 
-    // Build comprehensive failure message
-    const failureMessages = {
-      [AuthFailureReason.USER_NOT_FOUND]: 'User not found in database',
-      [AuthFailureReason.INVALID_PASSWORD]: 'Invalid password provided',
-      [AuthFailureReason.USER_INACTIVE]: 'User account is inactive',
-      [AuthFailureReason.USER_BANNED]: `User is banned${validationResult.details?.bannedUntil ? ` until ${validationResult.details.bannedUntil.toISOString()}` : ''}${validationResult.details?.banReason ? ` (Reason: ${validationResult.details.banReason})` : ''}`,
-      [AuthFailureReason.INVALID_EMAIL_FORMAT]: 'Invalid email format',
-      [AuthFailureReason.SYSTEM_ERROR]: `System error during authentication: ${validationResult.details?.systemError || 'Unknown error'}`,
-    };
-
-    const _failureMessage = failureMessages[failureReason] || 'Unknown authentication failure';
-    const _logLevel = [
-      AuthFailureReason.USER_BANNED,
-      AuthFailureReason.USER_INACTIVE,
-      AuthFailureReason.SYSTEM_ERROR,
-    ].includes(failureReason)
-      ? 'error'
-      : 'warn';
-
     // Log detailed failure information
     this.logger.warn({
       message: 'Login failed',

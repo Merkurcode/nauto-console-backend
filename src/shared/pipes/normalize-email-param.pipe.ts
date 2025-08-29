@@ -2,7 +2,7 @@ import { Injectable, PipeTransform, ArgumentMetadata } from '@nestjs/common';
 
 @Injectable()
 export class NormalizeEmailParamPipe implements PipeTransform {
-  transform(value: string, metadata: ArgumentMetadata): string {
+  transform(value: string, _metadata: ArgumentMetadata): string {
     if (typeof value !== 'string') {
       return value;
     }

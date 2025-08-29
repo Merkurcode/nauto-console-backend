@@ -3,6 +3,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { RolesEnum } from '@shared/constants/enums';
 import { ROOT_READONLY_KEY } from '@shared/decorators/root-readonly.decorator';
+import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 @Injectable()
@@ -10,6 +11,16 @@ export class RootReadOnlyGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // Check if the route is marked as public
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
     const denyForRootReadOnly = this.reflector.get<boolean>(
       ROOT_READONLY_KEY,
       context.getHandler(),

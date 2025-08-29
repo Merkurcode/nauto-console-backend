@@ -103,7 +103,7 @@ export class CompanyService {
       privacyPolicyUrl?: string;
       industrySector?: IndustrySector;
       industryOperationChannel?: IndustryOperationChannel;
-      parentCompanyId?: CompanyId;
+      parentCompanyId?: CompanyId | null;
     },
   ): Promise<Company> {
     // Get current user for authorization
@@ -317,6 +317,21 @@ export class CompanyService {
     return company;
   }
 
+  async getCompanyByHostWithAssistants(
+    host: Host,
+  ): Promise<{ company: Company; assistants: IAssistantAssignment[] }> {
+    const company = await this.companyRepository.findByHost(host);
+    if (!company) {
+      throw new EntityNotFoundException('Company', `host: ${host.getValue()}`);
+    }
+
+    // Fetch assistants for this company
+    const { assistantsMap } = await this.companyRepository.findAssistantsByCompanyId(company.id);
+    const assistants = assistantsMap.get(company.id.getValue()) || [];
+
+    return { company, assistants };
+  }
+
   async getCompanyByName(name: CompanyName): Promise<Company | null> {
     return await this.companyRepository.findByName(name);
   }
@@ -329,6 +344,29 @@ export class CompanyService {
     return await this.companyRepository.findRootCompanies();
   }
 
+  async getRootCompaniesWithAssistants(): Promise<{
+    companies: Company[];
+    assistantsMap: Map<string, IAssistantAssignment[]>;
+  }> {
+    const companies = await this.companyRepository.findRootCompanies();
+
+    // Fetch assistants for all root companies
+    const assistantsMap = new Map<string, IAssistantAssignment[]>();
+
+    await Promise.all(
+      companies.map(async company => {
+        const { assistantsMap: companyAssistantsMap } =
+          await this.companyRepository.findAssistantsByCompanyId(company.id);
+        const assistants = companyAssistantsMap.get(company.id.getValue()) || [];
+        if (assistants.length > 0) {
+          assistantsMap.set(company.id.getValue(), assistants);
+        }
+      }),
+    );
+
+    return { companies, assistantsMap };
+  }
+
   async getCompanySubsidiaries(companyId: CompanyId): Promise<Company[]> {
     const company = await this.companyRepository.findById(companyId);
     if (!company) {
@@ -336,6 +374,34 @@ export class CompanyService {
     }
 
     return await this.companyRepository.findSubsidiaries(companyId);
+  }
+
+  async getCompanySubsidiariesWithAssistants(companyId: CompanyId): Promise<{
+    subsidiaries: Company[];
+    assistantsMap: Map<string, IAssistantAssignment[]>;
+  }> {
+    const company = await this.companyRepository.findById(companyId);
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyId.getValue());
+    }
+
+    const subsidiaries = await this.companyRepository.findSubsidiaries(companyId);
+
+    // Fetch assistants for all subsidiaries
+    const assistantsMap = new Map<string, IAssistantAssignment[]>();
+
+    await Promise.all(
+      subsidiaries.map(async subsidiary => {
+        const { assistantsMap: companyAssistantsMap } =
+          await this.companyRepository.findAssistantsByCompanyId(subsidiary.id);
+        const assistants = companyAssistantsMap.get(subsidiary.id.getValue()) || [];
+        if (assistants.length > 0) {
+          assistantsMap.set(subsidiary.id.getValue(), assistants);
+        }
+      }),
+    );
+
+    return { subsidiaries, assistantsMap };
   }
 
   async getCompanyHierarchy(companyId: CompanyId): Promise<Record<string, unknown>> {
@@ -400,5 +466,26 @@ export class CompanyService {
 
     // Get the root company to show the complete hierarchy
     return company.getRootCompany();
+  }
+
+  async getCompanyWithHierarchyAndAssistants(companyId: CompanyId): Promise<{
+    rootCompany: Company;
+    assistants: IAssistantAssignment[];
+  }> {
+    const company = await this.companyRepository.findById(companyId);
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyId.getValue());
+    }
+
+    // Get the root company to show the complete hierarchy
+    const rootCompany = company.getRootCompany();
+
+    // Fetch assistants for the root company only (as per comment in query handler)
+    const { assistantsMap } = await this.companyRepository.findAssistantsByCompanyId(
+      rootCompany.id,
+    );
+    const assistants = assistantsMap.get(rootCompany.id.getValue()) || [];
+
+    return { rootCompany, assistants };
   }
 }

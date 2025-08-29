@@ -19,14 +19,6 @@ import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { UserProfile } from '@core/value-objects/user-profile.vo';
-import { UserAddress as _UserAddress } from '@core/entities/user-address.entity';
-import { UserAddressId as _UserAddressId } from '@core/value-objects/user-address-id.vo';
-import { CountryId as _CountryId } from '@core/value-objects/country-id.vo';
-import { StateId as _StateId } from '@core/value-objects/state-id.vo';
-import { UserId as _UserId } from '@core/value-objects/user-id.vo';
-import { AgentPhone } from '@core/value-objects/agent-phone.vo';
-import { SecondLastName } from '@core/value-objects/second-lastname.vo';
 import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 // Define a type for User with its relations (roles with nested permissions)
@@ -563,31 +555,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       });
     });
 
-    // Create UserProfile Value Object if profile data exists
-    let _profileVO = undefined;
-    if (record.profile) {
-      _profileVO = new UserProfile(
-        record.profile.phone || undefined,
-        record.profile.phoneCountryCode || undefined,
-        record.profile.avatarUrl || undefined,
-        record.profile.bio || undefined,
-        record.profile.birthdate || undefined,
-      );
-    }
-
     // UserAddress entity is handled in the User.fromData method
-
-    // Create AgentPhone Value Object if data exists
-    let _agentPhoneVO = undefined;
-    if (record.agentPhone) {
-      _agentPhoneVO = new AgentPhone(record.agentPhone, record.agentPhoneCountryCode);
-    }
-
-    // Create SecondLastName Value Object if exists
-    let _secondLastNameVO = undefined;
-    if (record.secondLastName) {
-      _secondLastNameVO = new SecondLastName(record.secondLastName);
-    }
 
     const user = User.fromData({
       id: record.id,

@@ -504,8 +504,11 @@ export class AIPersonaService {
    * ✅ Business Rule: Only returns if assignment is active AND persona is active
    * ✅ Security Measure: Validates user can access the company
    */
-  async getCompanyActiveAIPersona(companyId: string, currentUser: User): Promise<AIPersona | null> {
-    if (!this.userAuthService.canAccessRootFeatures(currentUser)) {
+  async getCompanyActiveAIPersona(
+    companyId: string,
+    currentUser: User | null,
+  ): Promise<AIPersona | null> {
+    if (currentUser && !this.userAuthService.canAccessRootFeatures(currentUser)) {
       // ✅ Security Measure: Validate user can access this company
       if (!this.userAuthService.canAccessCompany(currentUser, companyId)) {
         return null;
@@ -529,8 +532,8 @@ export class AIPersonaService {
     // Assignment are static to prevent duplicates
     if (!aiPersona.companyId) {
       aiPersona.companyId = companyId;
-      aiPersona.createdBy = currentUser.id.getValue();
-      aiPersona.updatedBy = currentUser.id.getValue();
+      aiPersona.createdBy = currentUser?.id?.getValue();
+      aiPersona.updatedBy = currentUser?.id?.getValue();
     }
 
     return aiPersona;

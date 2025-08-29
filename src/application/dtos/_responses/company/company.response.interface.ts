@@ -1,4 +1,6 @@
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
+import { ICompanyWeeklyScheduleResponse } from '../company-schedules/company-schedule.response.interface';
+import { IAIPersonaResponse } from '../ai-persona/ai-persona.response.interface';
 
 export interface IAssistantFeatureResponse {
   id: string;
@@ -26,6 +28,7 @@ export interface IAddressResponse {
   interiorNumber?: string;
   postalCode: string;
   fullAddress: string;
+  googleMapsUrl?: string;
 }
 
 export interface ICompanyResponse {
@@ -47,6 +50,8 @@ export interface ICompanyResponse {
   subsidiaries?: ICompanyResponse[];
   hierarchyLevel?: number;
   assistants?: IAssistantResponse[];
+  weeklySchedule?: ICompanyWeeklyScheduleResponse;
+  activeAIPersona?: IAIPersonaResponse | null;
   createdAt: Date;
   updatedAt: Date;
 }

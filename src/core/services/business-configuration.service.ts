@@ -16,7 +16,6 @@ import { LOGGER_SERVICE } from '@shared/constants/tokens';
  */
 @Injectable()
 export class BusinessConfigurationService implements OnModuleInit {
-  private readonly configCache = new Map<string, any>();
   private readonly CONFIG_ACCESS_LOG = true; // Enable audit logging for config access
 
   // Security: Define valid ranges for all numeric configurations

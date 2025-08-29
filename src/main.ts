@@ -12,7 +12,6 @@ import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { useContainer } from 'class-validator';
 import { ValidateSignatureMiddleware } from '@presentation/middleware/validate-signature.middleware';
 import { JwtService } from '@nestjs/jwt';
-import { REQUEST_INTEGRITY_SKIP_PATHS as _REQUEST_INTEGRITY_SKIP_PATHS } from '@shared/constants/paths';
 import { SecureExceptionHandler } from '@core/utils/secure-exception-handler.util';
 
 async function bootstrap() {

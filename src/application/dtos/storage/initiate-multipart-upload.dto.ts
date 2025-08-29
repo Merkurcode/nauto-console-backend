@@ -12,10 +12,7 @@ import {
   Length,
 } from 'class-validator';
 import { ApiProperty, ApiHideProperty } from '@nestjs/swagger';
-import {
-  TrimString,
-  TrimAndValidateLength,
-} from '@shared/decorators/trim-and-validate-length.decorator';
+import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 import {
   IsValidStoragePath,
   HasValidDirectoryDepth,
