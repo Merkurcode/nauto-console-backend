@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaService } from './prisma.service';
 import { TransactionService } from './transaction.service';
 import { TransactionContextService } from './transaction-context.service';
+import { TransactionWithContextService } from './transaction-with-context.service';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 
@@ -18,7 +19,13 @@ import { ILogger } from '@core/interfaces/logger.interface';
     },
     TransactionService,
     TransactionContextService,
+    TransactionWithContextService,
   ],
-  exports: [PrismaService, TransactionService, TransactionContextService],
+  exports: [
+    PrismaService,
+    TransactionService,
+    TransactionContextService,
+    TransactionWithContextService,
+  ],
 })
 export class PrismaModule {}

@@ -42,6 +42,8 @@ export class CompanyMapper {
       assistants: assistants ? this.mapAssistants(assistants) : undefined,
       weeklySchedule: weeklySchedule,
       activeAIPersona: activeAIPersona,
+      configAI: company.configAI,
+      lastUpdated: company.lastUpdated,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };
@@ -65,6 +67,8 @@ export class CompanyMapper {
       industrySector: company.industrySector.value,
       industryOperationChannel: company.industryOperationChannel.value,
       hierarchyLevel: company.getHierarchyLevel(),
+      configAI: company.configAI,
+      lastUpdated: company.lastUpdated,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };

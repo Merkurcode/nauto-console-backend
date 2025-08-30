@@ -28,6 +28,7 @@ import {
   RootLevelRoleSpecification,
   CanDeleteRoleSpecification,
 } from '@core/specifications/role.specifications';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 /**
  * Domain service for user authorization and access control business logic
@@ -582,7 +583,7 @@ export class UserAuthorizationService {
    * Root users can access any company
    * Other users can only access their assigned company
    */
-  public canAccessCompany(user: User, companyId: string): boolean {
+  public canAccessCompany(user: User | IJwtPayload, companyId: string): boolean {
     const rootUserSpec = new RootLevelUserSpecification();
 
     // Root users can access any company
@@ -591,9 +592,11 @@ export class UserAuthorizationService {
     }
 
     // Other users can only access their assigned company
-    const userCompanyId = user.companyId?.getValue();
+    if (typeof user.companyId === 'string') {
+      return companyId === user.companyId;
+    }
 
-    return userCompanyId === companyId;
+    return companyId === user.companyId?.getValue();
   }
 
   /**

@@ -22,6 +22,7 @@ import { BotModule } from '@presentation/modules/bot/bot.module';
 import { UserActivityLogModule } from '@presentation/modules/user-activity-log/user-activity-log.module';
 import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
 import { StorageModule } from '@presentation/modules/storage/storage.module';
+import { CompanyAIConfigModule } from '@presentation/modules/company-ai-config/company-ai-config.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { QueueModule } from './queues/queue.module';
@@ -127,6 +128,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
     UserActivityLogModule,
     AIPersonaModule,
     StorageModule,
+    CompanyAIConfigModule,
   ],
   controllers: [],
   providers: [

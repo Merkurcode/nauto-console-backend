@@ -19,6 +19,8 @@ import {
   EntityNotFoundException,
   ForbiddenActionException,
 } from '@core/exceptions/domain-exceptions';
+import { ICompanyConfigAI } from '@core/interfaces/company-config-ai.interface';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 @Injectable()
 export class CompanyService {
@@ -487,5 +489,74 @@ export class CompanyService {
     const assistants = assistantsMap.get(rootCompany.id.getValue()) || [];
 
     return { rootCompany, assistants };
+  }
+
+  // AI Configuration methods
+  async createAIConfiguration(
+    currentUser: IJwtPayload,
+    companyId: string,
+    config: ICompanyConfigAI,
+  ): Promise<Company> {
+    if (!this.userAuthorizationService.canAccessCompany(currentUser, companyId)) {
+      throw new ForbiddenActionException('You cannot access this company');
+    }
+
+    const company = await this.companyRepository.findById(CompanyId.fromString(companyId));
+    if (!company) {
+      throw new EntityNotFoundException('Company not found', companyId);
+    }
+
+    // Validate company is active
+    if (!company.isActive) {
+      throw new ForbiddenActionException('Cannot create AI configuration for inactive company');
+    }
+
+    company.setAIConfiguration(config);
+
+    return await this.companyRepository.update(company);
+  }
+
+  async updateAIConfiguration(
+    currentUser: IJwtPayload,
+    companyId: string,
+    config: ICompanyConfigAI,
+  ): Promise<Company> {
+    if (!this.userAuthorizationService.canAccessCompany(currentUser, companyId)) {
+      throw new ForbiddenActionException('You cannot access this company');
+    }
+
+    const company = await this.companyRepository.findById(CompanyId.fromString(companyId));
+    if (!company) {
+      throw new EntityNotFoundException('Company not found', companyId);
+    }
+
+    // Validate company is active
+    if (!company.isActive) {
+      throw new ForbiddenActionException('Cannot update AI configuration for inactive company');
+    }
+
+    // PUT operation: replace entire configuration
+    company.updateAIConfiguration(config);
+
+    return await this.companyRepository.update(company);
+  }
+
+  async deleteAIConfiguration(currentUser: IJwtPayload, companyId: string): Promise<void> {
+    if (!this.userAuthorizationService.canAccessCompany(currentUser, companyId)) {
+      throw new ForbiddenActionException('You cannot access this company');
+    }
+
+    const company = await this.companyRepository.findById(CompanyId.fromString(companyId));
+    if (!company) {
+      throw new EntityNotFoundException('Company not found', companyId);
+    }
+
+    // Validate company is active
+    if (!company.isActive) {
+      throw new ForbiddenActionException('Cannot delete AI configuration for inactive company');
+    }
+
+    company.removeAIConfiguration();
+    await this.companyRepository.update(company);
   }
 }

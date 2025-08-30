@@ -287,7 +287,21 @@ async function bootstrap() {
     .addTag('users', 'User management endpoints')
     .addTag('roles', 'Role management endpoints')
     .addTag('companies', 'Company management endpoints (Multi-Tenant)')
-    .addTag('root', 'Root endpoints')
+    .addTag('company-users', 'Company user assignment endpoints')
+    .addTag('company-ai-configuration', 'Company AI configuration management')
+    .addTag('company-schedules', 'Company schedule management')
+    .addTag('ai-assistants', 'AI assistant management and assignment')
+    .addTag('ai-personas', 'AI persona management and assignment')
+    .addTag('bot-management', 'Bot token management')
+    .addTag('bot-audit', 'Bot activity auditing')
+    .addTag('user-activity-logs', 'User activity logging and monitoring')
+    .addTag('storage', 'File storage management')
+    .addTag('storage-common-areas', 'Common area file storage')
+    .addTag('public-storage', 'Public file access')
+    .addTag('health', 'System health and monitoring')
+    .addTag('queue-health', 'Queue system health monitoring')
+    .addTag('queue-events', 'Queue event management')
+    .addTag('root', 'Root administrative endpoints')
     .addGlobalParameters({
       name: 'Accept-Language',
       in: 'header',

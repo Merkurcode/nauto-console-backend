@@ -4,6 +4,7 @@ import { User } from '@core/entities/user.entity';
 import { Role } from '@core/entities/role.entity';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { RolesEnum } from '@shared/constants/enums';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 /**
  * Specification to check if a user is active
@@ -69,8 +70,17 @@ export class RootReadOnlyUserSpecification extends Specification<User> {
  * Specification to check if a user has any root level privileges (root or root_readonly)
  */
 export class RootLevelUserSpecification extends Specification<User> {
-  isSatisfiedBy(user: User): boolean {
+  isSatisfiedBy(user: User | IJwtPayload): boolean {
     return user.roles.some(role => {
+      if (typeof role === 'string') {
+        const roleName = role.toLowerCase();
+
+        return roleName === RolesEnum.ROOT.toLowerCase() ||
+               roleName === RolesEnum.ROOT_READONLY.toLowerCase();
+      }
+
+      if (!role.name) return false;
+      
       const roleName = role.name.toLowerCase();
 
       return roleName === RolesEnum.ROOT.toLowerCase() ||

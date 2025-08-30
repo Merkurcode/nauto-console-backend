@@ -1,5 +1,51 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsNumber, Min, Max, Length } from 'class-validator';
 import { IndustrySectorEnum, IndustryOperationChannelEnum } from '@shared/constants/enums';
+import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
+
+export class CompanyConfigAISwaggerDto {
+  @ApiPropertyOptional({
+    example: 'Welcome to our company! How can I assist you today?',
+    description: 'Welcome message for AI interactions (max 3000 characters)',
+  })
+  @IsOptional()
+  @IsString()
+  @TrimAndValidateLength({ min: 1, max: 3000 })
+  @Length(1, 3000)
+  welcomeMessage?: string;
+
+  @ApiPropertyOptional({
+    example: 0.7,
+    description: 'AI response temperature (0.0 to 1.0)',
+    minimum: 0,
+    maximum: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  temperature?: number;
+
+  @ApiPropertyOptional({
+    example: 'Please respond in a professional and helpful manner.',
+    description: 'Instructions for AI responses (max 3000 characters)',
+  })
+  @IsOptional()
+  @IsString()
+  @TrimAndValidateLength({ min: 1, max: 3000 })
+  @Length(1, 3000)
+  responseInstructions?: string;
+
+  @ApiPropertyOptional({
+    example: 'Ask about their business needs and goals.',
+    description: 'Instructions for client discovery process (max 3000 characters)',
+  })
+  @IsOptional()
+  @IsString()
+  @TrimAndValidateLength({ min: 1, max: 3000 })
+  @Length(1, 3000)
+  clientDiscoveryInstructions?: string;
+}
 
 export class AddressSwaggerDto {
   @ApiProperty({
@@ -402,6 +448,18 @@ export class CompanySwaggerDto {
     description: 'Active AI persona configuration for the company',
   })
   activeAIPersona?: AIPersonaSwaggerDto;
+
+  @ApiPropertyOptional({
+    type: CompanyConfigAISwaggerDto,
+    description: 'AI configuration settings for the company',
+  })
+  configAI?: CompanyConfigAISwaggerDto;
+
+  @ApiPropertyOptional({
+    example: '2023-01-01T00:00:00.000Z',
+    description: 'Last time the AI configuration was updated',
+  })
+  lastUpdated?: Date;
 
   @ApiProperty({
     example: '2023-01-01T00:00:00.000Z',

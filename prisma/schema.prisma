@@ -377,6 +377,10 @@ model Company {
   industrySector EnumIndustrySector @default(OTHER)
   industryOperationChannel EnumIndustryOperationChannel @default(MIXED)
   
+  // AI Configuration JSON field
+  configAI      Json? // JSON configuration for AI settings
+  lastUpdated   DateTime? // AI configuration last updated timestamp
+  
   // Parent company relationship (self-referential)
   parentCompanyId String?
   parentCompany   Company? @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id], onDelete: SetNull, onUpdate: Cascade)

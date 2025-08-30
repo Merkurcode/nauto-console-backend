@@ -271,6 +271,27 @@ export const permissions = [
     action: 'assign',
     excludeRoles: ALLOW_ALL_ROLES,
   },
+  {
+    name: 'company-ai-config:read',
+    description: 'Can read company AI configuration settings',
+    resource: 'company-ai-config',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'company-ai-config:write',
+    description: 'Can create and update company AI configuration settings',
+    resource: 'company-ai-config',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'company-ai-config:delete',
+    description: 'Can delete company AI configuration settings',
+    resource: 'company-ai-config',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {

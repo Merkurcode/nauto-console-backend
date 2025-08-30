@@ -79,8 +79,8 @@ Esta guía documenta la implementación de Clean Architecture, DDD, CQRS y Event
 
 ```typescript
 📁 application/
-├── 📁 commands/          # Write operations (CUD)
-├── 📁 queries/           # Read operations
+├── 📁 commands/          # Write operations (CUD) - Commands + Handlers in same file
+├── 📁 queries/           # Read operations - Queries + Handlers in same file
 ├── 📁 dtos/             # Data Transfer Objects
 │   └── 📁 _responses/   # Interfaces de respuesta
 │       └── 📁 entity-name/
@@ -331,6 +331,137 @@ const maxRetries = 3; // Should be configurable via env var
 - ✅ Controllers SIEMPRE en carpetas de módulos
 - ❌ NO contiene lógica de negocio
 - ❌ NUNCA carpeta `controllers` separada
+
+## 🔄 CQRS Implementation Patterns
+
+### Commands and Queries File Structure
+
+**NUEVA REGLA**: Commands y Queries deben consolidarse con sus handlers en el mismo archivo para reducir la complejidad y mejorar la cohesión.
+
+#### Command Pattern (Write Operations)
+
+```typescript
+// ✅ src/application/commands/entity-name/action-entity-name.command.ts
+import { ICommand } from '@nestjs/cqrs';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+
+// 1. Define el Command
+export class CreateCompanyAIConfigCommand implements ICommand {
+  constructor(
+    public readonly companyId: string,
+    public readonly configData: CreateCompanyAIConfigDto,
+  ) {}
+}
+
+// 2. Define el Handler en el mismo archivo
+@CommandHandler(CreateCompanyAIConfigCommand)
+export class CreateCompanyAIConfigHandler implements ICommandHandler<CreateCompanyAIConfigCommand, IResponse> {
+  constructor(
+    @Inject(SERVICE_TOKENS.COMPANY_SERVICE)
+    private readonly companyService: ICompanyService,
+  ) {}
+
+  async execute(command: CreateCompanyAIConfigCommand): Promise<IResponse> {
+    const { companyId, configData } = command;
+    const company = await this.companyService.createAIConfiguration(companyId, configData);
+    
+    return {
+      companyId: company.id.getValue(),
+      // ... map response
+    };
+  }
+}
+```
+
+#### Query Pattern (Read Operations)
+
+```typescript
+// ✅ src/application/queries/entity-name/get-entity-name.query.ts
+import { IQuery } from '@nestjs/cqrs';
+import { QueryHandler, IQueryHandler } from '@nestjs/cqrs';
+
+// 1. Define la Query
+export class GetCompanyAIConfigQuery implements IQuery {
+  constructor(
+    public readonly companyId: string,
+  ) {}
+}
+
+// 2. Define el Handler en el mismo archivo
+@QueryHandler(GetCompanyAIConfigQuery)
+export class GetCompanyAIConfigHandler implements IQueryHandler<GetCompanyAIConfigQuery, IResponse> {
+  constructor(
+    @Inject(REPOSITORY_TOKENS.COMPANY_REPOSITORY)
+    private readonly companyRepository: ICompanyRepository,
+  ) {}
+
+  async execute(query: GetCompanyAIConfigQuery): Promise<IResponse> {
+    const { companyId } = query;
+    const company = await this.companyRepository.findById(companyId);
+    
+    if (!company) {
+      throw new EntityNotFoundException('Company not found', companyId);
+    }
+
+    return {
+      companyId: company.id.getValue(),
+      // ... map response
+    };
+  }
+}
+```
+
+### Nomenclatura Estándar
+
+#### Commands (Write Operations)
+- Archivo: `{action}-{entity-name}.command.ts`
+- Clase Command: `{Action}{EntityName}Command`
+- Clase Handler: `{Action}{EntityName}Handler`
+
+**Ejemplos**:
+```
+create-company-ai-config.command.ts
+update-company-ai-config.command.ts
+delete-company-ai-config.command.ts
+```
+
+#### Queries (Read Operations)
+- Archivo: `get-{entity-name}.query.ts`
+- Clase Query: `Get{EntityName}Query`
+- Clase Handler: `Get{EntityName}Handler`
+
+**Ejemplos**:
+```
+get-company-ai-config.query.ts
+get-company-hierarchy.query.ts
+get-companies.query.ts
+```
+
+### Module Registration
+
+```typescript
+// feature.module.ts
+@Module({
+  // ...
+  providers: [
+    // Commands
+    CreateEntityHandler,  // Solo el Handler se registra
+    UpdateEntityHandler,
+    DeleteEntityHandler,
+    
+    // Queries
+    GetEntityHandler,     // Solo el Handler se registra
+    GetEntitiesHandler,
+  ],
+})
+export class FeatureModule {}
+```
+
+**Ventajas del nuevo patrón**:
+- ✅ Reducida complejidad de archivos
+- ✅ Mayor cohesión (comando y handler juntos)
+- ✅ Menos imports en módulos
+- ✅ Menor overhead de mantenimiento
 
 ## 🏗️ Patrones de Entidades
 

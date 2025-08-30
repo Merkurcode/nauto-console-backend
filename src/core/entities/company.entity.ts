@@ -10,8 +10,29 @@ import {
   CompanyCreatedEvent,
   CompanyUpdatedEvent,
   CompanyDeactivatedEvent,
+  CompanyActivatedEvent,
+  CompanyAIConfigurationSetEvent,
+  CompanyAIConfigurationUpdatedEvent,
+  CompanyAIConfigurationRemovedEvent,
+  CompanyParentSetEvent,
+  CompanyParentRemovedEvent,
+  CompanySubsidiaryAddedEvent,
+  CompanySubsidiaryRemovedEvent,
+  CompanyHostUpdatedEvent,
+  CompanyTimezoneUpdatedEvent,
+  CompanyCurrencyUpdatedEvent,
+  CompanyLanguageUpdatedEvent,
+  CompanyLogoUpdatedEvent,
+  CompanyWebsiteUpdatedEvent,
+  CompanyPrivacyPolicyUpdatedEvent,
+  CompanyIndustrySectorUpdatedEvent,
+  CompanyIndustryOperationChannelUpdatedEvent,
+  CompanyNameUpdatedEvent,
+  CompanyDescriptionUpdatedEvent,
+  CompanyAddressUpdatedEvent,
 } from '@core/events/company.events';
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
+import { ICompanyConfigAI } from '@core/interfaces/company-config-ai.interface';
 
 export class Company extends AggregateRoot {
   private readonly _id: CompanyId;
@@ -28,6 +49,8 @@ export class Company extends AggregateRoot {
   private _websiteUrl?: string;
   private _privacyPolicyUrl?: string;
   private _language: string;
+  private _configAI?: ICompanyConfigAI | null;
+  private _lastUpdated?: Date | null;
   private _parentCompany?: Company;
   private _subsidiaries: Company[];
   private readonly _createdAt: Date;
@@ -50,6 +73,8 @@ export class Company extends AggregateRoot {
     logoUrl?: string,
     websiteUrl?: string,
     privacyPolicyUrl?: string,
+    configAI?: ICompanyConfigAI | null,
+    lastUpdated?: Date | null,
   ) {
     super();
     this._id = id;
@@ -65,6 +90,8 @@ export class Company extends AggregateRoot {
     this._logoUrl = logoUrl;
     this._websiteUrl = websiteUrl;
     this._privacyPolicyUrl = privacyPolicyUrl;
+    this._configAI = configAI;
+    this._lastUpdated = lastUpdated;
     this._isActive = isActive;
     this._parentCompany = parentCompany;
     this._subsidiaries = [];
@@ -147,6 +174,8 @@ export class Company extends AggregateRoot {
     updatedAt: Date;
     parentCompany?: Company;
     subsidiaries?: Company[];
+    configAI?: ICompanyConfigAI | null;
+    lastUpdated?: Date | null;
   }): Company {
     const address = new Address(
       data.address.country,
@@ -180,6 +209,8 @@ export class Company extends AggregateRoot {
       data.logoUrl,
       data.websiteUrl,
       data.privacyPolicyUrl,
+      data.configAI,
+      data.lastUpdated,
     );
 
     // Set subsidiaries if provided
@@ -262,6 +293,14 @@ export class Company extends AggregateRoot {
 
   get privacyPolicyUrl(): string | undefined {
     return this._privacyPolicyUrl;
+  }
+
+  get configAI(): ICompanyConfigAI | null {
+    return this._configAI || null;
+  }
+
+  get lastUpdated(): Date | null {
+    return this._lastUpdated || null;
   }
 
   updateCompanyInfo(
@@ -372,6 +411,44 @@ export class Company extends AggregateRoot {
 
     this._isActive = true;
     this._updatedAt = new Date();
+    this.addDomainEvent(new CompanyActivatedEvent(this._id, this._name.getValue()));
+  }
+
+  // AI Configuration management methods
+  setAIConfiguration(config: ICompanyConfigAI): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update AI configuration for inactive company');
+    }
+
+    this._configAI = { ...config };
+    this._lastUpdated = new Date();
+    this._updatedAt = new Date();
+    this.addDomainEvent(new CompanyAIConfigurationSetEvent(this._id, config, this._lastUpdated));
+  }
+
+  updateAIConfiguration(config: ICompanyConfigAI): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot update AI configuration for inactive company');
+    }
+
+    // PUT operation: replace entire configuration
+    this._configAI = { ...config };
+    this._lastUpdated = new Date();
+    this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyAIConfigurationUpdatedEvent(this._id, config, this._lastUpdated),
+    );
+  }
+
+  removeAIConfiguration(): void {
+    if (!this._isActive) {
+      throw new InvalidValueObjectException('Cannot remove AI configuration for inactive company');
+    }
+
+    this._configAI = null;
+    this._lastUpdated = new Date();
+    this._updatedAt = new Date();
+    this.addDomainEvent(new CompanyAIConfigurationRemovedEvent(this._id, this._lastUpdated));
   }
 
   getTenantId(): string {
@@ -393,6 +470,14 @@ export class Company extends AggregateRoot {
     this._parentCompany = parentCompany;
     parentCompany._subsidiaries.push(this);
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyParentSetEvent(
+        this._id,
+        parentCompany._id,
+        this._name.getValue(),
+        parentCompany._name.getValue(),
+      ),
+    );
   }
 
   removeFromParent(): void {
@@ -401,6 +486,7 @@ export class Company extends AggregateRoot {
     }
 
     if (this._parentCompany) {
+      const previousParent = this._parentCompany;
       const index = this._parentCompany._subsidiaries.findIndex(subsidiary =>
         subsidiary._id.equals(this._id),
       );
@@ -409,6 +495,14 @@ export class Company extends AggregateRoot {
       }
       this._parentCompany = undefined;
       this._updatedAt = new Date();
+      this.addDomainEvent(
+        new CompanyParentRemovedEvent(
+          this._id,
+          previousParent._id,
+          this._name.getValue(),
+          previousParent._name.getValue(),
+        ),
+      );
     }
   }
 
@@ -426,6 +520,14 @@ export class Company extends AggregateRoot {
     subsidiary._parentCompany = this;
     this._subsidiaries.push(subsidiary);
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanySubsidiaryAddedEvent(
+        this._id,
+        subsidiary._id,
+        this._name.getValue(),
+        subsidiary._name.getValue(),
+      ),
+    );
   }
 
   removeSubsidiary(subsidiaryId: CompanyId): void {
@@ -436,9 +538,18 @@ export class Company extends AggregateRoot {
     const index = this._subsidiaries.findIndex(subsidiary => subsidiary._id.equals(subsidiaryId));
 
     if (index !== -1) {
-      this._subsidiaries[index]._parentCompany = undefined;
+      const subsidiary = this._subsidiaries[index];
+      subsidiary._parentCompany = undefined;
       this._subsidiaries.splice(index, 1);
       this._updatedAt = new Date();
+      this.addDomainEvent(
+        new CompanySubsidiaryRemovedEvent(
+          this._id,
+          subsidiary._id,
+          this._name.getValue(),
+          subsidiary._name.getValue(),
+        ),
+      );
     }
   }
 
@@ -499,72 +610,128 @@ export class Company extends AggregateRoot {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousHost = this._host.getValue();
     this._host = host;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyHostUpdatedEvent(this._id, this._name.getValue(), host.getValue(), previousHost),
+    );
   }
 
   updateTimezone(timezone: string): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousTimezone = this._timezone;
     this._timezone = timezone;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyTimezoneUpdatedEvent(this._id, this._name.getValue(), timezone, previousTimezone),
+    );
   }
 
   updateCurrency(currency: string): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousCurrency = this._currency;
     this._currency = currency;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyCurrencyUpdatedEvent(this._id, this._name.getValue(), currency, previousCurrency),
+    );
   }
 
   updateLanguage(language: string): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousLanguage = this._language;
     this._language = language;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyLanguageUpdatedEvent(this._id, this._name.getValue(), language, previousLanguage),
+    );
   }
 
   updateLogoUrl(logoUrl: string): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousLogoUrl = this._logoUrl;
     this._logoUrl = logoUrl;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyLogoUpdatedEvent(this._id, this._name.getValue(), logoUrl, previousLogoUrl),
+    );
   }
 
   updateWebsiteUrl(websiteUrl: string): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousWebsiteUrl = this._websiteUrl;
     this._websiteUrl = websiteUrl;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyWebsiteUpdatedEvent(
+        this._id,
+        this._name.getValue(),
+        websiteUrl,
+        previousWebsiteUrl,
+      ),
+    );
   }
 
   updatePrivacyPolicyUrl(privacyPolicyUrl: string): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousPrivacyPolicyUrl = this._privacyPolicyUrl;
     this._privacyPolicyUrl = privacyPolicyUrl;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyPrivacyPolicyUpdatedEvent(
+        this._id,
+        this._name.getValue(),
+        privacyPolicyUrl,
+        previousPrivacyPolicyUrl,
+      ),
+    );
   }
 
   updateIndustrySector(industrySector: IndustrySector): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousIndustrySector = this._industrySector.value;
     this._industrySector = industrySector;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyIndustrySectorUpdatedEvent(
+        this._id,
+        this._name.getValue(),
+        industrySector.value,
+        previousIndustrySector,
+      ),
+    );
   }
 
   updateIndustryOperationChannel(industryOperationChannel: IndustryOperationChannel): void {
     if (!this._isActive) {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
+    const previousIndustryOperationChannel = this._industryOperationChannel.value;
     this._industryOperationChannel = industryOperationChannel;
     this._updatedAt = new Date();
+    this.addDomainEvent(
+      new CompanyIndustryOperationChannelUpdatedEvent(
+        this._id,
+        this._name.getValue(),
+        industryOperationChannel.value,
+        previousIndustryOperationChannel,
+      ),
+    );
   }
 
   updateName(name: CompanyName): void {
@@ -572,8 +739,10 @@ export class Company extends AggregateRoot {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
     if (!this._name.equals(name)) {
+      const previousName = this._name.getValue();
       this._name = name;
       this._updatedAt = new Date();
+      this.addDomainEvent(new CompanyNameUpdatedEvent(this._id, name.getValue(), previousName));
     }
   }
 
@@ -582,8 +751,17 @@ export class Company extends AggregateRoot {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
     if (!this._description.equals(description)) {
+      const previousDescription = this._description.getValue();
       this._description = description;
       this._updatedAt = new Date();
+      this.addDomainEvent(
+        new CompanyDescriptionUpdatedEvent(
+          this._id,
+          this._name.getValue(),
+          description.getValue(),
+          previousDescription,
+        ),
+      );
     }
   }
 
@@ -592,8 +770,35 @@ export class Company extends AggregateRoot {
       throw new InvalidValueObjectException('Cannot update inactive company');
     }
     if (!this._address.equals(address)) {
+      const previousAddress = {
+        country: this._address.country,
+        state: this._address.state,
+        city: this._address.city,
+        street: this._address.street,
+        exteriorNumber: this._address.exteriorNumber,
+        interiorNumber: this._address.interiorNumber,
+        postalCode: this._address.postalCode,
+        fullAddress: this._address.getFullAddress(),
+      };
       this._address = address;
       this._updatedAt = new Date();
+      this.addDomainEvent(
+        new CompanyAddressUpdatedEvent(
+          this._id,
+          this._name.getValue(),
+          {
+            country: address.country,
+            state: address.state,
+            city: address.city,
+            street: address.street,
+            exteriorNumber: address.exteriorNumber,
+            interiorNumber: address.interiorNumber,
+            postalCode: address.postalCode,
+            fullAddress: address.getFullAddress(),
+          },
+          previousAddress,
+        ),
+      );
     }
   }
 }

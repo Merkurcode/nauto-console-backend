@@ -11,37 +11,8 @@ import { CompanyName } from '@core/value-objects/company-name.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
-
-// Prisma company record interface
-interface IPrismaCompanyRecord {
-  id: string;
-  name: string;
-  description: string;
-  host: string;
-  timezone?: string;
-  currency?: string;
-  language?: string;
-  logoUrl?: string;
-  websiteUrl?: string;
-  privacyPolicyUrl?: string;
-  industrySector?: string;
-  industryOperationChannel?: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  address: {
-    country: string;
-    state: string;
-    city: string;
-    street: string;
-    exteriorNumber: string;
-    interiorNumber?: string;
-    postalCode: string;
-    googleMapsUrl?: string;
-  };
-  parentCompany?: IPrismaCompanyRecord;
-  subsidiaries?: IPrismaCompanyRecord[];
-}
+import { ICompanyConfigAI } from '@core/interfaces/company-config-ai.interface';
+import { JsonValue } from '@prisma/client/runtime/library';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -56,6 +27,10 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
 
   private get client() {
     return this.transactionContext.getTransactionClient() || this.prisma;
+  }
+
+  private convertConfigAI(configAI: JsonValue): ICompanyConfigAI | null {
+    return configAI ? (configAI as ICompanyConfigAI) : null;
   }
 
   async findById(id: CompanyId): Promise<Company | null> {
@@ -222,7 +197,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         });
 
         return {
-          companies: companiesData.map(company => this.mapToModel(company as IPrismaCompanyRecord)),
+          companies: companiesData.map(company => this.mapToModel(company)),
           assistantsMap,
         };
       },
@@ -275,7 +250,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         const { assistants: _, ...companyWithoutAssistants } = company;
 
         return {
-          company: this.mapToModel(companyWithoutAssistants as IPrismaCompanyRecord),
+          company: this.mapToModel(companyWithoutAssistants),
           assistants,
         };
       },
@@ -303,6 +278,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
             parentCompanyId: company.parentCompany ? company.parentCompany.id.getValue() : null,
+            configAI: company.configAI ? JSON.parse(JSON.stringify(company.configAI)) : null,
             createdAt: company.createdAt,
             updatedAt: company.updatedAt,
             address: {
@@ -359,6 +335,7 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
             industryOperationChannel: company.industryOperationChannel.value,
             isActive: company.isActive,
             parentCompanyId: company.parentCompany ? company.parentCompany.id.getValue() : null,
+            configAI: company.configAI ? JSON.parse(JSON.stringify(company.configAI)) : null,
             updatedAt: company.updatedAt,
             address: {
               update: {
@@ -461,6 +438,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
     privacyPolicyUrl?: string;
     industrySector?: string;
     industryOperationChannel?: string;
+    configAI?: JsonValue;
+    lastUpdated?: Date | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -487,6 +466,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       privacyPolicyUrl?: string;
       industrySector?: string;
       industryOperationChannel?: string;
+      configAI?: JsonValue;
+      lastUpdated?: Date | null;
       isActive: boolean;
       createdAt: Date;
       updatedAt: Date;
@@ -514,6 +495,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       privacyPolicyUrl?: string;
       industrySector?: string;
       industryOperationChannel?: string;
+      configAI?: JsonValue;
+      lastUpdated?: Date | null;
       isActive: boolean;
       createdAt: Date;
       updatedAt: Date;
@@ -562,6 +545,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
         isActive: data.parentCompany.isActive,
         createdAt: data.parentCompany.createdAt,
         updatedAt: data.parentCompany.updatedAt,
+        configAI: this.convertConfigAI(data.parentCompany.configAI),
+        lastUpdated: data.parentCompany.lastUpdated,
       });
     }
 
@@ -597,6 +582,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
           isActive: sub.isActive,
           createdAt: sub.createdAt,
           updatedAt: sub.updatedAt,
+          configAI: this.convertConfigAI(sub.configAI),
+          lastUpdated: sub.lastUpdated,
         }),
       );
     }
@@ -631,6 +618,8 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
       updatedAt: data.updatedAt,
       parentCompany,
       subsidiaries,
+      configAI: this.convertConfigAI(data.configAI),
+      lastUpdated: data.lastUpdated,
     });
   }
 
