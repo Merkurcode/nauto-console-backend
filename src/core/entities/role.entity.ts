@@ -10,6 +10,7 @@ import {
 import { CanAssignPermissionToRoleSpecification } from '@core/specifications/role.specifications';
 import { PermissionsCollection } from '@core/value-objects/collections/permissions.collection';
 import { RolesEnum, ROLE_HIERARCHY_ORDER_STRINGS } from '@shared/constants/enums';
+import { RoleCreatedEvent, RoleUpdatedEvent, RoleDeletedEvent } from '@core/events/role.events';
 
 export class Role extends AggregateRoot {
   private readonly _id: RoleId;
@@ -55,14 +56,21 @@ export class Role extends AggregateRoot {
     isDefault: boolean = false,
     isDefaultAppRole: boolean = false,
   ): Role {
-    return new Role(
-      RoleId.create(),
-      name,
-      description,
-      hierarchyLevel,
-      isDefault,
-      isDefaultAppRole,
+    const roleId = RoleId.create();
+    const role = new Role(roleId, name, description, hierarchyLevel, isDefault, isDefaultAppRole);
+
+    role.addDomainEvent(
+      new RoleCreatedEvent(
+        roleId,
+        name,
+        description,
+        isDefaultAppRole,
+        role.canBeDeleted(),
+        new Date(),
+      ),
     );
+
+    return role;
   }
 
   // Factory method for reconstituting from persistence
@@ -148,8 +156,8 @@ export class Role extends AggregateRoot {
   }
 
   removePermission(permissionId: PermissionId): void {
-    const permissionExists = this._permissions.some(p => p.id.equals(permissionId));
-    if (!permissionExists) {
+    const permissionToRemove = this._permissions.find(p => p.id.equals(permissionId));
+    if (!permissionToRemove) {
       return; // Permission not found, no change needed
     }
 
@@ -179,7 +187,12 @@ export class Role extends AggregateRoot {
     }
 
     if (hasChanges) {
-      this._updatedAt = new Date();
+      const now = new Date();
+      this._updatedAt = now;
+
+      this.addDomainEvent(
+        new RoleUpdatedEvent(this._id, this._name, this._description, undefined, undefined, now),
+      );
     }
   }
 
@@ -301,6 +314,12 @@ export class Role extends AggregateRoot {
     if (!this.canBeDeleted()) {
       throw new CannotDeleteDefaultRoleException();
     }
+  }
+
+  markForDeletion(): void {
+    this.validateForDeletion();
+
+    this.addDomainEvent(new RoleDeletedEvent(this._id, this._name, new Date()));
   }
 
   getPermissionNames(): string[] {

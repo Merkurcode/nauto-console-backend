@@ -2,8 +2,14 @@ import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { PermissionName } from '@core/value-objects/permission-name.vo';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
+import { AggregateRoot } from '@core/events/domain-event.base';
+import {
+  PermissionCreatedEvent,
+  PermissionUpdatedEvent,
+  PermissionDeletedEvent,
+} from '@core/events/permission.events';
 
-export class Permission {
+export class Permission extends AggregateRoot {
   private readonly _id: PermissionId;
   private readonly _name: PermissionName;
   private _description: string;
@@ -18,6 +24,7 @@ export class Permission {
     description: string,
     createdAt?: Date,
   ) {
+    super();
     this.validateDescription(description);
 
     this._id = id;
@@ -33,7 +40,21 @@ export class Permission {
 
   // Factory method for creating new permissions
   static create(resourceAction: ResourceAction, description: string): Permission {
-    return new Permission(PermissionId.create(), resourceAction, description);
+    const permissionId = PermissionId.create();
+    const permission = new Permission(permissionId, resourceAction, description);
+
+    permission.addDomainEvent(
+      new PermissionCreatedEvent(
+        permissionId,
+        permission.getPermissionName(),
+        resourceAction.getResource(),
+        resourceAction.getAction().toString(),
+        description,
+        new Date(),
+      ),
+    );
+
+    return permission;
   }
 
   // Factory method for reconstituting from persistence
@@ -96,7 +117,21 @@ export class Permission {
     }
 
     this._description = newDescription;
-    this._updatedAt = new Date();
+    const now = new Date();
+    this._updatedAt = now;
+
+    this.addDomainEvent(
+      new PermissionUpdatedEvent(
+        this._id,
+        this.getPermissionName(),
+        { description: newDescription },
+        now,
+      ),
+    );
+  }
+
+  markForDeletion(): void {
+    this.addDomainEvent(new PermissionDeletedEvent(this._id, this.getPermissionName(), new Date()));
   }
 
   // Query methods

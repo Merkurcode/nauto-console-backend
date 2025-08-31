@@ -411,33 +411,70 @@ export class UserAuthorizationService {
   canRemoveRoleFromUser(currentUser: User, targetUser: User, roleToRemove: Role): boolean {
     const rootUserSpec = new RootLevelUserSpecification();
     const adminUserSpec = new AdminUserSpecification();
+    const targetIsRoot = rootUserSpec.isSatisfiedBy(targetUser);
+    const removerIsRoot = rootUserSpec.isSatisfiedBy(currentUser);
+    const isSelfRemoval = currentUser.id.equals(targetUser.id);
 
-    // Root can remove any role from any user
-    if (rootUserSpec.isSatisfiedBy(currentUser)) {
+    // Security Rule 1: Cannot alter root users (only if you are root yourself)
+    if (targetIsRoot && !removerIsRoot) {
+      return false;
+    }
+
+    // Security Rule 2: Prohibited to remove root roles (even from non-root users)
+    if (roleToRemove.isRootRole() || roleToRemove.isRootReadOnlyRole()) {
+      return false; // ROOT roles cannot be removed through this endpoint
+    }
+
+    // Security Rule EXTRA: Cannot remove your own highest hierarchy role
+    if (isSelfRemoval) {
+      const currentUserHighestRole = currentUser.getHighestHierarchyRole();
+      if (currentUserHighestRole && roleToRemove.id.equals(currentUserHighestRole.id)) {
+        return false; // Cannot remove your own highest privilege role
+      }
+    }
+
+    // Root can remove any non-root role from any user (except their own highest role, checked above)
+    if (removerIsRoot) {
       return true;
     }
 
-    // Check company boundaries for non-root users
+    // Security Rule 3: Cannot alter users from other companies (only root users can)
     const currentUserCompanyId = currentUser.companyId?.getValue();
     const targetUserCompanyId = targetUser.companyId?.getValue();
 
     if (currentUserCompanyId !== targetUserCompanyId) {
-      return false;
+      return false; // Only same company (root bypassed above)
     }
 
-    // Admin can remove roles from users in their company
+    // Admin can remove roles from users in their company (no additional restrictions for admin)
     if (adminUserSpec.isSatisfiedBy(currentUser)) {
       return true;
     }
 
-    // Manager can remove roles from users in their company but not superior roles
+    // Manager has specific hierarchy restrictions
     if (currentUser.rolesCollection.containsByName(RolesEnum.MANAGER)) {
-      // Check if the role being removed is superior to manager
-      const roleHierarchyLevel = this.getRoleHierarchyLevel(roleToRemove.name);
-      const managerLevel = this.getRoleHierarchyLevel(RolesEnum.MANAGER);
+      // Security Rule 4: Manager cannot remove roles superior OR EQUAL in hierarchy to theirs
+      const removerHighestRole = currentUser.getHighestHierarchyRole();
+      if (
+        removerHighestRole &&
+        (roleToRemove.hasHigherHierarchyThan(removerHighestRole) ||
+          roleToRemove.hasSameHierarchyAs(removerHighestRole))
+      ) {
+        return false; // Cannot remove roles higher than or equal to your own
+      }
 
-      // Manager cannot remove roles that are equal or superior to their level (lower number = higher rank)
-      return roleHierarchyLevel > managerLevel;
+      // Security Rule 5: Manager cannot alter users with superior OR EQUAL hierarchy
+      const targetUserHighestRole = targetUser.getHighestHierarchyRole();
+      if (
+        removerHighestRole &&
+        targetUserHighestRole &&
+        (targetUserHighestRole.hasHigherHierarchyThan(removerHighestRole) ||
+          targetUserHighestRole.hasSameHierarchyAs(removerHighestRole))
+      ) {
+        return false; // Cannot alter users with higher or equal hierarchy than yours
+      }
+
+      return true; // Manager can remove roles only from lower hierarchy users/roles
     }
 
     return false;

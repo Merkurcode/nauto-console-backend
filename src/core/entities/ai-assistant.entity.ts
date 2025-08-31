@@ -1,5 +1,11 @@
 import { AggregateRoot } from '@core/events/domain-event.base';
 import { AssistantAreaEnum } from '../../shared/constants/enums';
+import { AIAssistantId } from '@core/value-objects/ai-assistant-id.vo';
+import {
+  AIAssistantCreatedEvent,
+  AIAssistantActivatedEvent,
+  AIAssistantDeactivatedEvent,
+} from '@core/events/ai-assistant.events';
 
 export interface IAIAssistantFeature {
   id: string;
@@ -94,11 +100,74 @@ export class AIAssistant extends AggregateRoot {
   }
 
   public static create(props: Omit<IAIAssistantProps, 'createdAt' | 'updatedAt'>): AIAssistant {
-    return new AIAssistant({
+    const aiAssistant = new AIAssistant({
       ...props,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    aiAssistant.addDomainEvent(
+      new AIAssistantCreatedEvent(
+        AIAssistantId.fromString(props.id),
+        props.name,
+        props.name, // displayName
+        aiAssistant.getLocalizedDescription(),
+        props.available,
+        new Date(),
+      ),
+    );
+
+    return aiAssistant;
+  }
+
+  public activate(): void {
+    if (this._available) {
+      return; // Already available, no change needed
+    }
+
+    this._available = true;
+    this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new AIAssistantActivatedEvent(
+        AIAssistantId.fromString(this._id),
+        this._name,
+        this._updatedAt,
+      ),
+    );
+  }
+
+  public deactivate(): void {
+    if (!this._available) {
+      return; // Already unavailable, no change needed
+    }
+
+    this._available = false;
+    this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new AIAssistantDeactivatedEvent(
+        AIAssistantId.fromString(this._id),
+        this._name,
+        this._updatedAt,
+      ),
+    );
+  }
+
+  public updateDescription(newDescription: Record<string, string>): void {
+    // Update description (assuming it's mutable for this operation)
+    Object.keys(this._description).forEach(key => delete this._description[key]);
+    Object.assign(this._description, newDescription);
+
+    this._updatedAt = new Date();
+  }
+
+  public updateFeatures(newFeatures: IAIAssistantFeature[]): void {
+    // Update features (assuming it's mutable for this operation)
+    this._features.length = 0;
+    this._features.push(...newFeatures);
+
+    this._updatedAt = new Date();
   }
 
   // Override toJSON to prevent private fields from being serialized

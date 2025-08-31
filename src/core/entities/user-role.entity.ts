@@ -1,6 +1,7 @@
 import { AggregateRoot } from '@core/events/domain-event.base';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
+import { UserRoleCreatedEvent, UserRoleDeletedEvent } from '@core/events/user-role.events';
 
 export interface IUserRoleProps {
   userId: UserId;
@@ -15,11 +16,24 @@ export class UserRole extends AggregateRoot {
 
   public static create(props: Omit<IUserRoleProps, 'createdAt'>): UserRole {
     const now = new Date();
-
-    return new UserRole({
+    const userRole = new UserRole({
       ...props,
       createdAt: now,
     });
+
+    userRole.addDomainEvent(
+      new UserRoleCreatedEvent(
+        UserId.create(),
+        props.userId,
+        props.roleId,
+        'User',
+        'Role',
+        props.userId,
+        now,
+      ),
+    );
+
+    return userRole;
   }
 
   public static reconstruct(props: IUserRoleProps): UserRole {
@@ -50,6 +64,20 @@ export class UserRole extends AggregateRoot {
 
   public matches(userId: UserId, roleId: RoleId): boolean {
     return this.isForUser(userId) && this.isForRole(roleId);
+  }
+
+  public markForDeletion(): void {
+    this.addDomainEvent(
+      new UserRoleDeletedEvent(
+        UserId.create(),
+        this._props.userId,
+        this._props.roleId,
+        'User',
+        'Role',
+        this._props.userId,
+        new Date(),
+      ),
+    );
   }
 
   // Validation

@@ -1,6 +1,7 @@
 import { AggregateRoot } from '@core/events/domain-event.base';
 import { UserProfileId } from '@core/value-objects/user-profile-id.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
+import { UserProfileCreatedEvent } from '@core/events/user-profile.events';
 
 export interface IUserProfileProps {
   userId: UserId;
@@ -27,12 +28,25 @@ export class UserProfile extends AggregateRoot {
   ): UserProfile {
     const now = new Date();
     const profileId = id || UserProfileId.create();
-
-    return new UserProfile(profileId, {
+    const profile = new UserProfile(profileId, {
       ...props,
       createdAt: now,
       updatedAt: now,
     });
+
+    profile.addDomainEvent(
+      new UserProfileCreatedEvent(
+        profileId,
+        props.userId,
+        '', // firstName - not available in profile, should come from User entity
+        '', // lastName - not available in profile, should come from User entity
+        props.phone,
+        undefined,
+        now,
+      ),
+    );
+
+    return profile;
   }
 
   public static reconstruct(id: UserProfileId, props: IUserProfileProps): UserProfile {

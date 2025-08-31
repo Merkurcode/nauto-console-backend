@@ -1,6 +1,10 @@
 import { AggregateRoot } from '@core/events/domain-event.base';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { PermissionId } from '@core/value-objects/permission-id.vo';
+import {
+  RolePermissionCreatedEvent,
+  RolePermissionDeletedEvent,
+} from '@core/events/role-permission.events';
 
 export interface IRolePermissionProps {
   roleId: RoleId;
@@ -15,11 +19,23 @@ export class RolePermission extends AggregateRoot {
 
   public static create(props: Omit<IRolePermissionProps, 'createdAt'>): RolePermission {
     const now = new Date();
-
-    return new RolePermission({
+    const rolePermission = new RolePermission({
       ...props,
       createdAt: now,
     });
+
+    rolePermission.addDomainEvent(
+      new RolePermissionCreatedEvent(
+        RoleId.create(),
+        props.roleId,
+        props.permissionId,
+        'Role',
+        'Permission',
+        now,
+      ),
+    );
+
+    return rolePermission;
   }
 
   public static reconstruct(props: IRolePermissionProps): RolePermission {
@@ -50,6 +66,19 @@ export class RolePermission extends AggregateRoot {
 
   public matches(roleId: RoleId, permissionId: PermissionId): boolean {
     return this.isForRole(roleId) && this.isForPermission(permissionId);
+  }
+
+  public markForDeletion(): void {
+    this.addDomainEvent(
+      new RolePermissionDeletedEvent(
+        RoleId.create(),
+        this._props.roleId,
+        this._props.permissionId,
+        'Role',
+        'Permission',
+        new Date(),
+      ),
+    );
   }
 
   // Validation

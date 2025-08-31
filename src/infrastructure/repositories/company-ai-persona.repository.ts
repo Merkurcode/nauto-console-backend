@@ -43,9 +43,9 @@ export class CompanyAIPersonaRepository
         where: { companyId },
         update: {
           aiPersonaId,
-          isActive: true,
+          /*isActive: true,
           assignedAt: new Date(),
-          assignedBy,
+          assignedBy,*/
         },
         create: {
           companyId,

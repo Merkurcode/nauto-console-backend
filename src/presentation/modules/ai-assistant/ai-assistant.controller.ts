@@ -49,6 +49,8 @@ import { AssignAssistantToCompanyCommand } from '@application/commands/ai-assist
 import { ToggleAssistantStatusCommand } from '@application/commands/ai-assistant/toggle-assistant-status.command';
 import { ToggleFeatureStatusCommand } from '@application/commands/ai-assistant/toggle-feature-status.command';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 @ApiTags('ai-assistants')
 @ApiBearerAuth('JWT-auth')
@@ -153,8 +155,11 @@ export class AIAssistantController {
   async getCompanyAssistants(
     @Param('companyIdentifier', TrimStringPipe) companyIdentifier: string,
     @Query() query: GetAvailableAssistantsDto,
+    @CurrentUser() currentUser: IJwtPayload,
   ): Promise<ICompanyAIAssistantResponse[]> {
-    return this.queryBus.execute(new GetCompanyAssistantsQuery(companyIdentifier, query.lang));
+    return this.queryBus.execute(
+      new GetCompanyAssistantsQuery(companyIdentifier, query.lang, currentUser),
+    );
   }
 
   @Post('assign')

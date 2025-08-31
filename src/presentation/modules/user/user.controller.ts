@@ -345,6 +345,7 @@ export class UserController {
   @NoBots()
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER)
   @CanWrite('user')
+  @PreventRootAssignment() // Prevent removal of ROOT roles
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Remove role from user (Root/Admin/Manager)',

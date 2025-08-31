@@ -152,23 +152,51 @@ export class DomainValidationService {
       result.addError('Cannot assign roles to inactive users.');
     }
 
-    // Check ROOT role assignment restrictions
-    const rootRoleSpec = new RootRoleSpecification();
-    const rootReadOnlyRoleSpec = new RootReadOnlyRoleSpecification();
-
-    if (rootRoleSpec.isSatisfiedBy(role) && assigningUser) {
-      // Only ROOT users can assign ROOT role
+    // Security validations when assigningUser is provided
+    if (assigningUser) {
+      // Rule 1: Cannot alter root users (only if you are root yourself)
       const rootUserSpec = new RootLevelUserSpecification();
-      if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
-        result.addError('Only ROOT users can assign ROOT role.');
+      const targetIsRoot = rootUserSpec.isSatisfiedBy(user);
+      const assignerIsRoot = rootUserSpec.isSatisfiedBy(assigningUser);
+      
+      if (targetIsRoot && !assignerIsRoot) {
+        result.addError('Only ROOT users can modify other ROOT users.');
+      }
+
+      // Rule 3: Cannot alter users from other companies (only root users can)
+      if (!assignerIsRoot && user.companyId && assigningUser.companyId) {
+        if (!user.companyId.equals(assigningUser.companyId)) {
+          result.addError('You can only modify users from your own company.');
+        }
+      }
+
+      // Rule 2: Cannot assign roles superior in hierarchy to yours (root users can assign any)
+      if (!assignerIsRoot) {
+        const assignerHighestRole = assigningUser.getHighestHierarchyRole();
+        if (assignerHighestRole && role.hasHigherHierarchyThan(assignerHighestRole)) {
+          result.addError('You cannot assign roles with higher hierarchy than your own.');
+        }
       }
     }
 
-    if (rootReadOnlyRoleSpec.isSatisfiedBy(role) && assigningUser) {
-      // Only ROOT users can assign ROOT_READONLY role
+    // Rule 4: Prohibited to assign root role or hierarchy superior/equal to root
+    const rootRoleSpec = new RootRoleSpecification();
+    const rootReadOnlyRoleSpec = new RootReadOnlyRoleSpecification();
+
+    if (rootRoleSpec.isSatisfiedBy(role)) {
+      result.addError('ROOT role assignment is prohibited through this endpoint.');
+    }
+
+    if (rootReadOnlyRoleSpec.isSatisfiedBy(role)) {
+      result.addError('ROOT_READONLY role assignment is prohibited through this endpoint.');
+    }
+
+    // Additional ROOT role assignment restrictions for other cases
+    if ((rootRoleSpec.isSatisfiedBy(role) || rootReadOnlyRoleSpec.isSatisfiedBy(role)) && assigningUser) {
+      // Only ROOT users can assign ROOT roles (if somehow allowed)
       const rootUserSpec = new RootLevelUserSpecification();
       if (!rootUserSpec.isSatisfiedBy(assigningUser)) {
-        result.addError('Only ROOT users can assign ROOT_READONLY role.');
+        result.addError('Only ROOT users can assign ROOT level roles.');
       }
     }
 

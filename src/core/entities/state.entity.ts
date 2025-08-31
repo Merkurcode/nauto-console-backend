@@ -2,6 +2,7 @@ import { AggregateRoot } from '@core/events/domain-event.base';
 import { StateId } from '@core/value-objects/state-id.vo';
 import { CountryId } from '@core/value-objects/country-id.vo';
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
+import { StateCreatedEvent, StateUpdatedEvent } from '@core/events/state.events';
 
 export class State extends AggregateRoot {
   private readonly _id: StateId;
@@ -24,7 +25,14 @@ export class State extends AggregateRoot {
       throw new InvalidValueObjectException('State name cannot be empty');
     }
 
-    return new State(StateId.create(), name.trim(), countryId);
+    const stateId = StateId.create();
+    const state = new State(stateId, name.trim(), countryId);
+
+    state.addDomainEvent(
+      new StateCreatedEvent(stateId, countryId, name.trim(), 'N/A', true, new Date()),
+    );
+
+    return state;
   }
 
   static fromPersistence(data: {
@@ -71,8 +79,21 @@ export class State extends AggregateRoot {
     if (!name || !name.trim()) {
       throw new InvalidValueObjectException('State name cannot be empty');
     }
+
     this._name = name.trim();
-    this._updatedAt = new Date();
+    const now = new Date();
+    this._updatedAt = now;
+
+    this.addDomainEvent(
+      new StateUpdatedEvent(
+        this._id,
+        this._countryId,
+        this._name,
+        'N/A',
+        { name: name.trim() },
+        now,
+      ),
+    );
   }
 
   belongsToCountry(countryId: CountryId): boolean {

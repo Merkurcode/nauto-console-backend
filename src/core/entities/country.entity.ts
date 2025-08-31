@@ -1,6 +1,7 @@
 import { AggregateRoot } from '@core/events/domain-event.base';
 import { CountryId } from '@core/value-objects/country-id.vo';
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
+import { CountryCreatedEvent } from '@core/events/country.events';
 
 export class Country extends AggregateRoot {
   private readonly _id: CountryId;
@@ -40,14 +41,21 @@ export class Country extends AggregateRoot {
       throw new InvalidValueObjectException('Language code cannot be empty');
     }
 
-    return new Country(
-      CountryId.create(),
+    const countryId = CountryId.create();
+    const country = new Country(
+      countryId,
       name.trim(),
       phoneCode.trim(),
       langCode.trim(),
       undefined,
       imageUrl?.trim(),
     );
+
+    country.addDomainEvent(
+      new CountryCreatedEvent(countryId, name.trim(), phoneCode.trim(), true, new Date()),
+    );
+
+    return country;
   }
 
   static fromPersistence(data: {

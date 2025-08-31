@@ -2,8 +2,9 @@ import { v4 as uuid } from 'uuid';
 import { Email } from '@core/value-objects/email.vo';
 import { Token } from '@core/value-objects/token.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
+import { AggregateRoot } from '@core/events/domain-event.base';
 
-export class PasswordReset {
+export class PasswordReset extends AggregateRoot {
   id: string;
   userId: UserId;
   email: Email;
@@ -13,6 +14,7 @@ export class PasswordReset {
   createdAt: Date;
 
   constructor(userId: UserId, email: Email, expirationMinutes: number = 60, id?: string) {
+    super();
     this.id = id || uuid();
     this.userId = userId;
     this.email = email;

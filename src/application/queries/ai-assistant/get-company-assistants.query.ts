@@ -4,11 +4,15 @@ import { AIAssistantResolverService } from '@core/services/ai-assistant-resolver
 import { AIAssistantService } from '@core/services/ai-assistant.service';
 import { ICompanyAIAssistantResponse } from '@application/dtos/_responses/ai-assistant/ai-assistant.response';
 import { CompanyId } from '@core/value-objects/company-id.vo';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
+import { ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import { UserAuthorizationService } from '@core/services/user-authorization.service';
 
 export class GetCompanyAssistantsQuery {
   constructor(
     public readonly companyIdentifier: string,
     public readonly lang: string = 'en-US',
+    public readonly currentUser?: IJwtPayload,
   ) {}
 }
 
@@ -18,6 +22,7 @@ export class GetCompanyAssistantsQueryHandler implements IQueryHandler<GetCompan
     private readonly aiAssistantService: AIAssistantService,
     private readonly aiAssistantMapper: AIAssistantMapper,
     private readonly resolverService: AIAssistantResolverService,
+    private readonly userAuthorizationService: UserAuthorizationService,
   ) {}
 
   async execute(query: GetCompanyAssistantsQuery): Promise<ICompanyAIAssistantResponse[]> {
@@ -26,6 +31,21 @@ export class GetCompanyAssistantsQueryHandler implements IQueryHandler<GetCompan
     const resolvedCompanyId = isUUID
       ? await this.resolverService.resolveCompanyId(query.companyIdentifier, undefined)
       : await this.resolverService.resolveCompanyId(undefined, query.companyIdentifier);
+
+    // Security validation: Users can only access their own company unless they are ROOT
+    if (query.currentUser && query.currentUser.sub) {
+      // Get current user to validate permissions
+      const currentUser = await this.userAuthorizationService.getCurrentUserSafely(
+        query.currentUser.sub,
+      );
+
+      // Check if user can access this company's data
+      if (!this.userAuthorizationService.canAccessCompany(currentUser, resolvedCompanyId)) {
+        throw new ForbiddenActionException(
+          'You can only access AI assistants for your own company',
+        );
+      }
+    }
 
     // Convert to value object
     const companyId = CompanyId.fromString(resolvedCompanyId);

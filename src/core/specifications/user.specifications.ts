@@ -124,8 +124,9 @@ export class CanAssignRoleSpecification extends Specification<User> {
       return false;
     }
 
+    // If user already has the role, assignment is allowed (idempotent operation)
     if (user.hasRole(this.role.id)) {
-      return false; // Already has the role
+      return true; // Already has the role - assignment should succeed
     }
 
     // Root level roles require special eligibility

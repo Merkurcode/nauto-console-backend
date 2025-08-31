@@ -111,9 +111,10 @@ export class AIPersonaRepository extends BaseRepository<AIPersona> implements IA
     isActive?: boolean;
     isDefault?: boolean;
     companyId?: string;
+    userCompanyId?: string;
   }): Promise<AIPersona[]> {
     return this.executeWithErrorHandling('findAll', async () => {
-      const where: Record<string, unknown> = {};
+      let where: Record<string, unknown> = {};
 
       if (filters?.isActive !== undefined) {
         where.isActive = filters.isActive;
@@ -125,6 +126,17 @@ export class AIPersonaRepository extends BaseRepository<AIPersona> implements IA
 
       if (filters?.companyId !== undefined) {
         where.companyId = filters.companyId;
+      }
+
+      // Special handling for userCompanyId: show default personas + user's company personas
+      if (filters?.userCompanyId !== undefined) {
+        where = {
+          ...where,
+          OR: [
+            { isDefault: true }, // Default personas (available to all)
+            { companyId: filters.userCompanyId }, // User's company personas
+          ],
+        };
       }
 
       const records = await this.client.aIPersona.findMany({

@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { Token } from '@core/value-objects/token.vo';
+import { AggregateRoot } from '@core/events/domain-event.base';
 
-export class RefreshToken {
+export class RefreshToken extends AggregateRoot {
   id: string;
   userId: UserId;
   token: Token;
@@ -11,6 +12,7 @@ export class RefreshToken {
   createdAt: Date;
 
   constructor(userId: UserId, token: Token, expirationDays: number, id?: string) {
+    super();
     this.id = id || uuidv4();
     this.userId = userId;
     this.token = token;

@@ -43,6 +43,9 @@ export class SendVerificationEmailCommandHandler
     // Get current user using centralized method
     const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
 
+    // SECURITY: Validate access permissions
+    await this.validateAccess(email, currentUser, currentUserCompanyId);
+
     // SECURITY: Verify that the email is registered in the system
     const targetUser = await this.userService.findUserByEmailForVerification(email);
     if (!targetUser) {
@@ -54,9 +57,6 @@ export class SendVerificationEmailCommandHandler
     if (targetUser.emailVerified) {
       throw new ConflictException('Email is already verified');
     }
-
-    // SECURITY: Validate access permissions
-    await this.validateAccess(email, currentUser, currentUserCompanyId);
 
     // Generate a verification code
     const code = await this.authService.generateEmailVerificationCode(email);

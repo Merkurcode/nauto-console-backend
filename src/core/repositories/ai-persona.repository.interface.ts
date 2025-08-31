@@ -15,6 +15,7 @@ export interface IAIPersonaRepository {
     isActive?: boolean;
     isDefault?: boolean;
     companyId?: string;
+    userCompanyId?: string;
   }): Promise<AIPersona[]>;
   save(persona: AIPersona): Promise<AIPersona>;
   update(persona: AIPersona): Promise<AIPersona>;

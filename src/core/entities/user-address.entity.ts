@@ -3,6 +3,11 @@ import { UserAddressId } from '@core/value-objects/user-address-id.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { CountryId } from '@core/value-objects/country-id.vo';
 import { StateId } from '@core/value-objects/state-id.vo';
+import {
+  UserAddressCreatedEvent,
+  UserAddressUpdatedEvent,
+  UserAddressDeletedEvent,
+} from '@core/events/user-address.events';
 
 export interface IUserAddressProps {
   userId: UserId;
@@ -31,12 +36,28 @@ export class UserAddress extends AggregateRoot {
   ): UserAddress {
     const now = new Date();
     const addressId = id || UserAddressId.create();
-
-    return new UserAddress(addressId, {
+    const address = new UserAddress(addressId, {
       ...props,
       createdAt: now,
       updatedAt: now,
     });
+
+    address.addDomainEvent(
+      new UserAddressCreatedEvent(
+        addressId,
+        props.userId,
+        props.countryId || CountryId.fromString('default'),
+        props.stateId || StateId.fromString('default'),
+        'home',
+        props.street || '',
+        props.city || '',
+        props.postalCode || '',
+        false,
+        now,
+      ),
+    );
+
+    return address;
   }
 
   public static reconstruct(id: UserAddressId, props: IUserAddressProps): UserAddress {
@@ -214,7 +235,17 @@ export class UserAddress extends AggregateRoot {
 
     if (hasChanges) {
       this.touch();
+
+      this.addDomainEvent(
+        new UserAddressUpdatedEvent(this._id, this._props.userId, updates, this._props.updatedAt),
+      );
     }
+  }
+
+  public markForDeletion(): void {
+    this.addDomainEvent(
+      new UserAddressDeletedEvent(this._id, this._props.userId, 'home', new Date()),
+    );
   }
 
   private touch(): void {

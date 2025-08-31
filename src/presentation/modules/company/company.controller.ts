@@ -88,36 +88,36 @@ export class CompanyController {
     return this.queryBus.execute(new GetCompaniesQuery(currentUserPayload.sub, currentUserPayload.tenantId));
   }
 
-  @Get('by-host/:host')
-  @Public()
-  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.BOT)
-  @ApiOperation({
-    summary: 'Get company by host (Public)',
-    description:
-      'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.\n\n' +
-      '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>\n\n' +
-      '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Company retrieved successfully with complete information including assistants, schedules, and AI persona',
-    type: CompanySwaggerDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Company not found',
-  })
-  async getCompanyByHost(@Param('host', TrimStringPipe) host: string): Promise<ICompanyResponse> {
-    const hostVO = new Host(host);
-
-    return this.queryBus.execute(new GetCompanyByHostQuery(hostVO));
-  }
+  //@Get('by-host/:host')
+  //@Public()
+  //@Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.BOT)
+  //@ApiOperation({
+  //  summary: 'Get company by host (Public)',
+  //  description:
+  //    'Public endpoint to get company information by host/subdomain without authentication. Used for tenant resolution before user login.\n\n' +
+  //    '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
+  //    '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>\n\n' +
+  //    '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
+  //})
+  //@ApiResponse({
+  //  status: HttpStatus.OK,
+  //  description: 'Company retrieved successfully with complete information including assistants, schedules, and AI persona',
+  //  type: CompanySwaggerDto,
+  //})
+  //@ApiResponse({
+  //  status: HttpStatus.NOT_FOUND,
+  //  description: 'Company not found',
+  //})
+  //async getCompanyByHost(@Param('host', TrimStringPipe) host: string): Promise<ICompanyResponse> {
+  //  const hostVO = new Host(host);
+  //
+  //  return this.queryBus.execute(new GetCompanyByHostQuery(hostVO));
+  //}
 
   @Get('root-companies')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
   @ApiOperation({
-    summary: 'Get root companies',
+    summary: 'Get root companies (Root only)',
     description: 'Get all companies that have no parent company (root level)\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
       '👥 **Roles with Access:**\n' +
@@ -138,10 +138,12 @@ export class CompanyController {
   @Get(':id')
   @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY)
   @ApiOperation({
-    summary: 'Get company by ID (All authenticated users)',
+    summary: 'Get company by ID (Root only)',
     description: 'Get detailed information about a specific company\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:read</code>\n\n' +
-      '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code>\n\n' +
       '🔍 **Response includes:** Complete company details, address with Google Maps URL, AI assistants with features, weekly schedules, and active AI persona',
   })
   @ApiResponse({

@@ -341,8 +341,11 @@ export class AIPersonaController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated',
   })
-  async findOne(@Param('id', TrimStringPipe) id: string): Promise<IAIPersonaResponse> {
-    return this.queryBus.execute(new GetAIPersonaByIdQuery(id));
+  async findOne(
+    @Param('id', TrimStringPipe) id: string,
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<IAIPersonaResponse> {
+    return this.queryBus.execute(new GetAIPersonaByIdQuery(id, user.sub));
   }
 
   @Put(':id/:language')

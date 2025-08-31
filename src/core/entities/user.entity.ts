@@ -26,7 +26,6 @@ import {
 } from '@core/events/user.events';
 import {
   UserNotEligibleForRoleException,
-  UserAlreadyHasRoleException,
   InactiveUserException,
   InvalidValueObjectException,
 } from '@core/exceptions/domain-exceptions';
@@ -304,6 +303,26 @@ export class User extends AggregateRoot {
     return RolesCollection.create(this._roles);
   }
 
+  /**
+   * Get the role with the highest hierarchy (lowest hierarchy level number) for this user
+   * Used for security validations in role assignments
+   */
+  getHighestHierarchyRole(): Role | null {
+    if (!this._roles || this._roles.length === 0) {
+      return null;
+    }
+
+    // Find role with lowest hierarchy level (highest privilege)
+    return this._roles.reduce(
+      (highest, current) => {
+        if (!highest) return current;
+
+        return current.hasHigherHierarchyThan(highest) ? current : highest;
+      },
+      null as Role | null,
+    );
+  }
+
   get lastLoginAt(): Date | undefined {
     return this._lastLoginAt;
   }
@@ -411,15 +430,17 @@ export class User extends AggregateRoot {
   }
 
   addRole(role: Role): void {
+    // Check if user already has this role - if so, this is a no-op (idempotent)
+    if (this.hasRole(role.id)) {
+      return; // Successfully "assigned" - user already has the role
+    }
+
     // Use specification pattern for business rule validation
     const canAssignRoleSpec = new CanAssignRoleSpecification(role);
 
     if (!canAssignRoleSpec.isSatisfiedBy(this)) {
       if (!this._isActive) {
         throw new InactiveUserException('assign role');
-      }
-      if (this.hasRole(role.id)) {
-        throw new UserAlreadyHasRoleException(this._id.getValue(), role.name);
       }
       throw new UserNotEligibleForRoleException(this._id.getValue(), role.name);
     }

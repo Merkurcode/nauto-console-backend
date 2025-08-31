@@ -77,6 +77,11 @@ export class RoleService {
       throw new EntityNotFoundException('Role', id);
     }
 
+    // Security: Prevent modification of system roles
+    if (role.isDefaultAppRole) {
+      throw new ForbiddenActionException('Cannot modify system roles (isDefaultAppRole)');
+    }
+
     if (name) {
       const existingRole = await this.roleRepository.findByName(name);
       if (existingRole && existingRole.id.getValue() !== id) {
@@ -120,6 +125,13 @@ export class RoleService {
       throw new EntityNotFoundException('Role', roleId);
     }
 
+    // Security: Prevent modification of system roles
+    if (role.isDefaultAppRole) {
+      throw new ForbiddenActionException(
+        'Cannot modify permissions of system roles (isDefaultAppRole)',
+      );
+    }
+
     let permission = await this.permissionRepository.findById(permissionId);
     if (!permission) {
       permission = await this.permissionRepository.findByName(permissionId);
@@ -138,6 +150,13 @@ export class RoleService {
     const role = await this.roleRepository.findById(roleId);
     if (!role) {
       throw new EntityNotFoundException('Role', roleId);
+    }
+
+    // Security: Prevent modification of system roles
+    if (role.isDefaultAppRole) {
+      throw new ForbiddenActionException(
+        'Cannot modify permissions of system roles (isDefaultAppRole)',
+      );
     }
 
     // Get permission
@@ -166,6 +185,13 @@ export class RoleService {
       if (!role) {
         throw new EntityNotFoundException('Role', roleId);
       }
+    }
+
+    // Security: Prevent modification of system roles
+    if (role.isDefaultAppRole) {
+      throw new ForbiddenActionException(
+        'Cannot modify permissions of system roles (isDefaultAppRole)',
+      );
     }
 
     role.removePermission(PermissionId.fromString(permissionId));

@@ -2,12 +2,13 @@ import { BotTokenId } from '@core/value-objects/bot-token-id.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import { AggregateRoot } from '@core/events/domain-event.base';
 
 /**
  * BOT Token Entity
  * Represents a BOT token with its metadata and lifecycle
  */
-export class BotToken {
+export class BotToken extends AggregateRoot {
   private _id: BotTokenId;
   private _tokenId: string;
   private _sessionTokenId: string; // jti for session validation
@@ -33,6 +34,7 @@ export class BotToken {
     revokedBy?: UserId,
     isActive: boolean = true,
   ) {
+    super();
     this._id = id;
     this._tokenId = tokenId;
     this._sessionTokenId = sessionTokenId;

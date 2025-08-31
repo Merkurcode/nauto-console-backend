@@ -53,7 +53,7 @@ export class RootController {
     return {
       message: 'Sensitive system information',
       system: {
-        version: '1.0.0',
+        version: this.configService.get<string>('appVersion', '?.?.?'),
         environment: this.configService.get<string>('env', 'development'),
         uptime: process.uptime(),
       },

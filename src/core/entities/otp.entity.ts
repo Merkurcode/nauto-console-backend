@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { UserId } from '@core/value-objects/user-id.vo';
+import { AggregateRoot } from '@core/events/domain-event.base';
 
-export class Otp {
+export class Otp extends AggregateRoot {
   id: string;
   userId: UserId;
   secret: string;
@@ -10,6 +11,7 @@ export class Otp {
   createdAt: Date;
 
   constructor(userId: UserId, secret: string, expirationMinutes: number, id?: string) {
+    super();
     this.id = id || uuidv4();
     this.userId = userId;
     this.secret = secret;
