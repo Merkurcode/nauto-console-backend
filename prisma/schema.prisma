@@ -224,6 +224,8 @@ model User {
   aiPersonasCreated AIPersona[] @relation("AIPersonaCreator")
   aiPersonasUpdated AIPersona[] @relation("AIPersonaUpdater")
   companyAIPersonasAssigned CompanyAIPersona[]
+  marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
+  marketingCampaignsUpdated MarketingCampaign[] @relation("MarketingCampaignUpdatedBy")
   
   @@index([companyId])
   @@unique([agentPhone, companyId])
@@ -393,6 +395,7 @@ model Company {
   botTokens     BotToken[]
   aiPersonas      AIPersona[]
   companyAIPersonas CompanyAIPersona[]
+  marketingCampaigns MarketingCampaign[]
   
   @@index([parentCompanyId])
 }
@@ -446,6 +449,7 @@ model File {
   updatedAt   DateTime  @updatedAt
 
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  marketingCampaigns MarketingCampaign[]
 
   @@index([userId])
   @@index([status])
@@ -613,4 +617,31 @@ model CompanyAIPersona {
 
   @@index([aiPersonaId])
   @@index([isActive])
+}
+
+model MarketingCampaign {
+  id               String    @id @default(uuid())
+  startDate        DateTime
+  endDate          DateTime
+  utmName          String    @unique @db.VarChar(255)
+  referenceName    String    @db.VarChar(255)
+  context          String    @db.Text
+  enabled          Boolean   @default(false)
+  metaId           String?   @db.VarChar(255)
+  promotionPictureId String?
+  companyId        String
+  createdBy        String
+  updatedBy        String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  promotionPicture File?     @relation(fields: [promotionPictureId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdByUser    User      @relation("MarketingCampaignCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updatedByUser    User      @relation("MarketingCampaignUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId])
+  @@index([enabled])
+  @@index([startDate, endDate])
 }
