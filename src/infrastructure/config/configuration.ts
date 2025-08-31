@@ -221,6 +221,8 @@ export default () => ({
     },
     bullmq: {
       prefix: process.env.BULLMQ_PREFIX || 'nauto:queues',
+      // Timeout para bloquear comandos BZPOPMIN (evita idle timeout en LBs)
+      blockTimeout: parseInt(process.env.BULLMQ_BLOCK_TIMEOUT || '30', 10),
     },
     performance: {
       healthCheckIntervalMs: parseInt(process.env.HEALTH_CHECK_INTERVAL_MS || '2000', 10),
@@ -237,19 +239,26 @@ export default () => ({
       attempts: 5,
       backoffDelay: 5000,
     },
-    // Email queue specific configuration for Render deployment
+    // Email queue configuration OPTIMIZED for RESEND API LIMITS
     email: {
-      concurrency: parseInt(process.env.EMAIL_QUEUE_CONCURRENCY || '3', 10),
+      // CONCURRENCY: Balanced for Resend 2 rps limit (2 concurrent workers max)
+      concurrency: parseInt(process.env.EMAIL_QUEUE_CONCURRENCY || '2', 10), // Respects 2 rps limit
       attempts: parseInt(process.env.EMAIL_QUEUE_ATTEMPTS || '8', 10),
       retryWindowHours: parseInt(process.env.EMAIL_QUEUE_RETRY_WINDOW_HOURS || '2', 10),
-      delayBetweenJobs: parseInt(process.env.EMAIL_QUEUE_DELAY_MS || '2000', 10),
-      maxEmailsPerMinute: parseInt(process.env.EMAIL_RATE_LIMIT_PER_MINUTE || '30', 10),
-      maxEmailsPerHour: parseInt(process.env.EMAIL_RATE_LIMIT_PER_HOUR || '500', 10),
+
+      // RESEND OPTIMAL: 500ms delay = 2 requests per second (distributed)
+      delayBetweenJobs: parseInt(process.env.EMAIL_QUEUE_DELAY_MS || '500', 10), // 500ms = 2 rps
+
+      // RESEND API LIMITS: 2 rps = 120 requests/min, 7200/hour
+      maxEmailsPerMinute: parseInt(process.env.EMAIL_RATE_LIMIT_PER_MINUTE || '120', 10), // 2 rps actual limit
+      maxEmailsPerHour: parseInt(process.env.EMAIL_RATE_LIMIT_PER_HOUR || '7200', 10), // 120 * 60 requests/hour
+
+      // CLEANUP: Optimized for moderate volume processing
       removeCompletedAge:
         parseInt(process.env.EMAIL_QUEUE_COMPLETED_TTL_HOURS || '24', 10) * 60 * 60,
       removeFailedAge: parseInt(process.env.EMAIL_QUEUE_FAILED_TTL_DAYS || '7', 10) * 24 * 60 * 60,
-      removeCompletedCount: parseInt(process.env.EMAIL_QUEUE_COMPLETED_COUNT || '500', 10),
-      removeFailedCount: parseInt(process.env.EMAIL_QUEUE_FAILED_COUNT || '100', 10),
+      removeCompletedCount: parseInt(process.env.EMAIL_QUEUE_COMPLETED_COUNT || '500', 10), // Balanced
+      removeFailedCount: parseInt(process.env.EMAIL_QUEUE_FAILED_COUNT || '100', 10), // Reasonable
     },
     streams: {
       maxLen: parseInt(process.env.QUEUE_EVENTS_STREAM_MAXLEN || '20000', 10),

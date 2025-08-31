@@ -26,11 +26,13 @@ import {
 
 import {
   StaleUploadsCleanupProcessor,
+  StaleUploadsCleanupService,
   ModuleConfig as StaleUploadsMC
 } from './stale-uploads-cleanup';
 
 import {
   UploadsMaintenanceProcessor,
+  UploadsMaintenanceService,
   ModuleConfig as UploadsMaintenanceMC
 } from './uploads-maintenance';
 

@@ -50,9 +50,10 @@ import { BotOptimizationGuard } from '@presentation/guards/bot-optimization.guar
 import { BotRestrictionsGuard } from '@presentation/guards/bot-restrictions.guard';
 import { ThrottlerService } from '@infrastructure/services/throttler.service';
 // import { UsersModuleQueuesTest } from './queues/examples/controller/users.module';
-import { AuthEmailModuleQueue } from './queues/all/email/email.module';
-import { StaleUploadsCleanupModule } from './queues/all/stale-uploads-cleanup/stale-uploads-cleanup.module';
-import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploads-maintenance.module';
+// REMOVED: All queue modules now use centralized system in queues.ts
+// import { AuthEmailModuleQueue } from './queues/all/email/email.module';
+// import { StaleUploadsCleanupModule } from './queues/all/stale-uploads-cleanup/stale-uploads-cleanup.module';
+// import { UploadsMaintenanceModule } from './queues/all/uploads-maintenance/uploads-maintenance.module';
 import { CorrelationMiddleware } from '@infrastructure/logger/correlation/correlation.middleware';
 import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
@@ -112,9 +113,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
 
     //UsersModuleQueuesTest,
 
-    AuthEmailModuleQueue,
-    StaleUploadsCleanupModule,
-    UploadsMaintenanceModule,
+    // REMOVED: All queue modules - using centralized queue system in queues.ts
 
     // Other Feature Modules
     UserModule,

@@ -23,6 +23,10 @@ import { setConfigService } from './validation/event-validation';
 import { EVENT_HANDLERS, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { SmsService } from '@core/services/sms.service';
 
+// Import queue services for job scheduling
+import { StaleUploadsCleanupService } from './all/stale-uploads-cleanup/stale-uploads-cleanup.service';
+import { UploadsMaintenanceService } from './all/uploads-maintenance/uploads-maintenance.service';
+
 @Injectable()
 class QueueRegistrationService implements OnApplicationBootstrap {
   constructor(
@@ -250,6 +254,12 @@ export class QueueModule {
         scope: Scope.DEFAULT,
       });
       exportsArr.push(SmsService);
+
+      // Register queue job scheduling services
+      providers.push(
+        StaleUploadsCleanupService,
+        UploadsMaintenanceService
+      );
 
       // Register handlers globally
       providers.push(...handlersToUse, {

@@ -29,66 +29,131 @@ function validatePrefix(prefix: string): string {
   return trimmed;
 }
 
-export const getQueueConfig = (
+/**
+ * Crea una conexión Redis dedicada para BullMQ con configuración robusta
+ * IMPORTANTE: Esta función crea conexiones SEPARADAS del RedisModule para evitar conflictos
+ */
+function createBullMQRedisConnection(
   configService: ConfigService,
-  processType: 'api' | 'worker' | 'both' = 'both',
-) => {
+  processType: 'api' | 'worker' | 'both',
+): Record<string, unknown> {
   const host = validateHost(configService.get<string>('queue.redis.host')!);
   const port = validatePort(configService.get<number>('queue.redis.port')!);
-  const db = Number(configService.get<number>('queue.redis.db') ?? 0); // Render: DB 0
+  const db = Number(configService.get<number>('queue.redis.db') ?? 0);
+  const blockTimeout = configService.get<number>('queue.bullmq.blockTimeout', 30);
 
   const tlsEnabled = configService.get<boolean>('queue.redis.tls.enabled');
   const isProd = process.env.NODE_ENV === 'production';
 
   const tls = tlsEnabled
     ? {
-        // En prod valida el cert; en dev puedes desactivarlo si usas self-signed.
         rejectUnauthorized: isProd
           ? (configService.get<boolean>('queue.redis.tls.rejectUnauthorized') ?? true)
           : false,
         servername: configService.get<string>('queue.redis.tls.servername') || host,
-        // Evita desactivar la verificación en prod:
         checkServerIdentity: isProd ? undefined : () => undefined,
       }
     : undefined;
 
-  const prefix = validatePrefix(configService.get<string>('queue.bullmq.prefix')!);
-
   const isWorker = processType !== 'api';
+  const connectionName = `bullmq-${processType}-${process.pid}`;
 
   return {
-    prefix,
-    connection: {
-      host,
-      port,
-      db, // Render suele permitir solo DB 0
-      username: configService.get<string>('queue.redis.username'),
-      password: configService.get<string>('queue.redis.password'),
-      tls,
+    host,
+    port,
+    db,
+    username: configService.get<string>('queue.redis.username'),
+    password: configService.get<string>('queue.redis.password'),
+    tls,
 
-      // TCP sane defaults para cloud
-      family: 4,
-      keepAlive: 60_000,
-      noDelay: true,
+    // TCP sane defaults optimizado para estabilidad local
+    family: 4,
+    keepAlive: 5000, // 5s - más frecuente para estabilidad en desarrollo
+    noDelay: true,
 
-      // Arranque: workers deberían fallar rápido si no hay Redis
-      lazyConnect: !isWorker, // api:true, worker:false
-      enableReadyCheck: true, // si el proveedor bloquea INFO -> poner false
-      enableOfflineQueue: !isWorker, // api:true, worker:false (no buffer en RAM del worker)
+    // Arranque optimizado para workers vs API
+    lazyConnect: false, // Siempre conectar inmediatamente para estabilidad
+    enableReadyCheck: true,
+    enableOfflineQueue: isWorker ? false : true, // Workers: no buffer, API: sí buffer
 
-      connectionName: `bullmq-${processType}-${process.pid}`,
+    connectionName,
 
-      // Tiempos y reintentos
-      connectTimeout: 60_000,
-      maxLoadingTimeout: 10_000,
-      // IMPORTANTE para BullMQ en managed Redis:
-      maxRetriesPerRequest: null, // evita MaxRetriesPerRequestError en micro-cortes
-      retryStrategy: (times: number) => Math.min(1_000 + times * 2_000, 10_000),
+    // Tiempos y reintentos optimizados
+    connectTimeout: 10000, // Reducido de 60s a 10s
+    maxLoadingTimeout: 5000, // Reducido de 10s a 5s
 
-      // ioredis v5+ admite timeouts por comando:
-      commandTimeout: 30_000, // opcional: aborta comandos colgados
+    // CRÍTICO para BullMQ en managed Redis:
+    maxRetriesPerRequest: null,
+    retryStrategy: (times: number) => {
+      const delay = Math.min(times * 200, 2000); // Menos agresivo: 200ms, 400ms, ..., max 2s
+      
+      // SUPPRESS LOGS: Solo mostrar si falla repetidamente (>3 attempts) en desarrollo
+      if (times > 3 && process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.log(`[${connectionName}] Redis reconnect attempt ${times}, delay: ${delay}ms`);
+      }
+
+      return delay;
     },
+
+    // Reintenta ante estados transitorios + el error específico que estás viendo
+    reconnectOnError: (err: Error) => {
+      const msg = err?.message || '';
+      const shouldReconnect =
+        msg.includes('READONLY') ||
+        msg.includes('MOVED') ||
+        msg.includes('ASK') ||
+        msg.includes('CLUSTERDOWN') ||
+        msg.includes('Connection is closed') ||
+        msg.includes("Stream isn't writeable") || // ← CRÍTICO para tu error
+        msg.includes('enableOfflineQueue options is false');
+
+      if (shouldReconnect) {
+        // DIAGNOSIS: Siempre logear la causa de reconexión para debug
+        console.warn(`[${connectionName}] 🔄 Redis reconnecting due to: "${msg}"`);
+        return true;
+      } else {
+        // Solo logear errores inesperados (no reconexión)
+        console.error(`[${connectionName}] ❌ Redis error (not reconnecting): "${msg}"`);
+      }
+
+      return false;
+    },
+
+    // Timeout para comandos - más agresivo para workers
+    commandTimeout: isWorker ? blockTimeout * 1000 + 5000 : 15000,
   };
+}
+
+export const getQueueConfig = (
+  configService: ConfigService,
+  processType: 'api' | 'worker' | 'both' = 'both',
+) => {
+  const prefix = validatePrefix(configService.get<string>('queue.bullmq.prefix')!);
+  const isWorker = processType !== 'api';
+
+  // Usar conexión Redis dedicada para BullMQ (NO compartida con RedisModule)
+  const connection = createBullMQRedisConnection(configService, processType);
+
+  const baseConfig = {
+    prefix,
+    connection,
+  };
+
+  // Para workers: configuraciones específicas críticas para evitar tu error
+  if (isWorker) {
+    return {
+      ...baseConfig,
+
+      // CRÍTICO: evita bloqueos indefinidos en BZPOPMIN
+      defaultJobOptions: {
+        removeOnComplete: 100, // Keep only last 100 completed jobs
+        removeOnFail: 50, // Keep only last 50 failed jobs
+      },
+    };
+  }
+
+  return baseConfig;
 };
 
 // Helper function to get default configurations from ConfigService
@@ -124,3 +189,24 @@ export const getPerformanceConfig = (configService: ConfigService) => ({
   REDIS_MAX_USED_MB: configService.get<number>('queue.performance.redisMaxUsedMb'),
   EVENT_MAX_BYTES: configService.get<number>('queue.performance.eventMaxBytes'),
 });
+
+/**
+ * Configuración específica para Workers BullMQ
+ * INCLUYE blockTimeout para evitar "Stream isn't writeable"
+ * NOTA: La conexión se debe configurar por separado en cada Worker
+ */
+export const getWorkerConfig = (configService: ConfigService) => {
+  const blockTimeout = configService.get<number>('queue.bullmq.blockTimeout', 30);
+
+  return {
+    // CRÍTICO: evita bloqueos indefinidos en BZPOPMIN
+    blockTimeout, // seconds - evita "Stream isn't writeable" en idle timeouts
+
+    // Worker settings para conexiones inestables
+    settings: {
+      stalledInterval: 30000, // Check for stalled jobs every 30s
+      maxStalledCount: 1, // Max times a job can be recovered
+      retryProcessDelay: 5000, // Delay before retrying after process failure
+    },
+  };
+};
