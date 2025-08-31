@@ -256,10 +256,7 @@ export class QueueModule {
       exportsArr.push(SmsService);
 
       // Register queue job scheduling services
-      providers.push(
-        StaleUploadsCleanupService,
-        UploadsMaintenanceService
-      );
+      providers.push(StaleUploadsCleanupService, UploadsMaintenanceService);
 
       // Register handlers globally
       providers.push(...handlersToUse, {

@@ -292,6 +292,42 @@ export const permissions = [
     action: 'delete',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
   },
+  // Marketing Campaign permissions
+  {
+    name: 'marketing-campaign:read',
+    description: 'Can read marketing campaign information and configurations',
+    resource: 'marketing-campaign',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'marketing-campaign:write',
+    description: 'Can create new marketing campaigns',
+    resource: 'marketing-campaign',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'marketing-campaign:update',
+    description: 'Can update existing marketing campaigns',
+    resource: 'marketing-campaign',
+    action: 'update',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'marketing-campaign:delete',
+    description: 'Can delete marketing campaigns',
+    resource: 'marketing-campaign',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN],
+  },
+  {
+    name: 'marketing-campaign:manage',
+    description: 'Can enable/disable marketing campaigns',
+    resource: 'marketing-campaign',
+    action: 'manage',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {

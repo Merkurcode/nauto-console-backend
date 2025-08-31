@@ -23,6 +23,7 @@ const rolePermissionsMap = {
     'user_activity_log:read', 
     'ai-persona:read', 'ai-persona:write', 'ai-persona:delete', 'ai-persona:update', 'ai-persona:assign',
     'company-ai-config:read', 'company-ai-config:write', 'company-ai-config:delete',
+    'marketing-campaign:read', 'marketing-campaign:write', 'marketing-campaign:update', 'marketing-campaign:delete', 'marketing-campaign:manage',
   ],
   [RolesEnum.ROOT_READONLY]: [
     'sensitive:operations',
@@ -38,6 +39,7 @@ const rolePermissionsMap = {
     'user_activity_log:read',
     'ai-persona:read',
     'company-ai-config:read',
+    'marketing-campaign:read',
   ],
   [RolesEnum.ADMIN]: [
     'sensitive:operations',
@@ -53,6 +55,7 @@ const rolePermissionsMap = {
     'user_activity_log:read',
     'ai-persona:read', 'ai-persona:write', 'ai-persona:delete', 'ai-persona:update', 'ai-persona:assign',
     'company-ai-config:read', 'company-ai-config:write', 'company-ai-config:delete',
+    'marketing-campaign:read', 'marketing-campaign:write', 'marketing-campaign:update', 'marketing-campaign:delete', 'marketing-campaign:manage',
   ],
   [RolesEnum.MANAGER]: [
     'sensitive:operations',

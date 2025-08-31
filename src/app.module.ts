@@ -23,6 +23,7 @@ import { UserActivityLogModule } from '@presentation/modules/user-activity-log/u
 import { AIPersonaModule } from '@presentation/modules/ai-persona/ai-persona.module';
 import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { CompanyAIConfigModule } from '@presentation/modules/company-ai-config/company-ai-config.module';
+import { MarketingCampaignModule } from '@presentation/modules/marketing-campaign/marketing-campaign.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { QueueModule } from './queues/queue.module';
@@ -128,6 +129,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
     AIPersonaModule,
     StorageModule,
     CompanyAIConfigModule,
+    MarketingCampaignModule,
   ],
   controllers: [],
   providers: [

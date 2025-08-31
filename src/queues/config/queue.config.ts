@@ -86,7 +86,7 @@ function createBullMQRedisConnection(
     maxRetriesPerRequest: null,
     retryStrategy: (times: number) => {
       const delay = Math.min(times * 200, 2000); // Menos agresivo: 200ms, 400ms, ..., max 2s
-      
+
       // SUPPRESS LOGS: Solo mostrar si falla repetidamente (>3 attempts) en desarrollo
       if (times > 3 && process.env.NODE_ENV === 'development') {
         // eslint-disable-next-line no-console
@@ -111,6 +111,7 @@ function createBullMQRedisConnection(
       if (shouldReconnect) {
         // DIAGNOSIS: Siempre logear la causa de reconexión para debug
         console.warn(`[${connectionName}] 🔄 Redis reconnecting due to: "${msg}"`);
+
         return true;
       } else {
         // Solo logear errores inesperados (no reconexión)

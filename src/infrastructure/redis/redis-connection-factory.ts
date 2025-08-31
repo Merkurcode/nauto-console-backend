@@ -26,10 +26,10 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
       keepAlive: 5000, // Reduced to 5s for more frequent keep-alive
       connectTimeout: 15000, // Increased for slower connections
       commandTimeout: 20000, // Increased for better reliability
-      
+
       // SOCKET-level keep-alive para estabilidad máxima
       family: 4, // Force IPv4 (more stable than IPv6 in many local setups)
-      
+
       // Configuración adicional para estabilidad en desarrollo
       enableOfflineQueue: true, // Allow commands to queue during reconnection
       disconnectTimeout: 5000, // Wait 5s before declaring disconnection
@@ -80,7 +80,7 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
   createFromUrl(url: string, purpose: string, additionalConfig?: Partial<RedisOptions>): Redis {
     // CONNECTION POOLING: Reutiliza conexiones por propósito para reducir overhead
     const poolKey = `${purpose}-${process.pid}`;
-    
+
     if (this.connectionPool.has(poolKey)) {
       const existingConnection = this.connectionPool.get(poolKey)!;
       // Verificar si la conexión está activa
@@ -126,7 +126,7 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
       // OPTIMIZED: Quick reconnection for BullMQ stability
       const delay = Math.min(times * 100, 1000); // 100ms -> 1s max (fast reconnect)
       const connectionId = purpose || 'unknown';
-      
+
       // DEVELOPMENT: Suppress reconnect logging for cleaner console
       // Only log if reconnection is failing repeatedly (> 5 attempts)
       if (times > 5 && process.env.NODE_ENV === 'development') {
@@ -168,8 +168,9 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
    */
   private setupConnectionLogging(redis: Redis, connectionName: string): void {
     const isDev = process.env.NODE_ENV === 'development';
-    const isImportantConnection = connectionName.includes('storage') || connectionName.includes('api');
-    
+    const isImportantConnection =
+      connectionName.includes('storage') || connectionName.includes('api');
+
     redis.on('connect', () => {
       // Only log important connections in development to reduce noise
       if (!isDev || isImportantConnection) {
@@ -179,7 +180,7 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
     });
 
     redis.on('ready', () => {
-      // Only log important connections in development  
+      // Only log important connections in development
       if (!isDev || isImportantConnection) {
         // eslint-disable-next-line no-console
         console.log(`[${connectionName}] Redis ready for commands`);
@@ -190,8 +191,8 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
       // Always log actual errors, filter known reconnect scenarios
       const msg = err.message;
       const isKnownReconnectError =
-        msg.includes('READONLY') || 
-        msg.includes('MOVED') || 
+        msg.includes('READONLY') ||
+        msg.includes('MOVED') ||
         msg.includes("Stream isn't writeable") ||
         msg.includes('Connection is closed') ||
         msg.includes('Socket closed unexpectedly');
@@ -229,16 +230,16 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
   async closeAllConnections(): Promise<void> {
     const connections = Array.from(this.connectionPool.values());
     this.connectionPool.clear();
-    
+
     await Promise.all(
-      connections.map(async (redis) => {
+      connections.map(async redis => {
         try {
           await redis.quit();
         } catch (error) {
           // Ignore errors during cleanup
           console.warn('Error closing Redis connection during cleanup:', error);
         }
-      })
+      }),
     );
   }
 

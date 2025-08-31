@@ -139,7 +139,6 @@ export class AddressDto {
   @IsString()
   @TrimString()
   postalCode?: string;
-
 }
 
 export class RegisterDto {

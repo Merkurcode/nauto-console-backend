@@ -38,6 +38,7 @@ import { UserStorageConfigRepository } from './repositories/user-storage-config.
 import { StorageTiersRepository } from './repositories/storage-tiers.repository';
 import { UserActivityLogRepository } from './repositories/user-activity-log.repository';
 import { FileRepository } from './repositories/file.repository';
+import { MarketingCampaignRepository } from './repositories/marketing-campaign.repository';
 import { TokenProvider } from './auth/token.provider';
 import { ConcurrencyService } from './services/concurrency.service';
 import { PathConcurrencyService } from '../infrastructure/services/path-concurrency.service';
@@ -68,6 +69,7 @@ import {
   STORAGE_TIERS_REPOSITORY,
   USER_ACTIVITY_LOG_REPOSITORY,
   FILE_REPOSITORY,
+  MARKETING_CAMPAIGN_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
@@ -307,6 +309,12 @@ import {
       ) => new FileRepository(prisma, transactionContext, configService, logger),
       inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
     },
+    {
+      provide: MARKETING_CAMPAIGN_REPOSITORY,
+      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
+        new MarketingCampaignRepository(prisma, transactionContext),
+      inject: [PrismaService, TransactionContextService],
+    },
 
     // Infrastructure services
     RequestCacheService,
@@ -364,6 +372,7 @@ import {
     STORAGE_TIERS_REPOSITORY,
     USER_ACTIVITY_LOG_REPOSITORY,
     FILE_REPOSITORY,
+    MARKETING_CAMPAIGN_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,

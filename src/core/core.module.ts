@@ -43,6 +43,7 @@ import { FileQuotaService } from './services/file-quota.service';
 import { FileUploadValidationService } from './services/file-upload-validation.service';
 import { MultipartUploadService } from './services/multipart-upload.service';
 import { FileNamingService } from './services/file-naming.service';
+import { MarketingCampaignService } from './services/marketing-campaign.service';
 
 /**
  * Core Domain Module
@@ -95,6 +96,7 @@ import { FileNamingService } from './services/file-naming.service';
     FileUploadValidationService,
     MultipartUploadService,
     FileNamingService,
+    MarketingCampaignService,
   ],
   exports: [
     // Export all domain services
@@ -140,6 +142,7 @@ import { FileNamingService } from './services/file-naming.service';
     FileUploadValidationService,
     MultipartUploadService,
     FileNamingService,
+    MarketingCampaignService,
   ],
 })
 export class CoreModule {}

@@ -292,6 +292,7 @@ async function bootstrap() {
     .addTag('company-schedules', 'Company schedule management')
     .addTag('ai-assistants', 'AI assistant management and assignment')
     .addTag('ai-personas', 'AI persona management and assignment')
+    .addTag('marketing-campaigns', 'Marketing campaign management')
     .addTag('bot-management', 'Bot token management')
     .addTag('bot-audit', 'Bot activity auditing')
     .addTag('user-activity-logs', 'User activity logging and monitoring')

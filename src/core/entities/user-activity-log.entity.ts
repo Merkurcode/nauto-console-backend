@@ -478,13 +478,4 @@ export class UserActivityLog extends AggregateRoot {
 
     return instance;
   }
-
-  // Domain event methods
-  public getUncommittedEvents(): unknown[] {
-    return this.getDomainEvents();
-  }
-
-  public markEventsAsCommitted(): void {
-    this.clearDomainEvents();
-  }
 }
