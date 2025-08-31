@@ -152,20 +152,23 @@ export class UserService {
 
     let addressVO: UserAddress | undefined;
     if (options?.address) {
+      let validatedCountry: any = undefined;
+      let validatedState: any = undefined;
+      
       // Validate country if provided
       if (options.address.country) {
-        const country = await this.countryRepository.findByName(options.address.country);
-        if (!country) {
+        validatedCountry = await this.countryRepository.findByName(options.address.country);
+        if (!validatedCountry) {
           throw new EntityNotFoundException('Country', options.address.country);
         }
         
         // Validate state if provided (requires country)
         if (options.address.state) {
-          const state = await this.stateRepository.findByNameAndCountry(
+          validatedState = await this.stateRepository.findByNameAndCountry(
             options.address.state,
-            country.id.getValue(),
+            validatedCountry.id.getValue(),
           );
-          if (!state) {
+          if (!validatedState) {
             throw new EntityNotFoundException('State', `${options.address.state} in ${options.address.country}`);
           }
         }
@@ -173,6 +176,8 @@ export class UserService {
       
       addressVO = UserAddress.create({
         userId: UserId.create(), // Temporary, will be set after user creation
+        countryId: validatedCountry?.id,
+        stateId: validatedState?.id,
         city: options.address.city,
         street: options.address.street,
         exteriorNumber: options.address.exteriorNumber,

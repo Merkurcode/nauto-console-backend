@@ -140,14 +140,6 @@ export class AddressDto {
   @TrimString()
   postalCode?: string;
 
-  @ApiPropertyOptional({
-    description: 'Google Maps URL for the address',
-    example: 'https://maps.google.com/?q=Calle+5+de+Mayo+123,Puebla,Puebla,Mexico',
-  })
-  @IsOptional()
-  @IsString()
-  @TrimString()
-  googleMapsUrl?: string;
 }
 
 export class RegisterDto {
