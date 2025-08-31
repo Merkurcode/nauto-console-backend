@@ -157,6 +157,52 @@ export class AIPersonaService {
   }
 
   /**
+   * Checks if a persona can be assigned to a specific company
+   * Uses universal authorization methods to implement allocation rules
+   * Business Rules:
+   * - Default personas can be assigned to any company by any user
+   * - Root users can assign any persona to any company
+   * - Other users can only assign personas from their own company to their own company
+   */
+  async canAssignAIPersona(
+    aiPersonaId: string,
+    targetCompanyId: string,
+    currentUser: User,
+  ): Promise<boolean> {
+    // ✅ Use universal method: Root users can assign any persona to any company
+    if (this.userAuthService.canAccessRootFeatures(currentUser)) {
+      return true;
+    }
+
+    const aiPersona = await this.aiPersonaRepository.findById(aiPersonaId);
+
+    if (!aiPersona) {
+      return false; // Cannot assign non-existent persona
+    }
+
+    // ✅ Business Rule: Default personas can be assigned to any company by any user
+    if (aiPersona.isDefault) {
+      // But user must have access to the target company
+      return this.userAuthService.canAccessCompany(currentUser, targetCompanyId);
+    }
+
+    // ✅ Business Rule: Company-specific personas can only be assigned by users from that company
+    if (
+      aiPersona.companyId &&
+      !this.userAuthService.canAccessCompany(currentUser, aiPersona.companyId)
+    ) {
+      return false;
+    }
+
+    // ✅ Business Rule: User can only assign to their own company (unless ROOT)
+    if (!this.userAuthService.canAccessCompany(currentUser, targetCompanyId)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Validates if a user can create a default persona
    * Uses universal authorization method
    */
@@ -411,15 +457,19 @@ export class AIPersonaService {
     assignedBy: string,
     currentUser: User,
   ): Promise<ICompanyAIPersonaAssignment> {
-    if (!this.userAuthService.canAccessRootFeatures(currentUser)) {
-      // ✅ Security Measure: Validate user can assign to this company
-      this.validateCompanyAIPersonaCreation(companyId, currentUser);
-    }
-
     // Verify AI persona exists and is active
     const aiPersona = await this.aiPersonaRepository.findById(aiPersonaId);
     if (!aiPersona || !aiPersona.isActive) {
       throw new AIPersonaNotFoundException(aiPersonaId);
+    }
+
+    // ✅ Security Measure: Validate user can assign this persona to this company
+    const canAssign = await this.canAssignAIPersona(aiPersonaId, companyId, currentUser);
+    if (!canAssign) {
+      throw new UnauthorizedAIPersonaModificationException(
+        currentUser.id.getValue(),
+        `Cannot assign AI Persona ${aiPersonaId} to company ${companyId}`,
+      );
     }
 
     // Assign AI persona to company (upsert will handle existing assignment)
@@ -572,6 +622,15 @@ export class AIPersonaService {
     if (isActive && !aiPersona.isActive) {
       throw new CannotModifyDefaultAIPersonaException(
         `Cannot activate assignment for inactive AI Persona ${aiPersonaId}`,
+      );
+    }
+
+    // ✅ Security Measure: Validate user can assign this persona to this company
+    const canAssign = await this.canAssignAIPersona(aiPersonaId, companyId, currentUser);
+    if (!canAssign) {
+      throw new UnauthorizedAIPersonaModificationException(
+        currentUser.id.getValue(),
+        `Cannot assign AI Persona ${aiPersonaId} to company ${companyId}`,
       );
     }
 
