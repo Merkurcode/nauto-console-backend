@@ -29,6 +29,7 @@ import {
 import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operation.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
+import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { CreateMarketingCampaignDto } from '@application/dtos/marketing-campaign/create-marketing-campaign.dto';
 import { UpdateMarketingCampaignDto } from '@application/dtos/marketing-campaign/update-marketing-campaign.dto';
 import { MarketingCampaignSwaggerDto } from '@application/dtos/_responses/marketing-campaign/marketing-campaign.swagger.dto';
@@ -131,7 +132,7 @@ export class MarketingCampaignController {
     description: "Access to campaign's company denied",
   })
   async findOne(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.queryBus.execute(new GetMarketingCampaignQuery(id, currentUserId));
@@ -163,7 +164,7 @@ export class MarketingCampaignController {
     description: 'Access to company denied',
   })
   async findByCompany(
-    @Param('companyId', ParseUUIDPipe) companyId: string,
+    @Param('companyId', TrimStringPipe, ParseUUIDPipe) companyId: string,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse[]> {
     return this.queryBus.execute(new GetCompanyMarketingCampaignsQuery(companyId, currentUserId));
@@ -198,7 +199,7 @@ export class MarketingCampaignController {
     description: 'Access to company denied',
   })
   async findActiveByCompany(
-    @Param('companyId', ParseUUIDPipe) companyId: string,
+    @Param('companyId', TrimStringPipe, ParseUUIDPipe) companyId: string,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse[]> {
     return this.queryBus.execute(new GetActiveMarketingCampaignsQuery(companyId, currentUserId));
@@ -242,7 +243,7 @@ export class MarketingCampaignController {
     description: 'Insufficient permissions or company access denied',
   })
   async update(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @Body() dto: UpdateMarketingCampaignDto,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
@@ -288,7 +289,7 @@ export class MarketingCampaignController {
     description: 'Insufficient permissions or company access denied',
   })
   async enable(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.transactionService.executeInTransaction(async () => {
@@ -333,7 +334,7 @@ export class MarketingCampaignController {
     description: 'Insufficient permissions or company access denied',
   })
   async disable(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.transactionService.executeInTransaction(async () => {
@@ -372,7 +373,7 @@ export class MarketingCampaignController {
     description: 'Insufficient permissions or company access denied',
   })
   async remove(
-    @Param('id') id: string,
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<{ success: boolean }> {
     return this.transactionService.executeInTransaction(async () => {
