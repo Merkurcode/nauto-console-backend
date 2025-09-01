@@ -94,7 +94,7 @@ export class MarketingCampaignController {
   })
   async create(
     @Body() dto: CreateMarketingCampaignDto,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(new CreateMarketingCampaignCommand(dto, currentUserId));
@@ -132,7 +132,7 @@ export class MarketingCampaignController {
   })
   async findOne(
     @Param('id') id: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.queryBus.execute(new GetMarketingCampaignQuery(id, currentUserId));
   }
@@ -164,7 +164,7 @@ export class MarketingCampaignController {
   })
   async findByCompany(
     @Param('companyId', ParseUUIDPipe) companyId: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse[]> {
     return this.queryBus.execute(new GetCompanyMarketingCampaignsQuery(companyId, currentUserId));
   }
@@ -199,7 +199,7 @@ export class MarketingCampaignController {
   })
   async findActiveByCompany(
     @Param('companyId', ParseUUIDPipe) companyId: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse[]> {
     return this.queryBus.execute(new GetActiveMarketingCampaignsQuery(companyId, currentUserId));
   }
@@ -244,7 +244,7 @@ export class MarketingCampaignController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateMarketingCampaignDto,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(new UpdateMarketingCampaignCommand(id, dto, currentUserId));
@@ -289,7 +289,7 @@ export class MarketingCampaignController {
   })
   async enable(
     @Param('id') id: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(new EnableMarketingCampaignCommand(id, currentUserId));
@@ -334,7 +334,7 @@ export class MarketingCampaignController {
   })
   async disable(
     @Param('id') id: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<IMarketingCampaignResponse> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(new DisableMarketingCampaignCommand(id, currentUserId));
@@ -373,7 +373,7 @@ export class MarketingCampaignController {
   })
   async remove(
     @Param('id') id: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<{ success: boolean }> {
     return this.transactionService.executeInTransaction(async () => {
       const result = await this.commandBus.execute(
