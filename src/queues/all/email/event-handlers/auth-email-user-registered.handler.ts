@@ -9,6 +9,8 @@ import { IEventHandler } from 'src/queues/types';
 import { EmailService } from '@core/services/email.service';
 import { SmsService } from '@core/services/sms.service';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { NotificationStatus } from '@prisma/client';
 
 @MQSerializableEvent('AuthEmailUserRegisteredEvent')
 export class AuthEmailUserRegisteredEvent {
@@ -58,6 +60,7 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async handle(event: AuthEmailUserRegisteredEvent): Promise<void> {
@@ -82,12 +85,38 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
         event.companyName,
         event.roleNames,
       );
+
+      // Update email status to SENT
+      await this.prisma.user.update({
+        where: { id: event.userId },
+        data: {
+          emailStatus: NotificationStatus.SENT,
+          lastEmailError: null,
+        },
+      });
+
+      this.logger.log({
+        message: 'Email sent successfully and status updated',
+        userId: event.userId,
+        email: event.emailStr,
+      });
     } catch (error) {
       this.logger.error({
         message: 'Error sending welcome email',
         email: event.emailStr,
         error: error.message,
       });
+
+      // Update email status to SEND_ERROR
+      await this.prisma.user.update({
+        where: { id: event.userId },
+        data: {
+          emailStatus: NotificationStatus.SEND_ERROR,
+          lastEmailError: error.message || 'Unknown error occurred while sending email',
+        },
+      });
+
+      throw error; // Re-throw to allow retry logic
     }
   }
 
@@ -106,10 +135,33 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
           event.profilePhoneCountryCode,
           dashboardUrl,
         );
+
+        // Update SMS status to SENT
+        await this.prisma.user.update({
+          where: { id: event.userId },
+          data: {
+            smsStatus: NotificationStatus.SENT,
+            lastSmsError: null,
+          },
+        });
+
+        this.logger.log({
+          message: 'SMS sent successfully and status updated',
+          userId: event.userId,
+          phone: event.profilePhone,
+        });
       } else {
         this.logger.debug({
           message: 'User has no phone configured, skipping welcome SMS',
           email: event.emailStr,
+        });
+
+        // Keep SMS status as NOT_PROVIDED since no phone was provided
+        await this.prisma.user.update({
+          where: { id: event.userId },
+          data: {
+            smsStatus: NotificationStatus.NOT_PROVIDED,
+          },
         });
       }
     } catch (error) {
@@ -118,6 +170,17 @@ export class AuthEmailUserCreatedHandler implements IEventHandler {
         phone: event.profilePhone,
         error: error.message,
       });
+
+      // Update SMS status to SEND_ERROR
+      await this.prisma.user.update({
+        where: { id: event.userId },
+        data: {
+          smsStatus: NotificationStatus.SEND_ERROR,
+          lastSmsError: error.message || 'Unknown error occurred while sending SMS',
+        },
+      });
+
+      throw error; // Re-throw to allow retry logic
     }
   }
 }

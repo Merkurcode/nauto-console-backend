@@ -22,6 +22,10 @@ export interface IUserDetailResponse extends IUserBaseResponse {
   updatedAt: Date;
   tenantId?: string;
   companyId?: string;
+  smsStatus: string;
+  emailStatus: string;
+  lastSmsError?: string;
+  lastEmailError?: string;
 }
 
 export interface IUserWithAuthResponse extends IUserBaseResponse {

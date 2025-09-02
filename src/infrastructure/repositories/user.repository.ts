@@ -314,6 +314,10 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           agentPhone: user.agentPhone?.getValue(),
           agentPhoneCountryCode: user.agentPhone?.getCountryCode(),
           companyId: user.companyId?.getValue() || null,
+          smsStatus: user.smsStatus,
+          emailStatus: user.emailStatus,
+          lastSmsError: user.lastSmsError || null,
+          lastEmailError: user.lastEmailError || null,
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -399,6 +403,10 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
           banReason: user.banReason || null,
           agentPhone: user.agentPhone?.getValue() || null,
           agentPhoneCountryCode: user.agentPhone?.getCountryCode() || null,
+          smsStatus: user.smsStatus,
+          emailStatus: user.emailStatus,
+          lastSmsError: user.lastSmsError || null,
+          lastEmailError: user.lastEmailError || null,
           roles: {
             create: user.roles.map(role => ({
               role: {
@@ -601,6 +609,10 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       companyId: record.companyId || undefined,
+      smsStatus: record.smsStatus,
+      emailStatus: record.emailStatus,
+      lastSmsError: record.lastSmsError || undefined,
+      lastEmailError: record.lastEmailError || undefined,
     });
 
     return user;

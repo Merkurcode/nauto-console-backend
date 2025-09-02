@@ -12,6 +12,7 @@ import { StateId } from '@core/value-objects/state-id.vo';
 import { RoleId } from '@core/value-objects/role-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { AggregateRoot } from '@core/events/domain-event.base';
+import { NotificationStatus } from '@prisma/client';
 import {
   UserRegisteredEvent,
   UserActivatedEvent,
@@ -54,6 +55,10 @@ export class User extends AggregateRoot {
   private readonly _createdAt: Date;
   private _updatedAt: Date;
   private _companyId?: CompanyId | null;
+  private _smsStatus: NotificationStatus;
+  private _emailStatus: NotificationStatus;
+  private _lastSmsError?: string;
+  private _lastEmailError?: string;
 
   private constructor(
     id: UserId,
@@ -80,6 +85,10 @@ export class User extends AggregateRoot {
     this._createdAt = createdAt || new Date();
     this._updatedAt = new Date();
     this._companyId = companyId;
+    this._smsStatus = NotificationStatus.NOT_PROVIDED;
+    this._emailStatus = NotificationStatus.NOT_PROVIDED;
+    this._lastSmsError = undefined;
+    this._lastEmailError = undefined;
   }
 
   // Factory method for creating new users
@@ -198,6 +207,10 @@ export class User extends AggregateRoot {
     createdAt: Date;
     updatedAt: Date;
     companyId?: string;
+    smsStatus?: NotificationStatus;
+    emailStatus?: NotificationStatus;
+    lastSmsError?: string;
+    lastEmailError?: string;
   }): User {
     const user = new User(
       UserId.fromString(data.id),
@@ -250,6 +263,10 @@ export class User extends AggregateRoot {
         })
       : undefined;
     user._updatedAt = data.updatedAt;
+    user._smsStatus = data.smsStatus || NotificationStatus.NOT_PROVIDED;
+    user._emailStatus = data.emailStatus || NotificationStatus.NOT_PROVIDED;
+    user._lastSmsError = data.lastSmsError;
+    user._lastEmailError = data.lastEmailError;
 
     return user;
   }
@@ -361,6 +378,22 @@ export class User extends AggregateRoot {
 
   get address(): UserAddress | undefined {
     return this._address;
+  }
+
+  get smsStatus(): NotificationStatus {
+    return this._smsStatus;
+  }
+
+  get emailStatus(): NotificationStatus {
+    return this._emailStatus;
+  }
+
+  get lastSmsError(): string | undefined {
+    return this._lastSmsError;
+  }
+
+  get lastEmailError(): string | undefined {
+    return this._lastEmailError;
   }
 
   // Business methods with proper encapsulation and rules
@@ -627,6 +660,42 @@ export class User extends AggregateRoot {
 
   setAddress(address?: UserAddress): void {
     this._address = address;
+    this._updatedAt = new Date();
+  }
+
+  // Notification status setters
+  setSmsStatus(status: NotificationStatus): void {
+    this._smsStatus = status;
+    this._updatedAt = new Date();
+  }
+
+  setEmailStatus(status: NotificationStatus): void {
+    this._emailStatus = status;
+    this._updatedAt = new Date();
+  }
+
+  setLastSmsError(error?: string): void {
+    this._lastSmsError = error;
+    this._updatedAt = new Date();
+  }
+
+  setLastEmailError(error?: string): void {
+    this._lastEmailError = error;
+    this._updatedAt = new Date();
+  }
+
+  updateNotificationStatus(
+    type: 'sms' | 'email',
+    status: NotificationStatus,
+    error?: string,
+  ): void {
+    if (type === 'sms') {
+      this._smsStatus = status;
+      this._lastSmsError = status === NotificationStatus.SENT ? undefined : error;
+    } else {
+      this._emailStatus = status;
+      this._lastEmailError = status === NotificationStatus.SENT ? undefined : error;
+    }
     this._updatedAt = new Date();
   }
 }

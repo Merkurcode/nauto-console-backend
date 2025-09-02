@@ -56,6 +56,13 @@ enum UserActivityImpact {
   CRITICAL
 }
 
+enum NotificationStatus {
+  NOT_PROVIDED
+  PENDING_TO_SEND
+  SENT
+  SEND_ERROR
+}
+
 model CompanySchedules {
   id          String   @id @default(uuid())
   dayOfWeek   Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -205,6 +212,12 @@ model User {
   banReason     String?
   agentPhone    String?   // se usa para buscar a los agentes de ventas por su número de teléfono en la compañia (tenat-id)
   agentPhoneCountryCode String? @default("52") // código de país para agentPhone (ej: 52 para México)
+  
+  // Notification status tracking
+  smsStatus     NotificationStatus @default(NOT_PROVIDED)
+  emailStatus   NotificationStatus @default(NOT_PROVIDED)
+  lastSmsError  String?
+  lastEmailError String?
 
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   roles         UserRole[]

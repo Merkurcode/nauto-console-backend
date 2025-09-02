@@ -38,6 +38,7 @@ import { BusinessConfigurationService } from './business-configuration.service';
 import { IUpdateUserProfileServiceInput } from '@core/interfaces/user/update-user-profile-service-input.interface';
 import { AuthEmailEventBusAdapter } from 'src/queues/all/email';
 import { AuthEmailUserRegisteredEvent } from 'src/queues/all/email/event-handlers/auth-email-user-registered.handler';
+import { NotificationStatus } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -234,8 +235,13 @@ export class UserService {
     if (savedUser) {
       const roleNames = user.roles?.map(role => role.name) || [];
 
-      // Use email queue to send email and sms
+      // Update notification status to PENDING_TO_SEND when enqueuing
+      const hasPhone = savedUser.profile?.phone ? true : false;
+      savedUser.setEmailStatus(NotificationStatus.PENDING_TO_SEND);
+      savedUser.setSmsStatus(hasPhone ? NotificationStatus.PENDING_TO_SEND : NotificationStatus.NOT_PROVIDED);
+      await this.userRepository.update(savedUser);
 
+      // Use email queue to send email and sms
       await this.authEmailEventBusAdapter.publish(
         new AuthEmailUserRegisteredEvent(
           savedUser.id.getValue(),

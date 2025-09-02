@@ -45,6 +45,10 @@ export class UserMapper {
       updatedAt: user.updatedAt,
       tenantId: user.getTenantId(),
       companyId: user.companyId?.getValue(),
+      smsStatus: user.smsStatus,
+      emailStatus: user.emailStatus,
+      lastSmsError: user.lastSmsError,
+      lastEmailError: user.lastEmailError,
     };
   }
 
