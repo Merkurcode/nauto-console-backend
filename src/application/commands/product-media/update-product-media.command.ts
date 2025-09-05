@@ -46,6 +46,8 @@ export class UpdateProductMediaCommandHandler
       {
         fileName: dto.fileName,
         fav: dto.fav,
+        description: dto.description,
+        tags: dto.tags,
       },
       companyId,
       userId,

@@ -12,6 +12,8 @@ export class ProductMediaMapper {
       productId: productMedia.productId.getValue(),
       companyId: productMedia.companyId.getValue(),
       createdBy: productMedia.createdBy.getValue(),
+      description: productMedia.description,
+      tags: productMedia.tags,
       createdAt: productMedia.createdAt,
       updatedAt: productMedia.updatedAt,
       file: {

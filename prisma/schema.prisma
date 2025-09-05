@@ -690,6 +690,13 @@ model ProductCatalog {
   companyId        String
   createdBy        String   // User who created the product
   updatedBy        String?  // User who last updated the product
+  
+  // NUEVO: Campos opcionales para carga masiva
+  link             String?  // Link del producto (opcional)
+  sourceFileName   String?  // Nombre del archivo del cual fue agregado este registro
+  sourceRowNumber  Int?     // Número de fila del archivo de donde fue tomado el producto
+  langCode         String?  // ISO / BCP47 langCode (ej: "es-MX", "en-US", "pt-BR")
+  
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
@@ -714,6 +721,11 @@ model ProductMedia {
   productId   String   // Reference to ProductCatalog.id
   companyId   String   // For tenant isolation
   createdBy   String
+  
+  // NUEVO: Campos opcionales para multimedia
+  description String?  @db.Text // Descripción opcional del media
+  tags        String?  // Tags libres separados por espacios (ej: "#ficha_tecnica #foto_producto")
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

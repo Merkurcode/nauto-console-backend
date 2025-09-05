@@ -11,6 +11,10 @@ export interface IProductCatalogResponse {
   listPriceFormatted: string | null; // Formatted price with company currency
   paymentOptions: PaymentOption[];
   description?: string;
+  link?: string;
+  sourceFileName?: string;
+  sourceRowNumber?: number;
+  langCode?: string;
   companyId: string;
   createdBy: string;
   updatedBy?: string;

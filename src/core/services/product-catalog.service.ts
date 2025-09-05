@@ -29,6 +29,10 @@ export class ProductCatalogService {
       listPrice?: number | null;
       paymentOptions: PaymentOption[];
       description?: string;
+      link?: string;
+      sourceFileName?: string;
+      sourceRowNumber?: number;
+      langCode?: string;
     },
     companyId: string,
     createdBy: string,
@@ -49,6 +53,10 @@ export class ProductCatalogService {
         listPrice: data.listPrice,
         paymentOptions: data.paymentOptions,
         description: data.description,
+        link: data.link,
+        sourceFileName: data.sourceFileName,
+        sourceRowNumber: data.sourceRowNumber,
+        langCode: data.langCode,
         updatedBy: createdBy,
       });
 
@@ -76,8 +84,10 @@ export class ProductCatalogService {
       listPrice?: number | null;
       paymentOptions?: PaymentOption[];
       description?: string;
-      technicalSheetId?: string | null;
-      photosId?: string | null;
+      link?: string;
+      sourceFileName?: string;
+      sourceRowNumber?: number;
+      langCode?: string;
     },
     companyId: string,
     updatedBy: string,

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsArray, IsOptional, IsEnum, Min, Max } from 'class-validator';
+import { IsString, IsNumber, IsArray, IsOptional, IsEnum, Min, Max, IsInt, IsUrl, Matches } from 'class-validator';
 import { PaymentOption } from '@prisma/client';
 import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 
@@ -79,4 +79,50 @@ export class UpdateProductCatalogDto {
   @IsOptional()
   @TrimAndValidateLength({ max: 1000 })
   description?: string;
+
+  @ApiProperty({
+    description: 'Optional product link/URL',
+    example: 'https://example.com/product/cloud-storage',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @IsUrl()
+  @TrimAndValidateLength({ max: 500 })
+  link?: string;
+
+  @ApiProperty({
+    description: 'Source file name (for bulk import tracking)',
+    example: 'products_import_2024.xlsx',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @TrimAndValidateLength({ max: 255 })
+  sourceFileName?: string;
+
+  @ApiProperty({
+    description: 'Source row number in file (for bulk import tracking)',
+    example: 25,
+    minimum: 1,
+    required: false,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  sourceRowNumber?: number;
+
+  @ApiProperty({
+    description: 'Language code (ISO/BCP47 format)',
+    example: 'es-MX',
+    pattern: '^[a-z]{2,3}(-[A-Z]{2})?$',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @Matches(/^[a-z]{2,3}(-[A-Z]{2})?$/, {
+    message: 'Language code must follow ISO/BCP47 format (e.g., "es-MX", "en-US", "pt-BR")',
+  })
+  @TrimAndValidateLength({ max: 10 })
+  langCode?: string;
 }

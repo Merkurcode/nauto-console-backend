@@ -57,6 +57,8 @@ export class ProductMediaService {
     productId: string;
     companyId: string;
     createdBy: string;
+    description?: string;
+    tags?: string;
   }): Promise<ProductMedia> {
     // Verify product catalog exists and belongs to company
     const productCatalog = await this.productCatalogRepository.findById(
@@ -143,6 +145,8 @@ export class ProductMediaService {
     data: {
       fileName?: string;
       fav?: boolean;
+      description?: string;
+      tags?: string;
     },
     companyId: string,
     userId: string,
@@ -215,6 +219,16 @@ export class ProductMediaService {
         );
         throw new Error(`Failed to update file name: ${error.message}`);
       }
+    }
+
+    // Update description
+    if (data.description !== undefined) {
+      productMedia.updateDescription(data.description, userId);
+    }
+
+    // Update tags
+    if (data.tags !== undefined) {
+      productMedia.updateTags(data.tags, userId);
     }
 
     // Update favorite status

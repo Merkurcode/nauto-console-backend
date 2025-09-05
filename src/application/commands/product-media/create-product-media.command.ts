@@ -51,6 +51,8 @@ export class CreateProductMediaCommandHandler
       productId: dto.productId,
       companyId,
       createdBy: userId,
+      description: dto.description,
+      tags: dto.tags,
     });
 
     // Fetch file information

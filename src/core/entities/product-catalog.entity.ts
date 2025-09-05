@@ -23,6 +23,13 @@ export class ProductCatalog extends AggregateRoot {
   private readonly _companyId: CompanyId;
   private readonly _createdBy: UserId;
   private _updatedBy?: UserId;
+  
+  // NUEVO: Campos opcionales para carga masiva
+  private _link?: string;
+  private _sourceFileName?: string;
+  private _sourceRowNumber?: number;
+  private _langCode?: string;
+  
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -37,6 +44,10 @@ export class ProductCatalog extends AggregateRoot {
     companyId: CompanyId,
     createdBy: UserId,
     description?: string,
+    link?: string,
+    sourceFileName?: string,
+    sourceRowNumber?: number,
+    langCode?: string,
     updatedBy?: UserId,
     createdAt?: Date,
     updatedAt?: Date,
@@ -52,11 +63,16 @@ export class ProductCatalog extends AggregateRoot {
     this._companyId = companyId;
     this._createdBy = createdBy;
     this._description = description;
+    this._link = link;
+    this._sourceFileName = sourceFileName;
+    this._sourceRowNumber = sourceRowNumber;
+    this._langCode = langCode;
     this._updatedBy = updatedBy;
     this._createdAt = createdAt || new Date();
     this._updatedAt = updatedAt || new Date();
 
     this.validatePaymentOptions();
+    this.validateLangCode();
   }
 
   static create(data: {
@@ -70,6 +86,10 @@ export class ProductCatalog extends AggregateRoot {
     companyId: string;
     createdBy: string;
     description?: string;
+    link?: string;
+    sourceFileName?: string;
+    sourceRowNumber?: number;
+    langCode?: string;
   }): ProductCatalog {
     const catalogId = ProductCatalogId.create(data.id);
     const companyId = CompanyId.fromString(data.companyId);
@@ -88,6 +108,10 @@ export class ProductCatalog extends AggregateRoot {
       companyId,
       createdBy,
       data.description,
+      data.link,
+      data.sourceFileName,
+      data.sourceRowNumber,
+      data.langCode,
     );
 
     productCatalog.addDomainEvent(
@@ -119,6 +143,10 @@ export class ProductCatalog extends AggregateRoot {
     companyId: string;
     createdBy: string;
     description?: string;
+    link?: string | null;
+    sourceFileName?: string | null;
+    sourceRowNumber?: number | null;
+    langCode?: string | null;
     updatedBy?: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -141,6 +169,10 @@ export class ProductCatalog extends AggregateRoot {
       companyId,
       createdBy,
       data.description,
+      data.link || undefined,
+      data.sourceFileName || undefined,
+      data.sourceRowNumber || undefined,
+      data.langCode || undefined,
       updatedBy,
       data.createdAt,
       data.updatedAt,
@@ -156,6 +188,18 @@ export class ProductCatalog extends AggregateRoot {
     for (const option of this._paymentOptions) {
       if (!validOptions.includes(option)) {
         throw new InvalidValueObjectException(`Invalid payment option: ${option}`);
+      }
+    }
+  }
+
+  private validateLangCode(): void {
+    if (this._langCode) {
+      // Basic validation for ISO/BCP47 language codes
+      const langCodePattern = /^[a-z]{2,3}(-[A-Z]{2})?$/;
+      if (!langCodePattern.test(this._langCode)) {
+        throw new InvalidValueObjectException(
+          `Invalid language code format: ${this._langCode}. Expected format: "es-MX", "en-US", "pt-BR"`
+        );
       }
     }
   }
@@ -213,6 +257,22 @@ export class ProductCatalog extends AggregateRoot {
     return this._updatedAt;
   }
 
+  get link(): string | undefined {
+    return this._link;
+  }
+
+  get sourceFileName(): string | undefined {
+    return this._sourceFileName;
+  }
+
+  get sourceRowNumber(): number | undefined {
+    return this._sourceRowNumber;
+  }
+
+  get langCode(): string | undefined {
+    return this._langCode;
+  }
+
   // Business methods
   update(data: {
     industry?: string;
@@ -222,6 +282,10 @@ export class ProductCatalog extends AggregateRoot {
     listPrice?: number | null;
     paymentOptions?: PaymentOption[];
     description?: string;
+    link?: string;
+    sourceFileName?: string;
+    sourceRowNumber?: number;
+    langCode?: string;
     updatedBy: string;
   }): void {
     const previousValues = {
@@ -232,6 +296,10 @@ export class ProductCatalog extends AggregateRoot {
       listPrice: this._listPrice,
       paymentOptions: [...this._paymentOptions],
       description: this._description,
+      link: this._link,
+      sourceFileName: this._sourceFileName,
+      sourceRowNumber: this._sourceRowNumber,
+      langCode: this._langCode,
     };
 
     const changes: {
@@ -242,6 +310,10 @@ export class ProductCatalog extends AggregateRoot {
       listPrice?: Price | null;
       paymentOptions?: PaymentOption[];
       description?: string;
+      link?: string;
+      sourceFileName?: string;
+      sourceRowNumber?: number;
+      langCode?: string;
     } = {};
 
     if (data.industry !== undefined && data.industry !== this._industry) {
@@ -281,6 +353,23 @@ export class ProductCatalog extends AggregateRoot {
     if (data.description !== undefined && data.description !== this._description) {
       this._description = data.description;
       changes.description = data.description;
+    }
+    if (data.link !== undefined && data.link !== this._link) {
+      this._link = data.link;
+      changes.link = data.link;
+    }
+    if (data.sourceFileName !== undefined && data.sourceFileName !== this._sourceFileName) {
+      this._sourceFileName = data.sourceFileName;
+      changes.sourceFileName = data.sourceFileName;
+    }
+    if (data.sourceRowNumber !== undefined && data.sourceRowNumber !== this._sourceRowNumber) {
+      this._sourceRowNumber = data.sourceRowNumber;
+      changes.sourceRowNumber = data.sourceRowNumber;
+    }
+    if (data.langCode !== undefined && data.langCode !== this._langCode) {
+      this._langCode = data.langCode;
+      this.validateLangCode();
+      changes.langCode = data.langCode;
     }
 
     this._updatedBy = UserId.fromString(data.updatedBy);

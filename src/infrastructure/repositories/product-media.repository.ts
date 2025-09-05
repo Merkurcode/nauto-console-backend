@@ -40,6 +40,8 @@ export class ProductMediaRepository
           productId: productMedia.productId.getValue(),
           companyId: productMedia.companyId.getValue(),
           createdBy: productMedia.createdBy.getValue(),
+          description: productMedia.description || null,
+          tags: productMedia.tags || null,
           createdAt: productMedia.createdAt,
           updatedAt: productMedia.updatedAt,
         },
@@ -162,6 +164,8 @@ export class ProductMediaRepository
           data: {
             fileType: productMedia.fileType,
             fav: productMedia.fav,
+            description: productMedia.description || null,
+            tags: productMedia.tags || null,
             updatedAt: productMedia.updatedAt,
           },
         });
@@ -213,6 +217,8 @@ export class ProductMediaRepository
       productId: record.productId,
       companyId: record.companyId,
       createdBy: record.createdBy,
+      description: record.description,
+      tags: record.tags,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

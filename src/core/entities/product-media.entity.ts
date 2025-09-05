@@ -21,6 +21,11 @@ export class ProductMedia extends AggregateRoot {
   private readonly _productId: ProductCatalogId;
   private readonly _companyId: CompanyId;
   private readonly _createdBy: UserId;
+  
+  // NUEVO: Campos opcionales para multimedia
+  private _description?: string;
+  private _tags?: string;
+  
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -32,6 +37,8 @@ export class ProductMedia extends AggregateRoot {
     productId: ProductCatalogId,
     companyId: CompanyId,
     createdBy: UserId,
+    description?: string,
+    tags?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -43,10 +50,13 @@ export class ProductMedia extends AggregateRoot {
     this._productId = productId;
     this._companyId = companyId;
     this._createdBy = createdBy;
+    this._description = description;
+    this._tags = tags;
     this._createdAt = createdAt || new Date();
     this._updatedAt = updatedAt || new Date();
 
     this.validateFileType();
+    this.validateTags();
   }
 
   static create(data: {
@@ -56,6 +66,8 @@ export class ProductMedia extends AggregateRoot {
     productId: string;
     companyId: string;
     createdBy: string;
+    description?: string;
+    tags?: string;
   }): ProductMedia {
     const id = ProductMediaId.create(crypto.randomUUID());
     const fileId = FileId.fromString(data.fileId);
@@ -72,6 +84,8 @@ export class ProductMedia extends AggregateRoot {
       productId,
       companyId,
       createdBy,
+      data.description,
+      data.tags,
     );
 
     productMedia.addDomainEvent(
@@ -89,6 +103,8 @@ export class ProductMedia extends AggregateRoot {
     productId: string;
     companyId: string;
     createdBy: string;
+    description?: string | null;
+    tags?: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): ProductMedia {
@@ -106,6 +122,8 @@ export class ProductMedia extends AggregateRoot {
       productId,
       companyId,
       createdBy,
+      data.description || undefined,
+      data.tags || undefined,
       data.createdAt,
       data.updatedAt,
     );
@@ -115,6 +133,20 @@ export class ProductMedia extends AggregateRoot {
     const validTypes = Object.values(FileType);
     if (!validTypes.includes(this._fileType)) {
       throw new InvalidValueObjectException(`Invalid file type: ${this._fileType}`);
+    }
+  }
+
+  private validateTags(): void {
+    if (this._tags) {
+      // Basic validation for tags format: should start with # and be space-separated
+      const tags = this._tags.trim().split(/\s+/);
+      for (const tag of tags) {
+        if (!tag.startsWith('#') || tag.length < 2) {
+          throw new InvalidValueObjectException(
+            `Invalid tag format: "${tag}". Tags should start with # and have at least one character after #.`
+          );
+        }
+      }
     }
   }
 
@@ -153,6 +185,14 @@ export class ProductMedia extends AggregateRoot {
 
   get updatedAt(): Date {
     return this._updatedAt;
+  }
+
+  get description(): string | undefined {
+    return this._description;
+  }
+
+  get tags(): string | undefined {
+    return this._tags;
   }
 
   // Business methods
@@ -205,6 +245,26 @@ export class ProductMedia extends AggregateRoot {
         previousFileName,
       ),
     );
+  }
+
+  updateDescription(description: string | undefined, updatedBy: string): void {
+    if (this._description === description) return;
+    
+    this._description = description;
+    this._updatedAt = new Date();
+  }
+
+  updateTags(tags: string | undefined, updatedBy: string): void {
+    if (this._tags === tags) return;
+    
+    const previousTags = this._tags;
+    this._tags = tags;
+    
+    if (tags) {
+      this.validateTags();
+    }
+    
+    this._updatedAt = new Date();
   }
 
   markForDeletion(deletedBy: string): void {

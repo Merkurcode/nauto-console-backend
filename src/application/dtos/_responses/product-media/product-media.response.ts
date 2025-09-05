@@ -9,6 +9,8 @@ export interface IProductMediaResponse {
   productId: string;
   companyId: string;
   createdBy: string;
+  description?: string;
+  tags?: string;
   createdAt: Date;
   updatedAt: Date;
   // File information from storage
@@ -76,6 +78,20 @@ export class ProductMediaResponse implements IProductMediaResponse {
     example: '550e8400-e29b-41d4-a716-446655440003',
   })
   createdBy: string;
+
+  @ApiProperty({
+    description: 'Optional description for the media file',
+    example: 'Product main image showing front view',
+    required: false,
+  })
+  description?: string;
+
+  @ApiProperty({
+    description: 'Optional tags for file categorization',
+    example: '#ficha_tecnica #foto_producto #principal',
+    required: false,
+  })
+  tags?: string;
 
   @ApiProperty({
     description: 'Creation timestamp',
