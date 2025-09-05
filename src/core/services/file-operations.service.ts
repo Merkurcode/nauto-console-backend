@@ -33,6 +33,8 @@ export interface IRenameFileParams {
   userId: string;
   companyId: string;
   overwrite?: boolean;
+  commonArea?: boolean;
+  skipRenameExtValidation?: boolean;
 }
 
 export interface IDeleteFileParams {
@@ -260,7 +262,15 @@ export class FileOperationsService {
 
   /** Rename file */
   async renameFile(params: IRenameFileParams): Promise<File> {
-    const { fileId, newFilename, userId, companyId, overwrite } = params;
+    const {
+      fileId,
+      newFilename,
+      userId,
+      companyId,
+      overwrite,
+      commonArea,
+      skipRenameExtValidation,
+    } = params;
 
     return this.fileLockService.withFileLock(fileId, async () => {
       const file = await this.fileRepository.findById(fileId);
@@ -270,7 +280,7 @@ export class FileOperationsService {
       const userPayload = { sub: userId, companyId };
       const fileCompanyId = this.extractCompanyIdFromPath(file.path);
 
-      if (this.isCommonAreaFile(file, fileCompanyId)) {
+      if (commonArea || this.isCommonAreaFile(file, fileCompanyId)) {
         // For common area files, check if user is from same company
         if (!companyId || !fileCompanyId || companyId !== fileCompanyId) {
           throw new InvalidFileOperationException('rename', 'Different company', fileId);
@@ -298,16 +308,18 @@ export class FileOperationsService {
         );
       }
 
-      // Validate that the new filename extension is allowed according to the user's tier
-      const validationResult = await this.fileUploadValidationService.validateFileRename(
-        userId,
-        file.filename,
-        newFilename,
-        file.mimeType,
-      );
+      if (!skipRenameExtValidation) {
+        // Validate that the new filename extension is allowed according to the user's tier
+        const validationResult = await this.fileUploadValidationService.validateFileRename(
+          userId,
+          file.filename,
+          newFilename,
+          file.mimeType,
+        );
 
-      if (!validationResult.isValid) {
-        throw new InvalidFileOperationException('rename', validationResult.error!, fileId);
+        if (!validationResult.isValid) {
+          throw new InvalidFileOperationException('rename', validationResult.error!, fileId);
+        }
       }
 
       // First get the current object key and calculate the new one

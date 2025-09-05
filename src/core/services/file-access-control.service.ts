@@ -251,9 +251,13 @@ export class FileAccessControlService {
   /**
    * Checks if a file is in a common area (shared company folder)
    */
-  private isCommonAreaFile(file: File, companyId: string): boolean {
+  public isCommonAreaFile(file: File, companyId: string, area?: string): boolean {
     // Check if the file path indicates it's in a common area
     // Format: company-uuid/common/folder-name/...
+    if (area) {
+      return file.path.startsWith(`${companyId}/common/${area}`);
+    }
+
     return file.path.startsWith(`${companyId}/common/`);
   }
 

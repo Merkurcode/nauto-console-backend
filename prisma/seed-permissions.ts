@@ -328,6 +328,50 @@ export const permissions = [
     action: 'manage',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
   },
+  // Product Catalog permissions
+  {
+    name: 'product-catalog:read',
+    description: 'Can read product catalog information',
+    resource: 'product-catalog',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'product-catalog:write',
+    description: 'Can create and update product catalogs',
+    resource: 'product-catalog',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'product-catalog:delete',
+    description: 'Can delete product catalogs',
+    resource: 'product-catalog',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  // Product Media permissions
+  {
+    name: 'product-media:read',
+    description: 'Can read product media information',
+    resource: 'product-media',
+    action: 'read',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: 'product-media:write',
+    description: 'Can create and update product media',
+    resource: 'product-media',
+    action: 'write',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: 'product-media:delete',
+    description: 'Can delete product media',
+    resource: 'product-media',
+    action: 'delete',
+    excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
 ];
 
 export default async function main(prisma: PrismaClient) {

@@ -28,6 +28,7 @@ export class RenameFileHandler implements ICommandHandler<RenameFileCommand, Fil
       userId,
       companyId,
       overwrite: false,
+      skipRenameExtValidation: false,
     });
 
     return FileMapper.toResponse(file);

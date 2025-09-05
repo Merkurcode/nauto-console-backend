@@ -27,6 +27,8 @@ export const COMPANY_PERSONA_REPOSITORY = Symbol('CompanyPersonaRepository');
 export const AI_PERSONA_REPOSITORY = Symbol('AIPersonaRepository');
 export const COMPANY_AI_PERSONA_REPOSITORY = Symbol('CompanyAIPersonaRepository');
 export const MARKETING_CAMPAIGN_REPOSITORY = Symbol('MarketingCampaignRepository');
+export const PRODUCT_CATALOG_REPOSITORY = Symbol('ProductCatalogRepository');
+export const PRODUCT_MEDIA_REPOSITORY = Symbol('ProductMediaRepository');
 
 // Repository tokens object
 export const REPOSITORY_TOKENS = {
@@ -58,6 +60,7 @@ export const REPOSITORY_TOKENS = {
   AI_PERSONA_REPOSITORY,
   COMPANY_AI_PERSONA_REPOSITORY,
   MARKETING_CAMPAIGN_REPOSITORY,
+  PRODUCT_CATALOG_REPOSITORY,
 } as const;
 
 // Service injection tokens

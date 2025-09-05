@@ -24,6 +24,8 @@ const rolePermissionsMap = {
     'ai-persona:read', 'ai-persona:write', 'ai-persona:delete', 'ai-persona:update', 'ai-persona:assign',
     'company-ai-config:read', 'company-ai-config:write', 'company-ai-config:delete',
     'marketing-campaign:read', 'marketing-campaign:write', 'marketing-campaign:update', 'marketing-campaign:delete', 'marketing-campaign:manage',
+    'product-catalog:read', 'product-catalog:write', 'product-catalog:delete',
+    'product-media:read', 'product-media:write', 'product-media:delete',
   ],
   [RolesEnum.ROOT_READONLY]: [
     'sensitive:operations',
@@ -40,6 +42,8 @@ const rolePermissionsMap = {
     'ai-persona:read',
     'company-ai-config:read',
     'marketing-campaign:read',
+    'product-catalog:read',
+    'product-media:read',
   ],
   [RolesEnum.ADMIN]: [
     'sensitive:operations',
@@ -56,6 +60,8 @@ const rolePermissionsMap = {
     'ai-persona:read', 'ai-persona:write', 'ai-persona:delete', 'ai-persona:update', 'ai-persona:assign',
     'company-ai-config:read', 'company-ai-config:write', 'company-ai-config:delete',
     'marketing-campaign:read', 'marketing-campaign:write', 'marketing-campaign:update', 'marketing-campaign:delete', 'marketing-campaign:manage',
+    'product-catalog:read', 'product-catalog:write', 'product-catalog:delete',
+    'product-media:read', 'product-media:write', 'product-media:delete',
   ],
   [RolesEnum.MANAGER]: [
     'sensitive:operations',
@@ -69,6 +75,8 @@ const rolePermissionsMap = {
     'company_events:read', 'company_events:write', 'company_events:delete',
     'user_activity_log:read',
     'company-ai-config:read',
+    'product-catalog:read', 'product-catalog:write', 'product-catalog:delete',
+    'product-media:read', 'product-media:write', 'product-media:delete',
   ],
   [RolesEnum.SALES_AGENT]: [
     'sensitive:operations',
@@ -81,6 +89,8 @@ const rolePermissionsMap = {
     'company_events:read',
     'user_activity_log:read',
     'company-ai-config:read',
+    'product-catalog:read',
+    'product-media:read',
   ],
   [RolesEnum.HOST]: [
     'sensitive:operations',
@@ -93,6 +103,8 @@ const rolePermissionsMap = {
     'company_events:read',
     'user_activity_log:read',
     'company-ai-config:read',
+    'product-catalog:read',
+    'product-media:read',
   ],
   [RolesEnum.GUEST]: [
     'sensitive:operations',
@@ -101,6 +113,8 @@ const rolePermissionsMap = {
     'company_schedules:read',
     'company_events:read',
     'user_activity_log:read',
+    'product-catalog:read',
+    'product-media:read',
   ],
 };
 

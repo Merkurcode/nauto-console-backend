@@ -116,102 +116,117 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.executeWithErrorHandling('findByEmail', async () => {
-      const userRecord = await this.client.user.findUnique({
-        where: { email },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
+    return this.executeWithErrorHandling(
+      'findByEmail',
+      async () => {
+        const userRecord = await this.client.user.findUnique({
+          where: { email },
+          include: {
+            roles: {
+              include: {
+                role: {
+                  include: {
+                    permissions: {
+                      include: {
+                        permission: true,
+                      },
                     },
                   },
                 },
               },
             },
+            profile: true,
+            address: true,
+            company: true,
           },
-          profile: true,
-          address: true,
-          company: true,
-        },
-      });
+        });
 
-      if (!userRecord) {
-        return null;
-      }
+        if (!userRecord) {
+          return null;
+        }
 
-      return this.mapToModel(userRecord as UserWithRelations);
-    });
+        return this.mapToModel(userRecord as UserWithRelations);
+      },
+      undefined,
+      { email },
+    );
   }
 
   async findByAlias(alias: string): Promise<User | null> {
-    return this.executeWithErrorHandling('findByAlias', async () => {
-      const userRecord = await this.client.user.findUnique({
-        where: { alias },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
+    return this.executeWithErrorHandling(
+      'findByAlias',
+      async () => {
+        const userRecord = await this.client.user.findUnique({
+          where: { alias },
+          include: {
+            roles: {
+              include: {
+                role: {
+                  include: {
+                    permissions: {
+                      include: {
+                        permission: true,
+                      },
                     },
                   },
                 },
               },
             },
+            profile: true,
+            address: true,
+            company: true,
           },
-          profile: true,
-          address: true,
-          company: true,
-        },
-      });
+        });
 
-      if (!userRecord) {
-        return null;
-      }
+        if (!userRecord) {
+          return null;
+        }
 
-      return this.mapToModel(userRecord as UserWithRelations);
-    });
+        return this.mapToModel(userRecord as UserWithRelations);
+      },
+      undefined,
+      { alias },
+    );
   }
 
   async findByAgentPhoneAndCompany(agentPhone: string, companyId: string): Promise<User | null> {
-    return this.executeWithErrorHandling('findByAgentPhoneAndCompany', async () => {
-      const userRecord = await this.client.user.findFirst({
-        where: {
-          agentPhone,
-          companyId,
-        },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
+    return this.executeWithErrorHandling(
+      'findByAgentPhoneAndCompany',
+      async () => {
+        const userRecord = await this.client.user.findFirst({
+          where: {
+            agentPhone,
+            companyId,
+          },
+          include: {
+            roles: {
+              include: {
+                role: {
+                  include: {
+                    permissions: {
+                      include: {
+                        permission: true,
+                      },
                     },
                   },
                 },
               },
             },
+            profile: true,
+            address: true,
+            company: true,
           },
-          profile: true,
-          address: true,
-          company: true,
-        },
-      });
+        });
 
-      if (!userRecord) {
-        return null;
-      }
+        if (!userRecord) {
+          return null;
+        }
 
-      return this.mapToModel(userRecord as UserWithRelations);
-    });
+        return this.mapToModel(userRecord as UserWithRelations);
+      },
+      undefined,
+      { agentPhone, companyId },
+    );
   }
 
   async findAll(): Promise<User[]> {
@@ -276,21 +291,26 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
   }
 
   async getUserPhoneCountryCode(userId: string): Promise<string | null> {
-    return this.executeWithErrorHandling('getUserPhoneCountryCode', async () => {
-      const userWithProfile = await this.client.user.findUnique({
-        where: { id: userId },
-        include: {
-          profile: true,
-        },
-      });
+    return this.executeWithErrorHandling(
+      'getUserPhoneCountryCode',
+      async () => {
+        const userWithProfile = await this.client.user.findUnique({
+          where: { id: userId },
+          include: {
+            profile: true,
+          },
+        });
 
-      if (!userWithProfile?.profile?.phoneCountryCode) {
-        return null;
-      }
+        if (!userWithProfile?.profile?.phoneCountryCode) {
+          return null;
+        }
 
-      // Return phone country code directly (without + sign for SMS API)
-      return userWithProfile.profile.phoneCountryCode.replace('+', '');
-    });
+        // Return phone country code directly (without + sign for SMS API)
+        return userWithProfile.profile.phoneCountryCode.replace('+', '');
+      },
+      undefined,
+      { userId },
+    );
   }
 
   async create(user: User): Promise<User> {
