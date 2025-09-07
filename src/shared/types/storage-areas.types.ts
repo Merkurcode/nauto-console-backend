@@ -46,3 +46,16 @@ export const COMMON_FOLDER_TO_AREA_MAP = {
   [CommonFolder.PRODUCTS]: 'products',
   [CommonFolder.MARKETING]: 'marketing',
 } as const;
+
+export const buildCommonPath = (
+  companyId: string,
+  area: CommonFolder,
+  section?: string,
+): string => {
+  const path = `${companyId}/${PathType.COMMON}/${area}`;
+  if (section) {
+    return `${path}/${section}`;
+  }
+
+  return path;
+};
