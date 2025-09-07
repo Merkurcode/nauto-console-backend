@@ -10,8 +10,8 @@ export const createEmailQueueConfig = (configService?: ConfigService): IQueueMod
     if (configService) {
       return configService.get<T>(path) ?? defaultValue;
     }
-    
-return defaultValue;
+
+    return defaultValue;
   };
 
   const _JobConfig: IJobConfig = {
