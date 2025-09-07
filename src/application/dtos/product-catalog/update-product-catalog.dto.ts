@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsArray, IsOptional, IsEnum, Min, Max, IsInt, IsUrl, Matches } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsArray,
+  IsOptional,
+  IsEnum,
+  Min,
+  Max,
+  IsInt,
+  IsUrl,
+  Matches,
+} from 'class-validator';
 import { PaymentOption } from '@prisma/client';
 import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 

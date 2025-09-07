@@ -45,7 +45,8 @@ export class UpdateProductMediaDto {
   @IsString()
   @IsOptional()
   @Matches(/^(#[a-zA-Z0-9_]+)(\s+#[a-zA-Z0-9_]+)*$/, {
-    message: 'Tags must be space-separated and each must start with # followed by alphanumeric characters or underscores',
+    message:
+      'Tags must be space-separated and each must start with # followed by alphanumeric characters or underscores',
   })
   @TrimAndValidateLength({ max: 200 })
   tags?: string;
