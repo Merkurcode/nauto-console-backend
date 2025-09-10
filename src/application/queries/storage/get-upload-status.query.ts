@@ -99,7 +99,9 @@ export class GetUploadStatusHandler
           ? `Upload in progress (${completedParts}${totalParts ? `/${totalParts}` : ''} parts completed)`
           : file.status.isCopying()
             ? 'File copying in progress'
-            : 'Upload pending',
+            : file.status.isErasing()
+              ? 'File scheduled for deletion'
+              : 'Upload pending',
       fileId: file.id,
       status: file.status.getValue(),
       uploadId: file.getUploadIdString(),

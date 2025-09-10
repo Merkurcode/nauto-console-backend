@@ -10,6 +10,7 @@ import { UserId } from '@core/value-objects/user-id.vo';
 import { PasswordReset as PrismaPasswordReset } from '@prisma/client';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class PasswordResetRepository
@@ -19,9 +20,11 @@ export class PasswordResetRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(PasswordResetRepository.name);
+    super(logger, undefined); // Password reset tokens should not be cached - they are temporal and sensitive
   }
 
   private get client() {

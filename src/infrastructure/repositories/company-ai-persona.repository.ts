@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { BaseRepository } from './base.repository';
@@ -6,6 +6,9 @@ import {
   ICompanyAIPersonaRepository,
   ICompanyAIPersonaAssignment,
 } from '@core/repositories/company-ai-persona.repository.interface';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class CompanyAIPersonaRepository
@@ -15,8 +18,11 @@ export class CompanyAIPersonaRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super();
+    logger?.setContext(CompanyAIPersonaRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

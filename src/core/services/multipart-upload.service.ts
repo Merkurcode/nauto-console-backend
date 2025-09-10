@@ -39,7 +39,10 @@ import {
 } from '@shared/constants/tokens';
 import { FileStatus } from '@shared/constants/file-status.enum';
 import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
-import { IAllowedFileConfig } from '@core/entities/user-storage-config.entity';
+import {
+  IAllowedFileConfig,
+  isValidFileSizeForStorageApp,
+} from '@core/entities/user-storage-config.entity';
 
 export interface IInitiateUploadParams {
   bucket: string;
@@ -334,12 +337,12 @@ export class MultipartUploadService {
       throw new UploadAlreadyCompletedException(fileId);
     }
 
-    if (file.status.isCopying()) {
+    if (file.status.isCopying() || file.status.isProcessing()) {
       throw new InvalidFileStateException(
         fileId,
         file.status.toString(),
         FileStatus.UPLOADING,
-        'generate part URL',
+        'generate part URL - file is busy',
       );
     }
 
@@ -412,12 +415,12 @@ export class MultipartUploadService {
       throw new UploadAlreadyCompletedException(fileId);
     }
 
-    if (file.status.isCopying()) {
+    if (file.status.isCopying() || file.status.isProcessing()) {
       throw new InvalidFileStateException(
         fileId,
         file.status.toString(),
         FileStatus.UPLOADING,
-        'complete upload',
+        'complete upload - file is busy',
       );
     }
 
@@ -664,9 +667,13 @@ export class MultipartUploadService {
       return filename;
     }
 
-    // Check if there's any active upload conflict (PENDING, UPLOADING, COPYING)
+    // Check if there's any active upload conflict (PENDING, UPLOADING, COPYING, PROCESSING)
     const hasActiveConflict = existingFiles.some(
-      file => file.status.isPending() || file.status.isUploading() || file.status.isCopying(),
+      file =>
+        file.status.isPending() ||
+        file.status.isUploading() ||
+        file.status.isCopying() ||
+        file.status.isProcessing(),
     );
 
     // Check if there's any uploaded file conflict
@@ -707,14 +714,18 @@ export class MultipartUploadService {
       return; // No conflict, allow upload
     }
 
-    // Check for UPLOADING status conflicts (requirement 1.1)
-    const uploadingFile = existingFiles.find(
-      file => file.status.isUploading() || file.status.isPending() || file.status.isCopying(),
+    // Check for active status conflicts (requirement 1.1) - UPLOADING, PENDING, COPYING, PROCESSING
+    const activeFile = existingFiles.find(
+      file =>
+        file.status.isUploading() ||
+        file.status.isPending() ||
+        file.status.isCopying() ||
+        file.status.isProcessing(),
     );
-    if (uploadingFile) {
+    if (activeFile) {
       throw new DuplicatePathUploadException(
         `${storagePath}/${filename}`,
-        uploadingFile.status.getValue(),
+        activeFile.status.getValue(),
       );
     }
 
@@ -997,17 +1008,23 @@ export class MultipartUploadService {
 
     // Check app-specific size limits
     for (const targetApp of targetApps) {
-      if (targetApp === TargetAppsEnum.WHATSAPP) {
-        if (extensionConfig.whatsAppMaxBytes && size > extensionConfig.whatsAppMaxBytes) {
-          throw new AppFileSizeLimitExceededException(
-            'WhatsApp',
-            size,
-            extensionConfig.whatsAppMaxBytes,
-            fileExtension,
-          );
-        }
+      if (targetApp === (TargetAppsEnum.NONE as string)) {
+        continue;
       }
-      // Add more app validations here as needed
+      const result = isValidFileSizeForStorageApp(
+        targetApp as TargetAppsEnum,
+        size,
+        fileConfig,
+        fileExtension,
+      );
+      if (!result.valid) {
+        throw new AppFileSizeLimitExceededException(
+          result.appName,
+          size,
+          extensionConfig.whatsAppMaxBytes,
+          fileExtension,
+        );
+      }
     }
   }
 

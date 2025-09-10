@@ -8,6 +8,8 @@
  * in the domain layer and implemented in the infrastructure layer.
  */
 
+import Stream from 'node:stream';
+
 export interface ICompletedPart {
   ETag: string;
   PartNumber: number;
@@ -114,6 +116,8 @@ export interface IStorageService {
     etag: string;
     contentType: string;
   }>;
+
+  getObjectStream(bucket: string, objectKey: string): Promise<Stream.Readable>;
 
   // Access control operations
   setObjectPublic(bucket: string, objectKey: string): Promise<void>;

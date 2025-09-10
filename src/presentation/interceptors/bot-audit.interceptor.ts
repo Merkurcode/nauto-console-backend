@@ -472,6 +472,6 @@ export class BotAuditInterceptor implements NestInterceptor {
   }
 
   private generateRequestId(): string {
-    return `bot_req_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    return `bot_req_${Date.now()}_${crypto.randomUUID().replace(/-/g, '_')}`;
   }
 }

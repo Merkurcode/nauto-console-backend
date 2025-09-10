@@ -10,6 +10,7 @@ import { BaseRepository } from './base.repository';
 import { HIDDEN_PERMISSIONS } from '@shared/constants/bot-permissions';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class PermissionRepository
@@ -19,9 +20,11 @@ export class PermissionRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(PermissionRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

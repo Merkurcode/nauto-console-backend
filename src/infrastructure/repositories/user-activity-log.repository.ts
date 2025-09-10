@@ -11,6 +11,7 @@ import { UserActivityLogMapper } from '@application/mappers/user-activity-log.ma
 import { Prisma } from '@prisma/client';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 /**
  * User Activity Log Repository
@@ -24,9 +25,11 @@ export class UserActivityLogRepository
 {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(UserActivityLogRepository.name);
+    super(logger, undefined); // User activity logs should not be cached - they track user actions and security events
   }
 
   // Activity logs should not use transactions by default

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -34,6 +35,7 @@ import {
 } from '@core/repositories/storage.service.interface';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import Stream from 'node:stream';
 
 @Injectable()
 export class AwsS3StorageService implements IStorageService {
@@ -106,7 +108,7 @@ export class AwsS3StorageService implements IStorageService {
         ContentType: contentType || 'application/octet-stream',
         // Guarda el límite como metadata informativa (no lo hace cumplir S3, pero ayuda a trazabilidad)
         Metadata: { 'app-max-bytes': String(effectiveMax) },
-        ACL: isPublic ? 'public-read' : 'private',
+        //ACL: isPublic ? 'public-read' : 'private',
       });
 
       const response = await this.s3Client.send(command);
@@ -653,6 +655,32 @@ export class AwsS3StorageService implements IStorageService {
     }
   }
 
+  async getObjectStream(bucket: string, objectKey: string): Promise<Stream.Readable> {
+    try {
+      this.logger.debug({ message: 'Getting object stream', bucket, objectKey });
+
+      this.validateBucketName(bucket);
+      this.validateObjectKey(objectKey);
+
+      const command = new GetObjectCommand({ Bucket: bucket, Key: objectKey });
+      const response = await this.s3Client.send(command);
+
+      if (!response.Body) {
+        throw new Error('No body in S3 response');
+      }
+
+      return this.toNodeReadable(response.Body);
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get object stream',
+        bucket,
+        objectKey,
+        error: error?.message,
+      });
+      throw new Error(`Failed to get object stream: ${error?.message ?? String(error)}`);
+    }
+  }
+
   // ============================================================================
   // ACCESS CONTROL OPERATIONS
   // ============================================================================
@@ -1101,6 +1129,13 @@ export class AwsS3StorageService implements IStorageService {
   // ============================================================================
   // PRIVATE HELPERS
   // ============================================================================
+
+  private toNodeReadable(body: any): Stream.Readable {
+    if (!body) throw new Error('S3 body empty');
+    if (typeof body.pipe === 'function') return body as Stream.Readable; // Node stream
+    if (typeof body.getReader === 'function') return Stream.Readable.fromWeb(body as any); // Web stream
+    throw new Error('Body type not supported');
+  }
 
   private async ensureBucketExists(bucket: string): Promise<void> {
     const exists = await this.bucketExists(bucket).catch(() => false);

@@ -295,6 +295,7 @@ async function bootstrap() {
     .addTag('marketing-campaigns', 'Marketing campaign management')
     .addTag('product-catalog', 'Product catalog management')
     .addTag('product-media', 'Product media management')
+    .addTag('bulk-processing', 'Bulk processing operations for Excel imports')
     .addTag('bot-management', 'Bot token management')
     .addTag('bot-audit', 'Bot activity auditing')
     .addTag('user-activity-logs', 'User activity logging and monitoring')

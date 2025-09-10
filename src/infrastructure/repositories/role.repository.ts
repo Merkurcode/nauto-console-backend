@@ -14,6 +14,7 @@ import { ActionType } from '@shared/constants/enums';
 import { BaseRepository } from './base.repository';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 // Define a type for Role with its related permissions
 type RoleWithPermissions = PrismaRole & {
@@ -27,9 +28,11 @@ export class RoleRepository extends BaseRepository<Role> implements IRoleReposit
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(RoleRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

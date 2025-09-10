@@ -12,6 +12,7 @@ import {
   IsInt,
   IsUrl,
   Matches,
+  IsBoolean,
 } from 'class-validator';
 import { PaymentOption } from '@prisma/client';
 import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
@@ -145,4 +146,35 @@ export class CreateProductCatalogDto {
   })
   @TrimAndValidateLength({ max: 10 })
   langCode?: string;
+
+  @ApiProperty({
+    description: 'Bulk request ID for tracking bulk import operations',
+    example: 'bulk-req-123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @TrimAndValidateLength({ max: 255 })
+  bulkRequestId?: string;
+
+  @ApiProperty({
+    description: 'Metadata object for storing multimedia URLs and other structured data',
+    example: {
+      photo: 'https://example.com/photo.jpg',
+      video: 'https://example.com/video.mp4',
+      pdf: 'https://example.com/document.pdf',
+    },
+    required: false,
+  })
+  @IsOptional()
+  metadata?: Record<string, string>;
+
+  @ApiProperty({
+    description: 'Tells the backend whether to display the product or not.',
+    example: true,
+    required: true,
+    default: true,
+  })
+  @IsBoolean()
+  isVisible: boolean;
 }

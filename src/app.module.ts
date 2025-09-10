@@ -25,6 +25,7 @@ import { StorageModule } from '@presentation/modules/storage/storage.module';
 import { CompanyAIConfigModule } from '@presentation/modules/company-ai-config/company-ai-config.module';
 import { MarketingCampaignModule } from '@presentation/modules/marketing-campaign/marketing-campaign.module';
 import { ProductCatalogModule } from '@presentation/modules/product-catalog/product-catalog.module';
+import { BulkProcessingModule } from '@presentation/modules/bulk-processing/bulk-processing.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 import { QueueModule } from './queues/queue.module';
@@ -132,6 +133,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
     CompanyAIConfigModule,
     MarketingCampaignModule,
     ProductCatalogModule,
+    BulkProcessingModule,
   ],
   controllers: [],
   providers: [

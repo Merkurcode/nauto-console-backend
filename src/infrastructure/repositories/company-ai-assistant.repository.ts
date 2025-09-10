@@ -9,6 +9,7 @@ import {
 import { ICompanyAIAssistantRepository } from '@core/repositories/company-ai-assistant.repository.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import {
   IPrismaCompanyAIAssistantData,
   IPrismaCompanyAIAssistantFeature,
@@ -22,9 +23,11 @@ export class CompanyAIAssistantRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(CompanyAIAssistantRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

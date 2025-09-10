@@ -18,6 +18,7 @@ import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 // Define a type for User with its relations (roles with nested permissions)
 type UserWithRelations = PrismaUser & {
@@ -41,9 +42,11 @@ type UserWithRelations = PrismaUser & {
 export class UserAuthRepository extends BaseRepository<User> implements IUserRepository {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(UserAuthRepository.name);
+    super(logger, undefined); // User auth data should not be cached - contains sensitive authentication info
   }
 
   // Authentication queries don't use transactions for performance

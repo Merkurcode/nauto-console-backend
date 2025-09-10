@@ -10,10 +10,12 @@ import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 // Repository imports
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import { RoleRepository } from '@infrastructure/repositories/role.repository';
 import { PermissionRepository } from '@infrastructure/repositories/permission.repository';
 import { UserRepository } from '@infrastructure/repositories/user.repository';
-import { REPOSITORY_TOKENS, USER_REPOSITORY } from '@shared/constants/tokens';
+import { REPOSITORY_TOKENS, USER_REPOSITORY, LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 // Services
 import { RoleService } from '@core/services/role.service';
@@ -63,21 +65,33 @@ const commandHandlers = [
     // Repository tokens
     {
       provide: REPOSITORY_TOKENS.ROLE_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new RoleRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new RoleRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: REPOSITORY_TOKENS.PERMISSION_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new PermissionRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new PermissionRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: REPOSITORY_TOKENS.USER_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new UserRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new UserRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: USER_REPOSITORY,

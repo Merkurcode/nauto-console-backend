@@ -64,7 +64,14 @@ export class ProductCatalogController {
   ): Promise<IProductCatalogResponse> {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
-        new UpsertProductCatalogCommand(createDto, user.companyId!, user.sub),
+        new UpsertProductCatalogCommand(
+          createDto,
+          user.companyId!,
+          user.sub,
+          createDto.isVisible,
+          true,
+          false,
+        ),
       );
     });
   }

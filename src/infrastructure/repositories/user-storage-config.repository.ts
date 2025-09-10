@@ -8,6 +8,7 @@ import { UserStorageConfigMapper } from '@application/mappers/user-storage-confi
 import { BaseRepository } from './base.repository';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class UserStorageConfigRepository
@@ -17,9 +18,11 @@ export class UserStorageConfigRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(UserStorageConfigRepository.name);
+    super(logger, requestCache);
   }
 
   private get client() {
@@ -41,19 +44,24 @@ export class UserStorageConfigRepository
     });
   }
 
-  async findByUserId(userId: UserId): Promise<UserStorageConfig | null> {
-    return this.executeWithErrorHandling('findByUserId', async () => {
-      try {
-        const userStorageConfig = await this.client.userStorageConfig.findUnique({
-          where: { userId: userId.getValue() },
-          include: { storageTier: true },
-        });
+  async findByUserId(userId: UserId, useCache?: boolean): Promise<UserStorageConfig | null> {
+    return this.executeWithErrorHandling(
+      'findByUserId',
+      async () => {
+        try {
+          const userStorageConfig = await this.client.userStorageConfig.findUnique({
+            where: { userId: userId.getValue() },
+            include: { storageTier: true },
+          });
 
-        return userStorageConfig ? UserStorageConfigMapper.toDomain(userStorageConfig) : null;
-      } catch (error) {
-        throw error;
-      }
-    });
+          return userStorageConfig ? UserStorageConfigMapper.toDomain(userStorageConfig) : null;
+        } catch (error) {
+          throw error;
+        }
+      },
+      undefined,
+      useCache === true ? { userId: userId.getValue() } : undefined,
+    );
   }
 
   async save(userStorageConfig: UserStorageConfig): Promise<UserStorageConfig> {
@@ -275,6 +283,17 @@ export class UserStorageConfigRepository
         throw error;
       }
     });
+  }
+
+  async clearCache(userId?: UserId): Promise<void> {
+    if (userId) {
+      // Clear cache for specific user
+      const cacheKey = { userId: userId.getValue() };
+      await this.invalidateCache(cacheKey);
+    } else {
+      // Clear all cache for this repository
+      await this.clearAllCache();
+    }
   }
 
   private toPersistence(userStorageConfig: UserStorageConfig) {

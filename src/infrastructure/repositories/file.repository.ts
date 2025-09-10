@@ -9,6 +9,7 @@ import { BaseRepository } from './base.repository';
 import { FileStatus } from '@core/value-objects/file-status.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import { $Enums } from '@prisma/client';
 
 /**
@@ -42,9 +43,11 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(FileRepository.name);
+    super(logger, undefined);
     // Get the current storage driver from config
     this.currentStorageDriver = this.configService.get<string>('storage.provider', 'minio');
   }
@@ -194,8 +197,16 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
 
   async save(file: File): Promise<File> {
     return this.executeWithErrorHandling('save', async () => {
-      const fileData = await this.client.file.create({
-        data: {
+      // Use upsert to handle duplicate files (based on unique constraint: bucket + objectKey + storageDriver)
+      const fileData = await this.client.file.upsert({
+        where: {
+          bucket_objectKey_storageDriver: {
+            bucket: file.bucket,
+            objectKey: file.getObjectKeyString(),
+            storageDriver: file.storageDriver,
+          },
+        },
+        create: {
           id: file.id,
           filename: file.filename,
           originalName: file.originalName,
@@ -211,6 +222,19 @@ export class FileRepository extends BaseRepository<File> implements IFileReposit
           etag: file.getETagString(),
           targetApps: file.targetApps,
           storageDriver: file.storageDriver,
+        },
+        update: {
+          filename: file.filename,
+          originalName: file.originalName,
+          path: file.path,
+          mimeType: file.mimeType,
+          size: file.size.getBytes(),
+          isPublic: file.isPublic,
+          status: file.status.toString() as $Enums.FileStatus,
+          uploadId: file.getUploadIdString(),
+          etag: file.getETagString(),
+          targetApps: file.targetApps,
+          updatedAt: new Date(),
         },
       });
 

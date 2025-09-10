@@ -7,6 +7,7 @@ import { BaseRepository } from './base.repository';
 import { StorageTiersMapper } from '@application/mappers/storage-tiers.mapper';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 /**
  * Interface representing storage tier data from storage
@@ -30,9 +31,11 @@ export class StorageTiersRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(StorageTiersRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

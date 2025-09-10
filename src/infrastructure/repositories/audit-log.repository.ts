@@ -18,6 +18,7 @@ import { AuditLogId } from '@core/value-objects/audit-log-id.vo';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import {
   IPrismaAuditLogData,
   IAuditLogMetadata,
@@ -36,9 +37,11 @@ export class AuditLogRepository extends BaseRepository<AuditLog> implements IAud
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(AuditLogRepository.name);
+    super(logger, undefined); // Audit logs should not be cached
   }
 
   async save(auditLog: AuditLog, useTransaction = false): Promise<AuditLog> {

@@ -6,16 +6,22 @@ import { ProductCatalogService } from '@core/services/product-catalog.service';
 import { ProductMediaService } from '@core/services/product-media.service';
 import { ProductCatalogRepository } from '@infrastructure/repositories/product-catalog.repository';
 import { ProductMediaRepository } from '@infrastructure/repositories/product-media.repository';
+import { BulkProcessingRequestRepository } from '@infrastructure/repositories/bulk-processing-request.repository';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { StorageModule } from '@infrastructure/storage/storage.module';
 import { CoreModule } from '@core/core.module';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
-import { PRODUCT_CATALOG_REPOSITORY, PRODUCT_MEDIA_REPOSITORY } from '@shared/constants/tokens';
+import {
+  PRODUCT_CATALOG_REPOSITORY,
+  PRODUCT_MEDIA_REPOSITORY,
+  BULK_PROCESSING_REQUEST_REPOSITORY,
+} from '@shared/constants/tokens';
 import { EnhancedFileMapper } from '@application/mappers/enhanced-file.mapper';
 
 // Command handlers
 import { UpsertProductCatalogCommandHandler } from '@application/commands/product-catalog/upsert-product-catalog.command';
 import { UpdateProductCatalogCommandHandler } from '@application/commands/product-catalog/update-product-catalog.command';
+import { UpdateProductVisibilityCommandHandler } from '@application/commands/product-catalog/update-product-visibility.command';
 import { DeleteProductCatalogWithMediaCommandHandler } from '@application/commands/product-catalog/delete-product-catalog-with-media.command';
 
 // ProductMedia Command handlers
@@ -33,6 +39,7 @@ import { GetProductMediaByProductQueryHandler } from '@application/queries/produ
 const CommandHandlers = [
   UpsertProductCatalogCommandHandler,
   UpdateProductCatalogCommandHandler,
+  UpdateProductVisibilityCommandHandler,
   DeleteProductCatalogWithMediaCommandHandler,
   CreateProductMediaCommandHandler,
   UpdateProductMediaCommandHandler,
@@ -59,6 +66,10 @@ const QueryHandlers = [
     {
       provide: PRODUCT_MEDIA_REPOSITORY,
       useClass: ProductMediaRepository,
+    },
+    {
+      provide: BULK_PROCESSING_REQUEST_REPOSITORY,
+      useClass: BulkProcessingRequestRepository,
     },
     ...CommandHandlers,
     ...QueryHandlers,

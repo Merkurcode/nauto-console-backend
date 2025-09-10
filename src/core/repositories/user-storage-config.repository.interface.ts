@@ -13,7 +13,7 @@ import { UserId } from '@core/value-objects/user-id.vo';
 export interface IUserStorageConfigRepository {
   // Basic CRUD operations
   findById(id: string): Promise<UserStorageConfig | null>;
-  findByUserId(userId: UserId): Promise<UserStorageConfig | null>;
+  findByUserId(userId: UserId, useCache?: boolean): Promise<UserStorageConfig | null>;
   findByUserIdWithTier(userId: UserId): Promise<UserStorageConfig | null>;
   findAll(): Promise<UserStorageConfig[]>;
   findByCompanyId(companyId: string): Promise<UserStorageConfig[]>;
@@ -38,4 +38,6 @@ export interface IUserStorageConfigRepository {
   // Query operations
   getUsersWithoutStorageConfig(): Promise<string[]>;
   countUsersByTier(storageTierId: string): Promise<number>;
+
+  clearCache(userId?: UserId): Promise<void>;
 }

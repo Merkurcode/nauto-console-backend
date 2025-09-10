@@ -10,6 +10,7 @@ import { CompanyId } from '@core/value-objects/company-id.vo';
 import { BotTokenMapper } from '@application/mappers/bot-token.mapper';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 /**
  * BOT Token Repository Implementation
@@ -19,9 +20,11 @@ export class BotTokenRepository extends BaseRepository<BotToken> implements IBot
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(BotTokenRepository.name);
+    super(logger, undefined); // Bot tokens should not be cached - they are sensitive authentication tokens
   }
 
   private get client() {

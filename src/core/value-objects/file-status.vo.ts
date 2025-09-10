@@ -39,6 +39,14 @@ export class FileStatus extends ValueObject<FileStatusEnum> {
     return new FileStatus(FileStatusEnum.COPYING);
   }
 
+  static processing(): FileStatus {
+    return new FileStatus(FileStatusEnum.PROCESSING);
+  }
+
+  static erasing(): FileStatus {
+    return new FileStatus(FileStatusEnum.ERASING);
+  }
+
   isPending(): boolean {
     return this.getValue() === FileStatusEnum.PENDING;
   }
@@ -53,6 +61,14 @@ export class FileStatus extends ValueObject<FileStatusEnum> {
 
   isCopying(): boolean {
     return this.getValue() === FileStatusEnum.COPYING;
+  }
+
+  isProcessing(): boolean {
+    return this.getValue() === FileStatusEnum.PROCESSING;
+  }
+
+  isErasing(): boolean {
+    return this.getValue() === FileStatusEnum.ERASING;
   }
 
   isActive(): boolean {

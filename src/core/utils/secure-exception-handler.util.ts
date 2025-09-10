@@ -80,7 +80,7 @@ export class SecureExceptionHandler {
    */
   static setLogger(logger: ILogger): void {
     this.logger = logger;
-    this.logger.setContext('SecureExceptionHandler');
+    this.logger.setContext(SecureExceptionHandler.name);
   }
 
   // Security: Map of safe error messages by error code
@@ -506,7 +506,7 @@ export class SecureExceptionHandler {
    * Generate correlation ID for error tracking
    */
   private static generateCorrelationId(): string {
-    return `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `err_${Date.now()}_${crypto.randomUUID().replace(/-/g, '_')}`;
   }
 
   /**

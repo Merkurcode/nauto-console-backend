@@ -30,6 +30,13 @@ export class RequestCacheService {
     'create',
     'delete',
     'save', // New entity creation
+    'update',
+    'exists',
+    'clear',
+    'upsert',
+    'remove',
+    'toggle',
+    'revoke',
   ]);
 
   /**
@@ -193,6 +200,41 @@ export class RequestCacheService {
       this.cache.delete(key);
       this.cacheMetadata.delete(key);
     });
+  }
+
+  /**
+   * Invalidate cache entries by specific parameters
+   * Useful for invalidating specific records (e.g., by userId)
+   */
+  invalidate(entityType: string, params: unknown): void {
+    if (!params) {
+      this.invalidateEntity(entityType);
+
+      return;
+    }
+
+    const paramHash = this.hashParams(params);
+    const keysToDelete: string[] = [];
+
+    // Find all keys for this entity type that match the parameter hash
+    this.cache.forEach((_, key) => {
+      if (key.startsWith(`${entityType}:`) && key.endsWith(`:${paramHash}`)) {
+        keysToDelete.push(key);
+      }
+    });
+
+    keysToDelete.forEach(key => {
+      this.cache.delete(key);
+      this.cacheMetadata.delete(key);
+    });
+  }
+
+  /**
+   * Clear all cache entries for a specific entity type
+   * Alias for invalidateEntity for consistency with BaseRepository
+   */
+  clearAll(entityType: string): void {
+    this.invalidateEntity(entityType);
   }
 
   /**

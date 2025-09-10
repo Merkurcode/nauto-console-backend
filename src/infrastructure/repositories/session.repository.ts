@@ -16,6 +16,7 @@ export class SessionRepository extends BaseRepository<Session> implements ISessi
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
     @Optional() requestCache?: RequestCacheService,
   ) {
+    logger?.setContext(SessionRepository.name);
     super(logger, requestCache);
   }
 

@@ -99,3 +99,37 @@ export class ProductMediaFileNameUpdatedEvent extends DomainEvent {
     return 'product_media.file_name_updated';
   }
 }
+
+export class ProductMediaDescriptionUpdatedEvent extends DomainEvent {
+  constructor(
+    public readonly productMediaId: ProductMediaId,
+    public readonly productId: ProductCatalogId,
+    public readonly companyId: CompanyId,
+    public readonly updatedBy: UserId,
+    public readonly newDescription: string | undefined,
+    public readonly previousDescription: string | undefined,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'product_media.description_updated';
+  }
+}
+
+export class ProductMediaTagsUpdatedEvent extends DomainEvent {
+  constructor(
+    public readonly productMediaId: ProductMediaId,
+    public readonly productId: ProductCatalogId,
+    public readonly companyId: CompanyId,
+    public readonly updatedBy: UserId,
+    public readonly newTags: string | undefined,
+    public readonly previousTags: string | undefined,
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'product_media.tags_updated';
+  }
+}

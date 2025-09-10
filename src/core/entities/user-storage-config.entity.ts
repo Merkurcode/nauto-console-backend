@@ -5,6 +5,38 @@ import {
   UserStorageConfigCreatedEvent,
   UserStorageConfigUpdatedEvent,
 } from '@core/events/user-storage-config.events';
+import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
+
+// ----ADD APPS----
+export const StorageAppsMap = {
+  whatsAppMaxBytes: TargetAppsEnum.WHATSAPP,
+  // ...más pares
+} as const satisfies Record<string, TargetAppsEnum>;
+// ----------------
+
+export const StorageAppsList = Object.keys(StorageAppsMap);
+
+export type StorageAppKeys = keyof typeof StorageAppsMap;
+
+// ----ADD APPS----
+export const StorageAppsMapTags: Record<StorageAppKeys, string> = {
+  whatsAppMaxBytes: '#whatsapp-compatible',
+};
+// ----------------
+
+export const StorageInverseAppsMap: Partial<Record<TargetAppsEnum, StorageAppKeys>> =
+  Object.entries(StorageAppsMap).reduce(
+    (acc, [key, value]) => {
+      acc[value] = key as StorageAppKeys;
+
+      return acc;
+    },
+    {} as Partial<Record<TargetAppsEnum, StorageAppKeys>>,
+  );
+
+export const StorageAppsInverseList = Object.keys(StorageInverseAppsMap).map(
+  key => key as TargetAppsEnum,
+);
 
 // New format with app-specific limits
 export interface IAllowedFileConfig {
@@ -14,6 +46,23 @@ export interface IAllowedFileConfig {
     // Future apps can be added here
   };
 }
+
+export const isValidFileSizeForStorageApp = (
+  app: TargetAppsEnum,
+  size: number,
+  config: IAllowedFileConfig,
+  fileExtension: string,
+): { valid: boolean; appName: string } => {
+  const key: StorageAppKeys = StorageInverseAppsMap[app];
+  if (key) {
+    const maxBytes: number = config[fileExtension][key];
+    if (typeof maxBytes === 'number') {
+      return { valid: size <= maxBytes, appName: app };
+    }
+  }
+
+  return { valid: false, appName: TargetAppsEnum.NONE };
+};
 
 export interface IUserStorageConfigCreateOptions {
   maxSimultaneousFilesLimit?: number; // From environment config
@@ -199,6 +248,25 @@ export class UserStorageConfig extends AggregateRoot {
     }
 
     return extensionConfig.mimes;
+  }
+
+  getMaxBytesForExtensionInApp(extension: string, app: StorageAppKeys): number {
+    const ext = extension.toLowerCase().replace('.', '');
+    const extensionConfig = this._allowedFileConfig[ext];
+
+    if (!extensionConfig) {
+      return 0;
+    }
+
+    return extensionConfig[app] || 0;
+  }
+
+  getAvailableApps(clone?: boolean): TargetAppsEnum[] {
+    if (clone) {
+      return [...StorageAppsInverseList];
+    }
+
+    return StorageAppsInverseList;
   }
 
   // Factory method

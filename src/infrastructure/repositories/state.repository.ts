@@ -5,6 +5,7 @@ import { IStateRepository } from '@core/repositories/state.repository.interface'
 import { State } from '@core/entities/state.entity';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -12,9 +13,11 @@ export class StateRepository extends BaseRepository<State> implements IStateRepo
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(StateRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

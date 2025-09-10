@@ -11,6 +11,8 @@ import {
   ProductMediaDeletedEvent,
   ProductMediaFavoriteChangedEvent,
   ProductMediaFileNameUpdatedEvent,
+  ProductMediaDescriptionUpdatedEvent,
+  ProductMediaTagsUpdatedEvent,
 } from '@core/events/product-media.events';
 
 export class ProductMedia extends AggregateRoot {
@@ -21,11 +23,11 @@ export class ProductMedia extends AggregateRoot {
   private readonly _productId: ProductCatalogId;
   private readonly _companyId: CompanyId;
   private readonly _createdBy: UserId;
-  
+
   // NUEVO: Campos opcionales para multimedia
   private _description?: string;
   private _tags?: string;
-  
+
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -143,7 +145,7 @@ export class ProductMedia extends AggregateRoot {
       for (const tag of tags) {
         if (!tag.startsWith('#') || tag.length < 2) {
           throw new InvalidValueObjectException(
-            `Invalid tag format: "${tag}". Tags should start with # and have at least one character after #.`
+            `Invalid tag format: "${tag}". Tags should start with # and have at least one character after #.`,
           );
         }
       }
@@ -249,22 +251,45 @@ export class ProductMedia extends AggregateRoot {
 
   updateDescription(description: string | undefined, updatedBy: string): void {
     if (this._description === description) return;
-    
+
+    const previousDescription = this._description;
     this._description = description;
     this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new ProductMediaDescriptionUpdatedEvent(
+        this._id,
+        this._productId,
+        this._companyId,
+        UserId.fromString(updatedBy),
+        description,
+        previousDescription,
+      ),
+    );
   }
 
   updateTags(tags: string | undefined, updatedBy: string): void {
     if (this._tags === tags) return;
-    
+
     const previousTags = this._tags;
     this._tags = tags;
-    
+
     if (tags) {
       this.validateTags();
     }
-    
+
     this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new ProductMediaTagsUpdatedEvent(
+        this._id,
+        this._productId,
+        this._companyId,
+        UserId.fromString(updatedBy),
+        tags,
+        previousTags,
+      ),
+    );
   }
 
   markForDeletion(deletedBy: string): void {
@@ -293,6 +318,8 @@ export class ProductMedia extends AggregateRoot {
   }
 
   static mapMimeTypeToFileType(mimeType: string): FileType {
+    if (!mimeType) return FileType.OTHER;
+
     if (mimeType.startsWith('image/')) return FileType.IMAGE;
     if (mimeType.startsWith('video/')) return FileType.VIDEO;
     if (mimeType.startsWith('audio/')) return FileType.AUDIO;

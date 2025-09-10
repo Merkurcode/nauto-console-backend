@@ -20,9 +20,10 @@ export class ProductMediaRepository
     @Inject(TransactionContextService)
     private readonly transactionContext: TransactionContextService,
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
-    @Optional() requestCache?: RequestCacheService,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger, requestCache);
+    logger?.setContext(ProductMediaRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

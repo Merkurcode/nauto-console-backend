@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { BaseRepository } from './base.repository';
 import { MarketingCampaign } from '@core/entities/marketing-campaign.entity';
 import { IMarketingCampaignRepository } from '@core/repositories/marketing-campaign.repository.interface';
 import { Prisma } from '@prisma/client';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class MarketingCampaignRepository
@@ -14,8 +18,11 @@ export class MarketingCampaignRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super();
+    logger?.setContext(MarketingCampaignRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

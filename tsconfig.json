@@ -23,7 +23,8 @@
       "@application/*": ["src/application/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
       "@presentation/*": ["src/presentation/*"],
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "@queues/*": ["src/queues/*"]
     }
   },
   "exclude": ["**/*.spec.ts", "**/*.test.ts", "test/**/*", "proposals/**/*", "src/test/**/*"]

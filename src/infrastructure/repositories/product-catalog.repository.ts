@@ -20,9 +20,10 @@ export class ProductCatalogRepository
     @Inject(TransactionContextService)
     private readonly transactionContext: TransactionContextService,
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
-    @Optional() requestCache?: RequestCacheService,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger, requestCache);
+    logger?.setContext(ProductCatalogRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {
@@ -104,6 +105,27 @@ export class ProductCatalogRepository
     });
   }
 
+  async findByBulkRequestId(
+    bulkRequestId: string,
+    companyId: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<ProductCatalog[]> {
+    return this.executeWithErrorHandling('findByBulkRequestId', async () => {
+      const records = await this.client.productCatalog.findMany({
+        where: {
+          bulkRequestId,
+          companyId,
+        },
+        orderBy: { sourceRowNumber: 'asc' }, // Order by sourceRowNumber ascending
+        take: limit,
+        skip: offset,
+      });
+
+      return records.map(record => this.mapToModel(record));
+    });
+  }
+
   async upsert(productCatalog: ProductCatalog): Promise<ProductCatalog> {
     return this.executeWithErrorHandling('upsert', async () => {
       const record = await this.client.productCatalog.upsert({
@@ -127,6 +149,9 @@ export class ProductCatalogRepository
           sourceFileName: productCatalog.sourceFileName || null,
           sourceRowNumber: productCatalog.sourceRowNumber || null,
           langCode: productCatalog.langCode || null,
+          bulkRequestId: productCatalog.bulkRequestId || null,
+          isVisible: productCatalog.isVisible,
+          metadata: productCatalog.metadata || null,
           updatedBy: productCatalog.updatedBy?.getValue() || null,
           updatedAt: new Date(),
         },
@@ -145,6 +170,9 @@ export class ProductCatalogRepository
           sourceFileName: productCatalog.sourceFileName || null,
           sourceRowNumber: productCatalog.sourceRowNumber || null,
           langCode: productCatalog.langCode || null,
+          bulkRequestId: productCatalog.bulkRequestId || null,
+          isVisible: productCatalog.isVisible,
+          metadata: productCatalog.metadata || null,
           companyId: productCatalog.companyId.getValue(),
           createdBy: productCatalog.createdBy.getValue(),
           updatedBy: productCatalog.updatedBy?.getValue() || null,
@@ -197,6 +225,9 @@ export class ProductCatalogRepository
       sourceFileName: record.sourceFileName,
       sourceRowNumber: record.sourceRowNumber,
       langCode: record.langCode,
+      bulkRequestId: record.bulkRequestId,
+      isVisible: record.isVisible,
+      metadata: (record.metadata as Record<string, string>) || undefined,
       updatedBy: record.updatedBy,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

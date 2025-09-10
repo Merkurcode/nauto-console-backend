@@ -91,8 +91,11 @@ export class UserStorageConfigService {
     return await this.userStorageConfigRepository.findAll();
   }
 
-  async getUserStorageConfig(userId: string): Promise<UserStorageConfig | null> {
-    return await this.userStorageConfigRepository.findByUserId(UserId.fromString(userId));
+  async getUserStorageConfig(
+    userId: string,
+    useCache?: boolean,
+  ): Promise<UserStorageConfig | null> {
+    return await this.userStorageConfigRepository.findByUserId(UserId.fromString(userId), useCache);
   }
 
   async getUserStorageConfigsByCompany(companyId: string): Promise<UserStorageConfig[]> {
@@ -107,5 +110,11 @@ export class UserStorageConfigService {
     }
 
     return config.canUploadFiles(fileCount);
+  }
+
+  async clearCache(userId?: string): Promise<void> {
+    await this.userStorageConfigRepository.clearCache(
+      userId ? UserId.fromString(userId) : undefined,
+    );
   }
 }

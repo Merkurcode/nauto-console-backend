@@ -6,6 +6,7 @@ import { PasswordResetAttempt } from '@core/entities/password-reset-attempt.enti
 import { BaseRepository } from './base.repository';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class PasswordResetAttemptRepository
@@ -15,9 +16,11 @@ export class PasswordResetAttemptRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(PasswordResetAttemptRepository.name);
+    super(logger, undefined); // Password reset attempts should not be cached - they track security events
   }
 
   private get client() {

@@ -1,17 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { REDIS_CLIENT } from '@shared/constants/tokens';
+import { REDIS_CLIENT, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { RedisConnectionFactory, REDIS_CONNECTION_FACTORY } from './redis-connection-factory';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 @Module({
   providers: [
     // Factory para crear conexiones dedicadas
     {
       provide: REDIS_CONNECTION_FACTORY,
-      useFactory: (configService: ConfigService) => {
-        return new RedisConnectionFactory(configService);
+      useFactory: (configService: ConfigService, logger: ILogger) => {
+        return new RedisConnectionFactory(configService, logger);
       },
-      inject: [ConfigService],
+      inject: [ConfigService, LOGGER_SERVICE],
     },
 
     // Conexión principal para servicios de storage/concurrency

@@ -39,6 +39,9 @@ import { StorageTiersRepository } from './repositories/storage-tiers.repository'
 import { UserActivityLogRepository } from './repositories/user-activity-log.repository';
 import { FileRepository } from './repositories/file.repository';
 import { MarketingCampaignRepository } from './repositories/marketing-campaign.repository';
+import { ProductCatalogRepository } from './repositories/product-catalog.repository';
+import { ProductMediaRepository } from './repositories/product-media.repository';
+import { BulkProcessingRequestRepository } from './repositories/bulk-processing-request.repository';
 import { TokenProvider } from './auth/token.provider';
 import { ConcurrencyService } from './services/concurrency.service';
 import { PathConcurrencyService } from '../infrastructure/services/path-concurrency.service';
@@ -70,6 +73,9 @@ import {
   USER_ACTIVITY_LOG_REPOSITORY,
   FILE_REPOSITORY,
   MARKETING_CAMPAIGN_REPOSITORY,
+  PRODUCT_CATALOG_REPOSITORY,
+  PRODUCT_MEDIA_REPOSITORY,
+  BULK_PROCESSING_REQUEST_REPOSITORY,
   DATABASE_HEALTH,
   TOKEN_PROVIDER,
   TRANSACTION_MANAGER,
@@ -132,8 +138,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new CompanyRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new CompanyRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: ROLE_REPOSITORY,
@@ -141,8 +148,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new RoleRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new RoleRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: PERMISSION_REPOSITORY,
@@ -150,8 +158,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new PermissionRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new PermissionRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: OTP_REPOSITORY,
@@ -160,8 +169,15 @@ import {
         transactionContext: TransactionContextService,
         configService: ConfigService,
         logger: ILogger,
-      ) => new OtpRepository(prisma, transactionContext, configService, logger),
-      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new OtpRepository(prisma, transactionContext, configService, logger, requestCache),
+      inject: [
+        PrismaService,
+        TransactionContextService,
+        ConfigService,
+        LOGGER_SERVICE,
+        RequestCacheService,
+      ],
     },
     {
       provide: REFRESH_TOKEN_REPOSITORY,
@@ -170,8 +186,16 @@ import {
         transactionContext: TransactionContextService,
         configService: ConfigService,
         logger: ILogger,
-      ) => new RefreshTokenRepository(prisma, transactionContext, configService, logger),
-      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) =>
+        new RefreshTokenRepository(prisma, transactionContext, configService, logger, requestCache),
+      inject: [
+        PrismaService,
+        TransactionContextService,
+        ConfigService,
+        LOGGER_SERVICE,
+        RequestCacheService,
+      ],
     },
     {
       provide: EMAIL_VERIFICATION_REPOSITORY,
@@ -179,8 +203,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new EmailVerificationRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new EmailVerificationRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: PASSWORD_RESET_REPOSITORY,
@@ -188,8 +213,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new PasswordResetRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new PasswordResetRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: PASSWORD_RESET_ATTEMPT_REPOSITORY,
@@ -197,8 +223,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new PasswordResetAttemptRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new PasswordResetAttemptRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: COUNTRY_REPOSITORY,
@@ -206,8 +233,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new CountryRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new CountryRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: STATE_REPOSITORY,
@@ -215,8 +243,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new StateRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new StateRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: AI_ASSISTANT_REPOSITORY,
@@ -224,20 +253,29 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new AIAssistantRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new AIAssistantRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: AI_PERSONA_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new AIPersonaRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new AIPersonaRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: COMPANY_AI_PERSONA_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new CompanyAIPersonaRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new CompanyAIPersonaRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: COMPANY_AI_ASSISTANT_REPOSITORY,
@@ -245,8 +283,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new CompanyAIAssistantRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new CompanyAIAssistantRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: COMPANY_SCHEDULES_REPOSITORY,
@@ -254,8 +293,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new CompanySchedulesRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new CompanySchedulesRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: AUDIT_LOG_REPOSITORY,
@@ -263,8 +303,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new AuditLogRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new AuditLogRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: BOT_TOKEN_REPOSITORY,
@@ -272,8 +313,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new BotTokenRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new BotTokenRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: USER_STORAGE_CONFIG_REPOSITORY,
@@ -281,8 +323,9 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new UserStorageConfigRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new UserStorageConfigRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: STORAGE_TIERS_REPOSITORY,
@@ -290,14 +333,15 @@ import {
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new StorageTiersRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new StorageTiersRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: USER_ACTIVITY_LOG_REPOSITORY,
-      useFactory: (prisma: PrismaService, logger: ILogger) =>
-        new UserActivityLogRepository(prisma, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+      useFactory: (prisma: PrismaService, logger: ILogger, requestCache: RequestCacheService) =>
+        new UserActivityLogRepository(prisma, logger, requestCache),
+      inject: [PrismaService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: FILE_REPOSITORY,
@@ -306,14 +350,55 @@ import {
         transactionContext: TransactionContextService,
         configService: ConfigService,
         logger: ILogger,
-      ) => new FileRepository(prisma, transactionContext, configService, logger),
-      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new FileRepository(prisma, transactionContext, configService, logger, requestCache),
+      inject: [
+        PrismaService,
+        TransactionContextService,
+        ConfigService,
+        LOGGER_SERVICE,
+        RequestCacheService,
+      ],
     },
     {
       provide: MARKETING_CAMPAIGN_REPOSITORY,
-      useFactory: (prisma: PrismaService, transactionContext: TransactionContextService) =>
-        new MarketingCampaignRepository(prisma, transactionContext),
-      inject: [PrismaService, TransactionContextService],
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new MarketingCampaignRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
+    },
+    {
+      provide: PRODUCT_CATALOG_REPOSITORY,
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new ProductCatalogRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
+    },
+    {
+      provide: PRODUCT_MEDIA_REPOSITORY,
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new ProductMediaRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
+    },
+    {
+      provide: BULK_PROCESSING_REQUEST_REPOSITORY,
+      useFactory: (
+        prisma: PrismaService,
+        transactionContext: TransactionContextService,
+        logger: ILogger,
+        requestCache: RequestCacheService,
+      ) => new BulkProcessingRequestRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
 
     // Infrastructure services
@@ -373,6 +458,9 @@ import {
     USER_ACTIVITY_LOG_REPOSITORY,
     FILE_REPOSITORY,
     MARKETING_CAMPAIGN_REPOSITORY,
+    PRODUCT_CATALOG_REPOSITORY,
+    PRODUCT_MEDIA_REPOSITORY,
+    BULK_PROCESSING_REQUEST_REPOSITORY,
     DATABASE_HEALTH,
     TOKEN_PROVIDER,
     TRANSACTION_MANAGER,

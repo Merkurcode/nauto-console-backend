@@ -23,13 +23,18 @@ export class ProductCatalog extends AggregateRoot {
   private readonly _companyId: CompanyId;
   private readonly _createdBy: UserId;
   private _updatedBy?: UserId;
-  
+
   // NUEVO: Campos opcionales para carga masiva
   private _link?: string;
   private _sourceFileName?: string;
   private _sourceRowNumber?: number;
   private _langCode?: string;
-  
+  private _bulkRequestId?: string;
+  private _isVisible: boolean;
+
+  // Metadata JSON para URLs multimedia y otros datos
+  private _metadata?: Record<string, string>;
+
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -48,6 +53,9 @@ export class ProductCatalog extends AggregateRoot {
     sourceFileName?: string,
     sourceRowNumber?: number,
     langCode?: string,
+    bulkRequestId?: string,
+    isVisible?: boolean,
+    metadata?: Record<string, string>,
     updatedBy?: UserId,
     createdAt?: Date,
     updatedAt?: Date,
@@ -67,6 +75,9 @@ export class ProductCatalog extends AggregateRoot {
     this._sourceFileName = sourceFileName;
     this._sourceRowNumber = sourceRowNumber;
     this._langCode = langCode;
+    this._bulkRequestId = bulkRequestId;
+    this._isVisible = isVisible !== undefined ? isVisible : true;
+    this._metadata = metadata;
     this._updatedBy = updatedBy;
     this._createdAt = createdAt || new Date();
     this._updatedAt = updatedAt || new Date();
@@ -90,6 +101,9 @@ export class ProductCatalog extends AggregateRoot {
     sourceFileName?: string;
     sourceRowNumber?: number;
     langCode?: string;
+    bulkRequestId?: string;
+    isVisible?: boolean;
+    metadata?: Record<string, string>;
   }): ProductCatalog {
     const catalogId = ProductCatalogId.create(data.id);
     const companyId = CompanyId.fromString(data.companyId);
@@ -112,6 +126,9 @@ export class ProductCatalog extends AggregateRoot {
       data.sourceFileName,
       data.sourceRowNumber,
       data.langCode,
+      data.bulkRequestId,
+      data.isVisible,
+      data.metadata,
     );
 
     productCatalog.addDomainEvent(
@@ -147,6 +164,9 @@ export class ProductCatalog extends AggregateRoot {
     sourceFileName?: string | null;
     sourceRowNumber?: number | null;
     langCode?: string | null;
+    bulkRequestId?: string | null;
+    isVisible: boolean;
+    metadata?: Record<string, string> | null;
     updatedBy?: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -173,6 +193,9 @@ export class ProductCatalog extends AggregateRoot {
       data.sourceFileName || undefined,
       data.sourceRowNumber || undefined,
       data.langCode || undefined,
+      data.bulkRequestId || undefined,
+      data.isVisible,
+      data.metadata || undefined,
       updatedBy,
       data.createdAt,
       data.updatedAt,
@@ -198,7 +221,7 @@ export class ProductCatalog extends AggregateRoot {
       const langCodePattern = /^[a-z]{2,3}(-[A-Z]{2})?$/;
       if (!langCodePattern.test(this._langCode)) {
         throw new InvalidValueObjectException(
-          `Invalid language code format: ${this._langCode}. Expected format: "es-MX", "en-US", "pt-BR"`
+          `Invalid language code format: ${this._langCode}. Expected format: "es-MX", "en-US", "pt-BR"`,
         );
       }
     }
@@ -273,6 +296,18 @@ export class ProductCatalog extends AggregateRoot {
     return this._langCode;
   }
 
+  get bulkRequestId(): string | undefined {
+    return this._bulkRequestId;
+  }
+
+  get isVisible(): boolean {
+    return this._isVisible;
+  }
+
+  get metadata(): Record<string, string> | undefined {
+    return this._metadata;
+  }
+
   // Business methods
   update(data: {
     industry?: string;
@@ -286,6 +321,7 @@ export class ProductCatalog extends AggregateRoot {
     sourceFileName?: string;
     sourceRowNumber?: number;
     langCode?: string;
+    metadata?: Record<string, string>;
     updatedBy: string;
   }): void {
     const previousValues = {
@@ -300,6 +336,7 @@ export class ProductCatalog extends AggregateRoot {
       sourceFileName: this._sourceFileName,
       sourceRowNumber: this._sourceRowNumber,
       langCode: this._langCode,
+      metadata: this._metadata ? { ...this._metadata } : undefined,
     };
 
     const changes: {
@@ -314,6 +351,7 @@ export class ProductCatalog extends AggregateRoot {
       sourceFileName?: string;
       sourceRowNumber?: number;
       langCode?: string;
+      metadata?: Record<string, string>;
     } = {};
 
     if (data.industry !== undefined && data.industry !== this._industry) {
@@ -370,6 +408,17 @@ export class ProductCatalog extends AggregateRoot {
       this._langCode = data.langCode;
       this.validateLangCode();
       changes.langCode = data.langCode;
+    }
+    if (data.metadata !== undefined) {
+      // Compare metadata objects properly
+      const currentMetadata = this._metadata || {};
+      const newMetadata = data.metadata || {};
+      const metadataChanged = JSON.stringify(currentMetadata) !== JSON.stringify(newMetadata);
+
+      if (metadataChanged) {
+        this._metadata = Object.keys(newMetadata).length > 0 ? newMetadata : undefined;
+        changes.metadata = this._metadata;
+      }
     }
 
     this._updatedBy = UserId.fromString(data.updatedBy);

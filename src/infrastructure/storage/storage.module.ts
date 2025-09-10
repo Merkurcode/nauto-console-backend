@@ -8,6 +8,7 @@ import { FileRepository } from '../repositories/file.repository';
 import { UserStorageConfigRepository } from '../repositories/user-storage-config.repository';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { TransactionContextService } from '../database/prisma/transaction-context.service';
+import { RequestCacheService } from '../caching/request-cache.service';
 import { RedisModule } from '../redis/redis.module';
 import { ConcurrencyService } from '../services/concurrency.service';
 import {
@@ -23,6 +24,7 @@ import { ILogger } from '@core/interfaces/logger.interface';
 @Module({
   imports: [CqrsModule, RedisModule, forwardRef(() => CoreModule)],
   providers: [
+    RequestCacheService,
     {
       provide: FILE_REPOSITORY,
       useFactory: (
@@ -30,8 +32,15 @@ import { ILogger } from '@core/interfaces/logger.interface';
         transactionContext: TransactionContextService,
         configService: ConfigService,
         logger: ILogger,
-      ) => new FileRepository(prisma, transactionContext, configService, logger),
-      inject: [PrismaService, TransactionContextService, ConfigService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new FileRepository(prisma, transactionContext, configService, logger, requestCache),
+      inject: [
+        PrismaService,
+        TransactionContextService,
+        ConfigService,
+        LOGGER_SERVICE,
+        RequestCacheService,
+      ],
     },
     {
       provide: USER_STORAGE_CONFIG_REPOSITORY,
@@ -39,8 +48,9 @@ import { ILogger } from '@core/interfaces/logger.interface';
         prisma: PrismaService,
         transactionContext: TransactionContextService,
         logger: ILogger,
-      ) => new UserStorageConfigRepository(prisma, transactionContext, logger),
-      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE],
+        requestCache: RequestCacheService,
+      ) => new UserStorageConfigRepository(prisma, transactionContext, logger, requestCache),
+      inject: [PrismaService, TransactionContextService, LOGGER_SERVICE, RequestCacheService],
     },
     {
       provide: STORAGE_SERVICE,

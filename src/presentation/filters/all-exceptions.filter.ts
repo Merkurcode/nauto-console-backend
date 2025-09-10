@@ -144,6 +144,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ['INVALID_FILE_OPERATION', 409], // Conflict - file state doesn't allow operation
         ['FILE_ACCESS_DENIED', 403], // Forbidden - user doesn't have access to file
         ['FILE_NOT_OWNED_BY_USER', 403], // Forbidden - user doesn't own the file
+
+        // Bulk processing domain exceptions
+        ['BULK_PROCESSING_REQUEST_NOT_FOUND', 404],
+        ['UNAUTHORIZED_BULK_PROCESSING_REQUEST_ACCESS', 403],
+        ['BULK_PROCESSING_FILE_STATUS_RESTORE_FAILED', 500],
+        ['BULK_PROCESSING_INVALID_STATUS', 400],
+        ['BULK_PROCESSING_FILE_NOT_FOUND', 404],
+        ['BULK_PROCESSING_INVALID_FILE_STATUS', 400],
+        ['BULK_PROCESSING_NO_ERRORS_FOUND', 404], // Not Found - no error report available
       ]);
 
       const status = domainStatusMap.get(exception.code) || 500;

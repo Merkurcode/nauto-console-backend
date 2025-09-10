@@ -51,12 +51,13 @@ export interface IProcessorConfig {
 
 export interface IJobConfig {
   attempts?: number;
-  backoff?: { type: 'fixed' | 'exponential'; delay: number };
+  backoff?: { type: 'fixed' | 'exponential'; delay: number } | number;
   delay?: number;
   priority?: number;
   removeOnComplete?: boolean | number | { age?: number; count?: number };
   removeOnFail?: boolean | number | { age?: number; count?: number };
   lifo?: boolean;
+  timeout?: number;
 }
 
 export interface IQueueConfig {

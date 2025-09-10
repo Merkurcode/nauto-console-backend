@@ -18,6 +18,7 @@ import {
   FileTargetAppsChangedEvent,
 } from '@core/events/file.events';
 import { InvalidFileStateException } from '@core/exceptions/storage-domain.exceptions';
+import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
 
 export class File extends AggregateRoot {
   private readonly _id: string;
@@ -128,6 +129,19 @@ export class File extends AggregateRoot {
   }
   get storageDriver(): string {
     return this._storageDriver;
+  }
+
+  private throwIfStatusIsProcessing() {
+    if (this._status.isProcessing()) {
+      throw new InvalidValueObjectException(
+        'The file is currently being processed by another task',
+      );
+    }
+    if (this._status.isErasing()) {
+      throw new InvalidValueObjectException(
+        'The file is scheduled for deletion and cannot be modified',
+      );
+    }
   }
 
   // Simple factory method - path and access already determined by endpoint
@@ -281,11 +295,13 @@ export class File extends AggregateRoot {
   }
 
   public updateUser(userId: string | null): void {
+    this.throwIfStatusIsProcessing();
     this._userId = userId;
     this._updatedAt = new Date();
   }
 
   public updateTargetApps(targetApps: string[]): void {
+    this.throwIfStatusIsProcessing();
     const oldTargetApps = [...this._targetApps];
     this._targetApps = [...targetApps];
     this._updatedAt = new Date();
@@ -300,12 +316,14 @@ export class File extends AggregateRoot {
 
   /** Solo cambia el nombre "original" (no el key real). */
   public rename(newOriginalName: string): void {
+    this.throwIfStatusIsProcessing();
     this._originalName = newOriginalName;
     this._updatedAt = new Date();
   }
 
   /** Cambia el filename y reconstruye el objectKey. */
   public renameFilename(newFilename: string): void {
+    this.throwIfStatusIsProcessing();
     const oldFilename = this._filename;
     const oldObjectKey = this._objectKey.toString();
 
@@ -330,6 +348,7 @@ export class File extends AggregateRoot {
   }
 
   public move(newPath: string, newFilename?: string): void {
+    this.throwIfStatusIsProcessing();
     const oldPath = this._path;
     const oldFilename = this._filename;
     const oldObjectKey = this._objectKey.toString();
@@ -400,25 +419,25 @@ export class File extends AggregateRoot {
   }
 
   public completeUpload(etag?: string): void {
-    if (!this._status.isUploading()) {
-      /* ... igual que antes ... */
-    }
-
     const oldStatus = this._status;
     this._status = FileStatus.uploaded();
-    this._uploadId = null;
-    if (etag) this._etag = ETag.create(etag);
     this._updatedAt = new Date();
 
-    this.addDomainEvent(
-      new FileUploadCompletedEvent(
-        this._id,
-        this._userId,
-        this._filename,
-        this._size.getBytes(),
-        this._etag?.toString(), // pasa etag si quedó seteado
-      ),
-    );
+    if (oldStatus.isUploading()) {
+      this._uploadId = null;
+      if (etag) this._etag = ETag.create(etag);
+
+      this.addDomainEvent(
+        new FileUploadCompletedEvent(
+          this._id,
+          this._userId,
+          this._filename,
+          this._size.getBytes(),
+          this._etag?.toString(), // pasa etag si quedó seteado
+        ),
+      );
+    }
+
     this.addDomainEvent(
       new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
     );
@@ -428,11 +447,17 @@ export class File extends AggregateRoot {
     this.completeUpload();
   }
 
+  public setEtag(etag: string): void {
+    this._etag = ETag.create(etag);
+    this._updatedAt = new Date();
+  }
+
   public updateLastActivity(): void {
     this._updatedAt = new Date();
   }
 
   public markAsUploading(): void {
+    this.throwIfStatusIsProcessing();
     if (!this._status.isUploading()) {
       const oldStatus = this._status;
       this._status = FileStatus.uploading();
@@ -448,6 +473,7 @@ export class File extends AggregateRoot {
   }
 
   public markAsPending(): void {
+    this.throwIfStatusIsProcessing();
     if (!this._status.isPending()) {
       const oldStatus = this._status;
       this._status = FileStatus.pending();
@@ -465,9 +491,34 @@ export class File extends AggregateRoot {
   }
 
   public markAsCopying(): void {
+    this.throwIfStatusIsProcessing();
     if (!this._status.isCopying()) {
       const oldStatus = this._status;
       this._status = FileStatus.copying();
+      this._updatedAt = new Date();
+
+      this.addDomainEvent(
+        new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
+      );
+    }
+  }
+
+  public markAsProcessing(): void {
+    if (!this._status.isProcessing()) {
+      const oldStatus = this._status;
+      this._status = FileStatus.processing();
+      this._updatedAt = new Date();
+
+      this.addDomainEvent(
+        new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
+      );
+    }
+  }
+
+  public markAsErasing(): void {
+    if (!this._status.isErasing()) {
+      const oldStatus = this._status;
+      this._status = FileStatus.erasing();
       this._updatedAt = new Date();
 
       this.addDomainEvent(
@@ -486,18 +537,28 @@ export class File extends AggregateRoot {
   }
 
   public canBeDeleted(): boolean {
-    // Security requirement 6: Only UPLOADED files can be deleted
-    return this._status.isUploaded();
+    // Security requirement 6: Only UPLOADED files can be deleted, not PROCESSING or ERASING files
+    return this._status.isUploaded() && !this._status.isProcessing() && !this._status.isErasing();
   }
 
   public canBeMoved(): boolean {
-    // Security requirement 5: Only UPLOADED files can be moved
-    return this._status.isUploaded() && !this._status.isCopying();
+    // Security requirement 5: Only UPLOADED files can be moved, not COPYING, PROCESSING or ERASING files
+    return (
+      this._status.isUploaded() &&
+      !this._status.isCopying() &&
+      !this._status.isProcessing() &&
+      !this._status.isErasing()
+    );
   }
 
   public canBeRenamed(): boolean {
-    // Security requirement 4: Only UPLOADED files can be renamed
-    return this._status.isUploaded() && !this._status.isCopying();
+    // Security requirement 4: Only UPLOADED files can be renamed, not COPYING, PROCESSING or ERASING files
+    return (
+      this._status.isUploaded() &&
+      !this._status.isCopying() &&
+      !this._status.isProcessing() &&
+      !this._status.isErasing()
+    );
   }
 
   // Utility methods
@@ -519,5 +580,27 @@ export class File extends AggregateRoot {
 
   public getETagString(): string | null {
     return this._etag?.toString() || null;
+  }
+
+  /**
+   * Restore file to a specific status with proper event emission
+   * Used by bulk processing processors to restore file status after completion/failure
+   */
+  public restoreStatus(targetStatus: string): void {
+    const oldStatus = this._status;
+    this._status = FileStatus.fromString(targetStatus);
+    this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new FileStatusChangedEvent(this._id, this._userId, oldStatus, this._status),
+    );
+  }
+
+  /**
+   * Convenience method to restore file to UPLOADED status
+   * Used by bulk processing processors when restoring original status
+   */
+  public restoreToUploaded(): void {
+    this.restoreStatus(FileStatus.uploaded().toString());
   }
 }

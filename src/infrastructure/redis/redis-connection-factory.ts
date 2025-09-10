@@ -1,5 +1,6 @@
 import Redis, { RedisOptions } from 'ioredis';
 import { ConfigService } from '@nestjs/config';
+import { ILogger } from '@core/interfaces/logger.interface';
 
 export interface IRedisConnectionFactory {
   createConnection(purpose: string, additionalConfig?: Partial<RedisOptions>): Redis;
@@ -14,7 +15,11 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
   private readonly baseConfig: RedisOptions;
   private readonly connectionPool = new Map<string, Redis>();
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: ILogger,
+  ) {
+    this.logger.setContext(RedisConnectionFactory.name);
     // Configuración base robusta para todas las conexiones
     this.baseConfig = {
       // Evita que ioredis "falle" promesas si se reconecta
@@ -127,11 +132,9 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
       const delay = Math.min(times * 100, 1000); // 100ms -> 1s max (fast reconnect)
       const connectionId = purpose || 'unknown';
 
-      // DEVELOPMENT: Suppress reconnect logging for cleaner console
       // Only log if reconnection is failing repeatedly (> 5 attempts)
-      if (times > 5 && process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
-        console.log(`[${connectionId}] Redis reconnect attempt ${times}, delay: ${delay}ms`);
+      if (times > 5) {
+        this.logger.warn(`[${connectionId}] Redis reconnect attempt ${times}, delay: ${delay}ms`);
       }
 
       return delay;
@@ -154,7 +157,7 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
 
       if (shouldReconnect) {
         const connectionId = purpose || 'unknown';
-        console.warn(`[${connectionId}] Redis reconnecting due to: ${msg}`);
+        this.logger.warn(`[${connectionId}] Redis reconnecting due to: ${msg}`);
 
         return true;
       }
@@ -174,16 +177,14 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
     redis.on('connect', () => {
       // Only log important connections in development to reduce noise
       if (!isDev || isImportantConnection) {
-        // eslint-disable-next-line no-console
-        console.log(`[${connectionName}] Redis connected successfully`);
+        this.logger.log(`[${connectionName}] Redis connected successfully`);
       }
     });
 
     redis.on('ready', () => {
       // Only log important connections in development
       if (!isDev || isImportantConnection) {
-        // eslint-disable-next-line no-console
-        console.log(`[${connectionName}] Redis ready for commands`);
+        this.logger.log(`[${connectionName}] Redis ready for commands`);
       }
     });
 
@@ -198,28 +199,28 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
         msg.includes('Socket closed unexpectedly');
 
       if (!isKnownReconnectError) {
-        console.error(`[${connectionName}] Redis error:`, err.message);
+        this.logger.error(`[${connectionName}] Redis error: ${err.message}`, err.stack);
       }
     });
 
     redis.on('close', () => {
       // Suppress noisy close events in development
       if (!isDev) {
-        console.warn(`[${connectionName}] Redis connection closed`);
+        this.logger.warn(`[${connectionName}] Redis connection closed`);
       }
     });
 
     redis.on('reconnecting', delay => {
       // Suppress noisy reconnecting events in development
       if (!isDev) {
-        console.warn(`[${connectionName}] Redis reconnecting in ${delay}ms`);
+        this.logger.warn(`[${connectionName}] Redis reconnecting in ${delay}ms`);
       }
     });
 
     redis.on('end', () => {
       // Suppress noisy end events in development
       if (!isDev) {
-        console.warn(`[${connectionName}] Redis connection ended`);
+        this.logger.warn(`[${connectionName}] Redis connection ended`);
       }
     });
   }
@@ -237,7 +238,7 @@ export class RedisConnectionFactory implements IRedisConnectionFactory {
           await redis.quit();
         } catch (error) {
           // Ignore errors during cleanup
-          console.warn('Error closing Redis connection during cleanup:', error);
+          this.logger.warn(`Error closing Redis connection during cleanup: ${error}`);
         }
       }),
     );

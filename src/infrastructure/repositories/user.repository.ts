@@ -42,6 +42,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
     @Optional() requestCache?: RequestCacheService,
   ) {
+    logger?.setContext(UserRepository.name);
     super(logger, requestCache);
   }
 

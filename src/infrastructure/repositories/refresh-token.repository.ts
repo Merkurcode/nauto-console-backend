@@ -10,6 +10,7 @@ import { UserId } from '@core/value-objects/user-id.vo';
 import { Token } from '@core/value-objects/token.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class RefreshTokenRepository
@@ -20,9 +21,11 @@ export class RefreshTokenRepository
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(RefreshTokenRepository.name);
+    super(logger, undefined); // Refresh tokens should not be cached - they are sensitive auth tokens
   }
 
   private get client() {

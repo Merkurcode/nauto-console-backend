@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
@@ -15,6 +16,7 @@ import {
 } from '@core/repositories/storage.service.interface';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import Stream from 'node:stream';
 
 type ReqParams = Record<string, string | number | boolean | undefined>;
 
@@ -524,6 +526,21 @@ export class MinioStorageService implements IStorageService {
       };
     } catch (error) {
       this.logAndThrow('Failed to get object metadata', { bucket, objectKey }, error);
+    }
+  }
+
+  async getObjectStream(bucket: string, objectKey: string): Promise<Stream.Readable> {
+    try {
+      this.logger.debug({ message: 'Getting object stream', bucket, objectKey });
+
+      this.validateBucketName(bucket);
+      this.validateSecureObjectKey(objectKey);
+
+      const stream = await this.minioClient.getObject(bucket, objectKey);
+
+      return stream;
+    } catch (error) {
+      this.logAndThrow('Failed to get object stream', { bucket, objectKey }, error);
     }
   }
 

@@ -8,6 +8,7 @@ import { TransactionContextService } from '@infrastructure/database/prisma/trans
 import { BaseRepository } from './base.repository';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 // Prisma record interface for company schedules
 interface IPrismaCompanyScheduleRecord {
@@ -29,9 +30,11 @@ export class CompanySchedulesRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(CompanySchedulesRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

@@ -80,11 +80,14 @@ export abstract class BaseRepository<T> {
     action: () => Promise<R>,
     fallbackValue?: R,
     cacheParams?: unknown,
+    useCacheParamsForCache: boolean = true,
   ): Promise<R | undefined> {
     const entityType = this.constructor.name.replace('Repository', '');
+    const doCache = useCacheParamsForCache ? (cacheParams ? true : false) : true;
 
     // Try to get from cache first
-    if (this.requestCache) {
+    if (doCache && this.requestCache) {
+      // doCache <-- only if requested by function
       const cachedResult = this.requestCache.get<R>(entityType, operation, cacheParams);
       if (cachedResult !== undefined) {
         if (this.baseLogger) {
@@ -113,10 +116,12 @@ export abstract class BaseRepository<T> {
       const start = performance.now();
       const result = await action();
       const duration = performance.now() - start;
+      let cached = false;
 
       // Cache the result
-      if (this.requestCache && result !== undefined) {
+      if (doCache && this.requestCache && result !== undefined) {
         this.requestCache.set(entityType, operation, cacheParams, result);
+        cached = true;
       }
 
       if (this.baseLogger) {
@@ -125,7 +130,7 @@ export abstract class BaseRepository<T> {
           operation,
           entityType,
           duration: `${duration}ms`,
-          cached: this.requestCache ? 'yes' : 'no',
+          cached: cached ? 'yes' : 'no',
         });
       }
 
@@ -141,14 +146,38 @@ export abstract class BaseRepository<T> {
   }
 
   /**
-   * Execute a database operation with error handling (legacy method for backward compatibility)
+   * Invalidate cache entry for specific parameters
+   * @param cacheParams - Parameters used for cache key generation
    */
-  protected async executeWithErrorHandlingLegacy<R>(
-    operation: string,
-    action: () => Promise<R>,
-    fallbackValue?: R,
-    entityId?: string,
-  ): Promise<R | undefined> {
-    return this.executeWithErrorHandling(operation, action, fallbackValue, { entityId });
+  protected async invalidateCache(cacheParams?: unknown): Promise<void> {
+    if (this.requestCache) {
+      const entityType = this.constructor.name.replace('Repository', '');
+      this.requestCache.invalidate(entityType, cacheParams);
+
+      if (this.baseLogger) {
+        this.baseLogger.debug({
+          message: 'Cache invalidated',
+          entityType,
+          cacheParams: cacheParams ? 'present' : 'none',
+        });
+      }
+    }
+  }
+
+  /**
+   * Clear all cache entries for this repository
+   */
+  protected async clearAllCache(): Promise<void> {
+    if (this.requestCache) {
+      const entityType = this.constructor.name.replace('Repository', '');
+      this.requestCache.clearAll(entityType);
+
+      if (this.baseLogger) {
+        this.baseLogger.debug({
+          message: 'All cache cleared',
+          entityType,
+        });
+      }
+    }
   }
 }

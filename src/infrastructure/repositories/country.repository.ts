@@ -5,6 +5,7 @@ import { ICountryRepository } from '@core/repositories/country.repository.interf
 import { Country } from '@core/entities/country.entity';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -12,9 +13,11 @@ export class CountryRepository extends BaseRepository<Country> implements ICount
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(CountryRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

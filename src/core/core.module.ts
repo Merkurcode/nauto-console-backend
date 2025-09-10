@@ -44,6 +44,9 @@ import { FileUploadValidationService } from './services/file-upload-validation.s
 import { MultipartUploadService } from './services/multipart-upload.service';
 import { FileNamingService } from './services/file-naming.service';
 import { MarketingCampaignService } from './services/marketing-campaign.service';
+import { ExcelStreamingService } from './services/excel-streaming.service';
+import { FileDownloadStreamingService } from './services/file-download-streaming.service';
+import { BulkProcessingService } from './services/bulk-processing.service';
 
 /**
  * Core Domain Module
@@ -97,6 +100,9 @@ import { MarketingCampaignService } from './services/marketing-campaign.service'
     MultipartUploadService,
     FileNamingService,
     MarketingCampaignService,
+    ExcelStreamingService,
+    FileDownloadStreamingService,
+    BulkProcessingService,
   ],
   exports: [
     // Export all domain services
@@ -143,6 +149,9 @@ import { MarketingCampaignService } from './services/marketing-campaign.service'
     MultipartUploadService,
     FileNamingService,
     MarketingCampaignService,
+    ExcelStreamingService,
+    FileDownloadStreamingService,
+    BulkProcessingService,
   ],
 })
 export class CoreModule {}

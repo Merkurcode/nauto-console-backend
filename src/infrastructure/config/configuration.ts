@@ -34,6 +34,7 @@ export default () => ({
   apiUrl: getApiUrl(),
   apiVersion: process.env.API_VERSION || 'v1',
   appVersion: process.env.APP_VERSION || '?.?.?',
+  userAgent: `${(process.env.APP_NAME || 'NestJS Template').replace(/\s/g, '')}/${(process.env.API_VERSION || 'v1').replace('v', '')} (${process.env.NODE_ENV || 'development'} ${process.env.APP_VERSION || '?.?.?'}; Node.js)`,
 
   // Database
   database: {
@@ -263,6 +264,14 @@ export default () => ({
     streams: {
       maxLen: parseInt(process.env.QUEUE_EVENTS_STREAM_MAXLEN || '20000', 10),
       approximate: process.env.QUEUE_EVENTS_STREAM_APPROX !== 'false',
+    },
+    // Bulk Processing configuration (optimized for 512MB RAM)
+    bulkProcessing: {
+      maxFileSizeMB: parseInt(process.env.BULK_PROCESSING_MAX_FILE_SIZE_MB || '10', 10),
+      downloadTimeoutMs: parseInt(process.env.BULK_PROCESSING_DOWNLOAD_TIMEOUT_MS || '30000', 10),
+      downloadRetries: parseInt(process.env.BULK_PROCESSING_DOWNLOAD_RETRIES || '2', 10),
+      maxStoredErrors: parseInt(process.env.BULK_PROCESSING_MAX_STORED_ERRORS || '1000', 10),
+      maxStoredWarnings: parseInt(process.env.BULK_PROCESSING_MAX_STORED_WARNINGS || '1000', 10),
     },
   },
 

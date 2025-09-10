@@ -38,6 +38,8 @@ enum FileStatus {
   UPLOADING
   UPLOADED
   COPYING
+  PROCESSING
+  ERASING
 }
 
 enum UserActivityType {
@@ -75,6 +77,20 @@ enum FileType {
   AUDIO
   DOCUMENT
   OTHER
+}
+
+enum BulkProcessingType {
+  PRODUCT_CATALOG
+  // Add more types as needed
+}
+
+enum BulkProcessingStatus {
+  PENDING
+  PROCESSING
+  CANCELLING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 model CompanySchedules {
@@ -255,6 +271,7 @@ model User {
   marketingCampaignsUpdated MarketingCampaign[] @relation("MarketingCampaignUpdatedBy")
   productMediaCreated ProductMedia[]
   productCatalogsCreated ProductCatalog[] @relation("ProductCatalogCreatedBy")
+  bulkProcessingRequests BulkProcessingRequest[]
   productCatalogsUpdated ProductCatalog[] @relation("ProductCatalogUpdatedBy")
   
   @@index([companyId])
@@ -427,6 +444,7 @@ model Company {
   companyAIPersonas CompanyAIPersona[]
   marketingCampaigns MarketingCampaign[]
   productCatalogs ProductCatalog[]
+  bulkProcessingRequests BulkProcessingRequest[]
   
   @@index([parentCompanyId])
 }
@@ -482,6 +500,7 @@ model File {
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   marketingCampaigns MarketingCampaign[]
   productMedia ProductMedia[]
+  bulkProcessingRequests BulkProcessingRequest[]
 
   @@index([userId])
   @@index([status])
@@ -696,14 +715,20 @@ model ProductCatalog {
   sourceFileName   String?  // Nombre del archivo del cual fue agregado este registro
   sourceRowNumber  Int?     // Número de fila del archivo de donde fue tomado el producto
   langCode         String?  // ISO / BCP47 langCode (ej: "es-MX", "en-US", "pt-BR")
+  bulkRequestId    String?  // ID del bulk processing request para trazabilidad
+  isVisible        Boolean  @default(true) // Indicates if the product is visible/active
+  
+  // Metadata JSON para URLs multimedia y otros datos
+  metadata         Json?    // JSON object mapping media types to URLs (photo, video, pdf, etc.)
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
   // Relations
-  company          Company        @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  creator          User           @relation("ProductCatalogCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  updater          User?          @relation("ProductCatalogUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  creator          User                 @relation("ProductCatalogCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updater          User?                @relation("ProductCatalogUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  bulkRequest      BulkProcessingRequest? @relation(fields: [bulkRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   media            ProductMedia[]
   
   @@unique([id, companyId]) // Ensure ID is unique per company
@@ -711,6 +736,8 @@ model ProductCatalog {
   @@index([industry])
   @@index([type])
   @@index([subcategory])
+  @@index([bulkRequestId])
+  @@index([isVisible])
 }
 
 model ProductMedia {
@@ -741,4 +768,39 @@ model ProductMedia {
   @@index([fileId])
   @@index([createdBy])
   @@index([fileType])
+}
+
+model BulkProcessingRequest {
+  id            String                @id @default(uuid())
+  type          BulkProcessingType
+  fileId        String
+  fileName      String
+  status        BulkProcessingStatus  @default(PENDING)
+  jobId         String?               @unique // Queue job ID, assigned when processing starts
+  totalRows     Int?
+  processedRows Int                   @default(0)
+  successfulRows Int                  @default(0)
+  failedRows    Int                   @default(0)
+  rowLogs       Json?                 // Stores IBulkProcessingRowLog[] as JSON
+  errorMessage  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  excelProcessingCompleted Boolean   @default(false) // True when Excel streaming phase is complete
+  companyId     String
+  requestedBy   String
+  metadata      Json?                 // Additional metadata including originalFileStatus
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  // Relations
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requestedByUser User                  @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
+  file            File                  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  products        ProductCatalog[]      // Products created by this bulk request
+
+  // Composite indexes for performance
+  @@index([companyId, status])
+  @@index([companyId, type])
+  @@index([companyId, requestedBy])
+  @@index([companyId, createdAt])
 }

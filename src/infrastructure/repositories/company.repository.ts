@@ -11,6 +11,7 @@ import { CompanyName } from '@core/value-objects/company-name.vo';
 import { Host } from '@core/value-objects/host.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import { ICompanyConfigAI } from '@core/interfaces/company-config-ai.interface';
 import { JsonValue } from '@prisma/client/runtime/library';
 import { BaseRepository } from './base.repository';
@@ -20,9 +21,11 @@ export class CompanyRepository extends BaseRepository<Company> implements ICompa
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(CompanyRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

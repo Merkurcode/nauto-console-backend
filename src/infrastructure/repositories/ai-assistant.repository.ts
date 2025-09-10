@@ -7,6 +7,7 @@ import { IAIAssistantRepository } from '@core/repositories/ai-assistant.reposito
 import { AssistantAreaEnum } from '@shared/constants/enums';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 import {
   IPrismaAIAssistantData,
   IPrismaAIAssistantFeature,
@@ -20,9 +21,11 @@ export class AIAssistantRepository
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(AIAssistantRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, HttpException, HttpStatus, Inject } from '@nestjs/common';
-import { Queue, JobsOptions } from 'bullmq';
+import { Queue, JobsOptions, Job } from 'bullmq';
 import { createHash } from 'crypto';
 import { IPublishOptions, IQueueModuleConfig, IBaseJobData } from '../types';
 import { HealthService } from '../health/health-checker.service';
@@ -39,7 +40,7 @@ export abstract class BaseEventBus<T = Record<string, any>> {
     const jobOpts = this.buildJobOptions(opts, jobId);
 
     await this.queue.add(jobName, jobData, jobOpts);
-    this.logger.debug(`Job published: ${jobName} (${jobId})`);
+    this.logger.log(`✅ Job published: ${jobName} (${jobId}) with delay: ${jobOpts.delay ? `${jobOpts.delay}ms` : 'none'}`);
 
     return { jobId, status: 'queued' };
   }
@@ -101,6 +102,118 @@ export abstract class BaseEventBus<T = Record<string, any>> {
     };
   }
 
+  /**
+   * Cancel a job by its ID
+   * @param jobId The job ID to cancel
+   * @returns Object indicating success and job state
+   */
+  async cancelJob(jobId: string): Promise<{
+    success: boolean;
+    previousState?: string;
+    message: string;
+  }> {
+    try {
+      const job = (await this.queue.getJob(jobId)) as Job;
+
+      if (!job) {
+        return {
+          success: false,
+          message: `Job ${jobId} not found in queue`,
+        };
+      }
+
+      const state = await job.getState();
+
+      // Can remove jobs that are waiting, delayed, prioritized, waiting-children, paused, repeat, or wait
+      if (
+        state === 'waiting' ||
+        state === 'delayed' ||
+        state === 'prioritized' ||
+        state === 'waiting-children'
+      ) {
+        await job.remove({
+          removeChildren: true,
+        });
+        this.logger.log(`Cancelled job ${jobId} in state: ${state}`);
+
+        return {
+          success: true,
+          previousState: state,
+          message: `Job ${jobId} successfully cancelled`,
+        };
+      }
+
+      if (state === 'active') {
+        // For active jobs, we can't directly cancel but we can mark them for cancellation
+        // The processor should check for this and handle gracefully
+        await job.updateData({
+          ...job.data,
+          cancelled: true,
+          cancelledAt: new Date().toISOString(),
+        });
+        this.logger.log(`Marked active job ${jobId} for cancellation`);
+
+        return {
+          success: true,
+          previousState: state,
+          message: `Active job ${jobId} marked for cancellation`,
+        };
+      }
+
+      if (state === 'completed' || state === 'failed') {
+        return {
+          success: false,
+          previousState: state,
+          message: `Cannot cancel job ${jobId} in ${state} state`,
+        };
+      }
+
+      return {
+        success: false,
+        previousState: state,
+        message: `Job ${jobId} is in unexpected state: ${state}`,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to cancel job ${jobId}: ${error}`);
+
+      return {
+        success: false,
+        message: `Error cancelling job: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * Get job status by ID
+   */
+  async getJobStatus(jobId: string): Promise<{
+    exists: boolean;
+    state?: string;
+    progress?: number;
+    data?: any;
+  }> {
+    try {
+      const job = await this.queue.getJob(jobId);
+
+      if (!job) {
+        return { exists: false };
+      }
+
+      const state = await job.getState();
+
+      return {
+        exists: true,
+        state,
+        progress: job.progress,
+        data: job.data,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get job status ${jobId}: ${error}`);
+
+      return { exists: false };
+    }
+  }
+
   protected enforceHealthOrThrow(): void {
     if (!this.healthService.isAccepting(this.queue.name)) {
       throw new HttpException('Queue unhealthy', HttpStatus.SERVICE_UNAVAILABLE);
@@ -124,7 +237,7 @@ export abstract class BaseEventBus<T = Record<string, any>> {
     if (opts?.jobId) return opts.jobId;
     if (opts?.useIdempotency) return this.createDeterministicJobId(data, jobName);
 
-    return `${jobName}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${jobName}-${Date.now()}-${crypto.randomUUID()}`;
   }
 
   protected createDeterministicJobId(data: T, jobName: string): string {
@@ -135,12 +248,12 @@ export abstract class BaseEventBus<T = Record<string, any>> {
 
       return `${jobName}-${hash}`;
     } catch {
-      return `${jobName}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return `${jobName}-${Date.now()}-${crypto.randomUUID()}`;
     }
   }
 
   private sortDeep(obj: any): any {
-    if (obj === null || typeof obj !== 'object') return obj;
+    if (obj === undefined || obj === null || typeof obj !== 'object') return obj;
     if (Array.isArray(obj)) return obj.map(item => this.sortDeep(item));
 
     const sorted: any = {};

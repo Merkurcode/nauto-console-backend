@@ -9,6 +9,7 @@ import { BaseRepository } from './base.repository';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository {
@@ -16,9 +17,11 @@ export class OtpRepository extends BaseRepository<Otp> implements IOtpRepository
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
     private readonly configService: ConfigService,
-    @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super(logger);
+    logger?.setContext(OtpRepository.name);
+    super(logger, undefined); // OTP tokens should not be cached - they are temporal and sensitive
   }
 
   private get client() {

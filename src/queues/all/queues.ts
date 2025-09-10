@@ -26,15 +26,19 @@ import {
 
 import {
   StaleUploadsCleanupProcessor,
-  StaleUploadsCleanupService,
   ModuleConfig as StaleUploadsMC
 } from './stale-uploads-cleanup';
 
 import {
   UploadsMaintenanceProcessor,
-  UploadsMaintenanceService,
   ModuleConfig as UploadsMaintenanceMC
 } from './uploads-maintenance';
+
+import {
+  BulkProcessingProcessor,
+  BulkProcessingEventBus,
+  ModuleConfig as BulkProcMC 
+} from './bulk-processing';
 
 export const Queues: IQueueDefinition[] = [
   {
@@ -52,5 +56,14 @@ export const Queues: IQueueDefinition[] = [
     name: UploadsMaintenanceMC.queue.name,
     processor: UploadsMaintenanceProcessor,
     streams: { maxLen: 10_000, approximate: true }
+  },
+  {
+    name: BulkProcMC.queue.name,
+    processor: BulkProcessingProcessor,
+    eventBusAdapter: BulkProcessingEventBus,
+    streams: { 
+      maxLen: parseInt(process.env.BULK_PROCESSING_STREAM_MAXLEN || '5000', 10),
+      approximate: process.env.BULK_PROCESSING_STREAM_APPROX !== 'false'
+    }
   },
 ] as const;

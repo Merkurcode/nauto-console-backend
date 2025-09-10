@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { BaseRepository } from './base.repository';
@@ -10,14 +10,20 @@ import { AIPersonaTone } from '@core/value-objects/ai-persona-tone.vo';
 import { AIPersonaPersonality } from '@core/value-objects/ai-persona-personality.vo';
 import { AIPersonaObjective } from '@core/value-objects/ai-persona-objective.vo';
 import { AIPersonaShortDetails } from '@core/value-objects/ai-persona-short-details.vo';
+import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { ILogger } from '@core/interfaces/logger.interface';
+import { RequestCacheService } from '@infrastructure/caching/request-cache.service';
 
 @Injectable()
 export class AIPersonaRepository extends BaseRepository<AIPersona> implements IAIPersonaRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionContext: TransactionContextService,
+    @Optional() @Inject(LOGGER_SERVICE) private readonly logger?: ILogger,
+    @Optional() _requestCache?: RequestCacheService,
   ) {
-    super();
+    logger?.setContext(AIPersonaRepository.name);
+    super(logger, undefined);
   }
 
   private get client() {
