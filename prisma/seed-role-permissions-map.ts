@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { permissions } from './seed-permissions';
 import { RolesEnum } from '../src/shared/constants/enums';
 import { PERMISSION_EXCLUDE_SYMBOLS } from '../src/shared/constants/permission-exclude';
+import { ActiveResources, getResourceKey } from '@shared/constants/bulk-processing-type.enum';
 
 // Map of role names to permissions they should have
 const rolePermissionsMap = {
@@ -26,6 +27,7 @@ const rolePermissionsMap = {
     'marketing-campaign:read', 'marketing-campaign:write', 'marketing-campaign:update', 'marketing-campaign:delete', 'marketing-campaign:manage',
     'product-catalog:read', 'product-catalog:write', 'product-catalog:delete',
     'product-media:read', 'product-media:write', 'product-media:delete',
+    getResourceKey(ActiveResources.PRODUCTS, 'write'), getResourceKey(ActiveResources.PRODUCTS, 'delete'), getResourceKey(ActiveResources.PRODUCTS, 'manage-events'),
   ],
   [RolesEnum.ROOT_READONLY]: [
     'sensitive:operations',
@@ -62,6 +64,7 @@ const rolePermissionsMap = {
     'marketing-campaign:read', 'marketing-campaign:write', 'marketing-campaign:update', 'marketing-campaign:delete', 'marketing-campaign:manage',
     'product-catalog:read', 'product-catalog:write', 'product-catalog:delete',
     'product-media:read', 'product-media:write', 'product-media:delete',
+    getResourceKey(ActiveResources.PRODUCTS, 'write'), getResourceKey(ActiveResources.PRODUCTS, 'delete'), getResourceKey(ActiveResources.PRODUCTS, 'manage-events'),
   ],
   [RolesEnum.MANAGER]: [
     'sensitive:operations',
@@ -77,6 +80,7 @@ const rolePermissionsMap = {
     'company-ai-config:read',
     'product-catalog:read', 'product-catalog:write', 'product-catalog:delete',
     'product-media:read', 'product-media:write', 'product-media:delete',
+    getResourceKey(ActiveResources.PRODUCTS, 'write'), getResourceKey(ActiveResources.PRODUCTS, 'delete'), getResourceKey(ActiveResources.PRODUCTS, 'manage-events'),
   ],
   [RolesEnum.SALES_AGENT]: [
     'sensitive:operations',

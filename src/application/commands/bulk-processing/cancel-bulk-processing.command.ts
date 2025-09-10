@@ -9,9 +9,12 @@ import {
 } from '@core/exceptions/bulk-processing.exceptions';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { BulkProcessingEventBus } from '@queues/all/bulk-processing/bulk-processing-event-bus';
+import { BulkProcessingTypeGuard } from '@shared/constants/bulk-processing-type.enum';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 export class CancelBulkProcessingCommand implements ICommand {
   constructor(
+    public readonly jwtPayload: IJwtPayload,
     public readonly requestId: string,
     public readonly companyId: string,
     public readonly userId: string,
@@ -29,12 +32,14 @@ export class CancelBulkProcessingHandler
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
     private readonly bulkProcessingEventBus: BulkProcessingEventBus,
+    @Inject(BulkProcessingTypeGuard)
+    private readonly bulkProcessingTypeGuard: BulkProcessingTypeGuard,
   ) {
     this.logger.setContext(CancelBulkProcessingHandler.name);
   }
 
   async execute(command: CancelBulkProcessingCommand): Promise<void> {
-    const { requestId, companyId, userId, reason } = command;
+    const { requestId, companyId, userId, reason, jwtPayload } = command;
 
     // Get the bulk processing request
     const bulkRequest = await this.bulkProcessingRequestRepository.findByIdAndCompany(
@@ -45,6 +50,12 @@ export class CancelBulkProcessingHandler
     if (!bulkRequest) {
       throw new BulkProcessingRequestNotFoundException(requestId);
     }
+
+    if (this.bulkProcessingTypeGuard.isReservedType(bulkRequest.type)) {
+      throw new UnauthorizedBulkProcessingRequestAccessException(bulkRequest.type, requestId);
+    }
+
+    this.bulkProcessingTypeGuard.canAccessProcessingType(bulkRequest.type, jwtPayload, 'write');
 
     // Verify user has access
     if (!bulkRequest.belongsToCompany(companyId)) {

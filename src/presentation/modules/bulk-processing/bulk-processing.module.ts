@@ -15,9 +15,12 @@ import { CancelBulkProcessingHandler } from '@application/commands/bulk-processi
 import { GetBulkProcessingRequestHandler } from '@application/queries/bulk-processing/get-bulk-processing-request.query';
 import { GetBulkProcessingRequestsByCompanyHandler } from '@application/queries/bulk-processing/get-bulk-processing-requests-by-company.query';
 import { GetBulkProcessingErrorReportHandler } from '@application/queries/bulk-processing/get-bulk-processing-error-report.query';
+import { GetBulkProcessingWarningReportHandler } from '@application/queries/bulk-processing/get-bulk-processing-warning-report.query';
+import { GetBulkProcessingJobStatusHandler } from '@application/queries/bulk-processing/get-bulk-processing-job-status.query';
 
 // Queue Integration
 import { BulkProcessingModule as QueueBulkProcessingModule } from '@queues/all/bulk-processing/bulk-processing.module';
+import { BulkProcessingTypeGuard } from '@shared/constants/bulk-processing-type.enum';
 
 const CommandHandlers = [
   CreateBulkProcessingRequestHandler,
@@ -29,6 +32,8 @@ const QueryHandlers = [
   GetBulkProcessingRequestHandler,
   GetBulkProcessingRequestsByCompanyHandler,
   GetBulkProcessingErrorReportHandler,
+  GetBulkProcessingWarningReportHandler,
+  GetBulkProcessingJobStatusHandler,
 ];
 
 @Module({
@@ -39,7 +44,7 @@ const QueryHandlers = [
     QueueBulkProcessingModule, // Import the queue module
   ],
   controllers: [BulkProcessingController],
-  providers: [...CommandHandlers, ...QueryHandlers],
+  providers: [...CommandHandlers, ...QueryHandlers, BulkProcessingTypeGuard],
   exports: [
     // Export queue module for use in other modules
     QueueBulkProcessingModule,

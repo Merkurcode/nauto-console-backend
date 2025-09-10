@@ -12,6 +12,19 @@ export class BulkProcessingRequestNotFoundException extends BulkProcessingDomain
   }
 }
 
+export class BulkProcessingInsufficientPermissionsException extends BulkProcessingDomainException {
+  constructor(requiredPermission: string, resource?: string) {
+    super(
+      `Insufficient permissions: ${requiredPermission} required`,
+      'BULK_PROCESSING_INSUFFICIENT_PERMISSIONS',
+      {
+        requiredPermission,
+        resource,
+      },
+    );
+  }
+}
+
 export class UnauthorizedBulkProcessingRequestAccessException extends BulkProcessingDomainException {
   constructor(requestId?: string, companyId?: string) {
     const context =

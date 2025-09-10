@@ -53,7 +53,7 @@ export class GetUserStorageQuotaHandler
     const maxBytes = tierInfo.maxStorageBytes;
     const availableBytes = BigInt(Math.max(0, Number(maxBytes) - usedBytes));
     const usagePercentage =
-      Number(maxBytes) > 0 ? Math.round((usedBytes / Number(maxBytes)) * 100) : 0;
+      Number(maxBytes) > 0 ? Math.round((usedBytes / Number(maxBytes)) * 100 * 100) / 100 : 0;
 
     return {
       maxStorageBytes: maxBytes.toString(),

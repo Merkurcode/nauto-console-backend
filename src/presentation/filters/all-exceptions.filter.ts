@@ -147,6 +147,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         // Bulk processing domain exceptions
         ['BULK_PROCESSING_REQUEST_NOT_FOUND', 404],
+        ['BULK_PROCESSING_INSUFFICIENT_PERMISSIONS', 403],
         ['UNAUTHORIZED_BULK_PROCESSING_REQUEST_ACCESS', 403],
         ['BULK_PROCESSING_FILE_STATUS_RESTORE_FAILED', 500],
         ['BULK_PROCESSING_INVALID_STATUS', 400],

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { RolesEnum } from '../src/shared/constants/enums';
 import { PERMISSION_EXCLUDE_SYMBOLS, ALLOW_ALL_ROLES } from '../src/shared/constants/permission-exclude';
+import { ActiveResources, getResourceKey } from '@shared/constants/bulk-processing-type.enum';
 
 // Permission configuration with exclude list
 // excludeRoles: array of role names that CANNOT have this permission
@@ -371,6 +372,27 @@ export const permissions = [
     resource: 'product-media',
     action: 'delete',
     excludeRoles: [PERMISSION_EXCLUDE_SYMBOLS.ALL_EXCEPT, RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER],
+  },
+  {
+    name: getResourceKey(ActiveResources.PRODUCTS, 'write'),
+    description: 'Can create and initiate bulk requests',
+    resource: getResourceKey(ActiveResources.PRODUCTS, 'write').split(':')[0],
+    action: 'write',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: getResourceKey(ActiveResources.PRODUCTS, 'delete'),
+    description: 'Can delete bulk requests',
+    resource: getResourceKey(ActiveResources.PRODUCTS, 'delete').split(':')[0],
+    action: 'delete',
+    excludeRoles: ALLOW_ALL_ROLES,
+  },
+  {
+    name: getResourceKey(ActiveResources.PRODUCTS, 'manage-events'),
+    description: 'Can manage bulk request events',
+    resource: getResourceKey(ActiveResources.PRODUCTS, 'manage-events').split(':')[0],
+    action: 'manage-events',
+    excludeRoles: ALLOW_ALL_ROLES,
   },
 ];
 

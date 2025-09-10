@@ -46,6 +46,7 @@ export enum ActionType {
   REMOVE = 'remove',
   OPERATIONS = 'operations',
   ACCESS = 'access',
+  MANAGE_EVENTS = 'manage-events',
 }
 
 /**

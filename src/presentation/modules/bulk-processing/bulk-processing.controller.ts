@@ -44,6 +44,7 @@ import {
 } from '@application/dtos/_responses/bulk-processing-request/bulk-processing-request.response';
 import { BulkProcessingJobStatusSwaggerDto } from '@application/dtos/_responses/bulk-processing-request/bulk-processing-job-status.swagger.dto';
 import { BulkProcessingStatusSwaggerDto } from '@application/dtos/_responses/bulk-processing-request/bulk-processing-status.swagger.dto';
+import { BulkProcessingQueueJobStatusSwaggerDto } from '@application/dtos/_responses/bulk-processing-request/bulk-processing-queue-job-status.swagger.dto';
 
 // Commands and Queries
 import { CreateBulkProcessingRequestCommand } from '@application/commands/bulk-processing/create-bulk-processing-request.command';
@@ -53,6 +54,10 @@ import { GetBulkProcessingRequestQuery } from '@application/queries/bulk-process
 import { GetBulkProcessingRequestsByCompanyQuery } from '@application/queries/bulk-processing/get-bulk-processing-requests-by-company.query';
 import { GetBulkProcessingErrorReportQuery } from '@application/queries/bulk-processing/get-bulk-processing-error-report.query';
 import { GetBulkProcessingWarningReportQuery } from '@application/queries/bulk-processing/get-bulk-processing-warning-report.query';
+import {
+  GetBulkProcessingJobStatusQuery,
+  IGetBulkProcessingJobStatusResponse,
+} from '@application/queries/bulk-processing/get-bulk-processing-job-status.query';
 
 // Entities and Types
 import { BulkProcessingStatus } from '@shared/constants/bulk-processing-status.enum';
@@ -107,6 +112,7 @@ export class BulkProcessingController {
         createBulkProcessingRequestDto.fileId,
         currentUser.companyId,
         currentUser.sub,
+        currentUser,
       );
 
       return this.commandBus.execute(command);
@@ -143,6 +149,7 @@ export class BulkProcessingController {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
         new StartBulkProcessingCommand(
+          currentUser,
           requestId,
           currentUser.companyId,
           currentUser.sub,
@@ -181,6 +188,7 @@ export class BulkProcessingController {
     return this.transactionService.executeInTransaction(async () => {
       return this.commandBus.execute(
         new CancelBulkProcessingCommand(
+          currentUser,
           requestId,
           currentUser.companyId,
           currentUser.sub,
@@ -321,6 +329,39 @@ export class BulkProcessingController {
     );
 
     return BulkProcessingRequestMapper.toStatusResponse(request);
+  }
+
+  @Get('jobs/:jobId/status')
+  @ApiOperation({
+    summary: 'Get job status by job ID',
+    description:
+      'Retrieves the current status of a specific bulk processing job in the queue system.\n\n' +
+      '**Job Status Information:**\n' +
+      '- Current queue state (waiting, active, completed, failed, delayed, stalled)\n' +
+      '- Processing progress percentage\n' +
+      '- Job data payload and metadata\n' +
+      '- Timestamps for processing events\n' +
+      '- Failure reasons if applicable\n\n' +
+      '**Use Cases:**\n' +
+      '- Real-time job monitoring\n' +
+      '- Queue debugging and troubleshooting\n' +
+      '- Integration with external monitoring systems\n\n' +
+      '**Permission Evaluation:**\n' +
+      '- Requires read permissions for bulk processing\n\n' +
+      '⚠️ **Note:** This endpoint tracks jobs in the queue system, not the database request status',
+  })
+  @ApiParam({ name: 'jobId', description: 'Bulk processing job ID from the queue system' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Job status information from the queue system',
+    type: BulkProcessingQueueJobStatusSwaggerDto,
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Job not found in queue' })
+  async getBulkProcessingJobStatus(
+    @Param('jobId', TrimPipe) jobId: string,
+    @CurrentUser() _currentUser: IJwtPayload,
+  ): Promise<IGetBulkProcessingJobStatusResponse> {
+    return this.queryBus.execute(new GetBulkProcessingJobStatusQuery(jobId));
   }
 
   @Get('requests/:requestId/errors/download')

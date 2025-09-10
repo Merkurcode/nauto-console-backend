@@ -20,13 +20,15 @@ import { FileLockService } from '@core/services/file-lock.service';
 import { FileStatus } from '@shared/constants/file-status.enum';
 import {
   BulkProcessingEventType,
-  BulkProcessingType,
+  BulkProcessingTypeGuard,
 } from '@shared/constants/bulk-processing-type.enum';
 import { BulkProcessingOptionsDto } from '@application/dtos/bulk-processing/start-bulk-processing.dto';
 import { IBulkProcessingFlatOptions } from '@core/interfaces/bulk-processing-options.interface';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 export class StartBulkProcessingCommand implements ICommand {
   constructor(
+    public readonly jwtPayload: IJwtPayload,
     public readonly requestId: string,
     public readonly companyId: string,
     public readonly userId: string,
@@ -49,12 +51,16 @@ export class StartBulkProcessingHandler
     private readonly logger: ILogger,
     private readonly bulkProcessingEventBus: BulkProcessingEventBus,
     private readonly fileLockService: FileLockService,
+    @Inject(BulkProcessingTypeGuard)
+    private readonly bulkProcessingTypeGuard: BulkProcessingTypeGuard,
   ) {
     this.logger.setContext(StartBulkProcessingHandler.name);
   }
 
   async execute(command: StartBulkProcessingCommand): Promise<{ jobId: string; status: string }> {
-    const { requestId, companyId, userId, eventType, options, priority } = command;
+    const { requestId, companyId, userId, eventType, options, priority, jwtPayload } = command;
+
+    this.bulkProcessingTypeGuard.canAccessEventType(eventType, jwtPayload, 'write');
 
     // Convert structured options to flat format for backward compatibility
     const flatOptions = this.flattenOptions(options);
@@ -69,13 +75,13 @@ export class StartBulkProcessingHandler
       throw new BulkProcessingRequestNotFoundException(requestId);
     }
 
+    if (this.bulkProcessingTypeGuard.isReservedType(bulkRequest.type)) {
+      throw new UnauthorizedBulkProcessingRequestAccessException(bulkRequest.type, requestId);
+    }
+
     // Verify user has access
     if (!bulkRequest.belongsToCompany(companyId)) {
       throw new UnauthorizedBulkProcessingRequestAccessException(requestId, companyId);
-    }
-
-    if (StartBulkProcessingHandler.isReserved(bulkRequest.type)) {
-      throw new UnauthorizedBulkProcessingRequestAccessException(bulkRequest.type, requestId);
     }
 
     // Use file lock to ensure exclusive access during processing start
@@ -274,14 +280,5 @@ export class StartBulkProcessingHandler
     this.logger.log(`Flattened options result: ${JSON.stringify(flat, null, 2)}`);
 
     return flat;
-  }
-
-  public static isReserved(type: BulkProcessingType): boolean {
-    switch (type) {
-      case BulkProcessingType.CLEANUP_TEMP_FILES:
-        return true;
-      default:
-        return false;
-    }
   }
 }

@@ -10,7 +10,7 @@ import { RolesEnum } from '@shared/constants/enums';
 import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';
 
 // Interface for user authorization service compatibility
-interface IUserForAuth {
+export interface IUserForAuth {
   email: Email;
   isActive: boolean;
   hasPermission(permissionName: string): boolean;

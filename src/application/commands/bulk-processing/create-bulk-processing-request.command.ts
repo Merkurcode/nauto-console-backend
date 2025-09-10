@@ -1,7 +1,10 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { BulkProcessingRequest } from '@core/entities/bulk-processing-request.entity';
-import { BulkProcessingType } from '@shared/constants/bulk-processing-type.enum';
+import {
+  BulkProcessingType,
+  BulkProcessingTypeGuard,
+} from '@shared/constants/bulk-processing-type.enum';
 import { IBulkProcessingRequestRepository } from '@core/repositories/bulk-processing-request.repository.interface';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import {
@@ -18,8 +21,8 @@ import { ILogger } from '@core/interfaces/logger.interface';
 import { IBulkProcessingRequestResponse } from '@application/dtos/_responses/bulk-processing-request/bulk-processing-request.response.interface';
 import { BulkProcessingRequestMapper } from '@application/mappers/bulk-processing-request.mapper';
 import { FileLockService } from '@core/services/file-lock.service';
-import { StartBulkProcessingHandler } from './start-bulk-processing.command';
 import { FileStatus } from '@shared/constants/file-status.enum';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 export class CreateBulkProcessingRequestCommand implements ICommand {
   constructor(
@@ -27,6 +30,7 @@ export class CreateBulkProcessingRequestCommand implements ICommand {
     public readonly fileId: string,
     public readonly companyId: string,
     public readonly requestedBy: string,
+    public readonly jwtPayload: IJwtPayload,
   ) {}
 }
 
@@ -42,6 +46,8 @@ export class CreateBulkProcessingRequestHandler
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
     private readonly fileLockService: FileLockService,
+    @Inject(BulkProcessingTypeGuard)
+    private readonly bulkProcessingTypeGuard: BulkProcessingTypeGuard,
   ) {
     this.logger.setContext(CreateBulkProcessingRequestHandler.name);
   }
@@ -49,9 +55,11 @@ export class CreateBulkProcessingRequestHandler
   async execute(
     command: CreateBulkProcessingRequestCommand,
   ): Promise<IBulkProcessingRequestResponse> {
-    const { type, fileId, companyId, requestedBy } = command;
+    const { type, fileId, companyId, requestedBy, jwtPayload } = command;
 
-    if (StartBulkProcessingHandler.isReserved(type)) {
+    this.bulkProcessingTypeGuard.canAccessProcessingType(type, jwtPayload, 'write');
+
+    if (this.bulkProcessingTypeGuard.isReservedType(type)) {
       throw new UnauthorizedBulkProcessingRequestAccessException(type, companyId);
     }
 

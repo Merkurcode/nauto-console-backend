@@ -40,7 +40,9 @@ export abstract class BaseEventBus<T = Record<string, any>> {
     const jobOpts = this.buildJobOptions(opts, jobId);
 
     await this.queue.add(jobName, jobData, jobOpts);
-    this.logger.log(`✅ Job published: ${jobName} (${jobId}) with delay: ${jobOpts.delay ? `${jobOpts.delay}ms` : 'none'}`);
+    this.logger.log(
+      `✅ Job published: ${jobName} (${jobId}) with delay: ${jobOpts.delay ? `${jobOpts.delay}ms` : 'none'}`,
+    );
 
     return { jobId, status: 'queued' };
   }
@@ -191,6 +193,9 @@ export abstract class BaseEventBus<T = Record<string, any>> {
     state?: string;
     progress?: number;
     data?: any;
+    finishedOn?: number;
+    processedOn?: number;
+    failedReason?: string;
   }> {
     try {
       const job = await this.queue.getJob(jobId);
@@ -206,6 +211,9 @@ export abstract class BaseEventBus<T = Record<string, any>> {
         state,
         progress: job.progress,
         data: job.data,
+        finishedOn: job.finishedOn,
+        processedOn: job.processedOn,
+        failedReason: job.failedReason,
       };
     } catch (error) {
       this.logger.error(`Failed to get job status ${jobId}: ${error}`);

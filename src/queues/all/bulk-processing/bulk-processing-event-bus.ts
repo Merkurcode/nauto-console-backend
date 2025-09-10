@@ -137,4 +137,19 @@ export class BulkProcessingEventBus extends BaseEventBus<IBulkProcessingJobData>
       delayed: counts.delayed || 0,
     };
   }
+
+  /**
+   * Get job status by jobId
+   */
+  async getBulkProcessingJobStatus(jobId: string): Promise<{
+    exists: boolean;
+    state?: string;
+    progress?: number;
+    data?: IBulkProcessingJobData;
+    finishedOn?: number;
+    processedOn?: number;
+    failedReason?: string;
+  }> {
+    return this.getJobStatus(jobId);
+  }
 }
