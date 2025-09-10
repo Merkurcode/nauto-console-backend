@@ -1043,32 +1043,50 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       );
       let knownExtension = false;
 
-      for (const ext of ProductCatalogRowProcessor.ALL_EXTENSIONS) {
-        if (!allowed || !allowed.includes(ext)) {
-          continue;
-        }
-        if (ext === '.pdf') {
-          if (this.context.eventType === BulkProcessingEventType.PRODUCT_CATALOG_BULK_IMPORT) {
-            tags.push('#ficha-tecnica');
+      // Extract file extension from URL
+      const urlExtension = u.match(/\.([a-z0-9]+)(\?|$)/)?.[1];
+      const normalizedExtension = urlExtension ? `.${urlExtension}` : null;
+
+      // Check if this specific file has a known extension
+      if (
+        normalizedExtension &&
+        ProductCatalogRowProcessor.ALL_EXTENSIONS_MAP.has(normalizedExtension)
+      ) {
+        if (!allowed || allowed.includes(normalizedExtension)) {
+          knownExtension = true;
+
+          // Add specific tags for the detected extension
+          if (normalizedExtension === '.pdf') {
+            if (this.context.eventType === BulkProcessingEventType.PRODUCT_CATALOG_BULK_IMPORT) {
+              tags.push('#ficha-tecnica');
+            }
           }
-        }
-        if (ProductCatalogRowProcessor.DOCS_EXTENSIONS_MAP[ext]) {
-          tags.push('#document', `#${ext.replace('.', '')}`);
-          knownExtension = true;
-        }
-        if (ProductCatalogRowProcessor.PHOTO_EXTENSIONS_MAP[ext]) {
-          if (ext === '.jpg') {
-            tags.push('#photo', `#jpeg`);
-          } else {
-            tags.push('#photo', `#${ext.replace('.', '')}`);
+
+          if (ProductCatalogRowProcessor.DOCS_EXTENSIONS_MAP.has(normalizedExtension)) {
+            tags.push('#document', `#${normalizedExtension.replace('.', '')}`);
           }
-          knownExtension = true;
+
+          if (ProductCatalogRowProcessor.PHOTO_EXTENSIONS_MAP.has(normalizedExtension)) {
+            if (normalizedExtension === '.jpg') {
+              tags.push('#photo', `#jpeg`);
+            } else {
+              tags.push('#photo', `#${normalizedExtension.replace('.', '')}`);
+            }
+          }
+
+          if (ProductCatalogRowProcessor.VIDEO_EXTENSIONS_MAP.has(normalizedExtension)) {
+            tags.push('#video', `#${normalizedExtension.replace('.', '')}`);
+          }
+
+          // Set compatible apps for this specific extension
+          this.setCompatibleApps(
+            userStorageConfig,
+            fileSizeBytes,
+            appCompatible,
+            appsList,
+            normalizedExtension,
+          );
         }
-        if (ProductCatalogRowProcessor.VIDEO_EXTENSIONS_MAP[ext]) {
-          tags.push('#video', `#${ext.replace('.', '')}`);
-          knownExtension = true;
-        }
-        this.setCompatibleApps(userStorageConfig, fileSizeBytes, appCompatible, appsList, ext);
       }
 
       if (u.includes('catalog') || u.includes('catalogue')) tags.push('#catalog');
@@ -1083,6 +1101,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         }
       }
 
+      // Only add unknown-media if we couldn't detect any valid extension
       if (!knownExtension) {
         tags.push('#unknown-media');
       }

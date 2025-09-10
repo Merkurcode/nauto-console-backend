@@ -773,7 +773,7 @@ model ProductMedia {
 model BulkProcessingRequest {
   id            String                @id @default(uuid())
   type          BulkProcessingType
-  fileId        String
+  fileId        String?
   fileName      String
   status        BulkProcessingStatus  @default(PENDING)
   jobId         String?               @unique // Queue job ID, assigned when processing starts
@@ -787,15 +787,15 @@ model BulkProcessingRequest {
   completedAt   DateTime?
   excelProcessingCompleted Boolean   @default(false) // True when Excel streaming phase is complete
   companyId     String
-  requestedBy   String
+  requestedBy   String?
   metadata      Json?                 // Additional metadata including originalFileStatus
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
   // Relations
-  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  requestedByUser User                  @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
-  file            File                  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  requestedByUser User?                 @relation(fields: [requestedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  file            File?                 @relation(fields: [fileId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   products        ProductCatalog[]      // Products created by this bulk request
 
   // Composite indexes for performance
