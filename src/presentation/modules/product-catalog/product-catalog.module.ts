@@ -32,6 +32,7 @@ import { DeleteProductMediaCommandHandler } from '@application/commands/product-
 // Query handlers
 import { GetProductCatalogQueryHandler } from '@application/queries/product-catalog/get-product-catalog.query';
 import { GetProductCatalogsByCompanyQueryHandler } from '@application/queries/product-catalog/get-product-catalogs-by-company.query';
+import { GetProductsByBulkRequestQueryHandler } from '@application/queries/product-catalog/get-products-by-bulk-request.query';
 
 // ProductMedia Query handlers
 import { GetProductMediaByProductQueryHandler } from '@application/queries/product-media/get-product-media-by-product.query';
@@ -49,6 +50,7 @@ const CommandHandlers = [
 const QueryHandlers = [
   GetProductCatalogQueryHandler,
   GetProductCatalogsByCompanyQueryHandler,
+  GetProductsByBulkRequestQueryHandler,
   GetProductMediaByProductQueryHandler,
 ];
 

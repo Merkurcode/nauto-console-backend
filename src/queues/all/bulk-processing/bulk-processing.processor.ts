@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Inject } from '@nestjs/common';
-import { Processor } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import { Processor, InjectQueue } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import { BaseProcessor } from '../../base/base-processor';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
@@ -14,6 +14,7 @@ import { BulkProcessingType } from '@shared/constants/bulk-processing-type.enum'
 export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobData> {
   constructor(
     private readonly bulkProcessingService: BulkProcessingService,
+    @InjectQueue(ModuleConfig.queue.name) private readonly queue: Queue,
     @Inject(LOGGER_SERVICE) logger: ILogger,
   ) {
     super(ModuleConfig, logger);
@@ -82,19 +83,35 @@ export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobDat
   }
 
   private async checkForCancellation(job: Job<IBulkProcessingJobData>): Promise<void> {
-    // Check the current job data for cancellation status
-    // Note: In BullMQ, job data can be updated externally and the job instance reflects those changes
-    if (job.data.cancelled) {
-      // Log cancellation only once per job using a flag in job data
-      if (!job.data.cancellationLogged) {
+    // Validate job ID exists
+    if (!job.id) {
+      this.logger.warn('Cannot check cancellation: job.id is undefined');
+
+      return;
+    }
+
+    // Lee el estado fresco desde Redis
+    const fresh = await this.queue.getJob(job.id);
+    if (!fresh) return;
+
+    if (fresh.data.cancelled) {
+      // Evita doble log en este proceso
+      if (!job.data.cancellationLogged && !fresh.data.cancellationLogged) {
         this.logger.log(
-          `Job ${job.id} for request ${job.data.requestId} has been cancelled. Stopping processing.`,
+          `Job ${fresh.id} for request ${fresh.data.requestId} has been cancelled. Stopping processing.`,
         );
-        // Set flag to prevent duplicate logs
+
+        // Escribe UNA vez en Redis usando la instancia del worker
+        await job.updateData({
+          ...fresh.data, // parte de lo más reciente
+          cancellationLogged: true, // y marca el flag
+        });
+
+        // Mantén ambas copias locales sincronizadas para este proceso
         job.data.cancellationLogged = true;
+        fresh.data.cancellationLogged = true;
       }
 
-      // Throw a specific error that indicates cancellation - this will be caught by onJobFailed
       const error = new Error(`Job cancelled at ${job.data.cancelledAt}`);
       error.name = 'JobCancelledException';
       throw error;
@@ -167,7 +184,7 @@ export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobDat
   }
 
   protected async onJobFailed(job: Job<IBulkProcessingJobData>, error: Error): Promise<void> {
-    const { jobType, requestId, companyId, fileId } = job.data;
+    const { jobType, requestId, companyId, fileId, eventType } = job.data;
 
     // Check if this is a cancellation error
     if (error.name === 'JobCancelledException' || error.message.includes('Job cancelled')) {
@@ -180,6 +197,7 @@ export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobDat
           companyId,
           fileId,
           jobType,
+          eventType,
         });
       } catch (cancellationError) {
         this.logger.error(

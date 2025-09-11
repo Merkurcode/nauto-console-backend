@@ -93,41 +93,62 @@ export class FileDownloadStreamingService {
     }
 
     const batchSize = Math.max(1, concurrency);
-    for (let i = 0; i < urls.length; i += batchSize) {
-      // Check for cancellation before each batch to avoid more loops
-      await context?.cancellationChecker?.();
+    try {
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const group = urls.slice(i, i + batchSize);
+        const settled = await Promise.allSettled(
+          group.map(u => this.downloadSingleFileWithRetry(u, options, context)),
+        );
 
-      const group = urls.slice(i, i + batchSize);
-      const settled = await Promise.allSettled(
-        group.map(u => this.downloadSingleFileWithRetry(u, options, context)),
-      );
-
-      for (const s of settled) {
-        if (s.status === 'fulfilled') {
-          res.results.push(s.value);
-          if (s.value.success) {
-            res.successfulDownloads++;
-            res.totalSize += s.value.fileSize;
+        for (const s of settled) {
+          if (s.status === 'fulfilled') {
+            res.results.push(s.value);
+            if (s.value.success) {
+              res.successfulDownloads++;
+              res.totalSize += s.value.fileSize;
+            } else {
+              res.failedDownloads++;
+            }
           } else {
+            const msg = s.reason instanceof Error ? s.reason.message : String(s.reason);
+            res.results.push({
+              success: false,
+              originalUrl: 'unknown',
+              downloadedFileName: '',
+              storagePath: '',
+              fileSize: 0,
+              error: msg,
+            });
             res.failedDownloads++;
           }
-        } else {
-          const msg = s.reason instanceof Error ? s.reason.message : String(s.reason);
-          res.results.push({
-            success: false,
-            originalUrl: 'unknown',
-            downloadedFileName: '',
-            storagePath: '',
-            fileSize: 0,
-            error: msg,
-          });
-          res.failedDownloads++;
         }
-      }
 
-      const processed = Math.min(i + batchSize, urls.length);
-      this.logger.debug(`Batch progress: ${processed}/${urls.length}`);
-      if (i + batchSize < urls.length) await new Promise(r => setTimeout(r, 100));
+        // Check for cancellation after processing each batch
+        // This allows us to cleanup accumulated results if cancelled
+        try {
+          await context?.cancellationChecker?.();
+        } catch (cancellationError) {
+          // Clean up all successful downloads from S3 if cancelled
+          await this.cleanupAccumulatedResults(res.results);
+          throw cancellationError;
+        }
+
+        const processed = Math.min(i + batchSize, urls.length);
+        this.logger.debug(`Batch progress: ${processed}/${urls.length}`);
+        if (i + batchSize < urls.length) await new Promise(r => setTimeout(r, 100));
+      }
+    } catch (error) {
+      // If any error (including cancellation), cleanup accumulated results
+      if (
+        error instanceof Error &&
+        (error.name === 'JobCancelledException' || error.message.includes('Job cancelled'))
+      ) {
+        this.logger.log(
+          `Download batch cancelled, cleaning up ${res.results.length} accumulated downloads`,
+        );
+        await this.cleanupAccumulatedResults(res.results);
+      }
+      throw error;
     }
 
     this.logger.log(
@@ -188,6 +209,9 @@ export class FileDownloadStreamingService {
     options: IFileDownloadOptions,
     context: IBulkProcessingContext,
   ): Promise<IFileDownloadResult> {
+    // Check for cancellation at start
+    await context?.cancellationChecker?.();
+
     // 1) Validaciones básicas
     const parsed = parseUrl(url);
     if (!parsed.protocol || !parsed.hostname) {
@@ -202,10 +226,23 @@ export class FileDownloadStreamingService {
     const bucket = this.configService.get<string>('storage.defaultBucket', 'files');
     const userAgent = this.configService.get<string>('userAgent', null);
 
-    // 2) HTTP GET (streaming) con timeout
+    // 2) HTTP GET (streaming) con timeout and cancellation support
     const timeout = options.timeout ?? 30_000;
     const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), timeout);
+
+    // Create a combined cancellation mechanism that responds to both timeout and bulk job cancellation
+    const timeoutHandle = setTimeout(() => ac.abort(), timeout);
+
+    // Set up cancellation monitoring during fetch
+    const cancellationMonitor = setInterval(async () => {
+      try {
+        await context?.cancellationChecker?.();
+      } catch (_error) {
+        // If cancellation is requested, abort the fetch
+        ac.abort();
+      }
+    }, 1000); // Check every second during fetch
+
     let response: Response;
     try {
       response = await fetch(url, {
@@ -213,7 +250,8 @@ export class FileDownloadStreamingService {
         headers: userAgent ? { 'User-Agent': userAgent } : undefined,
       });
     } finally {
-      clearTimeout(t);
+      clearTimeout(timeoutHandle);
+      clearInterval(cancellationMonitor);
     }
     if (!response.ok) {
       throw new BulkProcessingFileDownloadException(
@@ -257,6 +295,9 @@ export class FileDownloadStreamingService {
       }
     }
 
+    // Check for cancellation before quota validation
+    await context?.cancellationChecker?.();
+
     // Chequeo de cuota: si conocemos tamaño esperado, validamos upfront;
     // si no, haremos verificación PROGRESIVA más abajo.
     const quota: IGetUserStorageQuotaResponse = await this.queryBus.execute(
@@ -278,6 +319,9 @@ export class FileDownloadStreamingService {
       };
     }
 
+    // Check for cancellation before initiating multipart upload
+    await context?.cancellationChecker?.();
+
     // 3) Iniciar multipart upload (sin pasar 0 como límite)
     const { uploadId } = await this.storageService.initiateMultipartUpload(
       bucket,
@@ -286,6 +330,10 @@ export class FileDownloadStreamingService {
       expectedMaxBytes,
       true,
     );
+
+    // Track uploadId for potential cancellation without creating File record
+    // The calling code (processor) is responsible for File record management
+    const uploadIdForCleanup = uploadId;
 
     // 4) Stream → partes fijas (8 MiB) sin Buffer.concat O(n²)
     const chunkSize = FileDownloadStreamingService.DEFAULT_CHUNK_SIZE; // 8 MiB
@@ -307,11 +355,7 @@ export class FileDownloadStreamingService {
 
         // Límite de tamaño progresivo (si existe)
         if (options.maxFileSize && totalBytes > options.maxFileSize) {
-          try {
-            await this.storageService.abortMultipartUpload(bucket, storagePath, uploadId);
-          } catch (abortError) {
-            this.logger.error(`Failed to abort multipart upload for ${url}: ${abortError}`);
-          }
+          await this.cleanupFailedUpload(bucket, storagePath, uploadIdForCleanup, null);
           throw new BulkProcessingFileDownloadException(
             url,
             `File size exceeds limit. Downloaded ${totalBytes} bytes, limit is ${options.maxFileSize} bytes (${(options.maxFileSize / 1024 / 1024).toFixed(1)} MB)`,
@@ -320,9 +364,7 @@ export class FileDownloadStreamingService {
 
         // Chequeo progresivo de cuota si no conocíamos tamaño
         if (!expectedMaxBytes && BigInt(totalBytes) > BigInt(quota.availableStorageBytes)) {
-          try {
-            await this.storageService.abortMultipartUpload(bucket, storagePath, uploadId);
-          } catch {}
+          await this.cleanupFailedUpload(bucket, storagePath, uploadIdForCleanup, null);
           const remainMB = Number(quota.availableStorageBytes) / 1024 / 1024;
           throw new BulkProcessingFileDownloadException(
             url,
@@ -365,6 +407,7 @@ export class FileDownloadStreamingService {
             partNumber,
             toSend,
             expectedMaxBytes ?? 0, // tu firma actual espera número; si puedes, pásalo como undefined
+            context,
           );
           completedParts.push({ ETag: etag, PartNumber: partNumber });
           partNumber++;
@@ -373,9 +416,7 @@ export class FileDownloadStreamingService {
 
       // Validar respuesta vacía (0 bytes)
       if (totalBytes === 0) {
-        try {
-          await this.storageService.abortMultipartUpload(bucket, storagePath, uploadId);
-        } catch {}
+        await this.cleanupFailedUpload(bucket, storagePath, uploadIdForCleanup, null);
         throw new BulkProcessingFileDownloadException(url, 'Empty response body (0 bytes)');
       }
 
@@ -389,17 +430,16 @@ export class FileDownloadStreamingService {
           partNumber,
           last,
           expectedMaxBytes ?? 0,
+          context,
         );
         completedParts.push({ ETag: etag, PartNumber: partNumber });
       }
     } catch (err) {
-      try {
-        await this.storageService.abortMultipartUpload(bucket, storagePath, uploadId);
-      } catch {}
+      await this.cleanupFailedUpload(bucket, storagePath, uploadIdForCleanup, null);
       throw err;
     }
 
-    // 5) Completar multipart
+    // 5) Completar multipart - no check cancellation here, let it complete
     const uploadResult = await this.storageService.completeMultipartUpload(
       bucket,
       storagePath,
@@ -407,6 +447,9 @@ export class FileDownloadStreamingService {
       completedParts,
       totalBytes,
     );
+
+    // File record management is handled by the calling code (processor)
+    // This service is now responsible only for downloading and uploading to S3
 
     this.logger.debug(
       `Downloaded ${url} -> s3://${bucket}/${storagePath} (${(totalBytes / 1024 / 1024).toFixed(2)} MB)`,
@@ -431,7 +474,10 @@ export class FileDownloadStreamingService {
     partNumber: number,
     bodyBuf: Buffer,
     maxFileSize: number,
+    context?: IBulkProcessingContext,
   ): Promise<string> {
+    // Check for cancellation before uploading part
+    await context?.cancellationChecker?.();
     const presigned = await this.storageService.generatePresignedPartUrl(
       bucket,
       storagePath,
@@ -509,6 +555,39 @@ export class FileDownloadStreamingService {
     const ext = options.preserveExtension !== false && originalExt ? originalExt : '';
 
     return `file-${hash}${ext}`;
+  }
+
+  private async cleanupFailedUpload(
+    bucket: string,
+    storagePath: string,
+    uploadId: string,
+    _fileRecord: unknown = null, // Keep parameter for compatibility but mark as unused
+  ): Promise<void> {
+    try {
+      // Abort multipart upload
+      await this.storageService.abortMultipartUpload(bucket, storagePath, uploadId);
+      this.logger.debug(`Aborted multipart upload: ${uploadId} for ${storagePath}`);
+    } catch (abortError) {
+      this.logger.error(`Failed to abort multipart upload for ${storagePath}: ${abortError}`);
+    }
+
+    // File record cleanup is now handled by the calling code (processor)
+    // This service only handles S3 cleanup
+  }
+
+  private async cleanupAccumulatedResults(results: IFileDownloadResult[]): Promise<void> {
+    const bucket = this.configService.get<string>('storage.defaultBucket', 'files');
+
+    for (const result of results) {
+      if (result.success && result.storagePath) {
+        try {
+          await this.storageService.deleteObject(bucket, result.storagePath);
+          this.logger.debug(`Cleaned up S3 object: ${result.storagePath}`);
+        } catch (deleteError) {
+          this.logger.debug(`Could not delete S3 object ${result.storagePath}: ${deleteError}`);
+        }
+      }
+    }
   }
 
   static parseUrlsFromString(urlsString: string): string[] {

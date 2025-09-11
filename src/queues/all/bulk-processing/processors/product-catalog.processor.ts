@@ -31,6 +31,8 @@ import { FileDownloadStreamingService } from '@core/services/file-download-strea
 import { UpsertProductCatalogCommand } from '@application/commands/product-catalog/upsert-product-catalog.command';
 import { CreateProductMediaCommand } from '@application/commands/product-media/create-product-media.command';
 import { UpdateProductVisibilityCommand } from '@application/commands/product-catalog/update-product-visibility.command';
+import { DeleteProductCatalogWithMediaCommand } from '@application/commands/product-catalog/delete-product-catalog-with-media.command';
+import { IProductWithMultimedia } from '@application/queries/product-catalog/get-products-by-bulk-request.query';
 import { buildCommonPath, CommonFolder } from '@shared/index';
 import { BulkProcessingEventType } from '@shared/constants/bulk-processing-type.enum';
 import { BulkProcessingStatus } from '@shared/constants/bulk-processing-status.enum';
@@ -42,7 +44,6 @@ import {
   UserStorageConfig,
 } from '@core/entities/user-storage-config.entity';
 import { ProductMedia } from '@core/entities/product-media.entity';
-import { IProductWithMultimedia } from '@application/queries/product-catalog/get-products-by-bulk-request.query';
 import { FileStatus } from '@core/value-objects/file-status.vo';
 import { CreateProductCatalogDto } from '@application/dtos/product-catalog/create-product-catalog.dto';
 import { TargetAppsEnum } from '@shared/constants/target-apps.enum';
@@ -576,14 +577,23 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
 
   /**
    * Called when processing is cancelled
-   * Handles cancellation cleanup if needed
+   * Handles comprehensive cancellation cleanup
    */
-  async onProcessingCancelled(_context: IBulkProcessingContext): Promise<void> {
+  async onProcessingCancelled(context: IBulkProcessingContext): Promise<void> {
+    const requestId = this.bulkRequest.id.getValue();
     this.logger.log(
-      `ProductCatalog processing cancelled for request ${this.bulkRequest.id.getValue()}`,
+      `Starting comprehensive cancellation cleanup for ProductCatalog request: ${requestId}`,
     );
-    // Additional cancellation cleanup logic can be added here if needed
-    // For now, the main cancellation logic is handled by the service
+
+    try {
+      // Delete all products created by this bulk request
+      await this.cleanupCreatedProducts(context);
+
+      this.logger.log(`Comprehensive cancellation cleanup completed for request: ${requestId}`);
+    } catch (error) {
+      this.logger.error(`Cancellation cleanup failed for request ${requestId}: ${error}`);
+      // Don't throw - let the main cancellation process continue
+    }
   }
 
   /**
@@ -728,6 +738,74 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
     }
   }
 
+  /**
+   * Clean up all products created by this bulk request using pagination to avoid memory overload
+   */
+  private async cleanupCreatedProducts(context: IBulkProcessingContext): Promise<void> {
+    try {
+      this.logger.log(`Starting product cleanup for bulk request: ${context.requestId}`);
+
+      const CHUNK_SIZE = 50;
+      let offset = 0;
+      let hasMore = true;
+      let totalDeleted = 0;
+
+      while (hasMore) {
+        // Get products in chunks to avoid loading all products in memory
+        const productChunk = await this.productCatalogRepository.findByBulkRequestId(
+          context.requestId,
+          context.companyId,
+          CHUNK_SIZE,
+          offset,
+        );
+
+        if (productChunk.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Delete each product in the current chunk
+        for (const product of productChunk) {
+          try {
+            await this.commandBus.execute(
+              new DeleteProductCatalogWithMediaCommand(
+                product.id.getValue(),
+                context.companyId,
+                context.userId,
+              ),
+            );
+            totalDeleted++;
+            this.logger.debug(
+              `Deleted product ${product.id.getValue()} for bulk request: ${context.requestId}`,
+            );
+          } catch (error) {
+            this.logger.error(
+              `Failed to delete product ${product.id.getValue()} for bulk request ${context.requestId}: ${error}`,
+            );
+            // Continue with other products even if one fails
+          }
+        }
+
+        offset += CHUNK_SIZE;
+
+        // If we got less than chunk size, we've reached the end
+        if (productChunk.length < CHUNK_SIZE) {
+          hasMore = false;
+        }
+
+        this.logger.debug(
+          `Processed chunk: ${Math.min(offset, totalDeleted + (productChunk.length - totalDeleted))} products for bulk request: ${context.requestId}`,
+        );
+      }
+
+      this.logger.log(
+        `Product cleanup completed. Deleted ${totalDeleted} products for bulk request: ${context.requestId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Product cleanup failed for bulk request ${context.requestId}: ${error}`);
+    }
+  }
+
   private validateRow(row: IProductCatalogTemplateXLSX): string[] {
     const options: IBulkProcessingFlatOptions = this.context?.options || {};
 
@@ -865,6 +943,8 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         maxSimultaneousFiles,
       );
 
+      await context?.cancellationChecker?.();
+
       for (const f of r.results) {
         // Check for cancellation during media file processing (can be many files)
         await context?.cancellationChecker?.();
@@ -934,6 +1014,8 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
           );
         }
       }
+
+      await context?.cancellationChecker?.();
 
       out.metadata = {
         ...out.metadata,
@@ -1163,6 +1245,8 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
           `  • Final success rate: ${totalRows > 0 ? Math.round((successfulCount / totalRows) * 100) : 0}%`,
       );
 
+      await this.context?.cancellationChecker?.();
+
       // Mark bulk request as complete only if everything succeeded
       this.bulkRequest.complete(resultTotalRows);
       await this.bulkProcessingRequestRepository.update(this.bulkRequest);
@@ -1254,6 +1338,8 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
             // Process multimedia for this product
             await this.processProductMediaInSecondPhase(productWithMultimedia);
             totalProcessed++;
+
+            await this.context?.cancellationChecker?.();
 
             // Update progress occasionally based on total system progress
             if (this.context.job && totalProcessed % 5 === 0) {
@@ -1384,6 +1470,8 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         fakeOut,
         this.context,
       );
+
+      await this.context?.cancellationChecker?.();
 
       // Log multimedia processing warnings/errors if any
       if (!fakeOut.isValid || fakeOut.warnings.length > 0 || fakeOut.errors.length > 0) {

@@ -21,7 +21,10 @@ import { BulkProcessingRequestNotFoundException } from '@core/exceptions/bulk-pr
 import { ExcelStreamingService, IExcelRowProcessor } from '@core/services/excel-streaming.service';
 import { FileStatus } from '@shared/constants/file-status.enum';
 import { ProcessorHub } from '@queues/all/bulk-processing/processors/processors-hub';
-import { BulkProcessingEventType } from '@shared/constants/bulk-processing-type.enum';
+import {
+  BulkProcessingEventType,
+  BulkProcessingType,
+} from '@shared/constants/bulk-processing-type.enum';
 import { IBulkProcessingFlatOptions } from '@core/interfaces/bulk-processing-options.interface';
 import { BulkProcessingRequest } from '@core/entities/bulk-processing-request.entity';
 import { FileLockService } from '@core/services/file-lock.service';
@@ -460,9 +463,10 @@ export class BulkProcessingService {
     requestId: string;
     companyId: string;
     fileId: string;
-    jobType: string;
+    jobType: BulkProcessingType;
+    eventType: BulkProcessingEventType;
   }): Promise<void> {
-    const { requestId, companyId, fileId } = data;
+    const { requestId, companyId, fileId, eventType } = data;
     try {
       const bulkRequest = await this.bulkProcessingRequestRepository.findByIdAndCompany(
         requestId,
@@ -472,6 +476,43 @@ export class BulkProcessingService {
         this.logger.warn(`Bulk request not found on cancellation cleanup: ${requestId}`);
 
         return;
+      }
+
+      // First create the context needed for processor creation
+      const context: IBulkProcessingContext = {
+        requestId,
+        eventType,
+        fileId,
+        fileName: bulkRequest.fileName || '',
+        companyId,
+        userId: bulkRequest.requestedBy.getValue(),
+        options: {}, // TODO: Extract from metadata if needed
+        metadata: bulkRequest.metadata,
+      };
+
+      const processor = await ProcessorHub.createProcessorForEventType(
+        this.fileRepository,
+        this.bulkProcessingRequestRepository,
+        this.fileDownloadService,
+        this.commandBus,
+        this.queryBus,
+        this.configService,
+        this.userStorageConfigService,
+        this.logger,
+        eventType,
+        context,
+        bulkRequest,
+        this.storageService,
+        this.productCatalogRepository,
+        this.bulkProcessingEventBus,
+      );
+      if (processor && typeof processor.onProcessingCancelled === 'function') {
+        try {
+          await processor.onProcessingCancelled(context);
+          this.logger.log(`Processor-specific cancellation cleanup completed for ${requestId}`);
+        } catch (error) {
+          this.logger.error(`Processor cancellation cleanup failed for ${requestId}: ${error}`);
+        }
       }
 
       // Restore file status if it was marked as PROCESSING
@@ -488,7 +529,6 @@ export class BulkProcessingService {
                 if (originalFileStatus === FileStatus.UPLOADED) {
                   file.markAsUploaded();
                   await this.fileRepository.update(file);
-
                   this.logger.log(
                     `Restored file ${file.id} from ${FileStatus.PROCESSING} to ${originalFileStatus} ` +
                       `for cancelled bulk processing request ${requestId}`,
@@ -515,7 +555,6 @@ export class BulkProcessingService {
       if (bulkRequest.isCancelling()) {
         bulkRequest.cancel();
         await this.bulkProcessingRequestRepository.update(bulkRequest);
-
         this.logger.log(
           `Successfully completed cancellation for bulk processing request: ${requestId}`,
         );
