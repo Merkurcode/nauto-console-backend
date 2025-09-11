@@ -20,12 +20,12 @@ export class UploadsMaintenanceService implements OnModuleInit {
     const maxMs = parseInt(process.env.UPLOADS_MAINTENANCE_MAX_MS || '4000', 10);
     const attempts = parseInt(process.env.UPLOADS_MAINTENANCE_ATTEMPTS || '1', 10);
 
-    // Programa un job repetible con configuraciones optimizadas para Render
+    // Schedule a repeatable job with Render-optimized configurations
     await this.queue.add(
       'cleanup-active-users',
       { scanCount, maxMs },
       {
-        jobId: 'uploads-maint:cleanup-active-users', // <- clave
+        jobId: 'uploads-maint:cleanup-active-users', // <- key
         repeat: { every: intervalMinutes * 60 * 1000 }, // Configurable interval
         // TTL-based cleanup optimized for Render deployment
         removeOnComplete: {
@@ -43,7 +43,7 @@ export class UploadsMaintenanceService implements OnModuleInit {
     );
 
     this.logger.log(
-      `Repeatable job "cleanup-active-users" programado cada ${intervalMinutes}m (scan: ${scanCount}, maxMs: ${maxMs})`,
+      `Repeatable job "cleanup-active-users" scheduled every ${intervalMinutes}m (scan: ${scanCount}, maxMs: ${maxMs})`,
     );
   }
 }
