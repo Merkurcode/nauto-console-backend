@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ConfigService } from '@nestjs/config';
 import { Job, Queue } from 'bullmq';
@@ -34,6 +34,7 @@ import { RedisConnectionFactory } from '@infrastructure/redis/redis-connection-f
 import { InjectQueue } from '@nestjs/bullmq';
 import { ModuleConfig } from '@queues/all/bulk-processing';
 import { StorageProviderFactory } from '@infrastructure/storage/storage-provider.factory';
+import { HealthService } from '@queues/health/health-checker.service';
 
 // ====== Contextos ======
 
@@ -71,10 +72,16 @@ export class BulkProcessingService {
     private readonly configService: ConfigService,
     private readonly transactionContext: TransactionContextService,
     private readonly prismaService: PrismaService,
+    @Inject() healthService: HealthService,
   ) {
+    //const healthService = new HealthService(
+    //  new LoggerService(this.configService),
+    //  this.configService,
+    //);
     this.bulkProcessingEventBus = new BulkProcessingEventBus(
       queue,
       new LoggerService(this.configService),
+      healthService,
     );
     this.userStorageConfigService = new UserStorageConfigService(
       new UserStorageConfigRepository(

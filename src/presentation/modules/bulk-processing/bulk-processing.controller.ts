@@ -513,6 +513,8 @@ export class BulkProcessingController {
         );
       }
 
+      // When a bulk request is deleted, the file attached to it should as well!
+
       // TODO: Implement DeleteBulkProcessingRequestCommand for proper deletion
       // This should include cleanup of associated files and queue jobs
       throw new BadRequestException(
