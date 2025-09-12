@@ -164,7 +164,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
 
   constructor(
     private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    _queryBus: QueryBus,
     private readonly fileDownloadService: FileDownloadStreamingService,
     private readonly logger: ILogger,
     private readonly context: IBulkProcessingContext,
@@ -173,7 +173,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
     private readonly configService: ConfigService,
     private readonly fileRepository: IFileRepository,
     private readonly productCatalogRepository: IProductCatalogRepository,
-    private readonly allowedExtensions: string[],
+    private readonly allowedExtensions: string[] | null,
     private readonly userStorageConfig: UserStorageConfig,
     private readonly storageService: IStorageService,
     private readonly bulkProcessingEventBus: BulkProcessingEventBus,
@@ -266,6 +266,33 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
 
   async onStart(totalRows: number, _context?: IBulkProcessingContext): Promise<void> {
     this.logger.log(`Starting product catalog processing (${totalRows} rows unknown upfront).`);
+
+    // Get the latest state from database to check for cancellation race condition
+    const latestBulkRequest = await this.bulkProcessingRequestRepository.findByIdAndCompany(
+      this.bulkRequest.id.getValue(),
+      this.context.companyId,
+    );
+
+    if (!latestBulkRequest) {
+      throw new Error(`Bulk request not found: ${this.bulkRequest.id.getValue()}`);
+    }
+
+    // Check if request was cancelled before we could start processing
+    if (latestBulkRequest.isCancelling() || latestBulkRequest.isCancelled()) {
+      this.logger.log(
+        `Request ${this.bulkRequest.id.getValue()} was cancelled before processing could start, throwing cancellation error to trigger failed event`,
+      );
+
+      // Throw cancellation error to trigger the failed event and handleJobCancellation
+      const cancellationError = new Error('Job was cancelled before processing started');
+      cancellationError.name = 'JobCancelledException';
+      throw cancellationError;
+    }
+
+    // Update local instance to latest state
+    this.bulkRequest = latestBulkRequest;
+
+    // Proceed with starting only if status is PENDING
     this.bulkRequest.start(totalRows || 0);
     await this.bulkProcessingRequestRepository.update(this.bulkRequest);
   }
@@ -437,7 +464,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
   }
 
   async onError(error: Error, _context?: IBulkProcessingContext): Promise<void> {
-    this.logger.error(`Product catalog error: ${error.message}`, error.stack);
+    this.logger.error(`Product catalog error: ${error?.message || 'Unknown error'}`, error?.stack);
   }
 
   // ----- helpers -----
@@ -581,6 +608,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
    */
   async onProcessingCancelled(context: IBulkProcessingContext): Promise<void> {
     const requestId = this.bulkRequest.id.getValue();
+
     this.logger.log(
       `Starting comprehensive cancellation cleanup for ProductCatalog request: ${requestId}`,
     );
@@ -590,8 +618,10 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       await this.cleanupCreatedProducts(context);
 
       this.logger.log(`Comprehensive cancellation cleanup completed for request: ${requestId}`);
-    } catch (error) {
-      this.logger.error(`Cancellation cleanup failed for request ${requestId}: ${error}`);
+    } catch (error: any) {
+      this.logger.error(
+        `Cancellation cleanup failed for request ${requestId}: ${error?.message || error}`,
+      );
       // Don't throw - let the main cancellation process continue
     }
   }
@@ -664,8 +694,8 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
           );
         }
       }
-    } catch (error) {
-      this.logger.error(`Failed to restore file status: ${error}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to restore file status: ${error?.message || error}`);
       // Don't throw - completion should still succeed even if file status restoration fails
     }
   }
@@ -778,9 +808,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
             this.logger.debug(
               `Deleted product ${product.id.getValue()} for bulk request: ${context.requestId}`,
             );
-          } catch (error) {
+          } catch (error: any) {
             this.logger.error(
-              `Failed to delete product ${product.id.getValue()} for bulk request ${context.requestId}: ${error}`,
+              `Failed to delete product ${product.id.getValue()} for bulk request ${context.requestId}: ${error?.message || error}`,
             );
             // Continue with other products even if one fails
           }
@@ -802,7 +832,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         `Product cleanup completed. Deleted ${totalDeleted} products for bulk request: ${context.requestId}`,
       );
     } catch (error) {
-      this.logger.error(`Product cleanup failed for bulk request ${context.requestId}: ${error}`);
+      this.logger.error(
+        `Product cleanup failed for bulk request ${context.requestId}: ${error?.message || error}`,
+      );
     }
   }
 
@@ -928,7 +960,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         all,
         {
           baseStoragePath: basePath,
-          allowedExtensions: this.allowedExtensions,
+          allowedExtensions: this.allowedExtensions || [],
           maxFileSize: maxFileSizeMB * 1024 * 1024,
           timeout: downloadTimeoutMs,
           retryAttempts: downloadRetries,
@@ -950,7 +982,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         await context?.cancellationChecker?.();
 
         if (!f.success || !f.storagePath) {
-          out.warnings.push(`Failed to download ${f.originalUrl}: ${f.error}`);
+          out.warnings.push(
+            `Failed to download ${f?.originalUrl || 'unknown'}: ${f?.error || 'unknown error'}`,
+          );
           continue;
         }
 
@@ -991,7 +1025,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
           const tags = await this.inferTagsFromUrl(
             userStorageConfig,
             f.originalUrl,
-            this.allowedExtensions,
+            this.allowedExtensions || [],
             f.fileSize || 0,
           );
 
@@ -1008,7 +1042,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
               this.context.userId,
             ),
           );
-        } catch (e: any) {
+        } catch (e) {
           out.warnings.push(
             `Failed to create media record for ${f.originalUrl}: ${e?.message ?? String(e)}`,
           );
@@ -1038,11 +1072,13 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
             ),
           );
         } catch (error) {
-          this.logger.warn(`Failed to update product visibility for ${productId}: ${error}`);
-          out.warnings.push(`Failed to update product visibility: ${error}`);
+          this.logger.warn(
+            `Failed to update product visibility for ${productId}: ${error?.message || error}`,
+          );
+          out.warnings.push(`Failed to update product visibility: ${error?.message || error}`);
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       // Re-throw cancellation errors to allow proper cancellation handling
       if (e?.name === 'JobCancelledException' || e?.message?.includes('Job cancelled')) {
         throw e;
@@ -1273,11 +1309,13 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       }
 
       // For non-cancellation errors, mark as failed
-      this.logger.error(`Failed to complete second phase media processing: ${error}`);
+      this.logger.error(
+        `Failed to complete second phase media processing: ${error?.message || error}`,
+      );
 
       // Only try to fail if not already completed
       if (this.bulkRequest.status !== BulkProcessingStatus.COMPLETED) {
-        this.bulkRequest.fail(`Second phase media processing failed: ${error}`);
+        this.bulkRequest.fail(`Second phase media processing failed: ${error?.message || error}`);
         await this.bulkProcessingRequestRepository.update(this.bulkRequest);
       }
 
@@ -1380,7 +1418,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
               throw error; // Re-throw cancellation errors
             }
             this.logger.warn(
-              `Failed to process media for product ${product.id.getValue()}: ${error}`,
+              `Failed to process media for product ${product.id.getValue()}: ${error?.message || error}`,
             );
           }
         }
@@ -1407,7 +1445,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
 
       // Don't mark as complete here - let the parent method handle it
     } catch (error) {
-      this.logger.error(`Failed to process products with multimedia: ${error}`);
+      this.logger.error(`Failed to process products with multimedia: ${error?.message || error}`);
       throw error;
     }
   }
@@ -1504,7 +1542,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         `Successfully processed multimedia for product ${product.id} and set visible=true`,
       );
     } catch (error) {
-      this.logger.error(`Failed to process multimedia for product ${product.id}: ${error}`);
+      this.logger.error(
+        `Failed to process multimedia for product ${product.id}: ${error?.message || error}`,
+      );
       throw error;
     }
   }

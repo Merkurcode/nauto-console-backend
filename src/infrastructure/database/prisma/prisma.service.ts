@@ -16,6 +16,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     // Build database URL with connection pool parameters
     const baseUrl = configService.get<string>('database.url');
+    if (!baseUrl) {
+      throw new Error('DATABASE_URL is not configured. Please check your environment variables.');
+    }
     const urlWithPool = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}`;
 
     // Configure Prisma logging based on PRISMA_LOGS_ENABLED environment variable

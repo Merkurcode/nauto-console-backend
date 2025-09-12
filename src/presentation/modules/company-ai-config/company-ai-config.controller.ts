@@ -39,7 +39,7 @@ import { GetCompanyAIConfigQuery } from '@application/queries/company-ai-config/
  * All write operations are wrapped in database transactions
  */
 @ApiTags('company-ai-configuration')
-@Controller('api/companies/:companyId/ai-config')
+@Controller('companies/:companyId/ai-config')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, CompanyAssignmentGuard)
 export class CompanyAIConfigController {

@@ -46,7 +46,6 @@ import { FileNamingService } from './services/file-naming.service';
 import { MarketingCampaignService } from './services/marketing-campaign.service';
 import { ExcelStreamingService } from './services/excel-streaming.service';
 import { FileDownloadStreamingService } from './services/file-download-streaming.service';
-import { BulkProcessingService } from './services/bulk-processing.service';
 
 /**
  * Core Domain Module
@@ -102,7 +101,6 @@ import { BulkProcessingService } from './services/bulk-processing.service';
     MarketingCampaignService,
     ExcelStreamingService,
     FileDownloadStreamingService,
-    BulkProcessingService,
   ],
   exports: [
     // Export all domain services
@@ -151,7 +149,6 @@ import { BulkProcessingService } from './services/bulk-processing.service';
     MarketingCampaignService,
     ExcelStreamingService,
     FileDownloadStreamingService,
-    BulkProcessingService,
   ],
 })
 export class CoreModule {}

@@ -1,172 +1,75 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Injectable, Inject } from '@nestjs/common';
-import { Processor, InjectQueue } from '@nestjs/bullmq';
-import { Job, Queue } from 'bullmq';
-import { BaseProcessor } from '../../base/base-processor';
-import { ILogger } from '@core/interfaces/logger.interface';
-import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
+import { Job } from 'bullmq';
+import { ModuleRef, ContextIdFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { LoggerService } from '@infrastructure/logger/logger.service';
 import { IBulkProcessingJobData, ModuleConfig } from './bulk-processing-config';
+import { BulkProcessingHandlerService } from './bulk-processing-handler.service';
 import { BulkProcessingService } from '../../../core/services/bulk-processing.service';
-import { BulkProcessingType } from '@shared/constants/bulk-processing-type.enum';
 
 @Processor(ModuleConfig.queue.name, ModuleConfig.processor)
 @Injectable()
-export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobData> {
+export class BulkProcessingProcessor extends WorkerHost {
+  private readonly logger: LoggerService;
+
   constructor(
-    private readonly bulkProcessingService: BulkProcessingService,
-    @InjectQueue(ModuleConfig.queue.name) private readonly queue: Queue,
-    @Inject(LOGGER_SERVICE) logger: ILogger,
+    private readonly moduleRef: ModuleRef,
+    private readonly configService: ConfigService,
   ) {
-    super(ModuleConfig, logger);
+    super();
+    // Create a dedicated singleton logger instance for the processor
+    this.logger = new LoggerService(configService);
+    this.logger.setContext(BulkProcessingProcessor.name);
     this.logger.log(
       `Bulk processing processor initialized with concurrency: ${ModuleConfig.processor.concurrency}, ` +
         `max retries: ${ModuleConfig.jobs.attempts}`,
     );
   }
 
-  async processJob(job: Job<IBulkProcessingJobData>): Promise<void> {
-    const { jobType, requestId, companyId, userId, options } = job.data;
-
-    // Check if job has been marked for cancellation
-    await this.checkForCancellation(job);
-
-    // Pass cancellation checker to the processing methods
-    const cancellationChecker = () => this.checkForCancellation(job);
-
-    this.logger.log(
-      `Processing bulk job: ${jobType} for request ${requestId} ` +
-        `(company: ${companyId}, user: ${userId})`,
-    );
-
-    this.logger.log(
-      `Job received with options keys: ${options ? Object.keys(options) : 'no options'}`,
-    );
-
+  private async getBulkProcessingService(): Promise<BulkProcessingService | null> {
     try {
-      switch (jobType) {
-        // If diff processing types shares same logic, then add them here...
-        case BulkProcessingType.PRODUCT_CATALOG:
-          await this.processExcelFile(job, cancellationChecker);
-          break;
-
-        case BulkProcessingType.CLEANUP_TEMP_FILES:
-          await this.cleanupTempFiles(job, cancellationChecker);
-          break;
-
-        default:
-          throw new Error(`Unknown bulk processing job type: ${jobType}`);
-      }
-
-      this.logger.log(`Completed bulk job: ${jobType} for request ${requestId} made by ${userId}`);
+      return await this.moduleRef.resolve(BulkProcessingService, undefined, {
+        strict: false,
+      });
     } catch (error) {
-      // Check if this is a cancellation error
-      if (
-        error instanceof Error &&
-        (error.name === 'JobCancelledException' || error.message.includes('Job cancelled'))
-      ) {
-        this.logger.log(
-          `Bulk job ${jobType} for request ${requestId} was cancelled during processing`,
-        );
-        // Mark error as non-retryable by setting a specific property
-        const cancellationError = new Error(error.message);
-        cancellationError.name = 'JobCancelledException';
-        (cancellationError as any).shouldRetry = false;
-        throw cancellationError;
-      }
+      this.logger.error('Failed to resolve BulkProcessingService', error);
 
-      this.logger.error(
-        `Failed to process bulk job: ${jobType} for request ${requestId} made by ${userId}`,
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error; // Re-throw to trigger retry mechanism
+      return null;
     }
   }
 
-  private async checkForCancellation(job: Job<IBulkProcessingJobData>): Promise<void> {
-    // Validate job ID exists
-    if (!job.id) {
-      this.logger.warn('Cannot check cancellation: job.id is undefined');
-
-      return;
-    }
-
-    // Lee el estado fresco desde Redis
-    const fresh = await this.queue.getJob(job.id);
-    if (!fresh) return;
-
-    if (fresh.data.cancelled) {
-      // Evita doble log en este proceso
-      if (!job.data.cancellationLogged && !fresh.data.cancellationLogged) {
-        this.logger.log(
-          `Job ${fresh.id} for request ${fresh.data.requestId} has been cancelled. Stopping processing.`,
-        );
-
-        // Escribe UNA vez en Redis usando la instancia del worker
-        await job.updateData({
-          ...fresh.data, // parte de lo más reciente
-          cancellationLogged: true, // y marca el flag
-        });
-
-        // Mantén ambas copias locales sincronizadas para este proceso
-        job.data.cancellationLogged = true;
-        fresh.data.cancellationLogged = true;
-      }
-
-      const error = new Error(`Job cancelled at ${job.data.cancelledAt}`);
-      error.name = 'JobCancelledException';
-      throw error;
-    }
-  }
-
-  private async processExcelFile(
-    job: Job<IBulkProcessingJobData>,
-    cancellationChecker: () => Promise<void>,
-  ): Promise<void> {
-    const { requestId, eventType, fileId, fileName, companyId, userId, options, metadata } =
-      job.data;
-
-    this.logger.log(`Processing Excel file with options: ${JSON.stringify(options, null, 2)}`);
-    this.logger.log(`Job metadata: ${JSON.stringify(metadata, null, 2)}`);
-
-    await this.bulkProcessingService.processExcelFile({
-      requestId,
-      eventType,
-      fileId,
-      fileName,
-      companyId,
-      userId,
-      options,
-      metadata,
-      job, // Pass job for progress updates
-      cancellationChecker, // Pass cancellation checker for periodic checks
-    });
-  }
-
-  private async cleanupTempFiles(
-    job: Job<IBulkProcessingJobData>,
-    cancellationChecker: () => Promise<void>,
-  ): Promise<void> {
-    const { requestId, companyId, userId, options } = job.data;
-    const filesToCleanup = options.filesToCleanup as string[];
-
-    await this.bulkProcessingService.cleanupTempFiles({
-      requestId,
-      companyId,
-      userId,
-      filesToCleanup,
-      job,
-      cancellationChecker,
-    });
-  }
-
-  protected getJobProgressInfo(job: Job<IBulkProcessingJobData>): string {
+  private getJobProgressInfo(job: Job<IBulkProcessingJobData>): string {
     const progress = job.progress || 0;
     const { jobType, requestId } = job.data;
 
     return `${jobType} (${requestId}): ${progress}%`;
   }
 
-  protected async onJobActive(job: Job<IBulkProcessingJobData>): Promise<void> {
+  async process(job: Job<IBulkProcessingJobData>): Promise<void> {
+    // 1) Create a contextId "per job"
+    const contextId = ContextIdFactory.create();
+
+    // 2) Register the "request" (the job itself as the request context)
+    this.moduleRef.registerRequestByContextId({ job }, contextId);
+
+    // 3) Resolve the request-scoped handler within that context
+    const handler = await this.moduleRef.resolve(BulkProcessingHandlerService, contextId, {
+      strict: false,
+    });
+
+    // 4) Execute the real logic in the request-scoped handler
+    return handler.handle(job);
+  }
+
+  @OnWorkerEvent('progress')
+  async onJobProgress(job: Job<IBulkProcessingJobData>): Promise<void> {
+    const progressInfo = this.getJobProgressInfo(job);
+    this.logger.debug(`Bulk processing progress: ${progressInfo}`);
+  }
+
+  @OnWorkerEvent('active')
+  async onJobActive(job: Job<IBulkProcessingJobData>): Promise<void> {
     const { jobType, requestId, companyId } = job.data;
 
     this.logger.log(
@@ -174,34 +77,54 @@ export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobDat
     );
   }
 
-  protected async onJobCompleted(job: Job<IBulkProcessingJobData>, result: any): Promise<void> {
+  @OnWorkerEvent('completed')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async onJobCompleted(job: Job<IBulkProcessingJobData>, result: any): Promise<void> {
     const { jobType, requestId, companyId } = job.data;
 
+    const resultStr = result ? JSON.stringify(result) : 'undefined';
     this.logger.log(
       `Completed bulk job: ${jobType} for request ${requestId} in company ${companyId}. ` +
-        `Result: ${JSON.stringify(result).substring(0, 200)}...`,
+        `Result: ${resultStr.substring(0, 200)}...`,
     );
   }
 
-  protected async onJobFailed(job: Job<IBulkProcessingJobData>, error: Error): Promise<void> {
+  @OnWorkerEvent('failed')
+  async onJobFailed(job: Job<IBulkProcessingJobData>, error: Error): Promise<void> {
     const { jobType, requestId, companyId, fileId, eventType } = job.data;
 
+    let bulkProcessingService;
+
+    try {
+      bulkProcessingService = await this.getBulkProcessingService();
+    } catch (e) {
+      this.logger.error(
+        `Failed to handle failure job for request ${requestId}: ${e?.message || e}`,
+      );
+    }
+
     // Check if this is a cancellation error
-    if (error.name === 'JobCancelledException' || error.message.includes('Job cancelled')) {
+    if (
+      error.name === 'JobCancelledException' ||
+      error.message.includes('Job cancelled') ||
+      error.message.includes('Cannot start bulk processing request with status: CANCELLING')
+    ) {
       this.logger.log(`Job ${job.id} for request ${requestId} was cancelled and failed gracefully`);
 
-      // Handle cancellation cleanup
+      // Handle cancellation cleanup using dynamic service resolution
       try {
-        await this.bulkProcessingService.handleJobCancellation({
-          requestId,
-          companyId,
-          fileId,
-          jobType,
-          eventType,
-        });
+        if (bulkProcessingService) {
+          await bulkProcessingService.handleJobCancellation({
+            requestId,
+            companyId,
+            fileId,
+            jobType,
+            eventType,
+          });
+        }
       } catch (cancellationError) {
         this.logger.error(
-          `Failed to handle job cancellation cleanup for request ${requestId}: ${cancellationError}`,
+          `Failed to handle job cancellation cleanup for request ${requestId}: ${cancellationError?.message || cancellationError}`,
         );
       }
 
@@ -215,38 +138,44 @@ export class BulkProcessingProcessor extends BaseProcessor<IBulkProcessingJobDat
       error.stack,
     );
 
-    // Ensure file status is restored when job fails
+    // Ensure file status is restored when job fails using dynamic service resolution
     try {
-      await this.bulkProcessingService.handleJobFailure({
-        requestId,
-        companyId,
-        fileId,
-        error: error.message,
-        jobType,
-      });
+      if (bulkProcessingService) {
+        await bulkProcessingService.handleJobFailure({
+          requestId,
+          companyId,
+          fileId,
+          error: error.message,
+          jobType,
+        });
+      }
     } catch (restoreError) {
       this.logger.error(
-        `Failed to handle job failure cleanup for request ${requestId}: ${restoreError}`,
+        `Failed to handle job failure cleanup for request ${requestId}: ${restoreError?.message || restoreError}`,
       );
     }
   }
 
-  protected async onJobStalled(job: Job<IBulkProcessingJobData>): Promise<void> {
+  @OnWorkerEvent('stalled')
+  async onJobStalled(job: Job<IBulkProcessingJobData>): Promise<void> {
     const { jobType, requestId, companyId, fileId } = job.data;
 
     this.logger.warn(`Stalled bulk job: ${jobType} for request ${requestId}`);
 
-    // Handle stalled job - may need to restore file status if job has been stalled for too long
+    // Handle stalled job using dynamic service resolution
     try {
-      await this.bulkProcessingService.handleJobStalled({
-        requestId,
-        companyId,
-        fileId,
-        jobType,
-      });
+      const bulkProcessingService = await this.getBulkProcessingService();
+      if (bulkProcessingService) {
+        await bulkProcessingService.handleJobStalled({
+          requestId,
+          companyId,
+          fileId,
+          jobType,
+        });
+      }
     } catch (stalledError) {
       this.logger.error(
-        `Failed to handle stalled job cleanup for request ${requestId}: ${stalledError}`,
+        `Failed to handle stalled job cleanup for request ${requestId}: ${stalledError?.message || stalledError}`,
       );
     }
   }

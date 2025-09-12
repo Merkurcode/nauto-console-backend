@@ -26,6 +26,10 @@ import { SmsService } from '@core/services/sms.service';
 // Import queue services for job scheduling
 import { StaleUploadsCleanupService } from './all/stale-uploads-cleanup/stale-uploads-cleanup.service';
 import { UploadsMaintenanceService } from './all/uploads-maintenance/uploads-maintenance.service';
+import { BulkProcessingHandlerService } from './all/bulk-processing';
+import { BulkProcessingService } from '@core/services/bulk-processing.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 
 @Injectable()
 class QueueRegistrationService implements OnApplicationBootstrap {
@@ -35,6 +39,7 @@ class QueueRegistrationService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const queueNames = (this as any).queueNames || [];
     let registeredCount = 0;
 
@@ -158,6 +163,7 @@ export class QueueModule {
     const queuesToRegister = options?.queues?.length ? options.queues : [];
 
     const queuesWithStreams = queuesToRegister.map(queue => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const baseQueue: any = { name: queue.name };
 
       // Only add streams if the queue definition includes them
@@ -240,6 +246,14 @@ export class QueueModule {
         options.queues.forEach(queue => {
           if (queue.processor) {
             providers.push(queue.processor);
+
+            // For BulkProcessingProcessor, also register the handler service and bulk processing service
+            if (queue.processor.name === 'BulkProcessingProcessor') {
+              providers.push(BulkProcessingHandlerService);
+              providers.push(BulkProcessingService);
+              providers.push(TransactionContextService);
+              providers.push(PrismaService);
+            }
           }
         });
       }

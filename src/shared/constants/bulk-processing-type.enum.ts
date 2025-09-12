@@ -24,6 +24,8 @@ export enum BulkProcessingEventType {
   CLEANUP_TEMP_FILES = 'BULK_PROCESSING_CLEANUP',
 }
 
+export const ExcelJobs = new Set([BulkProcessingType.PRODUCT_CATALOG]);
+
 export const EventProcessingMap: Record<
   BulkProcessingEventType,
   { resource: ActiveResources; processingType: BulkProcessingType }

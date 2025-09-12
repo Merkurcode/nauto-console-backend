@@ -1,19 +1,12 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ConfigService } from '@nestjs/config';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { IStorageService } from '@core/repositories/storage.service.interface';
 import { IFileRepository } from '@core/repositories/file.repository.interface';
 import { IBulkProcessingRequestRepository } from '@core/repositories/bulk-processing-request.repository.interface';
 import { IProductCatalogRepository } from '@core/repositories/product-catalog.repository.interface';
-import {
-  LOGGER_SERVICE,
-  STORAGE_SERVICE,
-  FILE_REPOSITORY,
-  BULK_PROCESSING_REQUEST_REPOSITORY,
-  PRODUCT_CATALOG_REPOSITORY,
-} from '@shared/constants/tokens';
 import { FileDownloadStreamingService } from '@core/services/file-download-streaming.service';
 import { UserStorageConfigService } from '@core/services/user-storage-config.service';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
@@ -29,6 +22,18 @@ import { IBulkProcessingFlatOptions } from '@core/interfaces/bulk-processing-opt
 import { BulkProcessingRequest } from '@core/entities/bulk-processing-request.entity';
 import { FileLockService } from '@core/services/file-lock.service';
 import { BulkProcessingEventBus } from '@queues/all/bulk-processing/bulk-processing-event-bus';
+import { LoggerService } from '@infrastructure/logger/logger.service';
+import { FileRepository } from '@infrastructure/repositories/file.repository';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
+import { BulkProcessingRequestRepository } from '@infrastructure/repositories/bulk-processing-request.repository';
+import { ProductCatalogRepository } from '@infrastructure/repositories/product-catalog.repository';
+import { UserStorageConfigRepository } from '@infrastructure/repositories/user-storage-config.repository';
+import { ConcurrencyService } from '@infrastructure/services/concurrency.service';
+import { RedisConnectionFactory } from '@infrastructure/redis/redis-connection-factory';
+import { InjectQueue } from '@nestjs/bullmq';
+import { ModuleConfig } from '@queues/all/bulk-processing';
+import { StorageProviderFactory } from '@infrastructure/storage/storage-provider.factory';
 
 // ====== Contextos ======
 
@@ -48,23 +53,81 @@ export interface IBulkProcessingContext {
 
 @Injectable()
 export class BulkProcessingService {
+  private readonly logger: ILogger;
+  private readonly storageService: IStorageService;
+  private readonly fileRepository: IFileRepository;
+  private readonly bulkProcessingRequestRepository: IBulkProcessingRequestRepository;
+  private readonly productCatalogRepository: IProductCatalogRepository;
+  private readonly excelStreamingService: ExcelStreamingService;
+  private readonly fileDownloadService: FileDownloadStreamingService;
+  private readonly userStorageConfigService: UserStorageConfigService;
+  private readonly fileLockService: FileLockService;
+  private readonly bulkProcessingEventBus: BulkProcessingEventBus;
+
   constructor(
-    @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
-    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
-    @Inject(FILE_REPOSITORY) private readonly fileRepository: IFileRepository,
-    @Inject(BULK_PROCESSING_REQUEST_REPOSITORY)
-    private readonly bulkProcessingRequestRepository: IBulkProcessingRequestRepository,
-    @Inject(PRODUCT_CATALOG_REPOSITORY)
-    private readonly productCatalogRepository: IProductCatalogRepository,
-    private readonly excelStreamingService: ExcelStreamingService,
-    private readonly fileDownloadService: FileDownloadStreamingService,
+    @InjectQueue(ModuleConfig.queue.name) queue: Queue,
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
     private readonly configService: ConfigService,
-    private readonly userStorageConfigService: UserStorageConfigService,
-    private readonly fileLockService: FileLockService,
-    private readonly bulkProcessingEventBus: BulkProcessingEventBus,
+    private readonly transactionContext: TransactionContextService,
+    private readonly prismaService: PrismaService,
   ) {
+    this.bulkProcessingEventBus = new BulkProcessingEventBus(
+      queue,
+      new LoggerService(this.configService),
+    );
+    this.userStorageConfigService = new UserStorageConfigService(
+      new UserStorageConfigRepository(
+        this.prismaService,
+        this.transactionContext,
+        new LoggerService(this.configService),
+      ),
+    );
+    this.fileLockService = new FileLockService(
+      new ConcurrencyService(
+        new RedisConnectionFactory(
+          this.configService,
+          new LoggerService(this.configService),
+        ).createConnection('storage-concurrency', {
+          // Configuración específica para storage operations
+          db: 0, // Database dedicada para storage
+        }),
+        new LoggerService(this.configService),
+      ),
+      new LoggerService(this.configService),
+    );
+    this.excelStreamingService = new ExcelStreamingService(
+      new LoggerService(this.configService),
+      this.configService,
+      this.userStorageConfigService,
+    );
+    this.logger = new LoggerService(this.configService);
+    this.storageService = StorageProviderFactory.create(
+      this.configService,
+      new LoggerService(this.configService),
+    );
+    this.fileDownloadService = new FileDownloadStreamingService(
+      new LoggerService(this.configService),
+      this.storageService,
+      this.configService,
+      this.queryBus,
+    );
+    this.fileRepository = new FileRepository(
+      this.prismaService,
+      this.transactionContext,
+      this.configService,
+      new LoggerService(this.configService),
+    );
+    this.bulkProcessingRequestRepository = new BulkProcessingRequestRepository(
+      this.prismaService,
+      this.transactionContext,
+      new LoggerService(this.configService),
+    );
+    this.productCatalogRepository = new ProductCatalogRepository(
+      this.prismaService,
+      this.transactionContext,
+      new LoggerService(this.configService),
+    );
     this.logger.setContext(BulkProcessingService.name);
   }
 
@@ -261,7 +324,7 @@ export class BulkProcessingService {
     filesToCleanup: string[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     job?: Job<any>;
-    cancellationChecker?: () => Promise<void>;
+    //cancellationChecker?: () => Promise<void>;
   }): Promise<void> {
     const { requestId, filesToCleanup } = data;
 
@@ -270,7 +333,7 @@ export class BulkProcessingService {
     let cleanedCount = 0;
     for (const fileId of filesToCleanup) {
       // Check for cancellation before each file cleanup
-      await data?.cancellationChecker?.();
+      //await data?.cancellationChecker?.();
 
       try {
         // Get file information from database using fileId
@@ -426,7 +489,9 @@ export class BulkProcessingService {
         }
       }
     } catch (e) {
-      this.logger.error(`Restore file status failed for ${bulkRequest.id} after ${reason}: ${e}`);
+      this.logger.error(
+        `Restore file status failed for ${bulkRequest.id} after ${reason}: ${e?.message || e}`,
+      );
     }
   }
 
@@ -455,7 +520,7 @@ export class BulkProcessingService {
       }
       this.logger.log(`Failure cleanup done for ${requestId}`);
     } catch (e) {
-      this.logger.error(`Failure cleanup failed for ${requestId}: ${e}`);
+      this.logger.error(`Failure cleanup failed for ${requestId}: ${e?.message || e}`);
     }
   }
 
@@ -467,6 +532,7 @@ export class BulkProcessingService {
     eventType: BulkProcessingEventType;
   }): Promise<void> {
     const { requestId, companyId, fileId, eventType } = data;
+
     try {
       const bulkRequest = await this.bulkProcessingRequestRepository.findByIdAndCompany(
         requestId,
@@ -511,7 +577,10 @@ export class BulkProcessingService {
           await processor.onProcessingCancelled(context);
           this.logger.log(`Processor-specific cancellation cleanup completed for ${requestId}`);
         } catch (error) {
-          this.logger.error(`Processor cancellation cleanup failed for ${requestId}: ${error}`);
+          this.logger.error(
+            `Processor cancellation cleanup failed for ${requestId}: ${error?.message || error}`,
+            error?.stack,
+          );
         }
       }
 
@@ -545,7 +614,7 @@ export class BulkProcessingService {
         } catch (error) {
           // Log error but continue with cancellation
           this.logger.error(
-            `Failed to restore file status for cancelled bulk processing request ${requestId}: ${error}. ` +
+            `Failed to restore file status for cancelled bulk processing request ${requestId}: ${error?.message || error}. ` +
               `File may remain in ${FileStatus.PROCESSING} state and require manual intervention.`,
           );
         }
@@ -564,7 +633,7 @@ export class BulkProcessingService {
         );
       }
     } catch (e) {
-      this.logger.error(`Cancellation cleanup failed for ${requestId}: ${e}`);
+      this.logger.error(`Cancellation cleanup failed for ${requestId}: ${e?.message || e}`);
     }
   }
 
@@ -596,7 +665,7 @@ export class BulkProcessingService {
         this.logger.debug(`Stalled job for ${requestId} still within limits`);
       }
     } catch (e) {
-      this.logger.error(`Stalled cleanup failed for ${requestId}: ${e}`);
+      this.logger.error(`Stalled cleanup failed for ${requestId}: ${e?.message || e}`);
     }
   }
 }
