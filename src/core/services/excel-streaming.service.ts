@@ -118,6 +118,12 @@ export interface IExcelRowProcessor<T = Record<string, any>> {
    * Gets custom progress update for different phases
    */
   getProgressUpdate?(phase: 'start' | 'processing' | 'completion', currentProgress: number): number;
+
+  /**
+   * This method allows the service to pass the latest entity state with correct counters
+   */
+  setBulkRequestEntity?(updatedEntity: BulkProcessingRequest): void;
+  getBulkRequestEntity?(): BulkProcessingRequest | null;
 }
 
 export interface IExcelStreamingResult {
@@ -212,7 +218,7 @@ export class ExcelStreamingService {
         id: number;
         name: string;
         skip: () => void;
-        on: (event: string, handler: any) => void;
+        on: (event: string, handler) => void;
         process: () => void;
       }) => {
         // Si se especifica sheetName, usa esa. Si no, usa la primera y salta el resto.

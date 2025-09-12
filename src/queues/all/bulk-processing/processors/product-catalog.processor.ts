@@ -245,6 +245,17 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
   }
 
   async setLogs(bulkRequest: BulkProcessingRequest, result: IExcelStreamingResult): Promise<void> {
+    this.logger.log(`🔍 DEBUG setLogs: Processing ${result.errors.length} errors`);
+    this.logger.log(
+      `🔍 DEBUG setLogs: Received counters - processed: ${result.processedRows}, successful: ${result.successfulRows}, failed: ${result.failedRows}`,
+    );
+
+    // This ensures we work with the same entity that onStart() transitioned to PROCESSING
+    const entityToUpdate = this.bulkRequest;
+    this.logger.log(
+      `🔧 ENTITY SYNC: Using processor's entity (status: ${entityToUpdate.status}) instead of service parameter`,
+    );
+
     // Loguea errores por fila (capando en el servicio ya)
     for (const e of result.errors) {
       const rowLog: IBulkProcessingRowLog = {
@@ -256,12 +267,20 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         metadata: e.metadata,
         processedAt: new Date(),
       };
-      bulkRequest.addRowLog(rowLog);
+      entityToUpdate.addRowLog(rowLog);
     }
 
     // Actualizar contadores directamente con los resultados del streaming
-    bulkRequest.updateCounters(result.processedRows, result.successfulRows, result.failedRows);
-    await this.bulkProcessingRequestRepository.update(bulkRequest);
+    this.logger.log(
+      `🔍 DEBUG setLogs: Before updateCounters - current counters: processed: ${entityToUpdate.processedRows}, successful: ${entityToUpdate.successfulRows}, failed: ${entityToUpdate.failedRows}`,
+    );
+    entityToUpdate.updateCounters(result.processedRows, result.successfulRows, result.failedRows);
+    this.logger.log(
+      `🔍 DEBUG setLogs: After updateCounters - new counters: processed: ${entityToUpdate.processedRows}, successful: ${entityToUpdate.successfulRows}, failed: ${entityToUpdate.failedRows}`,
+    );
+
+    await this.bulkProcessingRequestRepository.update(entityToUpdate);
+    this.logger.log(`🔍 DEBUG setLogs: Counters saved to database`);
   }
 
   async onStart(totalRows: number, _context?: IBulkProcessingContext): Promise<void> {
@@ -452,11 +471,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
   ): Promise<void> {
     if (!context) return;
 
-    // Actualizar contadores del bulkRequest
-    this.bulkRequest.updateCounters(processedCount, successfulCount, failedCount);
-
-    // Persistir en base de datos
-    await this.bulkProcessingRequestRepository.update(this.bulkRequest);
+    // NOTE: Do not update counters here as they will be overwritten by setLogs() with final correct values
+    // Only update the entity in memory but don't persist to avoid race conditions with setLogs()
+    // The final counters will be set correctly in setLogs() after streaming completes
 
     this.logger.debug(
       `Batch update: ${processedCount} processed (${successfulCount} ok, ${failedCount} fail)`,
@@ -513,6 +530,18 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
   }
 
   /**
+   * This method is called from the service to pass the latest entity state
+   * with correct counters that were just updated by setLogs()
+   */
+  setBulkRequestEntity(updatedEntity: BulkProcessingRequest): void {
+    this.bulkRequest = updatedEntity;
+  }
+
+  getBulkRequestEntity(): BulkProcessingRequest | null {
+    return this.bulkRequest;
+  }
+
+  /**
    * Called by the service when processing completes successfully
    * This is the new interface method that replaces the onComplete method logic
    */
@@ -552,7 +581,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       }
 
       this.logger.log(
-        `Single-phase bulk processing fully completed for ${this.bulkRequest.id.getValue()}`,
+        `Single-phase bulk processing fully completed for ${this.bulkRequest.id.getValue()}. ` +
+          `Total rows: ${this.bulkRequest.totalRows}, Successful: ${this.bulkRequest.successfulRows}, Failed: ${this.bulkRequest.failedRows}, ` +
+          `Final success rate: ${this.bulkRequest.totalRows > 0 ? Math.round((this.bulkRequest.successfulRows / this.bulkRequest.totalRows) * 100) : 0}%`,
       );
     }
   }
@@ -1244,13 +1275,40 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
         (this.bulkRequest.totalRows === 0 || this.bulkRequest.totalRows === null) &&
         resultTotalRows > 0
       ) {
+        // Preserve current counters before refreshing (they should have been updated by setLogs)
+        const currentCounters = {
+          processedRows: this.bulkRequest.processedRows,
+          successfulRows: this.bulkRequest.successfulRows,
+          failedRows: this.bulkRequest.failedRows,
+        };
+
         // Get the latest entity from database to ensure we have correct state
         const latestBulkRequest = await this.bulkProcessingRequestRepository.findByIdAndCompany(
           this.bulkRequest.id.getValue(),
           this.context.companyId,
         );
         if (latestBulkRequest) {
+          this.logger.log(
+            `🔍 DEBUG scheduleSecondPhase: DB entity has counters - processed: ${latestBulkRequest.processedRows}, successful: ${latestBulkRequest.successfulRows}, failed: ${latestBulkRequest.failedRows}`,
+          );
+          this.logger.log(
+            `🔍 DEBUG scheduleSecondPhase: Current counters - processed: ${currentCounters.processedRows}, successful: ${currentCounters.successfulRows}, failed: ${currentCounters.failedRows}`,
+          );
+
           this.bulkRequest = latestBulkRequest;
+
+          // Restore counters if DB entity has zeros but we have valid counters (timing issue)
+          if (this.bulkRequest.processedRows === 0 && currentCounters.processedRows > 0) {
+            this.logger.log(
+              `🔍 DEBUG scheduleSecondPhase: Restoring counters from memory due to DB timing issue`,
+            );
+            this.bulkRequest.updateCounters(
+              currentCounters.processedRows,
+              currentCounters.successfulRows,
+              currentCounters.failedRows,
+            );
+            await this.bulkProcessingRequestRepository.update(this.bulkRequest);
+          }
 
           // If database also has null/0, force set it to resultTotalRows
           if (this.bulkRequest.totalRows === null || this.bulkRequest.totalRows === 0) {
@@ -1272,6 +1330,10 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       const successfulCount = this.bulkRequest.successfulRows;
       const failedCount = this.bulkRequest.failedRows;
       const totalRows = this.bulkRequest.totalRows;
+
+      this.logger.log(
+        `🔍 DEBUG: Final counters before completion - processed: ${this.bulkRequest.processedRows}, successful: ${successfulCount}, failed: ${failedCount}, total: ${totalRows}`,
+      );
 
       this.logger.log(
         `📊 MEDIA PROCESSING COMPLETE - Request ${this.bulkRequest.id.getValue()}:\n` +
@@ -1375,6 +1437,7 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
 
             // Process multimedia for this product
             await this.processProductMediaInSecondPhase(productWithMultimedia);
+
             totalProcessed++;
 
             await this.context?.cancellationChecker?.();

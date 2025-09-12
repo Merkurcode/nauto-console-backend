@@ -13,6 +13,7 @@ import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { BulkProcessingRequestNotFoundException } from '@core/exceptions/bulk-processing.exceptions';
 import { ExcelStreamingService, IExcelRowProcessor } from '@core/services/excel-streaming.service';
 import { FileStatus } from '@shared/constants/file-status.enum';
+import { BulkProcessingStatus } from '@shared/constants/bulk-processing-status.enum';
 import { ProcessorHub } from '@queues/all/bulk-processing/processors/processors-hub';
 import {
   BulkProcessingEventType,
@@ -217,11 +218,41 @@ export class BulkProcessingService {
       );
 
       // Set the logs and update counters
+      // NOTE: processor.setLogs() now handles the database update internally with correct entity
       await processor.setLogs(bulkRequest, result);
+
+      // Get the updated entity from processor to verify counters were saved correctly
+      let updatedEntity: BulkProcessingRequest | null = null;
+      if (typeof processor.getBulkRequestEntity === 'function') {
+        updatedEntity = processor.getBulkRequestEntity();
+      }
+      
+      if (updatedEntity) {
+        this.logger.log(
+          `🔍 VERIFICATION: Processor entity has counters - processed: ${updatedEntity.processedRows}, successful: ${updatedEntity.successfulRows}, failed: ${updatedEntity.failedRows}`,
+        );
+        
+        // Double-check by reading from DB
+        const verificationEntity = await this.bulkProcessingRequestRepository.findByIdAndCompany(
+          requestId,
+          context.companyId,
+        );
+        if (verificationEntity) {
+          this.logger.log(
+            `🔍 DB VERIFICATION: DB actually contains - processed: ${verificationEntity.processedRows}, successful: ${verificationEntity.successfulRows}, failed: ${verificationEntity.failedRows}`,
+          );
+          if (verificationEntity.processedRows === 0 && updatedEntity.processedRows > 0) {
+            this.logger.error(
+              `🚨 CRITICAL: Counters were NOT persisted to DB despite successful update call!`,
+            );
+          }
+        }
+      }
 
       // Always delegate completion to processor if it handles completion
       if (stateConfig.handlesCompletion && processor.onProcessingComplete) {
         this.logger.log(`Delegating completion control to processor for ${requestId}`);
+        // Entity status and counters are already fixed before setLogs, processor has correct entity
         await processor.onProcessingComplete(result);
       } else if (!stateConfig.handlesCompletion) {
         // Use service completion only if processor explicitly doesn't handle it
