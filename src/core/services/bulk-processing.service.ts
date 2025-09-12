@@ -218,36 +218,7 @@ export class BulkProcessingService {
       );
 
       // Set the logs and update counters
-      // NOTE: processor.setLogs() now handles the database update internally with correct entity
       await processor.setLogs(bulkRequest, result);
-
-      // Get the updated entity from processor to verify counters were saved correctly
-      let updatedEntity: BulkProcessingRequest | null = null;
-      if (typeof processor.getBulkRequestEntity === 'function') {
-        updatedEntity = processor.getBulkRequestEntity();
-      }
-      
-      if (updatedEntity) {
-        this.logger.log(
-          `🔍 VERIFICATION: Processor entity has counters - processed: ${updatedEntity.processedRows}, successful: ${updatedEntity.successfulRows}, failed: ${updatedEntity.failedRows}`,
-        );
-        
-        // Double-check by reading from DB
-        const verificationEntity = await this.bulkProcessingRequestRepository.findByIdAndCompany(
-          requestId,
-          context.companyId,
-        );
-        if (verificationEntity) {
-          this.logger.log(
-            `🔍 DB VERIFICATION: DB actually contains - processed: ${verificationEntity.processedRows}, successful: ${verificationEntity.successfulRows}, failed: ${verificationEntity.failedRows}`,
-          );
-          if (verificationEntity.processedRows === 0 && updatedEntity.processedRows > 0) {
-            this.logger.error(
-              `🚨 CRITICAL: Counters were NOT persisted to DB despite successful update call!`,
-            );
-          }
-        }
-      }
 
       // Always delegate completion to processor if it handles completion
       if (stateConfig.handlesCompletion && processor.onProcessingComplete) {

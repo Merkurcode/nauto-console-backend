@@ -245,16 +245,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
   }
 
   async setLogs(bulkRequest: BulkProcessingRequest, result: IExcelStreamingResult): Promise<void> {
-    this.logger.log(`🔍 DEBUG setLogs: Processing ${result.errors.length} errors`);
-    this.logger.log(
-      `🔍 DEBUG setLogs: Received counters - processed: ${result.processedRows}, successful: ${result.successfulRows}, failed: ${result.failedRows}`,
-    );
 
     // This ensures we work with the same entity that onStart() transitioned to PROCESSING
     const entityToUpdate = this.bulkRequest;
-    this.logger.log(
-      `🔧 ENTITY SYNC: Using processor's entity (status: ${entityToUpdate.status}) instead of service parameter`,
-    );
 
     // Loguea errores por fila (capando en el servicio ya)
     for (const e of result.errors) {
@@ -270,17 +263,9 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       entityToUpdate.addRowLog(rowLog);
     }
 
-    // Actualizar contadores directamente con los resultados del streaming
-    this.logger.log(
-      `🔍 DEBUG setLogs: Before updateCounters - current counters: processed: ${entityToUpdate.processedRows}, successful: ${entityToUpdate.successfulRows}, failed: ${entityToUpdate.failedRows}`,
-    );
+    // Update counters with streaming results
     entityToUpdate.updateCounters(result.processedRows, result.successfulRows, result.failedRows);
-    this.logger.log(
-      `🔍 DEBUG setLogs: After updateCounters - new counters: processed: ${entityToUpdate.processedRows}, successful: ${entityToUpdate.successfulRows}, failed: ${entityToUpdate.failedRows}`,
-    );
-
     await this.bulkProcessingRequestRepository.update(entityToUpdate);
-    this.logger.log(`🔍 DEBUG setLogs: Counters saved to database`);
   }
 
   async onStart(totalRows: number, _context?: IBulkProcessingContext): Promise<void> {
@@ -527,18 +512,6 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       handlesProgressUpdates: true,
       handlesErrorStates: true,
     };
-  }
-
-  /**
-   * This method is called from the service to pass the latest entity state
-   * with correct counters that were just updated by setLogs()
-   */
-  setBulkRequestEntity(updatedEntity: BulkProcessingRequest): void {
-    this.bulkRequest = updatedEntity;
-  }
-
-  getBulkRequestEntity(): BulkProcessingRequest | null {
-    return this.bulkRequest;
   }
 
   /**
@@ -1288,20 +1261,11 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
           this.context.companyId,
         );
         if (latestBulkRequest) {
-          this.logger.log(
-            `🔍 DEBUG scheduleSecondPhase: DB entity has counters - processed: ${latestBulkRequest.processedRows}, successful: ${latestBulkRequest.successfulRows}, failed: ${latestBulkRequest.failedRows}`,
-          );
-          this.logger.log(
-            `🔍 DEBUG scheduleSecondPhase: Current counters - processed: ${currentCounters.processedRows}, successful: ${currentCounters.successfulRows}, failed: ${currentCounters.failedRows}`,
-          );
 
           this.bulkRequest = latestBulkRequest;
 
           // Restore counters if DB entity has zeros but we have valid counters (timing issue)
           if (this.bulkRequest.processedRows === 0 && currentCounters.processedRows > 0) {
-            this.logger.log(
-              `🔍 DEBUG scheduleSecondPhase: Restoring counters from memory due to DB timing issue`,
-            );
             this.bulkRequest.updateCounters(
               currentCounters.processedRows,
               currentCounters.successfulRows,
@@ -1331,9 +1295,6 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       const failedCount = this.bulkRequest.failedRows;
       const totalRows = this.bulkRequest.totalRows;
 
-      this.logger.log(
-        `🔍 DEBUG: Final counters before completion - processed: ${this.bulkRequest.processedRows}, successful: ${successfulCount}, failed: ${failedCount}, total: ${totalRows}`,
-      );
 
       this.logger.log(
         `📊 MEDIA PROCESSING COMPLETE - Request ${this.bulkRequest.id.getValue()}:\n` +

@@ -118,12 +118,6 @@ export interface IExcelRowProcessor<T = Record<string, any>> {
    * Gets custom progress update for different phases
    */
   getProgressUpdate?(phase: 'start' | 'processing' | 'completion', currentProgress: number): number;
-
-  /**
-   * This method allows the service to pass the latest entity state with correct counters
-   */
-  setBulkRequestEntity?(updatedEntity: BulkProcessingRequest): void;
-  getBulkRequestEntity?(): BulkProcessingRequest | null;
 }
 
 export interface IExcelStreamingResult {

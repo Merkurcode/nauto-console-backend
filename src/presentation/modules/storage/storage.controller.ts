@@ -197,8 +197,6 @@ export class StorageController {
     @Body() dto: InitiateMultipartUploadDto,
     @CurrentUser() user: IJwtPayload,
   ): Promise<InitiateMultipartUploadResponseDto> {
-    // 🐛 DEBUG - Storage Controller ejecutado: userId: ${user.sub}, filename: ${dto.filename}
-
     return this.transactionService.executeInTransaction(async () => {
       // FACT: This endpoint ALWAYS operates in user space
       return this.commandBus.execute(
