@@ -245,7 +245,6 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
   }
 
   async setLogs(bulkRequest: BulkProcessingRequest, result: IExcelStreamingResult): Promise<void> {
-
     // This ensures we work with the same entity that onStart() transitioned to PROCESSING
     const entityToUpdate = this.bulkRequest;
 
@@ -1261,7 +1260,6 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
           this.context.companyId,
         );
         if (latestBulkRequest) {
-
           this.bulkRequest = latestBulkRequest;
 
           // Restore counters if DB entity has zeros but we have valid counters (timing issue)
@@ -1294,7 +1292,6 @@ export class ProductCatalogRowProcessor implements IExcelRowProcessor<IProductCa
       const successfulCount = this.bulkRequest.successfulRows;
       const failedCount = this.bulkRequest.failedRows;
       const totalRows = this.bulkRequest.totalRows;
-
 
       this.logger.log(
         `📊 MEDIA PROCESSING COMPLETE - Request ${this.bulkRequest.id.getValue()}:\n` +

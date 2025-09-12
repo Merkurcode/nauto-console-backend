@@ -100,7 +100,7 @@ export abstract class BaseEventBus<T = Record<string, any>> {
     return {
       backlog,
       active,
-      accepting: this.healthService.isAccepting(this.queue.name),
+      accepting: this.healthService ? this.healthService.isAccepting(this.queue.name) : true,
     };
   }
 
@@ -223,7 +223,7 @@ export abstract class BaseEventBus<T = Record<string, any>> {
   }
 
   protected enforceHealthOrThrow(): void {
-    if (!this.healthService.isAccepting(this.queue.name)) {
+    if (this.healthService && !this.healthService.isAccepting(this.queue.name)) {
       throw new HttpException('Queue unhealthy', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }

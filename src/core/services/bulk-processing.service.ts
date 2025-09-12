@@ -13,7 +13,6 @@ import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
 import { BulkProcessingRequestNotFoundException } from '@core/exceptions/bulk-processing.exceptions';
 import { ExcelStreamingService, IExcelRowProcessor } from '@core/services/excel-streaming.service';
 import { FileStatus } from '@shared/constants/file-status.enum';
-import { BulkProcessingStatus } from '@shared/constants/bulk-processing-status.enum';
 import { ProcessorHub } from '@queues/all/bulk-processing/processors/processors-hub';
 import {
   BulkProcessingEventType,
