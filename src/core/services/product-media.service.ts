@@ -83,9 +83,13 @@ export class ProductMediaService {
       );
 
       if (existingMedia.fav !== data.fav) {
-        // If setting as favorite, clear existing favorite first
+        // If setting as favorite, clear existing favorite for this file type first
         if (data.fav) {
-          await this.productMediaRepository.clearFavoriteForProduct(data.productId, data.companyId);
+          await this.productMediaRepository.clearFavoriteForProductByType(
+            data.productId,
+            data.companyId,
+            existingMedia.fileType,
+          );
           existingMedia.setFavorite(data.createdBy);
         } else {
           existingMedia.unsetFavorite(data.createdBy);
@@ -127,9 +131,13 @@ export class ProductMediaService {
       `Auto-determined file type: ${fileType} for MIME type: ${file.mimeType} (fileId: ${data.fileId})`,
     );
 
-    // If setting as favorite, clear existing favorite
+    // If setting as favorite, clear existing favorite for this file type
     if (data.fav) {
-      await this.productMediaRepository.clearFavoriteForProduct(data.productId, data.companyId);
+      await this.productMediaRepository.clearFavoriteForProductByType(
+        data.productId,
+        data.companyId,
+        fileType,
+      );
     }
 
     const productMedia = ProductMedia.create({
@@ -174,10 +182,11 @@ export class ProductMediaService {
         previousFavoriteMediaId = currentFavorite.id;
       }
 
-      // Now clear existing favorite for the product
-      await this.productMediaRepository.clearFavoriteForProduct(
+      // Now clear existing favorite for the same file type
+      await this.productMediaRepository.clearFavoriteForProductByType(
         productMedia.productId.getValue(),
         companyId,
+        productMedia.fileType,
       );
     }
 

@@ -49,6 +49,7 @@ export class UpdateProductCatalogCommandHandler
         sourceFileName: dto.sourceFileName,
         sourceRowNumber: dto.sourceRowNumber,
         langCode: dto.langCode,
+        isVisible: dto.isVisible,
       },
       companyId,
       userId,

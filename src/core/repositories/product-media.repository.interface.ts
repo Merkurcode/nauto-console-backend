@@ -15,5 +15,9 @@ export interface IProductMediaRepository {
   findByFileType(fileType: FileType, companyId: string): Promise<ProductMedia[]>;
   update(productMedia: ProductMedia): Promise<ProductMedia>;
   delete(id: string, companyId: string): Promise<void>;
-  clearFavoriteForProduct(productId: string, companyId: string): Promise<void>;
+  clearFavoriteForProductByType(
+    productId: string,
+    companyId: string,
+    fileType: FileType,
+  ): Promise<void>;
 }

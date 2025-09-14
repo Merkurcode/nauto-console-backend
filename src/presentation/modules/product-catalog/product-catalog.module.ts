@@ -22,6 +22,7 @@ import { EnhancedFileMapper } from '@application/mappers/enhanced-file.mapper';
 import { UpsertProductCatalogCommandHandler } from '@application/commands/product-catalog/upsert-product-catalog.command';
 import { UpdateProductCatalogCommandHandler } from '@application/commands/product-catalog/update-product-catalog.command';
 import { UpdateProductVisibilityCommandHandler } from '@application/commands/product-catalog/update-product-visibility.command';
+import { ToggleProductVisibilityCommandHandler } from '@application/commands/product-catalog/toggle-product-visibility.command';
 import { DeleteProductCatalogWithMediaCommandHandler } from '@application/commands/product-catalog/delete-product-catalog-with-media.command';
 
 // ProductMedia Command handlers
@@ -41,6 +42,7 @@ const CommandHandlers = [
   UpsertProductCatalogCommandHandler,
   UpdateProductCatalogCommandHandler,
   UpdateProductVisibilityCommandHandler,
+  ToggleProductVisibilityCommandHandler,
   DeleteProductCatalogWithMediaCommandHandler,
   CreateProductMediaCommandHandler,
   UpdateProductMediaCommandHandler,

@@ -10,6 +10,7 @@ import {
   IsInt,
   IsUrl,
   Matches,
+  IsBoolean,
 } from 'class-validator';
 import { PaymentOption } from '@prisma/client';
 import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
@@ -136,4 +137,13 @@ export class UpdateProductCatalogDto {
   })
   @TrimAndValidateLength({ max: 10 })
   langCode?: string;
+
+  @ApiProperty({
+    description: 'Product visibility status. Set to false to hide the product from listings',
+    example: true,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isVisible?: boolean;
 }

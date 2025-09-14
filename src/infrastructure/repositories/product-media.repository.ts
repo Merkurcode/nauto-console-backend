@@ -193,12 +193,17 @@ export class ProductMediaRepository
     });
   }
 
-  async clearFavoriteForProduct(productId: string, companyId: string): Promise<void> {
-    return this.executeWithErrorHandling('clearFavoriteForProduct', async () => {
+  async clearFavoriteForProductByType(
+    productId: string,
+    companyId: string,
+    fileType: FileType,
+  ): Promise<void> {
+    return this.executeWithErrorHandling('clearFavoriteForProductByType', async () => {
       await this.client.productMedia.updateMany({
         where: {
           productId,
           companyId,
+          fileType,
           fav: true,
         },
         data: {

@@ -21,6 +21,7 @@ export class GetProductCatalogsByCompanyQuery implements IQuery {
       industry?: string;
       type?: string;
       subcategory?: string;
+      visible?: boolean;
     },
   ) {}
 }
@@ -68,6 +69,11 @@ export class GetProductCatalogsByCompanyQueryHandler
       );
     } else {
       productCatalogs = await this.productCatalogService.getProductCatalogsByCompany(companyId);
+    }
+
+    // Apply visibility filter if specified
+    if (filters?.visible !== undefined) {
+      productCatalogs = productCatalogs.filter(catalog => catalog.isVisible === filters.visible);
     }
 
     // Fetch company information for currency and language

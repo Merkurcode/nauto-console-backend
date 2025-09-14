@@ -20,6 +20,7 @@ export interface IProductCatalogResponse {
   updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
+  isVisible: boolean;
   // Product media with file information
   media: IProductMediaResponse[];
 }

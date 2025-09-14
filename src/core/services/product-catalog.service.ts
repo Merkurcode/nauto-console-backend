@@ -158,6 +158,7 @@ export class ProductCatalogService {
       sourceFileName?: string;
       sourceRowNumber?: number;
       langCode?: string;
+      isVisible?: boolean;
     },
     companyId: string,
     updatedBy: string,

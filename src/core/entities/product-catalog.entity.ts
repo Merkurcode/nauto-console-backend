@@ -322,6 +322,7 @@ export class ProductCatalog extends AggregateRoot {
     sourceRowNumber?: number;
     langCode?: string;
     metadata?: Record<string, string>;
+    isVisible?: boolean;
     updatedBy: string;
   }): void {
     const previousValues = {
@@ -337,6 +338,7 @@ export class ProductCatalog extends AggregateRoot {
       sourceRowNumber: this._sourceRowNumber,
       langCode: this._langCode,
       metadata: this._metadata ? { ...this._metadata } : undefined,
+      isVisible: this._isVisible,
     };
 
     const changes: {
@@ -352,6 +354,7 @@ export class ProductCatalog extends AggregateRoot {
       sourceRowNumber?: number;
       langCode?: string;
       metadata?: Record<string, string>;
+      isVisible?: boolean;
     } = {};
 
     if (data.industry !== undefined && data.industry !== this._industry) {
@@ -419,6 +422,10 @@ export class ProductCatalog extends AggregateRoot {
         this._metadata = Object.keys(newMetadata).length > 0 ? newMetadata : undefined;
         changes.metadata = this._metadata;
       }
+    }
+    if (data.isVisible !== undefined && data.isVisible !== this._isVisible) {
+      this._isVisible = data.isVisible;
+      changes.isVisible = data.isVisible;
     }
 
     this._updatedBy = UserId.fromString(data.updatedBy);

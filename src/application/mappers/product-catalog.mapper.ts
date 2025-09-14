@@ -33,6 +33,7 @@ export class ProductCatalogMapper {
       updatedBy: productCatalog.updatedBy?.getValue(),
       createdAt: productCatalog.createdAt,
       updatedAt: productCatalog.updatedAt,
+      isVisible: productCatalog.isVisible,
       media,
     };
   }

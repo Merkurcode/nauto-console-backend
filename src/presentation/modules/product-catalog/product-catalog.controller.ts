@@ -33,6 +33,7 @@ import { IProductCatalogResponse } from '@application/dtos/_responses/product-ca
 import { UpsertProductCatalogCommand } from '@application/commands/product-catalog/upsert-product-catalog.command';
 import { UpdateProductCatalogCommand } from '@application/commands/product-catalog/update-product-catalog.command';
 import { DeleteProductCatalogWithMediaCommand } from '@application/commands/product-catalog/delete-product-catalog-with-media.command';
+import { ToggleProductVisibilityCommand } from '@application/commands/product-catalog/toggle-product-visibility.command';
 import { GetProductCatalogQuery } from '@application/queries/product-catalog/get-product-catalog.query';
 import { GetProductCatalogsByCompanyQuery } from '@application/queries/product-catalog/get-product-catalogs-by-company.query';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
@@ -146,6 +147,12 @@ export class ProductCatalogController {
   @ApiQuery({ name: 'industry', required: false, description: 'Filter by industry' })
   @ApiQuery({ name: 'type', required: false, description: 'Filter by type' })
   @ApiQuery({ name: 'subcategory', required: false, description: 'Filter by subcategory' })
+  @ApiQuery({
+    name: 'visible',
+    required: false,
+    type: Boolean,
+    description: 'Filter by visibility status',
+  })
   @ApiResponse({
     status: 200,
     description: 'Product catalogs retrieved successfully',
@@ -157,13 +164,48 @@ export class ProductCatalogController {
     @Query('industry', TrimStringPipe) industry?: string,
     @Query('type', TrimStringPipe) type?: string,
     @Query('subcategory', TrimStringPipe) subcategory?: string,
+    @Query('visible') visible?: string,
   ): Promise<IProductCatalogResponse[]> {
+    const visibleFilter = visible === 'true' ? true : visible === 'false' ? false : undefined;
+
     return this.queryBus.execute(
       new GetProductCatalogsByCompanyQuery(user.companyId!, user.sub, {
         industry,
         type,
         subcategory,
+        visible: visibleFilter,
       }),
     );
+  }
+
+  @Put(':id/visibility')
+  @WriteOperation('product-catalog')
+  @ApiOperation({ summary: 'Toggle product visibility' })
+  @ApiParam({ name: 'id', description: 'Product catalog ID' })
+  @ApiQuery({
+    name: 'visible',
+    required: false,
+    type: Boolean,
+    description: 'Set specific visibility (true/false). If not provided, toggles current state.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Product visibility updated successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async toggleProductVisibility(
+    @Param('id', TrimStringPipe) id: string,
+    @CurrentUser() user: IJwtPayload,
+    @Query('visible') visible?: string,
+  ): Promise<IProductCatalogResponse> {
+    const visibilityValue = visible === 'true' ? true : visible === 'false' ? false : undefined;
+
+    return this.transactionService.executeInTransaction(async () => {
+      return this.commandBus.execute(
+        new ToggleProductVisibilityCommand(id, user.companyId!, user.sub, visibilityValue),
+      );
+    });
   }
 }
