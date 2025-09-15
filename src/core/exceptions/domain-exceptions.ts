@@ -39,6 +39,13 @@ export class EntityAlreadyExistsException extends DomainException {
   }
 }
 
+export class DuplicateEntityException extends DomainException {
+  constructor(entityName: string, field: string, value: string) {
+    const message = `${entityName} with ${field} '${value}' already exists`;
+    super(message, 'DUPLICATE_ENTITY', { entityName, field, value });
+  }
+}
+
 // Input validation exceptions
 export class InvalidInputException extends DomainException {
   constructor(message: string, field?: string) {

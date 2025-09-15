@@ -81,6 +81,7 @@ enum FileType {
 
 enum BulkProcessingType {
   PRODUCT_CATALOG
+  CLIENT_REMINDER
   // Add more types as needed
 }
 
@@ -91,6 +92,36 @@ enum BulkProcessingStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum ReminderStatus {
+  PENDING
+  IN_PROGRESS
+  FAILED
+  DONE
+}
+
+enum ReminderQueueStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  STANDBY
+}
+
+enum ReminderNotificationOptOutType {
+  REMINDERS
+  MARKETING
+}
+
+enum NotificationMedium {
+  WHATSAPP
+}
+
+enum ReminderFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }
 
 model CompanySchedules {
@@ -131,7 +162,7 @@ model AIAssistantFeature {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  CompanyAIAssistantFeature CompanyAIAssistantFeature[]
+  companyAIAssistantFeature CompanyAIAssistantFeature[]
 
   @@unique([keyName])
   @@index([aiAssistantId])
@@ -204,7 +235,7 @@ model Country {
   
   states        State[]
 
-  UserAddress UserAddress[]
+  userAddress UserAddress[]
 }
 
 model State {
@@ -216,7 +247,7 @@ model State {
   country     Country  @relation(fields: [countryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   countryId   String
 
-  UserAddress UserAddress[]
+  userAddress UserAddress[]
   
   @@index([countryId])
 }
@@ -273,6 +304,10 @@ model User {
   productCatalogsCreated ProductCatalog[] @relation("ProductCatalogCreatedBy")
   bulkProcessingRequests BulkProcessingRequest[]
   productCatalogsUpdated ProductCatalog[] @relation("ProductCatalogUpdatedBy")
+  clientReminderRequestedBy ClientReminder[] @relation("ClientReminderRequestedBy")
+  clientReminderUpdatedBy ClientReminder[] @relation("ClientReminderUpdatedBy")
+  clientReminderQueueCreatedBy ClientReminderQueue[] @relation("ClientReminderQueueCreatedBy")
+  clientReminderQueueUpdatedBy ClientReminderQueue[] @relation("ClientReminderQueueUpdatedBy")
   
   @@index([companyId])
   @@unique([agentPhone, companyId])
@@ -447,6 +482,8 @@ model Company {
   bulkProcessingRequests BulkProcessingRequest[]
   
   @@index([parentCompanyId])
+  clientReminder ClientReminder[]
+  clientReminderQueue ClientReminderQueue[]
 }
 
 model Address {
@@ -797,10 +834,182 @@ model BulkProcessingRequest {
   requestedByUser User?                 @relation(fields: [requestedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
   file            File?                 @relation(fields: [fileId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   products        ProductCatalog[]      // Products created by this bulk request
+  clientReminders ClientReminder[]      // Client reminders created by this bulk request
 
   // Composite indexes for performance
   @@index([companyId, status])
   @@index([companyId, type])
   @@index([companyId, requestedBy])
   @@index([companyId, createdAt])
+}
+
+// It is used to identify which phone numbers and which means should no longer send reminders, marketing, etc.
+model ReminderNotificationOptOut {
+  id           String                  @id @default(uuid())
+  phone        String
+  optOutType   ReminderNotificationOptOutType
+  optOutMedium NotificationMedium
+  reason       String?                 @db.Text
+  createdAt    DateTime                @default(now())
+
+  @@unique([phone, optOutType, optOutMedium])
+  @@index([phone])
+  @@index([optOutType])
+  @@index([optOutMedium])
+  @@index([createdAt])
+}
+
+model ClientReminderQueue {
+  id                   String                @id @default(uuid())
+  queueNumber          BigInt                // Sequential number per company (managed at application level) - used to be reminder_number - just for info
+  name                 String                // Just for reference
+  internalNameHash     String                // Same as name but normalized and hashed md5
+  description          String?               // Just for reference details
+  template             Json                  // Template to send to the bot endpoint when processing each reminder related to this queue
+  targetMedium         NotificationMedium    // "App" the bot should send message
+  notifyType           ReminderNotificationOptOutType // Event "type" to process
+  callActions          String[]              // Array of call-to-action strings. [] = no actions needed
+
+  // Should process queue? If false then reset status to STANDBY else check "STATUS_LOGIC". If status is COMPLETED DENY any change and leave it as false!
+  active               Boolean               @default(false)
+  
+  // STATUS_LOGIC: COMPLETED if stopUntil is not null and is reached, else fallback to: IN_PROGRESS if now is within schedule else PENDING
+  status               ReminderQueueStatus   @default(STANDBY)
+  
+  // Update every time the queue is checked by backend and status is IN_PROGRESS
+  lastTimeChecked      DateTime?            // UTC is fine... it's just for info consumed by frontend (used to be lastTimeExecuted)
+  companyId            String
+  
+  createdBy            String
+  updatedBy            String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  // File tracking fields (same as ProductCatalog)
+  sourceFileName       String?               // Name of the file this reminder used
+  bulkRequestId        String?               // ID of the bulk processing request
+  metadata             Json?                 // Additional metadata
+
+  // Schedule config
+  startDate            DateTime             // First day as Format: "yyyy-mm-dd" <-- should be exactly the date where the queue timezone is! Ignore time...
+  endDate              DateTime             // Last day as Format: "yyyy-mm-dd" <-- should be exactly the date where the queue timezone is!. Ignore time... 
+  interval             Int                  // It is any natural number. The minimum is 1 and the maximum is 1000.
+  days                 String[]             // [] = any day | only take into account if frequency is WEEKLY
+  startHour            String               // "14:00:00" 24-hour format (hh:mm:ss) in UTC
+  endHour              String               // "04:00:00" 24-hour format (hh:mm:ss) in UTC
+  maxCount             Int?                 // Maximum number of times a client reminder should be a candidate --> successCount < maxCount
+  timezone             String               // Ej. America/Mexico_City
+  frequency            ReminderFrequency
+  stopUntil            DateTime?            // Format: "yyyy-mm-dd" <-- should be exactly the date where the queue timezone is! DO NOT Ignore time!!
+
+  // Relations
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  creator              User                  @relation("ClientReminderQueueCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updater              User?                 @relation("ClientReminderQueueUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reminders            ClientReminder[]
+  scheduledClientReminderQueues ScheduledClientReminderQueues[]
+
+  @@unique([companyId, queueNumber])
+  @@unique([companyId, name])
+  @@unique([companyId, internalNameHash])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, active])
+}
+
+model ClientReminder {
+  /**
+   * http_tries = ya no se utilizará...
+   * async_http_status = ahora es lo mismo que (status: ReminderStatus)
+  */
+
+  id                   String                @id @default(uuid())
+  clientPhone          String
+  clientName           String
+  targetMedium         NotificationMedium    // "App" the bot should send message --> this is just a copy of ClientReminderQueue for optimizations...
+  notifyType           ReminderNotificationOptOutType // Event "type" to process --> this is just a copy of ClientReminderQueue for optimizations...
+
+  // Updated each time after trying to contact bot
+  sentLastTime         DateTime?             // UTC is fine... it's just for info consumed by frontend and backend only to check how many minutes from NOW()
+
+  // Updated each time after trying to contact bot
+  sentLastDay          DateTime?             // Format: "yyyy-mm-dd" <-- should be exactly the date where the queue timezone is!. Ignore time...
+
+  // Updated to false ONCE every (new day in queue timezone!)
+  receivedByBot        Boolean               @default(false) // This field is always false and is only modified by the bot through an endpoint provided at the application level. If it's true, it's no longer considered a record to be sent for the current queue on the present day.
+
+  stopReminders        Boolean               @default(false) // TRUE if clientPhone exists in ReminderNotificationOptOut. This field should be set auto by a trigger before inserting row. If true, then it's no longer considered a record to send ever again!
+  
+  // Update to DONE if receivedByBot goes from false to true
+  // Update to FAILED if receivedByBot goes from true to false via app logic
+  // Update to IN_PROGRESS when backend is trying to contact bot and queue is withing schedule, else fallback to PENDING logic conditions...
+  // Update ONCE to PENDING every new day in queue timezone if (queue.maxCount is null or successCount < queue.maxCount)
+  status               ReminderStatus        @default(PENDING)
+
+  // Updated ONCE to 0 every new day in queue timezone
+  // +1 if lastHttpCode is null or not within range of any 2XX
+  lastFailTimes        BigInt                @default(0) // Reset to 0 or 1 each new day. You can use for reference lastFailTime and NOW() at queue timezone!
+
+  // Updated ONE to null every new day in queue timezone
+  // Update every time lastFailTimes changes. If lastFailTimes is 0 do not update
+  lastFailTime         DateTime?             // Full date with time and should be exactly the date where the queue timezone is!
+
+  // Updated ONCE to null every new day in queue timezone
+  // Update every time after contact bot
+  lastHttpCode         Int?                  // Last http code provided by BOT when trying to contact him through the endpoint
+
+  // Updated ONCE to null every new day in queue timezone
+  // Update every time after contact bot
+  lastHttpResponse     String?               // Last http response provided by BOT when trying to contact him through the endpoint
+
+  successCount         Int                   @default(0) // +1 if receivedByBot goes from false to true via app logic. -1 otherwise... Min: 0 | Max: INF
+
+  // File tracking fields (same as ProductCatalog)
+  sourceFileName       String?               // Name of the file this reminder came from
+  sourceRowNumber      Int?                  // Row number in the source file
+  bulkRequestId        String?               // ID of the bulk processing request
+  metadata             Json?                 // Additional metadata
+
+  // Queue reference
+  clientReminderQueueId String
+
+  // Tenant isolation and audit
+  companyId            String
+  requestedBy          String
+  updatedBy            String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  // Relations
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  requester            User                  @relation("ClientReminderRequestedBy", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updater              User?                 @relation("ClientReminderUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  queue                ClientReminderQueue   @relation(fields: [clientReminderQueueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  bulkRequest          BulkProcessingRequest? @relation(fields: [bulkRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([clientPhone, companyId, clientReminderQueueId])
+  @@index([companyId])
+  @@index([clientReminderQueueId])
+  @@index([clientReminderQueueId, status])
+  @@index([clientReminderQueueId, receivedByBot])
+  @@index([companyId, status])
+  @@index([companyId, stopReminders])
+  @@index([clientPhone])
+  @@index([bulkRequestId])
+  @@index([clientPhone, targetMedium])
+  @@index([clientPhone, targetMedium, notifyType])
+  @@index([clientReminderQueueId, sentLastDay])
+}
+
+model ScheduledClientReminderQueues {
+  id                    String                @id @default(uuid())
+  createdAt             DateTime              @default(now())
+  clientReminderQueueId String
+  day                   String                // "yyyy-mm-dd" should be exactly the day where the queue timezone would be!. Ignore time...
+
+  queue                ClientReminderQueue   @relation(fields: [clientReminderQueueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([clientReminderQueueId, day])
+  @@index([clientReminderQueueId])
+  @@index([day])
 }

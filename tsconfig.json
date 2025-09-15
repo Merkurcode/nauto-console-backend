@@ -27,5 +27,5 @@
       "@queues/*": ["src/queues/*"]
     }
   },
-  "exclude": ["**/*.spec.ts", "**/*.test.ts", "test/**/*", "proposals/**/*", "src/test/**/*"]
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "test/**/*", "proposals/**/*", "src/test/**/*", "dev-notes/**/*"]
 }
