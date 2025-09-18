@@ -29,6 +29,7 @@ import { AIPersonaShortDetails } from '@core/value-objects/ai-persona-short-deta
 import { UserAuthorizationService } from './user-authorization.service';
 import { User } from '@core/entities/user.entity';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { DEFAULT_PERSONA_KEYNAME } from 'prisma/seed-ai-personas';
 
 @Injectable()
 export class AIPersonaService {
@@ -551,8 +552,9 @@ export class AIPersonaService {
 
   /**
    * Gets the active AI Persona for a company
-   * ✅ Business Rule: Only returns if assignment is active AND persona is active
+   * ✅ Business Rule: Returns assigned persona if active, otherwise defaults to VEKTOR
    * ✅ Security Measure: Validates user can access the company
+   * ✅ Fallback: Returns VEKTOR as default when no active assignment exists
    */
   async getCompanyActiveAIPersona(
     companyId: string,
@@ -569,6 +571,19 @@ export class AIPersonaService {
 
     // ✅ Business Rule: Assignment must be active
     if (!assignment || !assignment.isActive) {
+      // Fallback to VEKTOR as default when no active assignment exists
+      const defaultPersona = await this.aiPersonaRepository.findByKeyName(
+        DEFAULT_PERSONA_KEYNAME,
+        null,
+      );
+      if (defaultPersona && defaultPersona.isActive) {
+        defaultPersona.companyId = companyId;
+        defaultPersona.createdBy = currentUser?.id?.getValue();
+        defaultPersona.updatedBy = currentUser?.id?.getValue();
+
+        return defaultPersona;
+      }
+
       return null;
     }
 
@@ -576,6 +591,19 @@ export class AIPersonaService {
 
     // ✅ Business Rule: Persona must also be active
     if (!aiPersona || !aiPersona.isActive) {
+      // Fallback to VEKTOR as default when assigned persona is inactive
+      const defaultPersona = await this.aiPersonaRepository.findByKeyName(
+        DEFAULT_PERSONA_KEYNAME,
+        null,
+      );
+      if (defaultPersona && defaultPersona.isActive) {
+        defaultPersona.companyId = companyId;
+        defaultPersona.createdBy = currentUser?.id?.getValue();
+        defaultPersona.updatedBy = currentUser?.id?.getValue();
+
+        return defaultPersona;
+      }
+
       return null;
     }
 

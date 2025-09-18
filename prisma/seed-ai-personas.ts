@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
+export const DEFAULT_PERSONA_KEYNAME = 'vektor';
+
 /**
  * Default AI Personas seed data with multilingual support
  * These are system-wide default personas that can be used by all companies
