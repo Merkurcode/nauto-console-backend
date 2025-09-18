@@ -39,6 +39,8 @@ import { IUpdateUserProfileServiceInput } from '@core/interfaces/user/update-use
 import { AuthEmailEventBusAdapter } from 'src/queues/all/email';
 import { AuthEmailUserRegisteredEvent } from 'src/queues/all/email/event-handlers/auth-email-user-registered.handler';
 import { NotificationStatus } from '@prisma/client';
+import { Country } from '@core/entities/country.entity';
+import { State } from '@core/entities/state.entity';
 
 @Injectable()
 export class UserService {
@@ -73,6 +75,7 @@ export class UserService {
     firstName: string,
     lastName: string,
     options?: {
+      userId?: UserId;
       secondLastName?: string;
       isActive?: boolean;
       emailVerified?: boolean;
@@ -153,14 +156,17 @@ export class UserService {
 
     let addressVO: UserAddress | undefined;
     if (options?.address) {
-      let validatedCountry: any = undefined;
-      let validatedState: any = undefined;
+      let validatedCountry: Country | undefined = undefined;
+      let validatedState: State | undefined = undefined;
       
       // Validate country if provided
       if (options.address.country) {
         validatedCountry = await this.countryRepository.findByName(options.address.country);
         if (!validatedCountry) {
-          throw new EntityNotFoundException('Country', options.address.country);
+          validatedCountry = await this.countryRepository.findById(options.address.country);
+          if (!validatedCountry) {
+            throw new EntityNotFoundException('Country', options.address.country);
+          }
         }
         
         // Validate state if provided (requires country)
@@ -170,7 +176,12 @@ export class UserService {
             validatedCountry.id.getValue(),
           );
           if (!validatedState) {
-            throw new EntityNotFoundException('State', `${options.address.state} in ${options.address.country}`);
+            validatedState = await this.stateRepository.findById(
+              options.address.state,
+            );
+            if (!validatedState) {
+              throw new EntityNotFoundException('State', `${options.address.state} in ${validatedCountry.name}`);
+            }
           }
         }
       }
@@ -209,6 +220,7 @@ export class UserService {
         profile: profileVO,
         address: addressVO,
         companyId: companyId,
+        userId: options.userId,
       },
     );
 

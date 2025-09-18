@@ -13,10 +13,44 @@ export interface IUserBaseResponse {
   emailVerified?: boolean;
 }
 
+export interface IInvitationStatus {
+  status: 'pending' | 'completed' | 'error' | 'expired';
+  otpTimeRemaining?: string;
+  details?: {
+    emailStatus: string;
+    smsStatus: string;
+    emailVerified: boolean;
+    errorMessage?: string;
+  };
+}
+
+export interface IUserProfileResponse {
+  phone?: string;
+  phoneCountryCode?: string;
+  avatarUrl?: string;
+  bio?: string;
+  birthDate?: string;
+}
+
+export interface IUserAddressResponse {
+  countryId?: string;
+  countryName?: string;
+  stateId?: string;
+  stateName?: string;
+  city?: string;
+  street?: string;
+  exteriorNumber?: string;
+  interiorNumber?: string;
+  postalCode?: string;
+}
+
 export interface IUserDetailResponse extends IUserBaseResponse {
+  secondLastName?: string;
   isActive: boolean;
   otpEnabled: boolean;
   lastLoginAt?: Date;
+  bannedUntil?: Date;
+  banReason?: string;
   roles: IUserRoleResponse[];
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +60,11 @@ export interface IUserDetailResponse extends IUserBaseResponse {
   emailStatus: string;
   lastSmsError?: string;
   lastEmailError?: string;
+  agentPhone?: string;
+  agentPhoneCountryCode?: string;
+  profile?: IUserProfileResponse;
+  address?: IUserAddressResponse;
+  invitationStatus?: IInvitationStatus;
 }
 
 export interface IUserWithAuthResponse extends IUserBaseResponse {

@@ -96,7 +96,7 @@ export class UserController {
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Returns a list of all users in the company with tenant and company information',
+    description: 'Returns a list of all users in the company with complete profile information',
     schema: {
       type: 'array',
       items: {
@@ -106,10 +106,43 @@ export class UserController {
           email: { type: 'string', example: 'user@example.com' },
           firstName: { type: 'string', example: 'John' },
           lastName: { type: 'string', example: 'Doe' },
+          secondLastName: { type: 'string', example: 'Smith', nullable: true },
           emailVerified: { type: 'boolean', example: true },
           isActive: { type: 'boolean', example: true },
           otpEnabled: { type: 'boolean', example: false },
           lastLoginAt: { type: 'string', format: 'date-time', nullable: true },
+          bannedUntil: { type: 'string', format: 'date-time', nullable: true },
+          banReason: { type: 'string', nullable: true },
+          agentPhone: { type: 'string', example: '+1234567890', nullable: true },
+          agentPhoneCountryCode: { type: 'string', example: '+1', nullable: true },
+          profile: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              phone: { type: 'string', example: '+1234567890', nullable: true },
+              phoneCountryCode: { type: 'string', example: '+1', nullable: true },
+              avatarUrl: {
+                type: 'string',
+                example: 'https://example.com/avatar.jpg',
+                nullable: true,
+              },
+              bio: { type: 'string', example: 'Software Developer', nullable: true },
+              birthDate: { type: 'string', format: 'date', example: '1990-01-01', nullable: true },
+            },
+          },
+          address: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              country: { type: 'string', example: 'Mexico', nullable: true },
+              state: { type: 'string', example: 'Jalisco', nullable: true },
+              city: { type: 'string', example: 'Guadalajara', nullable: true },
+              street: { type: 'string', example: 'Av. Revolución', nullable: true },
+              exteriorNumber: { type: 'string', example: '123', nullable: true },
+              interiorNumber: { type: 'string', example: 'A', nullable: true },
+              postalCode: { type: 'string', example: '44100', nullable: true },
+            },
+          },
           roles: {
             type: 'array',
             items: {
@@ -131,6 +164,31 @@ export class UserController {
             type: 'string',
             nullable: true,
             example: '550e8400-e29b-41d4-a716-446655440001',
+          },
+          smsStatus: { type: 'string', example: 'SENT' },
+          emailStatus: { type: 'string', example: 'SENT' },
+          lastSmsError: { type: 'string', nullable: true },
+          lastEmailError: { type: 'string', nullable: true },
+          invitationStatus: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              status: { type: 'string', enum: ['pending', 'completed', 'error', 'expired'] },
+              otpTimeRemaining: {
+                type: 'string',
+                nullable: true,
+                example: '5 minutes and 30 seconds',
+              },
+              details: {
+                type: 'object',
+                properties: {
+                  emailStatus: { type: 'string' },
+                  smsStatus: { type: 'string' },
+                  emailVerified: { type: 'boolean' },
+                  errorMessage: { type: 'string', nullable: true },
+                },
+              },
+            },
           },
         },
       },

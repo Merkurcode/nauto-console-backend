@@ -44,6 +44,8 @@ import { ResetPasswordCommandHandler } from '@application/commands/auth/reset-pa
 import { AdminChangePasswordCommandHandler } from '@application/commands/auth/admin-change-password.command';
 import { ChangePasswordCommandHandler } from '@application/commands/auth/change-password.command';
 import { ChangeEmailCommandHandler } from '@application/commands/auth/change-email.command';
+import { DeleteUserInvitationCommandHandler } from '@application/commands/auth/delete-user-invitation.command';
+import { ResendUserInvitationCommandHandler } from '@application/commands/auth/resend-user-invitation.command';
 
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -64,6 +66,8 @@ const commandHandlers = [
   AdminChangePasswordCommandHandler,
   ChangePasswordCommandHandler,
   ChangeEmailCommandHandler,
+  DeleteUserInvitationCommandHandler,
+  ResendUserInvitationCommandHandler,
 ];
 
 @Module({

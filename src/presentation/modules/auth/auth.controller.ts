@@ -11,6 +11,7 @@ import {
   UseGuards,
   Inject,
   ForbiddenException,
+  Delete,
 } from '@nestjs/common';
 import { NormalizeEmailParamPipe } from '@shared/pipes/normalize-email-param.pipe';
 import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
@@ -38,6 +39,7 @@ import {
 import { AdminChangePasswordDto } from '@application/dtos/auth/admin-change-password.dto';
 import { ChangePasswordDto } from '@application/dtos/auth/change-password.dto';
 import { ChangeEmailDto } from '@application/dtos/auth/change-email.dto';
+import { ResendInvitationDto } from '@application/dtos/auth/resend-invitation.dto';
 
 // Commands
 import { RegisterUserCommand } from '@application/commands/auth/register-user.command';
@@ -53,6 +55,8 @@ import { ResetPasswordCommand } from '@application/commands/auth/reset-password.
 import { AdminChangePasswordCommand } from '@application/commands/auth/admin-change-password.command';
 import { ChangePasswordCommand } from '@application/commands/auth/change-password.command';
 import { ChangeEmailCommand } from '@application/commands/auth/change-email.command';
+import { DeleteUserInvitationCommand } from '@application/commands/auth/delete-user-invitation.command';
+import { ResendUserInvitationCommand } from '@application/commands/auth/resend-user-invitation.command';
 
 // Guards & Decorators
 import { Public } from '@shared/decorators/public.decorator';
@@ -74,7 +78,6 @@ import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { UseHealthGuard } from 'src/queues/guards/health.guard';
 
 @ApiTags('auth')
-@Throttle(60, 5) // 5 requests per minute
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -100,6 +103,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard, RootAssignmentGuard)
+  @Throttle(2, 5) // 5 requests per 2 seconds
   @RequirePermissions('auth:write')
   @WriteOperation('auth')
   @PreventRootAssignment()
@@ -232,6 +236,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
+  @Throttle(20, 2)
   @NoBots()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
@@ -358,6 +363,7 @@ export class AuthController {
 
   @Public()
   @Post('email/verify')
+  @Throttle(60, 2)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Verify email with verification code',
@@ -375,9 +381,24 @@ export class AuthController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid or expired verification code',
   })
-  async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
+  async verifyEmail(
+    @Body() verifyEmailDto: VerifyEmailDto,
+    @Request()
+      req: {
+      headers: Record<string, string>;
+      ip?: string;
+      connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
+      socket?: { remoteAddress?: string };
+    }) {
     return this.executeInTransactionWithContext(async () => {
-      return this.commandBus.execute(new VerifyEmailCommand(verifyEmailDto));
+      const userAgent = req.headers['user-agent'];
+      const ipAddress =
+        req.ip ||
+        req.connection.remoteAddress ||
+        req.socket.remoteAddress ||
+        (req.connection.socket ? req.connection.socket.remoteAddress : null);
+
+      return this.commandBus.execute(new VerifyEmailCommand(verifyEmailDto, userAgent, ipAddress));
     });
   }
 
@@ -466,6 +487,7 @@ export class AuthController {
   @Public()
   @Post('password/reset')
   @NoBots()
+  @Throttle(60, 1)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reset password with a token',
@@ -486,6 +508,7 @@ export class AuthController {
   @Roles(RolesEnum.ROOT, RolesEnum.ADMIN)
   @Post('admin/change-password')
   @NoBots()
+  @Throttle(30, 5)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -523,6 +546,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   @NoBots()
+  @Throttle(60, 5)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
@@ -566,6 +590,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('change-email')
   @NoBots()
+  @Throttle(30, 5)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
@@ -604,6 +629,108 @@ export class AuthController {
           changeEmailDto.targetUserId,
           user.jti, // Current session token
         ),
+      );
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Delete('invitations/:userId')
+  @NoBots()
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER) // Admin and above can resend invitations
+  @Throttle(2, 5)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Delete user invitation (Root only)',
+    description:
+      'Delete a pending or expired user invitation. This will completely remove the user from the system if their invitation is not yet completed.\n\n' +
+      '📋 **Required Permission:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT ONLY</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '⚠️ **Restrictions:** Can only delete pending or expired invitations. Completed invitations cannot be deleted.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User invitation deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'User invitation deleted successfully. User user@example.com has been removed from the system.' },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Cannot delete invitation for completed users or users with error status'
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Only ROOT users can delete invitations',
+  })
+  async deleteUserInvitation(
+    @Param('userId', TrimStringPipe) id: string,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new DeleteUserInvitationCommand(id, currentUser.sub),
+      );
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Post('invitations/:userId/resend')
+  @NoBots()
+  @Roles(RolesEnum.ROOT, RolesEnum.ADMIN, RolesEnum.MANAGER) // Admin and above can resend invitations
+  @Throttle(2, 5)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    type: ResendInvitationDto,
+    description: 'Optional password configuration for the resent invitation',
+    required: false,
+  })
+  @ApiOperation({
+    summary: 'Resend user invitation (Root/Admin/Manager)',
+    description:
+      'Resend an invitation to a user with pending, expired, or error status. This will delete the existing user and recreate them with new credentials and fresh email/SMS notifications.\n\n' +
+      '📋 **Access Levels:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>: Can resend any invitation\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code>: Can resend invitations in their company\n' +
+      '- <code style="color: #00b894; background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code>: Can resend invitations in their company\n\n' +
+      '💡 **Password Options:**\n' +
+      '- Provide a custom password in the request body\n' +
+      '- Or leave empty to auto-generate a secure password\n\n' +
+      '⚠️ **Restrictions:** Can only resend pending, expired, or error invitations. Completed invitations cannot be resent.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User invitation resent successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'User invitation resent successfully. New invitation emails and SMS have been sent to user@example.com.' },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Cannot resend invitation for completed users or invalid password format'
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have required permissions',
+  })
+  async resendUserInvitation(
+    @Param('userId', TrimStringPipe) id: string,
+    @Body() resendInvitationDto: ResendInvitationDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      return this.commandBus.execute(
+        new ResendUserInvitationCommand(id, resendInvitationDto.password, currentUser.sub),
       );
     });
   }

@@ -13,6 +13,8 @@ import {
   Permission as PrismaPermission,
   UserProfile as PrismaUserProfile,
   UserAddress as PrismaUserAddress,
+  Country as PrismaCountry,
+  State as PrismaState,
 } from '@prisma/client';
 import { ResourceAction } from '@core/value-objects/resource-action.vo';
 import { ActionType } from '@shared/constants/enums';
@@ -31,7 +33,12 @@ type UserWithRelations = PrismaUser & {
     };
   })[];
   profile?: PrismaUserProfile | null;
-  address?: PrismaUserAddress | null;
+  address?:
+    | (PrismaUserAddress & {
+        country?: PrismaCountry | null;
+        state?: PrismaState | null;
+      })
+    | null;
 };
 
 @Injectable()
@@ -71,7 +78,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             },
           },
           profile: true,
-          address: true,
+          address: {
+            include: {
+              country: true,
+              state: true,
+            },
+          },
           company: true,
         },
       });
@@ -101,7 +113,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
             profile: true,
-            address: true,
+            address: {
+              include: {
+                country: true,
+                state: true,
+              },
+            },
           },
         });
 
@@ -137,7 +154,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
             profile: true,
-            address: true,
+            address: {
+              include: {
+                country: true,
+                state: true,
+              },
+            },
             company: true,
           },
         });
@@ -174,7 +196,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
             profile: true,
-            address: true,
+            address: {
+              include: {
+                country: true,
+                state: true,
+              },
+            },
             company: true,
           },
         });
@@ -214,7 +241,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
               },
             },
             profile: true,
-            address: true,
+            address: {
+              include: {
+                country: true,
+                state: true,
+              },
+            },
             company: true,
           },
         });
@@ -248,7 +280,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             },
           },
           profile: true,
-          address: true,
+          address: {
+            include: {
+              country: true,
+              state: true,
+            },
+          },
           company: true,
         },
       });
@@ -282,7 +319,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             },
           },
           profile: true,
-          address: true,
+          address: {
+            include: {
+              country: true,
+              state: true,
+            },
+          },
           company: true,
         },
       });
@@ -386,7 +428,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             },
           },
           profile: true,
-          address: true,
+          address: {
+            include: {
+              country: true,
+              state: true,
+            },
+          },
           company: true,
         },
       });
@@ -451,7 +498,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             },
           },
           profile: true,
-          address: true,
+          address: {
+            include: {
+              country: true,
+              state: true,
+            },
+          },
           company: true,
         },
       });
@@ -523,7 +575,12 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
             },
           },
           profile: true,
-          address: true,
+          address: {
+            include: {
+              country: true,
+              state: true,
+            },
+          },
           company: true,
         },
       });
@@ -617,7 +674,9 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         ? {
             id: record.address.id,
             countryId: record.address.countryId || undefined,
+            countryName: record.address.country?.name || undefined,
             stateId: record.address.stateId || undefined,
+            stateName: record.address.state?.name || undefined,
             city: record.address.city || undefined,
             street: record.address.street || undefined,
             exteriorNumber: record.address.exteriorNumber || undefined,

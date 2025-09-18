@@ -52,6 +52,9 @@ export class User extends AggregateRoot {
   private _agentPhone?: AgentPhone;
   private _profile?: UserProfile;
   private _address?: UserAddress;
+  // Temporary fields for presentation (not persisted)
+  private _countryName?: string;
+  private _stateName?: string;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
   private _companyId?: CompanyId | null;
@@ -136,9 +139,10 @@ export class User extends AggregateRoot {
       profile?: UserProfile;
       address?: UserAddress;
       companyId?: CompanyId;
+      userId?: UserId;
     },
   ): User {
-    const userId = UserId.create();
+    const userId = options.userId ?? UserId.create();
     const user = new User(
       userId,
       email,
@@ -195,7 +199,9 @@ export class User extends AggregateRoot {
     address?: {
       id: string;
       countryId?: string;
+      countryName?: string;
       stateId?: string;
+      stateName?: string;
       city?: string;
       street?: string;
       exteriorNumber?: string;
@@ -262,6 +268,10 @@ export class User extends AggregateRoot {
           updatedAt: data.address.updatedAt,
         })
       : undefined;
+
+    // Set temporary presentation fields
+    user._countryName = data.address?.countryName;
+    user._stateName = data.address?.stateName;
     user._updatedAt = data.updatedAt;
     user._smsStatus = data.smsStatus || NotificationStatus.NOT_PROVIDED;
     user._emailStatus = data.emailStatus || NotificationStatus.NOT_PROVIDED;
@@ -378,6 +388,14 @@ export class User extends AggregateRoot {
 
   get address(): UserAddress | undefined {
     return this._address;
+  }
+
+  get countryName(): string | undefined {
+    return this._countryName;
+  }
+
+  get stateName(): string | undefined {
+    return this._stateName;
   }
 
   get smsStatus(): NotificationStatus {
@@ -697,5 +715,34 @@ export class User extends AggregateRoot {
       this._lastEmailError = status === NotificationStatus.SENT ? undefined : error;
     }
     this._updatedAt = new Date();
+  }
+
+  /**
+   * Calculate invitation status based on user state
+   */
+  calculateInvitationStatus(): 'pending' | 'completed' | 'error' | 'expired' {
+    // If email is already verified, invitation is completed
+    if (this._emailVerified) {
+      return 'completed';
+    }
+
+    // Check if invitation is expired (1 month = 30 days)
+    const now = new Date();
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    if (this._createdAt < oneMonthAgo) {
+      return 'expired';
+    }
+
+    // Check for send errors
+    if (
+      this._emailStatus === NotificationStatus.SEND_ERROR ||
+      this._smsStatus === NotificationStatus.SEND_ERROR
+    ) {
+      return 'error';
+    }
+
+    // Default: invitation is pending
+    return 'pending';
   }
 }

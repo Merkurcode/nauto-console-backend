@@ -11,7 +11,11 @@ import { ITokenProvider } from '@core/interfaces/token-provider.interface';
 import { TOKEN_PROVIDER } from '@shared/constants/tokens';
 
 export class VerifyEmailCommand implements ICommand {
-  constructor(public readonly dto: VerifyEmailDto) {}
+  constructor(
+    public readonly dto: VerifyEmailDto,
+    public readonly userAgent?: string,
+    public readonly ipAddress?: string,
+  ) {}
 }
 
 @Injectable()
@@ -29,6 +33,7 @@ export class VerifyEmailCommandHandler
 
   async execute(command: VerifyEmailCommand): Promise<IAuthTokenResponse | { verified: boolean }> {
     const { email, code } = command.dto;
+    const { userAgent, ipAddress } = command;
 
     // Verify the email code
     const verified = await this.authService.verifyEmailCode(email, code);
@@ -63,8 +68,8 @@ export class VerifyEmailCommandHandler
       user.id.getValue(),
       sessionToken,
       refreshToken,
-      null, // userAgent not available in email verification
-      '?', // ipAddress not available in email verification
+      userAgent || null,
+      ipAddress || '?',
     );
 
     // 5. Return tokens and user information

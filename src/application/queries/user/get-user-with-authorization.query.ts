@@ -1,10 +1,13 @@
 import { IQuery, IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { UserService } from '@core/services/user.service';
 import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { UserAccessAuthorizationService } from '@core/services/user-access-authorization.service';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
+import { ConfigService } from '@nestjs/config';
+import { IOtpRepository } from '@core/repositories/otp.repository.interface';
+import { OTP_REPOSITORY } from '@shared/constants/tokens';
 
 export class GetUserWithAuthorizationQuery implements IQuery {
   constructor(
@@ -21,6 +24,9 @@ export class GetUserWithAuthorizationQueryHandler
   constructor(
     private readonly userService: UserService,
     private readonly userAccessAuthorizationService: UserAccessAuthorizationService,
+    private readonly configService: ConfigService,
+    @Inject(OTP_REPOSITORY)
+    private readonly otpRepository: IOtpRepository,
   ) {}
 
   async execute(query: GetUserWithAuthorizationQuery): Promise<IUserDetailResponse> {
@@ -43,7 +49,12 @@ export class GetUserWithAuthorizationQueryHandler
     // Check authorization using domain service
     await this.userAccessAuthorizationService.validateUserAccess(currentUser, targetUser);
 
+    // Get current OTP for user if they haven't verified email yet
+    const otp = !targetUser.emailVerified
+      ? await this.otpRepository.findByUserId(targetUser.id.getValue())
+      : null;
+
     // Use the mapper to convert to response DTO
-    return UserMapper.toDetailResponse(targetUser);
+    return UserMapper.toDetailResponse(targetUser, otp);
   }
 }
