@@ -63,6 +63,9 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
         where: {
           companyId: companyId,
         },
+        orderBy: {
+          createdAt: 'desc',
+        },
         include: {
           roles: {
             include: {
