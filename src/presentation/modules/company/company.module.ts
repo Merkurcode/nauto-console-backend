@@ -9,6 +9,8 @@ import { UpdateCompanyCommandHandler } from '@application/commands/company/updat
 import { DeleteCompanyCommandHandler } from '@application/commands/company/delete-company.command';
 import { AssignUserToCompanyCommandHandler } from '@application/commands/company/assign-user-to-company.command';
 import { RemoveUserFromCompanyCommandHandler } from '@application/commands/company/remove-user-from-company.command';
+import { SwitchCompanyCommandHandler } from '@application/commands/company/switch-company.command';
+import { ExitCompanyCommandHandler } from '@application/commands/company/exit-company.command';
 import { GetCompanyQueryHandler } from '@application/queries/company/get-company.query';
 import { GetCompaniesQueryHandler } from '@application/queries/company/get-companies.query';
 import { GetCompanyByHostQueryHandler } from '@application/queries/company/get-company-by-host.query';
@@ -23,6 +25,8 @@ const commandHandlers = [
   DeleteCompanyCommandHandler,
   AssignUserToCompanyCommandHandler,
   RemoveUserFromCompanyCommandHandler,
+  SwitchCompanyCommandHandler,
+  ExitCompanyCommandHandler,
 ];
 
 const queryHandlers = [
