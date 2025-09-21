@@ -2,10 +2,7 @@ import { IQuery, QueryHandler, IQueryHandler, QueryBus } from '@nestjs/cqrs';
 import { Injectable, Inject, Optional } from '@nestjs/common';
 
 export class GetCompaniesQuery implements IQuery {
-  constructor(
-    public readonly currentUserId: string,
-    public readonly currentUserTenantId?: string | null,
-  ) {}
+  constructor(public readonly currentUserId: string) {}
 }
 
 import { CompanyService } from '@core/services/company.service';

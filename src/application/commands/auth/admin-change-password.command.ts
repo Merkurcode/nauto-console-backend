@@ -6,8 +6,6 @@ export class AdminChangePasswordCommand {
     public readonly targetUserId: string,
     public readonly newPassword: string,
     public readonly adminUserId: string,
-    public readonly adminRoles: string[],
-    public readonly adminCompanyId?: string,
   ) {}
 }
 

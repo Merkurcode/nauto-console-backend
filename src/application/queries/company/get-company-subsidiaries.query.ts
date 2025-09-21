@@ -16,7 +16,6 @@ export class GetCompanySubsidiariesQuery implements IQuery {
   constructor(
     public readonly companyId: CompanyId,
     public readonly userId: string,
-    public readonly userTenantId?: string,
   ) {}
 }
 
@@ -53,18 +52,6 @@ export class GetCompanySubsidiariesQueryHandler
       subsidiaries = result.subsidiaries;
       assistantsMap = result.assistantsMap;
     } else {
-      // Non-root users can only see subsidiaries of their own company
-      if (!query.userTenantId) {
-        return []; // User has no tenant, return empty array
-      }
-
-      const userCompanyId = CompanyId.fromString(query.userTenantId);
-
-      // Check if the requested company is the user's company
-      if (!query.companyId.equals(userCompanyId)) {
-        return []; // User can only see subsidiaries of their own company
-      }
-
       const result = await this.companyService.getCompanySubsidiariesWithAssistants(
         query.companyId,
       );

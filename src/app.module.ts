@@ -201,6 +201,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
         tenantResolverService: TenantResolverService,
         userAuthorizationService: UserAuthorizationService,
         logger: ILogger,
+        configService: ConfigService,
       ) =>
         new JwtAuthGuard(
           reflector,
@@ -211,6 +212,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
           tenantResolverService,
           userAuthorizationService,
           logger,
+          configService,
         ),
       inject: [
         Reflector,
@@ -221,6 +223,7 @@ import { RequestCacheService } from '@infrastructure/caching/request-cache.servi
         TenantResolverService,
         UserAuthorizationService,
         LOGGER_SERVICE,
+        ConfigService,
       ],
     },
   ],

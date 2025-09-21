@@ -1,3 +1,4 @@
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { User } from '@core/entities/user.entity';
 
 /**
@@ -14,14 +15,14 @@ export interface ITokenProvider {
    * @param sessionToken - Optional session token to include in JWT
    * @returns JWT payload object
    */
-  buildPayload(user: User, permissions: string[], sessionToken?: string): Record<string, unknown>;
+  buildPayload(user: User, permissions: string[], sessionToken?: string): IJwtPayload;
 
   /**
    * Generate an access token from payload
    * @param payload - JWT payload
    * @returns JWT access token string
    */
-  generateAccessToken(payload: Record<string, unknown>): string;
+  generateAccessToken(payload: IJwtPayload): string;
 
   /**
    * Generate a refresh token and store it

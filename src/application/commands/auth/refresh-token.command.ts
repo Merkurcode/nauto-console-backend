@@ -1,15 +1,15 @@
 import { ICommand, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RefreshTokenDto } from '@application/dtos/auth/refresh-token.dto';
 import { IAuthRefreshTokenResponse } from '@application/dtos/_responses/user/user.response';
-import { UnauthorizedException, Injectable, ForbiddenException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { UnauthorizedException, Injectable, ForbiddenException, Inject } from '@nestjs/common';
 import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/services/auth.service';
 import { SessionService } from '@core/services/session.service';
 import { UserBanService } from '@core/services/user-ban.service';
 import { RolesEnum } from '@shared/constants/enums';
 import { v4 as uuidv4 } from 'uuid';
+import { TOKEN_PROVIDER } from '@shared/constants/tokens';
+import { ITokenProvider } from '@core/interfaces/token-provider.interface';
 
 export class RefreshTokenCommand implements ICommand {
   constructor(public readonly refreshTokenDto: RefreshTokenDto) {}
@@ -23,8 +23,8 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly userBanService: UserBanService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    @Inject(TOKEN_PROVIDER)
+    private readonly tokenProvider: ITokenProvider,
   ) {}
 
   async execute(command: RefreshTokenCommand): Promise<IAuthRefreshTokenResponse> {
@@ -58,7 +58,9 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
 
     // Generate new session and refresh tokens
     const newSessionToken = uuidv4();
-    const newRefreshToken = uuidv4();
+
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      await this.tokenProvider.generateTokens(user, permissions, newSessionToken);
 
     // Refresh the session (creates new session and revokes old one)
     await this.sessionService.refreshSession(
@@ -68,28 +70,8 @@ export class RefreshTokenCommandHandler implements ICommandHandler<RefreshTokenC
       newRefreshToken,
     );
 
-    // Generate new JWT with session token
-    const payload = {
-      sub: user.id.getValue(),
-      email: user.email.getValue(),
-      emailVerified: user.emailVerified,
-      roles: user.roles.map(role => role.name),
-      permissions,
-      tenantId: user.getTenantId(),
-      jti: newSessionToken, // Include session token as JWT ID
-    };
-
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('jwt.secret'),
-      expiresIn: this.configService.get('jwt.accessExpiration'),
-      algorithm: this.configService.get('jwt.algorithm', 'HS512'),
-    });
-
-    // Create new refresh token entry
-    await this.authService.createRefreshToken(user.id.getValue(), newRefreshToken);
-
     return {
-      accessToken,
+      accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
   }

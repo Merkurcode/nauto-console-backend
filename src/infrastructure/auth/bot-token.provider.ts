@@ -13,6 +13,7 @@ import { BotToken } from '@core/entities/bot-token.entity';
 import { UserId } from '@core/value-objects/user-id.vo';
 import { CompanyId } from '@core/value-objects/company-id.vo';
 import { BotTokenMapper } from '@application/mappers/bot-token.mapper';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 /**
  * Infrastructure implementation of BOT Token Provider
@@ -94,7 +95,7 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
     await this.botTokenRepository.save(botTokenEntity);
 
     // Construir payload del token BOT con permisos especiales OCULTOS
-    const botPayload = {
+    const botPayload: IJwtPayload = {
       sub: botUserId,
       email: botEmail,
       isBanned: false, // BOT tokens are never banned
@@ -106,7 +107,7 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
       permissions: [BOT_SPECIAL_PERMISSIONS.ALL_ACCESS], // Permiso oculto y no asignable
       tenantId: companyId || null,
       companyId: companyId || null,
-      tokenType: 'bot',
+      //tokenType: 'bot',
       tokenId,
       isBotToken: true, // Flag to identify BOT tokens
       jti: sessionTokenId, // Session token para validación de sesión activa
@@ -161,7 +162,7 @@ export class BotTokenProvider implements IBotTokenProvider, OnModuleInit {
       });
 
       // Now we can trust the verified claims
-      if (!verified || verified.tokenType !== 'bot' || !verified.tokenId) {
+      if (!verified /*|| verified.tokenType !== 'bot'*/ || !verified.tokenId) {
         return null;
       }
 

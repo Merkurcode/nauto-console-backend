@@ -14,7 +14,6 @@ export class GetCompanyHierarchyQuery implements IQuery {
   constructor(
     public readonly companyId: CompanyId,
     public readonly userId: string,
-    public readonly userTenantId?: string,
   ) {}
 }
 
@@ -50,15 +49,8 @@ export class GetCompanyHierarchyQueryHandler implements IQueryHandler<GetCompany
       assistants = result.assistants;
     } else {
       // Non-root users can only see hierarchy of their own company
-      if (!query.userTenantId) {
+      if (!query.companyId) {
         throw new ForbiddenException('User has no associated company');
-      }
-
-      const userCompanyId = CompanyId.fromString(query.userTenantId);
-
-      // Check if the requested company is the user's company
-      if (!query.companyId.equals(userCompanyId)) {
-        throw new ForbiddenException('You can only view hierarchy of your own company');
       }
 
       const result = await this.companyService.getCompanyWithHierarchyAndAssistants(

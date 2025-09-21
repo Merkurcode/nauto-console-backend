@@ -7,7 +7,13 @@ import { User } from '@core/entities/user.entity';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { ITokenProvider } from '@core/interfaces/token-provider.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
+//import { RolesEnum } from '@shared/constants/enums';
+import { BOT_SPECIAL_PERMISSIONS } from '@shared/constants/bot-permissions';
 
+// Work IJwtPayload with:
+//  \nauto-console-backend\src\presentation\modules\auth\strategies\jwt.strategy.ts
+//  \nauto-console-backend\src\presentation\guards\jwt-auth.guard.ts
 @Injectable()
 export class TokenProvider implements ITokenProvider {
   constructor(
@@ -23,8 +29,8 @@ export class TokenProvider implements ITokenProvider {
   /**
    * Generate a JWT payload with user information
    */
-  buildPayload(user: User, permissions: string[], sessionToken?: string) {
-    const payload = {
+  buildPayload(user: User, permissions: string[], sessionToken?: string): IJwtPayload {
+    const payload: IJwtPayload = {
       sub: user.id.getValue(),
       email: user.email.getValue(),
       isBanned: user.isBanned(),
@@ -32,10 +38,15 @@ export class TokenProvider implements ITokenProvider {
       banReason: user.banReason,
       emailVerified: user.emailVerified,
       isActive: user.isActive,
-      roles: user.roles.map(role => role.name),
-      permissions: permissions,
+      roles: user.roles ? user.roles.map(role => role.name) : [],
+      permissions: permissions || [],
       tenantId: user.getTenantId(),
       companyId: user.companyId?.getValue(),
+      //jti
+      //tokenId
+      isBotToken: (permissions || []).includes(BOT_SPECIAL_PERMISSIONS.ALL_ACCESS), //user.roles.some(role => role.name === RolesEnum.BOT),
+      //iat
+      //exp
     };
 
     // Add session token as jti (JWT ID) claim if provided
@@ -67,7 +78,7 @@ export class TokenProvider implements ITokenProvider {
   /**
    * Generate an access token
    */
-  generateAccessToken(payload: Record<string, unknown>): string {
+  generateAccessToken(payload: IJwtPayload): string {
     return this.jwtService.sign(payload, {
       secret: this.configService.get('jwt.secret'),
       expiresIn: this.configService.get('jwt.accessExpiration'),

@@ -536,8 +536,6 @@ export class AuthController {
           adminChangePasswordDto.userId,
           adminChangePasswordDto.password,
           currentUser.sub,
-          currentUser.roles, // All user roles
-          currentUser.tenantId,
         ),
       );
     });

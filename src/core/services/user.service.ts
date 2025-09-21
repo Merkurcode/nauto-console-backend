@@ -295,14 +295,14 @@ export class UserService {
     // Update the user's password
     targetUser.changePassword(hashedPassword);
     
-return await this.userRepository.update(targetUser);
+    return await this.userRepository.update(targetUser);
   }
 
   async findUserByEmailForVerification(email: string): Promise<User | null> {
     // Validate email format using value object
     const emailVO = new Email(email);
     
-return await this.userRepository.findByEmail(emailVO.getValue());
+    return await this.userRepository.findByEmail(emailVO.getValue());
   }
 
   async getUserWithPermissionsForRefreshToken(userId: string): Promise<{
@@ -340,13 +340,13 @@ return await this.userRepository.findByEmail(emailVO.getValue());
       return await this.userRepository.findAllByCompanyId(companyId);
     }
     
-return await this.userRepository.findAll();
+    return await this.userRepository.findAll();
   }
 
   async findUserByEmail(email: string): Promise<User | null> {
     const emailVO = new Email(email);
     
-return await this.userRepository.findByEmail(emailVO.getValue());
+    return await this.userRepository.findByEmail(emailVO.getValue());
   }
 
   async validateCredentials(emailStr: string, passwordStr: string): Promise<IAuthValidationResult> {

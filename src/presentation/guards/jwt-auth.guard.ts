@@ -23,7 +23,15 @@ import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { UserBannedException } from '@core/exceptions/domain-exceptions';
+import { Company } from '@core/entities/company.entity';
+import { ConfigService } from '@nestjs/config';
 
+// UUID v4 validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Work IJwtPayload with:
+// \nauto-console-backend\src\presentation\modules\auth\strategies\jwt.strategy.ts
+// \nauto-console-backend\src\infrastructure\auth\token.provider.ts
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(
@@ -35,12 +43,15 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     private readonly tenantResolverService: TenantResolverService,
     private readonly userAuthorizationService: UserAuthorizationService,
     @Inject(LOGGER_SERVICE) private readonly logger: ILogger,
+    private readonly configService: ConfigService,
   ) {
     super();
     this.logger.setContext(JwtAuthGuard.name);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const validateTenant = this.configService.get<string>('security.validateTenantHost');
+
     const request = context.switchToHttp().getRequest();
 
     // Check if the route is marked as public
@@ -273,7 +284,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
       if (!this.userAuthorizationService.canAccessRootFeatures(userAuthInfo)) {
         // Check if user has tenant context
-        if (!user.tenantId && !user.companyId) {
+        if (!user.tenantId || !user.companyId) {
           this.logger.warn({
             message: 'Tenant isolation failed - user not assigned to any company',
             userId: user.sub,
@@ -281,43 +292,39 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
           });
           throw new ForbiddenException('User not assigned to any company');
         }
-
-        const userTenantId = user.tenantId || user.companyId;
-
-        // Resolve tenant from host
-        const host = this.tenantResolverService.extractHostFromRequest(request);
-        if (host) {
-          const hostTenant = await this.tenantResolverService.resolveTenantFromHost(host);
-
-          if (hostTenant && hostTenant.getTenantId() !== userTenantId) {
-            this.logger.warn({
-              message: 'Tenant isolation failed - host belongs to different tenant',
-              userId: user.sub,
-              userTenant: userTenantId,
-              hostTenant: hostTenant.getTenantId(),
-              path: request.url,
-            });
-            throw new ForbiddenException('Access denied: Host belongs to different tenant');
-          }
-        }
-
-        // Check if the requested resource belongs to the user's tenant
-        const resourceTenantId = this.extractTenantIdFromRequest(request);
-
-        if (resourceTenantId && resourceTenantId !== userTenantId) {
-          this.logger.warn({
-            message: 'Tenant isolation failed - resource belongs to different tenant',
-            userId: user.sub,
-            userTenant: userTenantId,
-            resourceTenant: resourceTenantId,
-            path: request.url,
-          });
-          throw new ForbiddenException('Access denied: Resource belongs to different tenant');
+        if (validateTenant) {
+          const userTenantId = user.tenantId;
+          await this.validateTenantHost(user, request, userTenantId);
         }
 
         // Inject tenant context into request for use in repositories
-        request.tenantId = userTenantId;
-        request.companyId = userTenantId; // For backward compatibility
+        request.tenantId = user.tenantId;
+        request.companyId = user.companyId;
+      } else {
+        const tenantIdHeader = this.extractTenantIdFromRequest(request);
+        if (tenantIdHeader && typeof tenantIdHeader === 'string') {
+          if (UUID_REGEX.test(tenantIdHeader)) {
+            if (validateTenant) {
+              const hostTenant = await this.validateTenantHost(user, request, tenantIdHeader);
+
+              user.tenantId = hostTenant.getTenantId();
+              user.companyId = hostTenant.id.getValue();
+
+              // Inject tenant context into request for use in repositories
+              request.tenantId = hostTenant.getTenantId();
+              request.companyId = hostTenant.id;
+            } else {
+              user.tenantId = tenantIdHeader;
+              user.companyId = tenantIdHeader;
+
+              // Inject tenant context into request for use in repositories
+              request.tenantId = tenantIdHeader;
+              request.companyId = tenantIdHeader;
+            }
+          } else {
+            throw new ForbiddenException('Access denied: Invalid tenant id');
+          }
+        }
       }
     }
 
@@ -339,5 +346,36 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }): string | null {
     // Extract tenant ID from request parameters, headers, or query params
     return request.params?.tenantId || request.headers['x-tenant-id'] || null;
+  }
+
+  private async validateTenantHost(
+    user: IJwtPayload,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    request: any,
+    targetTenantId: string,
+  ): Promise<Company> {
+    // Resolve tenant from host
+    const host = this.tenantResolverService.extractHostFromRequest(request);
+    if (!host) {
+      throw new ForbiddenException('Access denied: Host not found in request');
+    }
+
+    const hostTenant = await this.tenantResolverService.resolveTenantFromHost(host);
+    if (!hostTenant) {
+      throw new ForbiddenException('Access denied: Unknown Host');
+    }
+
+    if (hostTenant.getTenantId() !== targetTenantId) {
+      this.logger.warn({
+        message: 'Tenant isolation failed - host belongs to different tenant',
+        userId: user.sub,
+        userTenant: targetTenantId,
+        hostTenant: hostTenant.getTenantId(),
+        path: request.url,
+      });
+      throw new ForbiddenException('Access denied: Host belongs to different tenant');
+    }
+
+    return hostTenant;
   }
 }

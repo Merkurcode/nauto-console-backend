@@ -25,12 +25,12 @@ import { UpdateCompanyCommand } from '@application/commands/company/update-compa
 import { DeleteCompanyCommand } from '@application/commands/company/delete-company.command';
 import { GetCompanyQuery } from '@application/queries/company/get-company.query';
 import { GetCompaniesQuery } from '@application/queries/company/get-companies.query';
-import { GetCompanyByHostQuery } from '@application/queries/company/get-company-by-host.query';
+//import { GetCompanyByHostQuery } from '@application/queries/company/get-company-by-host.query';
 import { GetCompanySubsidiariesQuery } from '@application/queries/company/get-company-subsidiaries.query';
 import { GetRootCompaniesQuery } from '@application/queries/company/get-root-companies.query';
 import { GetCompanyHierarchyQuery } from '@application/queries/company/get-company-hierarchy.query';
 import { CompanyId } from '@core/value-objects/company-id.vo';
-import { Host } from '@core/value-objects/host.vo';
+//import { Host } from '@core/value-objects/host.vo';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@presentation/guards/permissions.guard';
 import { RolesGuard } from '@presentation/guards/roles.guard';
@@ -39,7 +39,7 @@ import { RequirePermissions } from '@shared/decorators/permissions.decorator';
 import { WriteOperation, DeleteOperation } from '@shared/decorators/write-operation.decorator';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesEnum } from '@shared/constants/enums';
-import { Public } from '@shared/decorators/public.decorator';
+//import { Public } from '@shared/decorators/public.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
@@ -85,7 +85,7 @@ export class CompanyController {
   @RequirePermissions('company:read')
   async getCompanies(@CurrentUser() currentUserPayload: IJwtPayload): Promise<ICompanyResponse[]> {
     // Delegate all business logic to query handler
-    return this.queryBus.execute(new GetCompaniesQuery(currentUserPayload.sub, currentUserPayload.tenantId));
+    return this.queryBus.execute(new GetCompaniesQuery(currentUserPayload.sub));
   }
 
   //@Get('by-host/:host')
@@ -312,7 +312,7 @@ export class CompanyController {
   ): Promise<ICompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId, currentUserPayload.sub, currentUserPayload.tenantId));
+    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId, currentUserPayload.sub));
   }
 
   @Get(':id/hierarchy')
@@ -339,6 +339,6 @@ export class CompanyController {
   ): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub, currentUserPayload.tenantId));
+    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub));
   }
 }

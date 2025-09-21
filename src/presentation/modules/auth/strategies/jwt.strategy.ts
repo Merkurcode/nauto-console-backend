@@ -12,6 +12,8 @@ import { User } from '@core/entities/user.entity';
 // JWT-specific token (defined locally to avoid circular dependencies)
 const JWT_USER_REPOSITORY = 'JWT_USER_REPOSITORY';
 
+// Work IJwtPayload with:
+// \nauto-console-backend\src\presentation\guards\jwt-auth.guard.ts
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(

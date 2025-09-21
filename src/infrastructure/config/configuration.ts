@@ -137,6 +137,7 @@ export default () => ({
     signatureValidationLogs: process.env.SIGNATURE_VALIDATION_LOGS === 'true',
     requestMaxContentLength: parseInt(process.env.REQUEST_MAX_CONTENT_LENGTH || '10485760', 10),
     sensitiveOperationsEnabled: process.env.SENSITIVE_OPERATIONS_ENABLED !== 'false',
+    validateTenantHost: process.env.VALIDATE_TENANT_HOST !== 'false',
   },
 
   // Storage
