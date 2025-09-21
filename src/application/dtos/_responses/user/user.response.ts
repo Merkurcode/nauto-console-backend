@@ -69,6 +69,8 @@ export interface IUserDetailResponse extends IUserBaseResponse {
 
 export interface IUserWithAuthResponse extends IUserBaseResponse {
   roles: IUserRoleResponse[];
+  companyId?: string;
+  tenantId?: string;
 }
 
 export interface IAuthTokenResponse {

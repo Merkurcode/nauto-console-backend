@@ -160,6 +160,8 @@ export class UserMapper {
     return {
       ...this.toBaseResponse(user),
       roles: user.roles?.map(role => this.toRoleResponse(role)) || [],
+      companyId: user.companyId?.getValue(),
+      tenantId: user.getTenantId(),
     };
   }
 }
