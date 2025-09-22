@@ -64,6 +64,9 @@ export const ROLE_HIERARCHY_ORDER = [
   RolesEnum.GUEST,
 ] as const;
 
+export const PRIVILEGED_ROLES = [RolesEnum.ROOT, RolesEnum.BOT, RolesEnum.ROOT_READONLY];
+export const PRIVILEGED_ROLES_SET = new Set(PRIVILEGED_ROLES);
+
 /**
  * Role hierarchy order using string values (for legacy compatibility).
  * Lower index means higher privilege level.

@@ -28,6 +28,7 @@ import { UserId } from '@core/value-objects/user-id.vo';
 import { DomainValidationService } from './domain-validation.service';
 import { UserAuthorizationService } from './user-authorization.service';
 import { UserAccessAuthorizationService } from './user-access-authorization.service';
+import { UserRoleHierarchyService } from './user-role-hierarchy.service';
 import { PasswordGenerator } from '@shared/utils/password-generator';
 import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
@@ -58,6 +59,7 @@ export class UserService {
     private readonly domainValidationService: DomainValidationService,
     private readonly userAuthorizationService: UserAuthorizationService,
     private readonly userAccessAuthorizationService: UserAccessAuthorizationService,
+    private readonly userRoleHierarchyService: UserRoleHierarchyService,
     private readonly businessConfigService: BusinessConfigurationService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
@@ -631,6 +633,9 @@ export class UserService {
         throw new BusinessRuleValidationException('You do not have permission to assign roles to users in this company.');
       }
 
+      // Check role hierarchy for modification permissions
+      this.userRoleHierarchyService.validateCanModifyUser(assigningUser, user);
+
       if (!this.userAuthorizationService.canAssignRole(assigningUser, user, role)) {
         throw new BusinessRuleValidationException('You do not have permission to assign this role to this user.');
       }
@@ -677,6 +682,9 @@ export class UserService {
       throw new BusinessRuleValidationException('You do not have permission to remove this role from this user');
     }
 
+    // Check role hierarchy for modification permissions
+    this.userRoleHierarchyService.validateCanModifyUser(currentUser, targetUser);
+
     return await this.removeRoleFromUser(targetUserId, roleId);
   }
 
@@ -710,6 +718,9 @@ export class UserService {
     if (!this.userAuthorizationService.canActivateUser(currentUser, targetUserCompanyId)) {
       throw new BusinessRuleValidationException('You do not have permission to activate/deactivate this user');
     }
+
+    // Check role hierarchy for modification permissions
+    this.userRoleHierarchyService.validateCanModifyUser(currentUser, targetUser);
 
     if (active) {
       return await this.activateUser(targetUserId);
@@ -754,6 +765,9 @@ export class UserService {
     if (!this.userAuthorizationService.canDeleteUser(currentUser, targetUser)) {
       throw new BusinessRuleValidationException('You do not have permission to delete this user');
     }
+
+    // Check role hierarchy for deletion permissions
+    this.userRoleHierarchyService.validateCanDeleteUser(currentUser, targetUser);
 
     // Delete user using repository method
     const deleteResult = await this.userRepository.delete(targetUserId);
@@ -883,6 +897,9 @@ export class UserService {
 
     // Check authorization using the existing access authorization service
     await this.userAccessAuthorizationService.validateUserAccess(currentUser, targetUser);
+
+    // Check role hierarchy for modification permissions
+    this.userRoleHierarchyService.validateCanModifyUser(currentUser, targetUser);
 
     // Update user data based on provided fields
     let hasChanges = false;

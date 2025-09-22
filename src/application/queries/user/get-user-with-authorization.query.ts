@@ -4,8 +4,8 @@ import { UserService } from '@core/services/user.service';
 import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { UserAccessAuthorizationService } from '@core/services/user-access-authorization.service';
+import { UserRoleHierarchyService } from '@core/services/user-role-hierarchy.service';
 import { EntityNotFoundException } from '@core/exceptions/domain-exceptions';
-import { ConfigService } from '@nestjs/config';
 import { IOtpRepository } from '@core/repositories/otp.repository.interface';
 import { OTP_REPOSITORY } from '@shared/constants/tokens';
 
@@ -24,7 +24,7 @@ export class GetUserWithAuthorizationQueryHandler
   constructor(
     private readonly userService: UserService,
     private readonly userAccessAuthorizationService: UserAccessAuthorizationService,
-    private readonly configService: ConfigService,
+    private readonly userRoleHierarchyService: UserRoleHierarchyService,
     @Inject(OTP_REPOSITORY)
     private readonly otpRepository: IOtpRepository,
   ) {}
@@ -43,11 +43,14 @@ export class GetUserWithAuthorizationQueryHandler
     }
 
     if (!currentUser) {
-      throw new EntityNotFoundException('Current User', currentUserId);
+      throw new EntityNotFoundException('User', currentUserId);
     }
 
     // Check authorization using domain service
     await this.userAccessAuthorizationService.validateUserAccess(currentUser, targetUser);
+
+    // Check role hierarchy access
+    this.userRoleHierarchyService.validateCanAccessUser(currentUser, targetUser);
 
     // Get current OTP for user if they haven't verified email yet
     const otp = !targetUser.emailVerified

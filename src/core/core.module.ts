@@ -46,6 +46,7 @@ import { FileNamingService } from './services/file-naming.service';
 import { MarketingCampaignService } from './services/marketing-campaign.service';
 import { ExcelStreamingService } from './services/excel-streaming.service';
 import { FileDownloadStreamingService } from './services/file-download-streaming.service';
+import { UserRoleHierarchyService } from './services/user-role-hierarchy.service';
 
 /**
  * Core Domain Module
@@ -101,6 +102,7 @@ import { FileDownloadStreamingService } from './services/file-download-streaming
     MarketingCampaignService,
     ExcelStreamingService,
     FileDownloadStreamingService,
+    UserRoleHierarchyService,
   ],
   exports: [
     // Export all domain services
@@ -149,6 +151,7 @@ import { FileDownloadStreamingService } from './services/file-download-streaming
     MarketingCampaignService,
     ExcelStreamingService,
     FileDownloadStreamingService,
+    UserRoleHierarchyService,
   ],
 })
 export class CoreModule {}
