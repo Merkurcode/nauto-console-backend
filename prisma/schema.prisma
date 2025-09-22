@@ -775,6 +775,24 @@ model ProductCatalog {
   @@index([subcategory])
   @@index([bulkRequestId])
   @@index([isVisible])
+
+  // === Columna de búsqueda FTS ===
+  // Prisma no modela la expresión GENERATED; mantenemos el valor con trigger (ver migración 20250922121233_product_search_fns).
+  search_vector Unsupported("tsvector")? @map("search_vector")
+
+  // === Índices que Prisma mantiene ===
+  // Filtros comunes (BTREE)
+  @@index([companyId, isVisible], map: "idx_productcatalog_company_visible")
+  @@index([companyId, createdAt],  map: "idx_productcatalog_company_createdat")
+
+  // FTS (GIN sobre tsvector)
+  @@index([search_vector], type: Gin, map: "idx_productcatalog_search_vector")
+
+  // Fallbacks TRGM (GIN + gin_trgm_ops) para LIKE/ILIKE/typos
+  @@index([productService(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_pc_trgm_productservice")
+  @@index([type(ops: raw("gin_trgm_ops"))],           type: Gin, map: "idx_pc_trgm_type")
+  @@index([subcategory(ops: raw("gin_trgm_ops"))],    type: Gin, map: "idx_pc_trgm_subcategory")
+  @@index([industry(ops: raw("gin_trgm_ops"))],       type: Gin, map: "idx_pc_trgm_industry")
 }
 
 model ProductMedia {

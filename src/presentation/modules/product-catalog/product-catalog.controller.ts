@@ -29,13 +29,19 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { CreateProductCatalogDto } from '@application/dtos/product-catalog/create-product-catalog.dto';
 import { UpdateProductCatalogDto } from '@application/dtos/product-catalog/update-product-catalog.dto';
-import { IProductCatalogResponse } from '@application/dtos/_responses/product-catalog/product-catalog.response';
+import { SearchProductsRequestDto } from '@application/dtos/_requests/product-catalog/search-products.request';
+import {
+  IProductCatalogResponse,
+  ISearchProductsResponse,
+  SearchProductsResponseDto,
+} from '@application/dtos/_responses/product-catalog/product-catalog.response';
 import { UpsertProductCatalogCommand } from '@application/commands/product-catalog/upsert-product-catalog.command';
 import { UpdateProductCatalogCommand } from '@application/commands/product-catalog/update-product-catalog.command';
 import { DeleteProductCatalogWithMediaCommand } from '@application/commands/product-catalog/delete-product-catalog-with-media.command';
 import { ToggleProductVisibilityCommand } from '@application/commands/product-catalog/toggle-product-visibility.command';
 import { GetProductCatalogQuery } from '@application/queries/product-catalog/get-product-catalog.query';
 import { GetProductCatalogsByCompanyQuery } from '@application/queries/product-catalog/get-product-catalogs-by-company.query';
+import { SearchProductsQuery } from '@application/queries/product-catalog/search-products.query';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 @ApiTags('product-catalog')
@@ -120,6 +126,40 @@ export class ProductCatalogController {
     // Do not execute in transaction
     return this.commandBus.execute(
       new DeleteProductCatalogWithMediaCommand(id, user.companyId!, user.sub),
+    );
+  }
+
+  @Get('search')
+  @CanRead('product-catalog')
+  @ApiOperation({
+    summary: 'Search products using advanced search function',
+    description:
+      'Search products using full-text search, filters, and pagination. Supports searching across id, industry, productService, type, subcategory, description, link, and sourceFileName.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully',
+    type: SearchProductsResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async searchProducts(
+    @Query() searchDto: SearchProductsRequestDto,
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<ISearchProductsResponse> {
+    return this.queryBus.execute(
+      new SearchProductsQuery(
+        user.companyId!,
+        searchDto.query,
+        searchDto.limit,
+        searchDto.offset,
+        searchDto.onlyVisible,
+        searchDto.minPrice,
+        searchDto.maxPrice,
+        searchDto.type,
+        searchDto.subcategory,
+        searchDto.paymentOptions,
+        user,
+      ),
     );
   }
 
