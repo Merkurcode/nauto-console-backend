@@ -1,6 +1,10 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
+import {
+  IUserRepository,
+  ISearchUsersParams,
+  ISearchUsersResult,
+} from '@core/repositories/user.repository.interface';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { BaseRepository } from './base.repository';
 import { Role } from '@core/entities/role.entity';
@@ -142,6 +146,12 @@ export class UserAuthRepository extends BaseRepository<User> implements IUserRep
 
   async delete(_id: string): Promise<boolean> {
     return this.executeWithErrorHandling('delete', async () => {
+      throw new Error('Not implemented in UserAuthRepository');
+    });
+  }
+
+  async searchUsers(_params: ISearchUsersParams): Promise<ISearchUsersResult> {
+    return this.executeWithErrorHandling('searchUsers', async () => {
       throw new Error('Not implemented in UserAuthRepository');
     });
   }

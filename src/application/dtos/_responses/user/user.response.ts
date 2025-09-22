@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 // User response interfaces
 
 export interface IUserRoleResponse {
@@ -121,3 +123,28 @@ export type AuthResponse =
   | IAuthTokenResponse
   | IOtpRequiredResponse
   | IEmailVerificationRequiredResponse;
+
+export interface ISearchUsersResponse {
+  users: IUserDetailResponse[];
+  totalCount: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export class SearchUsersResponseDto implements ISearchUsersResponse {
+  @ApiProperty({ description: 'Array of users with full details', type: 'array' })
+  users: IUserDetailResponse[];
+
+  @ApiProperty({ description: 'Total number of matching users' })
+  totalCount: number;
+
+  @ApiProperty({ description: 'Number of results returned' })
+  limit: number;
+
+  @ApiProperty({ description: 'Number of results skipped' })
+  offset: number;
+
+  @ApiProperty({ description: 'Whether there are more results available' })
+  hasMore: boolean;
+}

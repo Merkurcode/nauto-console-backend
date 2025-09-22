@@ -7,6 +7,7 @@ import {
   Put,
   Delete,
   Patch,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -39,10 +40,16 @@ import { PreventRootAssignment } from '@shared/decorators/prevent-root-assignmen
 import { UpdateUserProfileDto } from '@application/dtos/user/update-user-profile.dto';
 import { ActivateUserDto } from '@application/dtos/user/activate-user.dto';
 import { AssignRoleDto } from '@application/dtos/user/assign-role.dto';
+import { SearchUsersRequestDto } from '@application/dtos/_requests/user/search-users.request';
+import {
+  ISearchUsersResponse,
+  SearchUsersResponseDto,
+} from '@application/dtos/_responses/user/user.response';
 
 // Queries
 import { GetUsersQuery } from '@application/queries/user/get-users.query';
 import { GetUserWithAuthorizationQuery } from '@application/queries/user/get-user-with-authorization.query';
+import { SearchUsersQuery } from '@application/queries/user/search-users.query';
 
 // Commands
 import { UpdateUserProfileCommand } from '@application/commands/user/update-user-profile.command';
@@ -200,6 +207,68 @@ export class UserController {
   })
   async getAllUsers(@CurrentUser() currentUser: IJwtPayload) {
     return this.queryBus.execute(new GetUsersQuery(currentUser.companyId!, currentUser.sub));
+  }
+
+  @Get('search')
+  @Roles(RolesEnum.ROOT, RolesEnum.ROOT_READONLY, RolesEnum.ADMIN, RolesEnum.MANAGER)
+  @RequirePermissions('user:read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Search and filter users within a company',
+    description:
+      'Advanced user search with filtering and pagination. Returns complete user details including profile, address, roles, and status information.\n\n' +
+      '**🔍 Search Capabilities:**\n' +
+      '- Text search across: firstName, lastName, secondLastName, and email\n' +
+      '- Filter by user status (active/inactive)\n' +
+      '- Filter by email verification status\n' +
+      '- Paginated results with configurable limit (1-100) and offset\n\n' +
+      '**🏢 Multi-Tenant Isolation:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px;">⚠️ Company ID is REQUIRED (UUID format)</code>\n' +
+      '- Users can only access data from their assigned company\n' +
+      '- Access control is automatically enforced based on user role and company assignment\n\n' +
+      '**📋 Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:read</code>\n\n' +
+      '**👥 Authorized Roles:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can search users in any company\n' +
+      '- <code style="color: #e17055; background: #fab1a0; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT_READONLY</code> - Can search users in any company (read-only)\n' +
+      '- <code style="color: #0984e3; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ADMIN</code> - Can search users within assigned company\n' +
+      '- <code style="color: #6c5ce7; background: #a29bfe; padding: 2px 6px; border-radius: 3px; font-weight: bold;">MANAGER</code> - Can search users within assigned company\n\n' +
+      '**📦 Response Format:**\n' +
+      'Returns IUserDetailResponse array with complete user information including:\n' +
+      '- Basic info (id, email, names)\n' +
+      '- Status (active, verified, banned)\n' +
+      '- Profile (phone, avatar, bio)\n' +
+      '- Address (country, state, city)\n' +
+      '- Roles and permissions\n' +
+      '- Invitation and verification status',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User search completed successfully. Returns paginated results with full user details.',
+    type: SearchUsersResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid request parameters. Company ID must be a valid UUID v4.',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Access denied. User does not have permission to search users or access the specified company.',
+  })
+  async searchUsers(
+    @Query() searchDto: SearchUsersRequestDto,
+    @CurrentUser() currentUser: IJwtPayload,
+  ): Promise<ISearchUsersResponse> {
+    return this.queryBus.execute(
+      new SearchUsersQuery(
+        searchDto.companyId,
+        searchDto.limit,
+        searchDto.offset,
+        searchDto.onlyActive,
+        searchDto.onlyEmailVerified,
+        currentUser,
+        searchDto.query,
+      ),
+    );
   }
 
   @Get(':id')

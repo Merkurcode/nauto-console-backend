@@ -16,6 +16,7 @@ import { UserService } from '@core/services/user.service';
 import { GetUserQueryHandler } from '@application/queries/user/get-user.query';
 import { GetUsersQueryHandler } from '@application/queries/user/get-users.query';
 import { GetUserWithAuthorizationQueryHandler } from '@application/queries/user/get-user-with-authorization.query';
+import { SearchUsersQueryHandler } from '@application/queries/user/search-users.query';
 
 // Command Handlers
 import { UpdateUserCommandHandler } from '@application/commands/user/update-user.command';
@@ -31,6 +32,7 @@ const queryHandlers = [
   GetUserQueryHandler,
   GetUsersQueryHandler,
   GetUserWithAuthorizationQueryHandler,
+  SearchUsersQueryHandler,
 ];
 
 const commandHandlers = [

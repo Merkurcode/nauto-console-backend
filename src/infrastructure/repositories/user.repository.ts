@@ -1,6 +1,11 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
-import { IUserRepository } from '@core/repositories/user.repository.interface';
+import {
+  IUserRepository,
+  ISearchUsersParams,
+  ISearchUsersResult,
+} from '@core/repositories/user.repository.interface';
+import { IUserDetailResponse } from '@application/dtos/_responses/user/user.response';
 import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { Role } from '@core/entities/role.entity';
@@ -699,5 +704,138 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     });
 
     return user;
+  }
+
+  async searchUsers(params: ISearchUsersParams): Promise<ISearchUsersResult> {
+    return this.executeWithErrorHandling('searchUsers', async () => {
+      // Validate and sanitize parameters
+      const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
+      const offset = Math.max(params.offset ?? 0, 0);
+
+      // Build where conditions
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const whereConditions: any = {
+        // Company filter is required for multi-tenant isolation
+        companyId: params.companyId,
+      };
+
+      // Active filter
+      if (params.onlyActive) {
+        whereConditions.isActive = true;
+      }
+
+      // Email verified filter
+      if (params.onlyEmailVerified) {
+        whereConditions.emailVerified = true;
+      }
+
+      // Search query filter
+      if (params.query && params.query.trim()) {
+        //const searchTerm = `%${params.query.trim()}%`;
+        whereConditions.OR = [
+          { firstName: { contains: params.query.trim(), mode: 'insensitive' } },
+          { lastName: { contains: params.query.trim(), mode: 'insensitive' } },
+          { secondLastName: { contains: params.query.trim(), mode: 'insensitive' } },
+          { email: { contains: params.query.trim(), mode: 'insensitive' } },
+          {
+            company: {
+              name: { contains: params.query.trim(), mode: 'insensitive' },
+            },
+          },
+        ];
+      }
+
+      // Execute query with pagination - include all necessary relations for IUserDetailResponse
+      const [users, totalCount] = await Promise.all([
+        this.client.user.findMany({
+          where: whereConditions,
+          include: {
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+            company: {
+              select: {
+                name: true,
+              },
+            },
+            profile: true,
+            address: {
+              include: {
+                country: true,
+                state: true,
+              },
+            },
+          },
+          orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { createdAt: 'desc' }],
+          take: limit,
+          skip: offset,
+        }),
+        this.client.user.count({
+          where: whereConditions,
+        }),
+      ]);
+
+      // Map to IUserDetailResponse format
+      const searchResults: IUserDetailResponse[] = users.map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        secondLastName: user.secondLastName || undefined,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
+        otpEnabled: user.otpEnabled,
+        lastLoginAt: user.lastLoginAt || undefined,
+        bannedUntil: user.bannedUntil || undefined,
+        banReason: user.banReason || undefined,
+        roles: user.roles.map(userRole => ({
+          id: userRole.role.id,
+          name: userRole.role.name,
+        })),
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        tenantId: user.companyId || undefined, // Using companyId as tenantId for multi-tenancy
+        companyId: user.companyId || undefined,
+        smsStatus: user.smsStatus || 'NOT_SENT',
+        emailStatus: user.emailStatus || 'NOT_SENT',
+        lastSmsError: user.lastSmsError || undefined,
+        lastEmailError: user.lastEmailError || undefined,
+        agentPhone: user.agentPhone || undefined,
+        agentPhoneCountryCode: user.agentPhoneCountryCode || undefined,
+        profile: user.profile
+          ? {
+              phone: user.profile.phone || undefined,
+              phoneCountryCode: user.profile.phoneCountryCode || undefined,
+              avatarUrl: user.profile.avatarUrl || undefined,
+              bio: user.profile.bio || undefined,
+              birthDate: user.profile.birthdate || undefined,
+            }
+          : undefined,
+        address: user.address
+          ? {
+              countryId: user.address.countryId || undefined,
+              countryName: user.address.country?.name || undefined,
+              stateId: user.address.stateId || undefined,
+              stateName: user.address.state?.name || undefined,
+              city: user.address.city || undefined,
+              street: user.address.street || undefined,
+              exteriorNumber: user.address.exteriorNumber || undefined,
+              interiorNumber: user.address.interiorNumber || undefined,
+              postalCode: user.address.postalCode || undefined,
+            }
+          : undefined,
+        // invitationStatus is calculated separately when needed
+      }));
+
+      const hasMore = offset + users.length < totalCount;
+
+      return {
+        users: searchResults,
+        totalCount,
+        hasMore,
+      };
+    });
   }
 }
