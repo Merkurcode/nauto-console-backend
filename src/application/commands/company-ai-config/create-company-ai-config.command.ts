@@ -42,7 +42,7 @@ export class CreateCompanyAIConfigHandler
       configData,
     );
 
-    this.logger.log({
+    /*this.logger.log({
       message: 'Company AI configuration created successfully',
       action: 'CREATE_AI_CONFIG_SUCCESS',
       userId: currentUser.sub,
@@ -51,7 +51,7 @@ export class CreateCompanyAIConfigHandler
       hasConfiguration: company.configAI !== null,
       lastUpdated: company.lastUpdated?.toISOString(),
       timestamp: new Date().toISOString(),
-    });
+    });*/
 
     return {
       companyId: company.id.getValue(),

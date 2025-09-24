@@ -243,7 +243,8 @@ export class UserController {
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'User search completed successfully. Returns paginated results with full user details.',
+    description:
+      'User search completed successfully. Returns paginated results with full user details.',
     type: SearchUsersResponseDto,
   })
   @ApiResponse({
@@ -252,7 +253,8 @@ export class UserController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Access denied. User does not have permission to search users or access the specified company.',
+    description:
+      'Access denied. User does not have permission to search users or access the specified company.',
   })
   async searchUsers(
     @Query() searchDto: SearchUsersRequestDto,

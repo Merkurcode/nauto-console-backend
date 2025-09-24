@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { User } from '@core/entities/user.entity';
 import { RolesEnum, ROLE_HIERARCHY_ORDER, PRIVILEGED_ROLES_SET } from '@shared/constants/enums';
 import { ForbiddenActionException } from '@core/exceptions/domain-exceptions';
+import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 
 @Injectable()
 export class UserRoleHierarchyService {
@@ -36,8 +37,8 @@ export class UserRoleHierarchyService {
   /**
    * Check if user has privileged roles (ROOT, ROOT_READONLY, or BOT)
    */
-  hasPrivilegedRole(user: User): boolean {
-    if (!user.roles || user.roles.length === 0) {
+  hasPrivilegedRole(user: User | IJwtPayload): boolean {
+    if (!user || !user.roles || user.roles.length === 0) {
       return false;
     }
 
@@ -47,7 +48,7 @@ export class UserRoleHierarchyService {
   /**
    * Check if target user has privileged roles
    */
-  isTargetUserPrivileged(targetUser: User): boolean {
+  isTargetUserPrivileged(targetUser: User | IJwtPayload): boolean {
     return this.hasPrivilegedRole(targetUser);
   }
 
