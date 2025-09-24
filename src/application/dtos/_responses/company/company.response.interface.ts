@@ -54,6 +54,8 @@ export interface ICompanyResponse {
   weeklySchedule?: ICompanyWeeklyScheduleResponse;
   activeAIPersona?: IAIPersonaResponse | null;
   configAI?: ICompanyConfigAI | null;
+  businessUnitsCount?: number;
+  totalUsersCount?: number;
   lastUpdated?: Date | null;
   createdAt: Date;
   updatedAt: Date;

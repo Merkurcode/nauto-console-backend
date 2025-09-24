@@ -237,4 +237,10 @@ export class UserAuthRepository extends BaseRepository<User> implements IUserRep
       companyId: record.companyId || undefined,
     });
   }
+
+  async countByCompanyExcludingRoles(companyId: string, excludedRoles: string[]): Promise<number> {
+    // This repository is only for authentication purposes,
+    // delegate to the main user repository
+    throw new Error('Method not implemented in UserAuthRepository. Use UserRepository instead.');
+  }
 }

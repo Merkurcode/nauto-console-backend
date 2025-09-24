@@ -15,6 +15,8 @@ export class CompanyMapper {
     assistants?: IAssistantAssignment[],
     weeklySchedule?: ICompanyWeeklyScheduleResponse,
     activeAIPersona?: IAIPersonaResponse | null,
+    businessUnitsCount?: number,
+    totalUsersCount?: number,
   ): ICompanyResponse {
     return {
       id: company.id.getValue(),
@@ -43,6 +45,8 @@ export class CompanyMapper {
       weeklySchedule: weeklySchedule,
       activeAIPersona: activeAIPersona,
       configAI: company.configAI,
+      businessUnitsCount: businessUnitsCount,
+      totalUsersCount: totalUsersCount,
       lastUpdated: company.lastUpdated,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
@@ -50,7 +54,11 @@ export class CompanyMapper {
   }
 
   // Basic response without nested relationships to avoid circular references
-  static toBasicResponse(company: Company): ICompanyResponse {
+  static toBasicResponse(
+    company: Company,
+    businessUnitsCount?: number,
+    totalUsersCount?: number,
+  ): ICompanyResponse {
     return {
       id: company.id.getValue(),
       name: company.name.getValue(),
@@ -68,6 +76,8 @@ export class CompanyMapper {
       industryOperationChannel: company.industryOperationChannel.value,
       hierarchyLevel: company.getHierarchyLevel(),
       configAI: company.configAI,
+      businessUnitsCount: businessUnitsCount,
+      totalUsersCount: totalUsersCount,
       lastUpdated: company.lastUpdated,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
@@ -79,6 +89,8 @@ export class CompanyMapper {
     assistantsMap?: Map<string, IAssistantAssignment[]>,
     weeklyScheduleMap?: Map<string, ICompanyWeeklyScheduleResponse>,
     activeAIPersonaMap?: Map<string, IAIPersonaResponse | null>,
+    businessUnitsCountMap?: Map<string, number>,
+    totalUsersCountMap?: Map<string, number>,
   ): ICompanyResponse[] {
     return companies.map(company =>
       this.toResponse(
@@ -86,6 +98,8 @@ export class CompanyMapper {
         assistantsMap?.get(company.id.getValue()),
         weeklyScheduleMap?.get(company.id.getValue()),
         activeAIPersonaMap?.get(company.id.getValue()),
+        businessUnitsCountMap?.get(company.id.getValue()),
+        totalUsersCountMap?.get(company.id.getValue()),
       ),
     );
   }

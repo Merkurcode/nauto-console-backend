@@ -84,8 +84,7 @@ export class CompanyController {
   })
   @RequirePermissions('company:read')
   async getCompanies(@CurrentUser() currentUserPayload: IJwtPayload): Promise<ICompanyResponse[]> {
-    // Delegate all business logic to query handler
-    return this.queryBus.execute(new GetCompaniesQuery(currentUserPayload.sub));
+    return this.queryBus.execute(new GetCompaniesQuery(currentUserPayload.sub, currentUserPayload));
   }
 
   //@Get('by-host/:host')
@@ -131,8 +130,8 @@ export class CompanyController {
     type: [CompanySwaggerDto],
   })
   @RequirePermissions('company:read')
-  async getRootCompanies(): Promise<ICompanyResponse[]> {
-    return this.queryBus.execute(new GetRootCompaniesQuery());
+  async getRootCompanies(@CurrentUser() currentUserPayload: IJwtPayload): Promise<ICompanyResponse[]> {
+    return this.queryBus.execute(new GetRootCompaniesQuery(currentUserPayload));
   }
 
   @Get(':id')
@@ -156,10 +155,13 @@ export class CompanyController {
     description: 'Company not found',
   })
   @RequirePermissions('company:read')
-  async getCompany(@Param('id', TrimStringPipe, ParseUUIDPipe) id: string): Promise<ICompanyResponse> {
+  async getCompany(
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
+    @CurrentUser() currentUserPayload: IJwtPayload,
+  ): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanyQuery(companyId));
+    return this.queryBus.execute(new GetCompanyQuery(companyId, currentUserPayload));
   }
 
   @Post()
@@ -312,7 +314,7 @@ export class CompanyController {
   ): Promise<ICompanyResponse[]> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId, currentUserPayload.sub));
+    return this.queryBus.execute(new GetCompanySubsidiariesQuery(companyId, currentUserPayload.sub, currentUserPayload));
   }
 
   @Get(':id/hierarchy')
@@ -339,6 +341,6 @@ export class CompanyController {
   ): Promise<ICompanyResponse> {
     const companyId = CompanyId.fromString(id);
 
-    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub));
+    return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub, currentUserPayload));
   }
 }

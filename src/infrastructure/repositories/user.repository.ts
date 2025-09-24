@@ -838,4 +838,26 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       };
     });
   }
+
+  async countByCompanyExcludingRoles(companyId: string, excludedRoles: string[]): Promise<number> {
+    return this.executeWithErrorHandling('countByCompanyExcludingRoles', async () => {
+      const count = await this.client.user.count({
+        where: {
+          companyId,
+          isActive: true,
+          roles: {
+            none: {
+              role: {
+                name: {
+                  in: excludedRoles,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return count;
+    });
+  }
 }
