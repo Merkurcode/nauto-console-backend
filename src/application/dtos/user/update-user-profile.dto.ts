@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsDateString, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, ValidateNested } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { TrimString } from '@shared/decorators/trim-and-validate-length.decorator';
@@ -179,23 +179,6 @@ export class UpdateUserProfileDto {
   @IsOptional()
   @IsBoolean()
   emailVerified?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Date until user is banned',
-    example: null,
-  })
-  @IsOptional()
-  @IsDateString()
-  bannedUntil?: string;
-
-  @ApiPropertyOptional({
-    description: 'Reason for ban',
-    example: null,
-  })
-  @IsOptional()
-  @IsString()
-  @TrimString()
-  banReason?: string;
 
   @ApiPropertyOptional({
     description: 'Agent phone number',

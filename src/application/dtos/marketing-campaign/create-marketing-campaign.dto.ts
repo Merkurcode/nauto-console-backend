@@ -1,26 +1,25 @@
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
 import { Trim } from '@shared/decorators/trim.decorator';
+import { Type } from 'class-transformer';
 
 export class CreateMarketingCampaignDto {
   @ApiProperty({
     description: 'Campaign start date',
     example: '2025-01-01T00:00:00.000Z',
   })
-  @Trim()
-  @IsDateString()
-  @IsNotEmpty()
-  startDate: string;
+  @Type(() => Date)
+  @IsDate()
+  startDate: Date;
 
   @ApiProperty({
     description: 'Campaign end date',
     example: '2025-12-31T23:59:59.999Z',
   })
-  @Trim()
-  @IsDateString()
-  @IsNotEmpty()
-  endDate: string;
+  @Type(() => Date)
+  @IsDate()
+  endDate: Date;
 
   @ApiProperty({
     description: 'Reference name for the campaign (max 255 chars)',

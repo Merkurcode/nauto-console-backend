@@ -44,6 +44,7 @@ import { SearchUsersRequestDto } from '@application/dtos/_requests/user/search-u
 import {
   ISearchUsersResponse,
   SearchUsersResponseDto,
+  IJwtPayload,
 } from '@application/dtos/_responses/user/user.response';
 
 // Queries
@@ -57,7 +58,6 @@ import { DeleteUserCommand } from '@application/commands/user/delete-user.comman
 import { ActivateUserCommand } from '@application/commands/user/activate-user.command';
 import { AssignRoleCommand } from '@application/commands/user/assign-role.command';
 import { RemoveRoleCommand } from '@application/commands/user/remove-role.command';
-import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { UserDeletionPolicyService } from '@core/services/user-deletion-policy.service';
 import { JwtAuthGuard } from '@presentation/guards/jwt-auth.guard';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';

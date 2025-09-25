@@ -119,7 +119,7 @@ export class SessionService {
     return this.sessionRepository.findByUserId(userId);
   }
 
-  async revokeSession(sessionToken: string): Promise<void> {
+  async revokeSession(sessionToken: string): Promise<number> {
     this.logger.debug({
       message: 'Revoking session',
       sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken),
@@ -132,13 +132,13 @@ export class SessionService {
         sessionTokenHash: SecurityLogger.maskSessionToken(sessionToken),
       });
 
-      return;
+      return 0;
     }
 
     const userId = session.userId.getValue();
 
     session.revoke();
-    await this.sessionRepository.deleteBySessionToken(sessionToken);
+    const deletedCount = await this.sessionRepository.deleteBySessionToken(sessionToken);
 
     // Session revoked successfully
 
@@ -146,57 +146,74 @@ export class SessionService {
       message: 'Session revoked successfully and cache invalidated',
       sessionId: session.id.getValue(),
       userId,
+      deletedCount,
     });
+
+    return deletedCount;
   }
 
-  async revokeUserSessions(userId: string, scope: 'local' | 'global' = 'global'): Promise<void> {
+  async revokeUserSessions(userId: string, scope: 'local' | 'global' = 'global'): Promise<number> {
     this.logger.debug({ message: 'Revoking user sessions', userId, scope });
 
     if (scope === 'global') {
       // Revoke all sessions for the user
-      await this.sessionRepository.deleteByUserId(userId);
+      const deletedCount = await this.sessionRepository.deleteByUserId(userId);
 
       // All sessions revoked successfully
 
-      this.logger.log({ message: 'All user sessions revoked and cache invalidated', userId });
+      this.logger.log({
+        message: 'All user sessions revoked and cache invalidated',
+        userId,
+        deletedCount,
+      });
+
+      return deletedCount;
     } else {
       // For local scope, we would need the current session token to revoke just that one
       // This will be handled in the logout endpoint
       this.logger.debug({ message: 'Local session revocation handled at endpoint level', userId });
+
+      return 0;
     }
   }
 
-  async revokeUserSessionsExcept(userId: string, excludeSessionToken: string): Promise<void> {
+  async revokeUserSessionsExcept(userId: string, excludeSessionToken: string): Promise<number> {
     this.logger.debug({
       message: 'Revoking user sessions except current one',
       userId,
       excludeSessionToken: excludeSessionToken.substring(0, 10) + '...',
     });
 
-    await this.sessionRepository.deleteByUserIdExcept(userId, excludeSessionToken);
+    const deletedCount = await this.sessionRepository.deleteByUserIdExcept(
+      userId,
+      excludeSessionToken,
+    );
 
     // All sessions except current revoked successfully
 
     this.logger.log({
       message: 'All user sessions revoked except current one and cache invalidated',
       userId,
+      deletedCount,
     });
+
+    return deletedCount;
   }
 
-  async revokeSessionByRefreshToken(refreshToken: string): Promise<void> {
+  async revokeSessionByRefreshToken(refreshToken: string): Promise<number> {
     this.logger.debug({ message: 'Revoking session by refresh token' });
 
     const session = await this.sessionRepository.findByRefreshToken(refreshToken);
     if (!session) {
       this.logger.warn({ message: 'Session not found for refresh token revocation' });
 
-      return;
+      return 0;
     }
 
     const userId = session.userId.getValue();
 
     session.revoke();
-    await this.sessionRepository.deleteByRefreshToken(refreshToken);
+    const deletedCount = await this.sessionRepository.deleteByRefreshToken(refreshToken);
 
     // Session revoked by refresh token successfully
 
@@ -204,7 +221,10 @@ export class SessionService {
       message: 'Session revoked by refresh token and cache invalidated',
       sessionId: session.id.getValue(),
       userId,
+      deletedCount,
     });
+
+    return deletedCount;
   }
 
   async refreshSession(
@@ -274,13 +294,14 @@ export class SessionService {
       )[0];
 
       if (oldestSession) {
-        await this.revokeSession(oldestSession.sessionToken);
+        const revokedCount = await this.revokeSession(oldestSession.sessionToken);
         // Note: revokeSession already invalidates the cache
         this.logger.log({
           message: 'Oldest session revoked to make room for new session',
           userId,
           revokedSessionId: oldestSession.id.getValue(),
           revokedSessionToken: oldestSession.sessionToken.substring(0, 10) + '...',
+          revokedCount,
         });
       }
     }

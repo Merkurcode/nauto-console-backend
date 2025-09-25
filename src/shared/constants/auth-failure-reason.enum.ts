@@ -42,6 +42,9 @@ export enum AuthFailureReason {
   /** Usuario está baneado temporalmente o permanentemente */
   USER_BANNED = 'user_banned',
 
+  /** La empresa del usuario está desactivada */
+  COMPANY_INACTIVE = 'company_inactive',
+
   /** Email no ha sido verificado y la verificación está habilitada */
   EMAIL_NOT_VERIFIED = 'email_not_verified',
 
@@ -127,6 +130,10 @@ export interface IAuthValidationResult {
     systemError?: string;
     /** Tipo de error técnico */
     errorType?: string;
+    /** ID de la empresa */
+    companyId?: string;
+    /** Nombre de la empresa */
+    companyName?: string;
   };
 }
 

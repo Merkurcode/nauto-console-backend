@@ -2,6 +2,30 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
+-- AlterTable
+ALTER TABLE "ProductCatalog" ADD COLUMN     "search_vector" tsvector;
+
+-- CreateIndex
+CREATE INDEX "idx_productcatalog_company_visible" ON "ProductCatalog"("companyId", "isVisible");
+
+-- CreateIndex
+CREATE INDEX "idx_productcatalog_company_createdat" ON "ProductCatalog"("companyId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "idx_productcatalog_search_vector" ON "ProductCatalog" USING GIN ("search_vector");
+
+-- CreateIndex
+CREATE INDEX "idx_pc_trgm_productservice" ON "ProductCatalog" USING GIN ("productService" gin_trgm_ops);
+
+-- CreateIndex
+CREATE INDEX "idx_pc_trgm_type" ON "ProductCatalog" USING GIN ("type" gin_trgm_ops);
+
+-- CreateIndex
+CREATE INDEX "idx_pc_trgm_subcategory" ON "ProductCatalog" USING GIN ("subcategory" gin_trgm_ops);
+
+-- CreateIndex
+CREATE INDEX "idx_pc_trgm_industry" ON "ProductCatalog" USING GIN ("industry" gin_trgm_ops);
+
 -- 2) Funciones helper (lenguaje/regconfig/normalización)
 CREATE OR REPLACE FUNCTION public._lang_to_regconfig(lang_code text)
 RETURNS regconfig
@@ -67,32 +91,6 @@ BEGIN
 END;
 $fn$;
 
--- 3) Columna FTS: asegurar que sea "normal" (no GENERATED) y exista
-DO $$
-BEGIN
-  -- Si era GENERATED, convertirla a columna normal (evita drift de Prisma)
-  BEGIN
-    EXECUTE 'ALTER TABLE "ProductCatalog" ALTER COLUMN "search_vector" DROP EXPRESSION';
-  EXCEPTION WHEN undefined_column THEN
-    -- no existía la columna, seguimos
-    NULL;
-  WHEN feature_not_supported THEN
-    -- en PG < 13 no existe DROP EXPRESSION; ignorar si no aplica
-    NULL;
-  END;
-
-  -- Crear la columna si falta
-  IF NOT EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name   = 'ProductCatalog'
-      AND column_name  = 'search_vector'
-  ) THEN
-    EXECUTE 'ALTER TABLE "ProductCatalog" ADD COLUMN "search_vector" tsvector';
-  END IF;
-END $$;
-
 -- 4) Trigger para mantener actualizado search_vector (INSERT/UPDATE)
 CREATE OR REPLACE FUNCTION public._productcatalog_update_search_vector_tg()
 RETURNS trigger
@@ -122,22 +120,6 @@ CREATE TRIGGER tg_productcatalog_search_vector
 BEFORE INSERT OR UPDATE ON "ProductCatalog"
 FOR EACH ROW
 EXECUTE FUNCTION public._productcatalog_update_search_vector_tg();
-
--- 5) Índices FTS/TRGM (los BTREE los define Prisma vía @@index en schema.prisma)
-CREATE INDEX IF NOT EXISTS idx_productcatalog_search_vector
-  ON "ProductCatalog" USING GIN ("search_vector");
-
-CREATE INDEX IF NOT EXISTS idx_pc_trgm_productservice
-  ON "ProductCatalog" USING GIN ("productService" gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_pc_trgm_type
-  ON "ProductCatalog" USING GIN ("type" gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_pc_trgm_subcategory
-  ON "ProductCatalog" USING GIN ("subcategory" gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_pc_trgm_industry
-  ON "ProductCatalog" USING GIN ("industry" gin_trgm_ops);
 
 -- 6) Función de búsqueda (prefix + websearch + trgm fallback)
 CREATE OR REPLACE FUNCTION public.search_product_catalog(

@@ -209,11 +209,13 @@ export class UserBannedException extends UserDomainException {
     userId?: string,
   ) {
     super(
-      `User is banned until ${bannedUntil.toISOString()}. Reason: ${banReason}`,
+      bannedUntil
+        ? `User is banned until ${bannedUntil.toISOString()}. Reason: ${banReason}`
+        : `User is permanently banned. Reason: ${banReason}`,
       'USER_BANNED',
       {
         userId,
-        bannedUntil: bannedUntil.toISOString(),
+        bannedUntil: bannedUntil ? bannedUntil.toISOString() : null,
         banReason,
       },
     );

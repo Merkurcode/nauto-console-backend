@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Controller,
   Post,
@@ -12,11 +11,20 @@ import {
   Inject,
   ForbiddenException,
   Delete,
+  Req,
 } from '@nestjs/common';
+import { Request as RequestExpress } from 'express';
 import { NormalizeEmailParamPipe } from '@shared/pipes/normalize-email-param.pipe';
 import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { LOGGER_SERVICE } from '@shared/constants/tokens';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
@@ -76,6 +84,11 @@ import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
 import { RolesEnum } from '@shared/constants/enums';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { UseHealthGuard } from 'src/queues/guards/health.guard';
+import { CanWrite } from '@shared/decorators/resource-permissions.decorator';
+import { CommonUtils } from '@shared/utils/common';
+import { BanUserCommand } from '@application/commands/user/ban-user.command';
+import { UnbanUserCommand } from '@application/commands/user/unban-user.command';
+import { BanUserDto } from '@application/dtos/user/ban-user.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -91,7 +104,7 @@ export class AuthController {
   }
 
   private async executeInTransactionWithContext<T>(callback: () => Promise<T>): Promise<T> {
-    return this.transactionService.executeInTransaction(async (tx) => {
+    return this.transactionService.executeInTransaction(async tx => {
       this.transactionContext.setTransactionClient(tx);
 
       try {
@@ -102,7 +115,14 @@ export class AuthController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootReadOnlyGuard, InvitationGuard, RootAssignmentGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    PermissionsGuard,
+    RootReadOnlyGuard,
+    InvitationGuard,
+    RootAssignmentGuard,
+  )
   @Throttle(2, 5) // 5 requests per 2 seconds
   @RequirePermissions('auth:write')
   @WriteOperation('auth')
@@ -114,11 +134,13 @@ export class AuthController {
   @UseHealthGuard('auth-emails')
   @ApiBody({
     type: RegisterDto,
-    description: 'User registration data including email, password, name, company, and optional profile/address information. Roles can be specified using RolesEnum values.',
+    description:
+      'User registration data including email, password, name, company, and optional profile/address information. Roles can be specified using RolesEnum values.',
   })
   @ApiOperation({
     summary: 'Register a new user (invitation-based)',
-    description: 'Register a new user in the system through invitation\n\n' +
+    description:
+      'Register a new user in the system through invitation\n\n' +
       '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">auth:write</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can invite users to any company\n' +
@@ -151,7 +173,8 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Authenticate user and get tokens',
-    description: 'Authenticate user credentials and retrieve access/refresh tokens\n\n' +
+    description:
+      'Authenticate user credentials and retrieve access/refresh tokens\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
@@ -164,7 +187,7 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Request()
-      req: {
+    req: {
       headers: Record<string, string>;
       ip?: string;
       connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
@@ -193,7 +216,8 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Verify OTP code for 2FA',
-    description: 'Verify OTP code for two-factor authentication\n\n' +
+    description:
+      'Verify OTP code for two-factor authentication\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
@@ -219,7 +243,8 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Refresh access token using refresh token',
-    description: 'Get new access token using a valid refresh token\n\n' +
+    description:
+      'Get new access token using a valid refresh token\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
@@ -242,7 +267,8 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     type: LogoutDto,
-    description: 'Logout scope configuration. Use LogoutScope.LOCAL for current session only or LogoutScope.GLOBAL for all sessions (default: GLOBAL)',
+    description:
+      'Logout scope configuration. Use LogoutScope.LOCAL for current session only or LogoutScope.GLOBAL for all sessions (default: GLOBAL)',
   })
   @ApiOperation({
     summary: 'Logout the current user - local (current session) or global (all sessions)',
@@ -311,7 +337,8 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get current user information',
-    description: 'Get current authenticated user basic information\n\n' +
+    description:
+      'Get current authenticated user basic information\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Authenticated)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
   })
@@ -332,7 +359,8 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Send email verification code',
-    description: 'Send email verification code with role-based access control\n\n' +
+    description:
+      'Send email verification code with role-based access control\n\n' +
       '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Role-based</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can send to any email\n' +
@@ -343,7 +371,10 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Verification email sent successfully' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid email format' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Authentication required' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions to send verification to this email' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions to send verification to this email',
+  })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Email is already verified' })
   async sendVerificationEmail(
     @Body() sendVerificationEmailDto: SendVerificationEmailDto,
@@ -384,12 +415,13 @@ export class AuthController {
   async verifyEmail(
     @Body() verifyEmailDto: VerifyEmailDto,
     @Request()
-      req: {
+    req: {
       headers: Record<string, string>;
       ip?: string;
       connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
       socket?: { remoteAddress?: string };
-    }) {
+    },
+  ) {
     return this.executeInTransactionWithContext(async () => {
       const userAgent = req.headers['user-agent'];
       const ipAddress =
@@ -457,7 +489,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Request a password reset email with captcha validation',
-    description: 'Request password reset via email with captcha protection\n\n' +
+    description:
+      'Request password reset via email with captcha protection\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
@@ -467,7 +500,7 @@ export class AuthController {
   async requestPasswordReset(
     @Body() requestPasswordResetDto: RequestPasswordResetDto,
     @Request()
-      req: {
+    req: {
       headers: Record<string, string>;
       ip?: string;
       connection?: { remoteAddress?: string; socket?: { remoteAddress?: string } };
@@ -491,7 +524,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reset password with a token',
-    description: 'Reset user password using a valid reset token\n\n' +
+    description:
+      'Reset user password using a valid reset token\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Public)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Public Endpoint</code>',
   })
@@ -513,7 +547,8 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Change password of any user (Root/Admin only)',
-    description: 'Allow root and admin users to change passwords of other users\n\n' +
+    description:
+      'Allow root and admin users to change passwords of other users\n\n' +
       '📋 **Required Permission:** <code style="color: #f39c12; background: #fef9e7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Role-based</code>\n\n' +
       '👥 **Roles with Access:**\n' +
       '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> - Can change any user password\n' +
@@ -553,7 +588,8 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Change current user password',
-    description: 'Change own password with current password verification. Terminates all other sessions and returns new tokens.\n\n' +
+    description:
+      'Change own password with current password verification. Terminates all other sessions and returns new tokens.\n\n' +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Own password)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any Authenticated User</code>',
   })
@@ -567,7 +603,10 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data or current password incorrect' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data or current password incorrect',
+  })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
   async changePassword(
     @Body() changePasswordDto: ChangePasswordDto,
@@ -593,11 +632,13 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     type: ChangeEmailDto,
-    description: 'Email change data including new email, current password for verification, and optional target user ID (for admin operations)',
+    description:
+      'Email change data including new email, current password for verification, and optional target user ID (for admin operations)',
   })
   @ApiOperation({
     summary: 'Change user email with role-based access control',
-    description: 'Change user email with role-based authorization. Always requires the target user\'s password for verification:\n\n• **Regular users**: Can only change their own email (requires their own password)\n• **Admin users**: Can change emails of users in their company (requires target user\'s password)\n• **Root users**: Can change any user\'s email (requires target user\'s password)\n\n**⚠️ IMPORTANT RESTRICTION**: Root users\' emails cannot be changed by anyone, including themselves.\n\n' +
+    description:
+      "Change user email with role-based authorization. Always requires the target user's password for verification:\n\n• **Regular users**: Can only change their own email (requires their own password)\n• **Admin users**: Can change emails of users in their company (requires target user's password)\n• **Root users**: Can change any user's email (requires target user's password)\n\n**⚠️ IMPORTANT RESTRICTION**: Root users' emails cannot be changed by anyone, including themselves.\n\n" +
       '📋 **Required Permission:** <code style="color: #27ae60; background: #e8f8f5; padding: 2px 6px; border-radius: 3px; font-weight: bold;">None (Role-based)</code>\n\n' +
       '👥 **Roles with Access:** <code style="color: #636e72; background: #dfe6e9; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Any authenticated user</code> (with role-based restrictions)',
   })
@@ -611,13 +652,16 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data, email already in use, or target user password incorrect' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data, email already in use, or target user password incorrect',
+  })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'User not authenticated' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Insufficient permissions for the requested operation' })
-  async changeEmail(
-    @Body() changeEmailDto: ChangeEmailDto,
-    @CurrentUser() user: IJwtPayload,
-  ) {
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions for the requested operation',
+  })
+  async changeEmail(@Body() changeEmailDto: ChangeEmailDto, @CurrentUser() user: IJwtPayload) {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
         new ChangeEmailCommand(
@@ -653,14 +697,18 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'User invitation deleted successfully. User user@example.com has been removed from the system.' },
+        message: {
+          type: 'string',
+          example:
+            'User invitation deleted successfully. User user@example.com has been removed from the system.',
+        },
       },
     },
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Cannot delete invitation for completed users or users with error status'
+    description: 'Cannot delete invitation for completed users or users with error status',
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -671,9 +719,7 @@ export class AuthController {
     @CurrentUser() currentUser: IJwtPayload,
   ) {
     return this.executeInTransactionWithContext(async () => {
-      return this.commandBus.execute(
-        new DeleteUserInvitationCommand(id, currentUser.sub),
-      );
+      return this.commandBus.execute(new DeleteUserInvitationCommand(id, currentUser.sub));
     });
   }
 
@@ -708,14 +754,18 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'User invitation resent successfully. New invitation emails and SMS have been sent to user@example.com.' },
+        message: {
+          type: 'string',
+          example:
+            'User invitation resent successfully. New invitation emails and SMS have been sent to user@example.com.',
+        },
       },
     },
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Cannot resend invitation for completed users or invalid password format'
+    description: 'Cannot resend invitation for completed users or invalid password format',
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
@@ -729,6 +779,116 @@ export class AuthController {
     return this.executeInTransactionWithContext(async () => {
       return this.commandBus.execute(
         new ResendUserInvitationCommand(id, resendInvitationDto.password, currentUser.sub),
+      );
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootAssignmentGuard)
+  @Post('ban/:userId')
+  @Throttle(60, 2) // 2 attempts per minute
+  @ApiBearerAuth('JWT-auth')
+  @NoBots()
+  @Roles(RolesEnum.ROOT)
+  @CanWrite('user')
+  @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    type: BanUserDto,
+    description: 'Ban details including reason and optional expiration date',
+  })
+  @ApiOperation({
+    summary: 'Ban a user (Root only)',
+    description:
+      'Ban a user from the system. Banned users cannot be reactivated until unbanned. ' +
+      'If bannedUntil is not provided, the ban is permanent.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> only\n\n' +
+      '⚠️ **Effects:**\n' +
+      '- User is immediately deactivated\n' +
+      '- All active sessions are terminated\n' +
+      '- User cannot be reactivated until unbanned\n' +
+      '- User cannot login even if reactivated by another admin',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'User ID to ban',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'User banned successfully' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Only ROOT users can ban other users',
+  })
+  async banUser(
+    @Param('userId', TrimStringPipe) userId: string,
+    @Body() banUserDto: BanUserDto,
+    @CurrentUser() currentUser: IJwtPayload,
+    @Req() request: RequestExpress,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      const bannedUntil = banUserDto.bannedUntil ? new Date(banUserDto.bannedUntil) : undefined;
+      // Extract IP address and user agent from request
+      const ipAddress = CommonUtils.getClientIpAddress(request);
+      const userAgent = request.get('User-Agent');
+
+      return this.commandBus.execute(
+        new BanUserCommand(
+          userId,
+          banUserDto.banReason,
+          currentUser.sub,
+          bannedUntil,
+          ipAddress,
+          userAgent,
+        ),
+      );
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, RootAssignmentGuard)
+  @Post('unban/:userId')
+  @Throttle(60, 2) // 2 attempts per minute
+  @ApiBearerAuth('JWT-auth')
+  @NoBots()
+  @Roles(RolesEnum.ROOT)
+  @CanWrite('user')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Unban a user (Root only)',
+    description:
+      'Remove ban from a user. After unbanning, the user can be reactivated normally.\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">user:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> only\n\n' +
+      '⚠️ **Effects:**\n' +
+      '- User becomes reactivable\n' +
+      '- Ban reason and dates are cleared\n' +
+      '- User remains inactive until manually reactivated',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'User ID to unban',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'User unbanned successfully' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Only ROOT users can unban other users',
+  })
+  async unbanUser(
+    @Param('userId', TrimStringPipe) userId: string,
+    @CurrentUser() currentUser: IJwtPayload,
+    @Req() request: RequestExpress,
+  ) {
+    return this.executeInTransactionWithContext(async () => {
+      // Extract IP address and user agent from request
+      const ipAddress = CommonUtils.getClientIpAddress(request);
+      const userAgent = request.get('User-Agent');
+
+      return this.commandBus.execute(
+        new UnbanUserCommand(userId, currentUser.sub, ipAddress, userAgent),
       );
     });
   }

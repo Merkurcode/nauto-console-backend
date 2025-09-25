@@ -97,25 +97,29 @@ export class SessionRepository extends BaseRepository<Session> implements ISessi
     });
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string): Promise<number> {
     return this.executeWithErrorHandling('delete', async () => {
-      await this.client.sessions.delete({
+      const result = await this.client.sessions.delete({
         where: { id },
       });
+
+      return result && result.id === id ? 1 : 0; // delete() always deletes exactly 1 row or throws an error
     });
   }
 
-  async deleteByUserId(userId: string): Promise<void> {
+  async deleteByUserId(userId: string): Promise<number> {
     return this.executeWithErrorHandling('deleteByUserId', async () => {
-      await this.client.sessions.deleteMany({
+      const result = await this.client.sessions.deleteMany({
         where: { userId },
       });
+
+      return result.count;
     });
   }
 
-  async deleteByUserIdExcept(userId: string, excludeSessionToken: string): Promise<void> {
+  async deleteByUserIdExcept(userId: string, excludeSessionToken: string): Promise<number> {
     return this.executeWithErrorHandling('deleteByUserIdExcept', async () => {
-      await this.client.sessions.deleteMany({
+      const result = await this.client.sessions.deleteMany({
         where: {
           userId,
           sessionToken: {
@@ -123,22 +127,28 @@ export class SessionRepository extends BaseRepository<Session> implements ISessi
           },
         },
       });
+
+      return result.count;
     });
   }
 
-  async deleteBySessionToken(sessionToken: string): Promise<void> {
+  async deleteBySessionToken(sessionToken: string): Promise<number> {
     return this.executeWithErrorHandling('deleteBySessionToken', async () => {
-      await this.client.sessions.deleteMany({
+      const result = await this.client.sessions.deleteMany({
         where: { sessionToken },
       });
+
+      return result.count;
     });
   }
 
-  async deleteByRefreshToken(refreshToken: string): Promise<void> {
+  async deleteByRefreshToken(refreshToken: string): Promise<number> {
     return this.executeWithErrorHandling('deleteByRefreshToken', async () => {
-      await this.client.sessions.deleteMany({
+      const result = await this.client.sessions.deleteMany({
         where: { refreshToken },
       });
+
+      return result.count;
     });
   }
 }

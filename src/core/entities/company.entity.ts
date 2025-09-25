@@ -33,6 +33,7 @@ import {
 } from '@core/events/company.events';
 import { InvalidValueObjectException } from '@core/exceptions/domain-exceptions';
 import { ICompanyConfigAI } from '@core/interfaces/company-config-ai.interface';
+import { User } from './user.entity';
 
 export class Company extends AggregateRoot {
   private readonly _id: CompanyId;
@@ -394,24 +395,28 @@ export class Company extends AggregateRoot {
     }
   }
 
-  deactivate(): void {
+  deactivate(by: User): void {
     if (!this._isActive) {
       return;
     }
 
     this._isActive = false;
     this._updatedAt = new Date();
-    this.addDomainEvent(new CompanyDeactivatedEvent(this._id, this._name.getValue()));
+    this.addDomainEvent(
+      new CompanyDeactivatedEvent(this._id, this._name.getValue(), by.id.getValue()),
+    );
   }
 
-  activate(): void {
+  activate(by: User): void {
     if (this._isActive) {
       return;
     }
 
     this._isActive = true;
     this._updatedAt = new Date();
-    this.addDomainEvent(new CompanyActivatedEvent(this._id, this._name.getValue()));
+    this.addDomainEvent(
+      new CompanyActivatedEvent(this._id, this._name.getValue(), by.id.getValue()),
+    );
   }
 
   // AI Configuration management methods

@@ -29,6 +29,7 @@ import {
   UserNotEligibleForRoleException,
   InactiveUserException,
   InvalidValueObjectException,
+  BusinessRuleValidationException,
 } from '@core/exceptions/domain-exceptions';
 import { CanAssignRoleSpecification } from '@core/specifications/user.specifications';
 import { RolesCollection } from '@core/value-objects/collections/roles.collection';
@@ -42,6 +43,7 @@ export class User extends AggregateRoot {
   private _secondLastName?: SecondLastName;
   private _alias?: string; // Bot user alias (for bot identification)
   private _isActive: boolean;
+  private _isReactivable: boolean; // false means user is banned and cannot be reactivated
   private _emailVerified: boolean;
   private _otpEnabled: boolean;
   private _otpSecret?: string;
@@ -82,6 +84,7 @@ export class User extends AggregateRoot {
     this._lastName = lastName;
     this._alias = alias;
     this._isActive = isActive;
+    this._isReactivable = true; // By default, users are reactivable
     this._emailVerified = false;
     this._otpEnabled = false;
     this._roles = [];
@@ -132,6 +135,7 @@ export class User extends AggregateRoot {
     options?: {
       secondLastName?: SecondLastName;
       isActive?: boolean;
+      isReactivable?: boolean;
       emailVerified?: boolean;
       bannedUntil?: Date;
       banReason?: string;
@@ -156,6 +160,7 @@ export class User extends AggregateRoot {
 
     // Set extended fields
     user._secondLastName = options?.secondLastName;
+    user._isReactivable = options?.isReactivable ?? true;
     user._emailVerified = options?.emailVerified ?? false;
     user._bannedUntil = options?.bannedUntil;
     user._banReason = options?.banReason;
@@ -180,6 +185,7 @@ export class User extends AggregateRoot {
     secondLastName?: string;
     alias?: string;
     isActive: boolean;
+    isReactivable?: boolean;
     emailVerified?: boolean;
     otpEnabled: boolean;
     otpSecret?: string;
@@ -233,6 +239,7 @@ export class User extends AggregateRoot {
     user._secondLastName = data.secondLastName
       ? new SecondLastName(data.secondLastName)
       : undefined;
+    user._isReactivable = data.isReactivable ?? true;
     user._emailVerified = data.emailVerified || false;
     user._otpEnabled = data.otpEnabled;
     user._otpSecret = data.otpSecret;
@@ -308,6 +315,10 @@ export class User extends AggregateRoot {
 
   get isActive(): boolean {
     return this._isActive;
+  }
+
+  get isReactivable(): boolean {
+    return this._isReactivable;
   }
 
   get emailVerified(): boolean {
@@ -415,24 +426,31 @@ export class User extends AggregateRoot {
   }
 
   // Business methods with proper encapsulation and rules
-  activate(): void {
+  activate(by: User): void {
     if (this._isActive) {
       return; // Already active, no change needed
     }
 
+    // Check if user is reactivable (not banned)
+    if (!this._isReactivable) {
+      throw new BusinessRuleValidationException(
+        'Cannot activate a banned user. User must be unbanned first.',
+      );
+    }
+
     this._isActive = true;
     this._updatedAt = new Date();
-    this.addDomainEvent(new UserActivatedEvent(this._id));
+    this.addDomainEvent(new UserActivatedEvent(this._id, by.id.getValue()));
   }
 
-  deactivate(): void {
+  deactivate(by: User): void {
     if (!this._isActive) {
       return; // Already inactive, no change needed
     }
 
     this._isActive = false;
     this._updatedAt = new Date();
-    this.addDomainEvent(new UserDeactivatedEvent(this._id));
+    this.addDomainEvent(new UserDeactivatedEvent(this._id, by.id.getValue()));
   }
 
   markEmailAsVerified(): void {
@@ -638,10 +656,10 @@ export class User extends AggregateRoot {
   // Ban management methods
   isBanned(): boolean {
     if (!this._bannedUntil) {
-      return false;
+      return !this._isReactivable && !this._isActive; // permanent
     }
 
-    return new Date() < this._bannedUntil;
+    return new Date() < this._bannedUntil; // temporal
   }
 
   banUser(bannedUntil: Date, banReason: string): void {
@@ -651,12 +669,26 @@ export class User extends AggregateRoot {
 
     this._bannedUntil = bannedUntil;
     this._banReason = banReason;
+    this._isReactivable = false; // Banned users are not reactivable
+    this._isActive = false; // Deactivate banned users
     this._updatedAt = new Date();
   }
 
   unbanUser(): void {
     this._bannedUntil = undefined;
     this._banReason = undefined;
+    this._isReactivable = true; // Unbanned users become reactivable
+    this._updatedAt = new Date();
+  }
+
+  /**
+   * Permanently ban a user - they cannot be reactivated until unbanned
+   */
+  permanentlyBanUser(banReason: string): void {
+    this._bannedUntil = undefined; // No expiration date for permanent ban
+    this._banReason = banReason;
+    this._isReactivable = false; // Cannot be reactivated
+    this._isActive = false; // Deactivate banned users
     this._updatedAt = new Date();
   }
 

@@ -261,6 +261,7 @@ model User {
   secondLastName String?
   alias         String?   @unique
   isActive      Boolean   @default(true)
+  isReactivable Boolean   @default(true) // false means user is banned and cannot be reactivated
   emailVerified Boolean   @default(false)
   otpEnabled    Boolean   @default(false)
   otpSecret     String?

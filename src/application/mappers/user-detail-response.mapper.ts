@@ -22,6 +22,7 @@ export class UserDetailResponseMapper {
       firstName: source.firstName,
       lastName: source.lastName,
       isActive: source.isActive,
+      isReactivable: source.isReactivable,
       otpEnabled: source.otpEnabled,
       emailVerified: source.emailVerified,
       lastLoginAt: source.lastLoginAt,

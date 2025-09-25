@@ -13,9 +13,9 @@ export interface ISessionRepository {
   findByRefreshToken(refreshToken: string): Promise<Session | null>;
   findByUserId(userId: string): Promise<Session[]>;
   update(session: Session): Promise<Session>;
-  delete(id: string): Promise<void>;
-  deleteByUserId(userId: string): Promise<void>;
-  deleteByUserIdExcept(userId: string, excludeSessionToken: string): Promise<void>;
-  deleteBySessionToken(sessionToken: string): Promise<void>;
-  deleteByRefreshToken(refreshToken: string): Promise<void>;
+  delete(id: string): Promise<number>;
+  deleteByUserId(userId: string): Promise<number>;
+  deleteByUserIdExcept(userId: string, excludeSessionToken: string): Promise<number>;
+  deleteBySessionToken(sessionToken: string): Promise<number>;
+  deleteByRefreshToken(refreshToken: string): Promise<number>;
 }

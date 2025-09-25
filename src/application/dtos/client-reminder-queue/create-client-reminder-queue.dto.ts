@@ -6,13 +6,13 @@ import {
   IsEnum,
   IsArray,
   IsBoolean,
-  IsDateString,
   IsInt,
   Min,
   Max,
   Matches,
   IsTimeZone,
   ArrayMaxSize,
+  IsDate,
 } from 'class-validator';
 import {
   NotificationMedium,
@@ -20,6 +20,7 @@ import {
   ReminderFrequency,
 } from '@prisma/client';
 import { TrimAndValidateLength } from '@shared/decorators/trim-and-validate-length.decorator';
+import { Type } from 'class-transformer';
 
 export class CreateClientReminderQueueDto {
   @ApiProperty({
@@ -82,15 +83,17 @@ export class CreateClientReminderQueueDto {
     description: 'Start date for the reminder schedule (ISO 8601)',
     example: '2024-01-01T00:00:00Z',
   })
-  @IsDateString()
-  startDate: string;
+  @Type(() => Date)
+  @IsDate()
+  startDate: Date;
 
   @ApiProperty({
     description: 'End date for the reminder schedule (ISO 8601)',
     example: '2024-12-31T23:59:59Z',
   })
-  @IsDateString()
-  endDate: string;
+  @Type(() => Date)
+  @IsDate()
+  endDate: Date;
 
   @ApiProperty({
     description: 'Interval for frequency (1-1000)',
@@ -171,6 +174,7 @@ export class CreateClientReminderQueueDto {
     required: false,
   })
   @IsOptional()
-  @IsDateString()
-  stopUntil?: string;
+  @Type(() => Date)
+  @IsDate()
+  stopUntil?: Date;
 }

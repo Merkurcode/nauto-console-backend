@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Inject } from '@nestjs/common';
 import {
   AuditLog,
@@ -587,5 +588,111 @@ export class AuditLogService {
         },
       });
     }
+  }
+
+  /**
+   * Log company deactivation event
+   */
+  async logCompanyDeactivation(
+    adminUserId: string,
+    companyId: string,
+    companyName: string,
+    metadata: Record<string, any>,
+  ): Promise<void> {
+    const userId = adminUserId ? UserId.fromString(adminUserId) : null;
+    const auditLog = AuditLog.create(
+      'info',
+      'company',
+      'update',
+      `Company "${companyName}" (${companyId}) deactivated by administrator`,
+      userId,
+      {
+        ...metadata,
+        eventType: 'company_deactivation',
+        severity: 'high',
+        category: 'administrative_action',
+      },
+      'company',
+    );
+    await this.saveAuditLog(auditLog);
+  }
+
+  /**
+   * Log user ban event
+   */
+  async logUserBan(
+    adminUserId: string,
+    targetUserId: string,
+    metadata: Record<string, any>,
+  ): Promise<void> {
+    const userId = adminUserId ? UserId.fromString(adminUserId) : null;
+    const auditLog = AuditLog.create(
+      'info',
+      'user',
+      'update',
+      `User banned - ID: ${targetUserId}, Reason: ${metadata.banReason}`,
+      userId,
+      {
+        ...metadata,
+        eventType: 'user_ban',
+        severity: 'high',
+        category: 'security_action',
+      },
+      'user',
+    );
+    await this.saveAuditLog(auditLog);
+  }
+
+  /**
+   * Log user unban event
+   */
+  async logUserUnban(
+    adminUserId: string,
+    targetUserId: string,
+    metadata: Record<string, any>,
+  ): Promise<void> {
+    const userId = adminUserId ? UserId.fromString(adminUserId) : null;
+    const auditLog = AuditLog.create(
+      'info',
+      'user',
+      'update',
+      `User unbanned - ID: ${targetUserId}`,
+      userId,
+      {
+        ...metadata,
+        eventType: 'user_unban',
+        severity: 'medium',
+        category: 'security_action',
+      },
+      'user',
+    );
+    await this.saveAuditLog(auditLog);
+  }
+
+  /**
+   * Log system errors
+   */
+  async logSystemError(
+    userId: string | null,
+    action: string,
+    message: string,
+    metadata: Record<string, any>,
+  ): Promise<void> {
+    const userIdVO = userId ? UserId.fromString(userId) : null;
+    const auditLog = AuditLog.create(
+      'error',
+      'system',
+      'read',
+      message,
+      userIdVO,
+      {
+        ...metadata,
+        eventType: 'system_error',
+        severity: 'high',
+        category: 'error',
+      },
+      'system',
+    );
+    await this.saveAuditLog(auditLog);
   }
 }

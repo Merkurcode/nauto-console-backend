@@ -112,6 +112,7 @@ export class UserMapper {
       ...this.toBaseResponse(user),
       secondLastName: user.secondLastName?.getValue(),
       isActive: user.isActive,
+      isReactivable: user.isReactivable,
       otpEnabled: user.otpEnabled,
       lastLoginAt: user.lastLoginAt,
       bannedUntil: user.bannedUntil,

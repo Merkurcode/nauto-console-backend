@@ -647,6 +647,23 @@ export class AuthService {
     });
 
     try {
+      // First, check if the user exists and is active
+      const user = await this.userRepository.findByEmail(email);
+
+      if (!user || !user.isActive) {
+        this.logger.warn({
+          message: 'Password reset request for non-existent or inactive user',
+          email,
+          userExists: !!user,
+          userActive: user?.isActive || false,
+          ipAddress,
+        });
+
+        // SECURITY: Still return true to prevent email enumeration
+        // but don't actually send the email
+        return true;
+      }
+
       // Create password reset token with rate limiting
       const token = await this.createPasswordResetToken(email, ipAddress, userAgent);
 

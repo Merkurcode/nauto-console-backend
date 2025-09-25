@@ -46,6 +46,8 @@ import { ChangePasswordCommandHandler } from '@application/commands/auth/change-
 import { ChangeEmailCommandHandler } from '@application/commands/auth/change-email.command';
 import { DeleteUserInvitationCommandHandler } from '@application/commands/auth/delete-user-invitation.command';
 import { ResendUserInvitationCommandHandler } from '@application/commands/auth/resend-user-invitation.command';
+import { BanUserCommandHandler } from '@application/commands/user/ban-user.command';
+import { UnbanUserCommandHandler } from '@application/commands/user/unban-user.command';
 
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -68,6 +70,8 @@ const commandHandlers = [
   ChangeEmailCommandHandler,
   DeleteUserInvitationCommandHandler,
   ResendUserInvitationCommandHandler,
+  BanUserCommandHandler,
+  UnbanUserCommandHandler,
 ];
 
 @Module({

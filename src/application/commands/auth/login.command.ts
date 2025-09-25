@@ -49,7 +49,10 @@ export class LoginCommandHandler implements ICommandHandler<LoginCommand> {
 
     // Handle different outcomes
     if (!loginResult.success) {
-      throw new UnauthorizedException(this.i18n.t('common.auth.login.failed'));
+      //throw new UnauthorizedException(this.i18n.t('common.auth.login.failed'));
+      throw new UnauthorizedException(
+        loginResult.failureReason ?? this.i18n.t('common.auth.login.failed'),
+      );
     }
 
     // Handle multi-step authentication flows

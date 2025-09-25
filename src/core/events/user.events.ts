@@ -18,7 +18,10 @@ export class UserRegisteredEvent extends DomainEvent {
 }
 
 export class UserActivatedEvent extends DomainEvent {
-  constructor(public readonly userId: UserId) {
+  constructor(
+    public readonly userId: UserId,
+    public readonly byUserId: string,
+  ) {
     super();
   }
 
@@ -28,7 +31,10 @@ export class UserActivatedEvent extends DomainEvent {
 }
 
 export class UserDeactivatedEvent extends DomainEvent {
-  constructor(public readonly userId: UserId) {
+  constructor(
+    public readonly userId: UserId,
+    public readonly byUserId: string,
+  ) {
     super();
   }
 

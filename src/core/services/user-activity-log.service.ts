@@ -398,8 +398,8 @@ export class UserActivityLogService {
 
         // Save and publish events asynchronously
         await this.userActivityLogRepository.save(userActivityLog);
-        //await this.eventBus.publishAll(userActivityLog.getUncommittedEvents());
-        //userActivityLog.markEventsAsCommitted();
+        await this.eventBus.publishAll(userActivityLog.getDomainEvents());
+        userActivityLog.clearDomainEvents();
 
         this.logger.debug(`Activity logged asynchronously for user ${userId}: ${action}`);
       } catch (error) {
@@ -567,5 +567,32 @@ export class UserActivityLogService {
         this.logger.error(`Failed to log batch activities: ${error.message}`, error.stack);
       });
     });
+  }
+
+  /**
+   * Log user deactivated by company deactivation
+   */
+  async logUserDeactivatedByCompany(
+    userId: string,
+    action: string,
+    description: string,
+    metadata: Record<string, any>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.logActivity(
+      UserId.fromString(userId),
+      UserActivityType.SECURITY_SETTINGS(),
+      action,
+      description,
+      UserActivityImpact.HIGH(),
+      ipAddress, // ipAddress
+      userAgent, // userAgent
+      {
+        ...metadata,
+        reason: 'company_deactivation',
+        eventType: 'forced_deactivation',
+      },
+    );
   }
 }

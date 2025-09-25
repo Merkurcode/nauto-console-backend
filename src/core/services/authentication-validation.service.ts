@@ -6,9 +6,16 @@ import { SessionService } from './session.service';
 import { UserBanService } from './user-ban.service';
 import { PermissionCollectionService } from './permission-collection.service';
 import { BusinessConfigurationService } from './business-configuration.service';
+import { CompanyService } from './company.service';
 import { ITokenProvider } from '@core/interfaces/token-provider.interface';
-import { TOKEN_PROVIDER, LOGGER_SERVICE, BOT_TOKEN_REPOSITORY } from '@shared/constants/tokens';
+import {
+  TOKEN_PROVIDER,
+  LOGGER_SERVICE,
+  BOT_TOKEN_REPOSITORY,
+  USER_REPOSITORY
+} from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
+import { IUserRepository } from '@core/repositories/user.repository.interface';
 import {
   AuthFailureReason,
   IAuthValidationResult,
@@ -16,6 +23,7 @@ import {
 } from '@shared/constants/auth-failure-reason.enum';
 import { ILoginAuthResponse } from '@application/dtos/_responses/auth/login-auth-response.interface';
 import { UserId } from '@core/value-objects/user-id.vo';
+import { CompanyId } from '@core/value-objects/company-id.vo';
 import { AuthResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { User } from '@core/entities/user.entity';
@@ -93,11 +101,14 @@ export class AuthenticationValidationService {
     private readonly userBanService: UserBanService,
     private readonly permissionCollectionService: PermissionCollectionService,
     private readonly businessConfigService: BusinessConfigurationService,
+    private readonly companyService: CompanyService,
     private readonly commandBus: CommandBus,
     @Inject(TOKEN_PROVIDER)
     private readonly tokenProvider: ITokenProvider,
     @Inject(BOT_TOKEN_REPOSITORY)
     private readonly botTokenRepository: IBotTokenRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
     @Inject(LOGGER_SERVICE)
     private readonly logger: ILogger,
   ) {
@@ -176,6 +187,19 @@ export class AuthenticationValidationService {
     const startTime = performance.now();
 
     try {
+      // Step 0: Validate company is active (if user has a company)
+      const companyValidation = await this.validateCompanyActive(email);
+      if (!companyValidation.success) {
+        return this.buildFailureResult(
+          email,
+          companyValidation.failureReason!,
+          companyValidation,
+          userAgent,
+          ipAddress,
+          startTime,
+        );
+      }
+
       // Step 1: Validate credentials
       const validationResult = await this.userService.validateCredentials(email, password);
 
@@ -277,6 +301,80 @@ export class AuthenticationValidationService {
         ipAddress,
         startTime,
       );
+    }
+  }
+
+  /**
+   * Validate that the user's company is active
+   */
+  private async validateCompanyActive(email: string): Promise<IAuthValidationResult> {
+    try {
+      // First, get the user by email to check their company
+      const user = await this.userRepository.findByEmail(email);
+
+      if (!user) {
+        // User not found - let credential validation handle this
+        return {
+          success: true,
+        };
+      }
+
+      // Check if user has a company
+      if (!user.companyId) {
+        // User has no company - allow login
+        return {
+          success: true,
+        };
+      }
+
+      // Check if user has ROOT or ROOT_READONLY role (they can login regardless of company status)
+      const isRootUser = user.roles.some(
+        role => role.name === RolesEnum.ROOT || role.name === RolesEnum.ROOT_READONLY,
+      );
+
+      if (isRootUser) {
+        // Root users can always login
+        return {
+          success: true,
+        };
+      }
+
+      // Get company and check if it's active
+      const company = await this.companyService.getCompanyById(user.companyId);
+
+      if (!company || !company.isActive) {
+        this.logger.warn({
+          message: 'Login attempt from inactive company user',
+          email,
+          companyId: user.companyId?.getValue(),
+          companyActive: company?.isActive || false,
+        });
+
+        return {
+          success: false,
+          failureReason: AuthFailureReason.COMPANY_INACTIVE,
+          message: 'Your company account is currently inactive. Please contact your administrator.',
+          details: {
+            companyId: user.companyId?.getValue(),
+            companyName: company?.name?.getValue(),
+          },
+        };
+      }
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      this.logger.error({
+        message: 'Error validating company status',
+        email,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // On error, allow the flow to continue to credential validation
+      return {
+        success: true,
+      };
     }
   }
 

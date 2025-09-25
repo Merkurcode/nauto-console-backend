@@ -72,7 +72,7 @@ export class BotAuditQueryDto {
     example: '2025-08-07T00:00:00Z',
   })
   @IsOptional()
-  @Transform(({ value }) => (value ? new Date(value) : undefined))
+  @Type(() => Date)
   @IsDate()
   fromDate?: Date;
 
@@ -82,7 +82,7 @@ export class BotAuditQueryDto {
     example: '2025-08-07T23:59:59Z',
   })
   @IsOptional()
-  @Transform(({ value }) => (value ? new Date(value) : undefined))
+  @Type(() => Date)
   @IsDate()
   toDate?: Date;
 

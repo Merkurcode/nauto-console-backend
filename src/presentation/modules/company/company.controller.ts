@@ -5,12 +5,15 @@ import {
   Post,
   Put,
   Delete,
+  Patch,
   Body,
   Param,
   UseGuards,
   HttpStatus,
   ParseUUIDPipe,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
@@ -23,6 +26,7 @@ import { CompanySwaggerDto } from '@application/dtos/_responses/company/company.
 import { CreateCompanyCommand } from '@application/commands/company/create-company.command';
 import { UpdateCompanyCommand } from '@application/commands/company/update-company.command';
 import { DeleteCompanyCommand } from '@application/commands/company/delete-company.command';
+import { DeactivateCompanyCommand } from '@application/commands/company/deactivate-company.command';
 import { GetCompanyQuery } from '@application/queries/company/get-company.query';
 import { GetCompaniesQuery } from '@application/queries/company/get-companies.query';
 //import { GetCompanyByHostQuery } from '@application/queries/company/get-company-by-host.query';
@@ -43,6 +47,7 @@ import { RolesEnum } from '@shared/constants/enums';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
 import { NoBots } from '@shared/decorators/bot-restrictions.decorator';
+import { CommonUtils } from '@shared/utils/common';
 
 @ApiTags('companies')
 @Controller('companies')
@@ -342,5 +347,76 @@ export class CompanyController {
     const companyId = CompanyId.fromString(id);
 
     return this.queryBus.execute(new GetCompanyHierarchyQuery(companyId, currentUserPayload.sub, currentUserPayload));
+  }
+
+  @Patch(':id/deactivate')
+  @NoBots()
+  @Roles(RolesEnum.ROOT)
+  @WriteOperation('company')
+  @ApiOperation({
+    summary: 'Deactivate company and terminate user sessions (Root only)',
+    description:
+      'Deactivates a company and automatically terminates all user sessions associated with that company. This action:\n\n' +
+      '• Deactivates the company preventing further operations\n' +
+      '• Terminates all active user sessions for company users\n' +
+      '• Blocks login attempts for all company users until reactivated\n' +
+      '• Logs the action in audit trail with admin details\n' +
+      '• Records user activity for all affected users\n\n' +
+      '📋 **Required Permission:** <code style="color: #e74c3c; background: #ffeaa7; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:write</code>\n\n' +
+      '👥 **Roles with Access:** <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code>\n\n' +
+      '⚠️ **Restrictions:** ROOT_READONLY users cannot perform this operation\n\n' +
+      '🔒 **Security Impact:** HIGH - All company users will be immediately logged out and blocked',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Company deactivated successfully with session termination details',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Company "Acme Corp" has been successfully deactivated. 15 user sessions terminated.' },
+        companyId: { type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' },
+        companyName: { type: 'string', example: 'Acme Corp' },
+        deactivatedAt: { type: 'string', format: 'date-time', example: '2024-01-15T10:30:00Z' },
+        deactivatedBy: { type: 'string', example: 'admin@company.com' },
+        affectedUsersCount: { type: 'number', example: 15 },
+        terminatedSessionsCount: { type: 'number', example: 15 },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Company not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Company is already deactivated',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have Root role or Root readonly users cannot perform write operations',
+  })
+  async deactivateCompany(
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
+    @CurrentUser() currentUserPayload: IJwtPayload,
+    @Req() request: Request,
+  ) {
+    const companyId = CompanyId.fromString(id);
+
+    return this.executeInTransactionWithContext(async () => {
+      // Extract IP address and user agent from request
+      const ipAddress = CommonUtils.getClientIpAddress(request);
+      const userAgent = request.get('User-Agent');
+
+      const command = new DeactivateCompanyCommand(
+        companyId,
+        currentUserPayload.sub,
+        currentUserPayload.email,
+        ipAddress,
+        userAgent,
+      );
+
+      return this.commandBus.execute(command);
+    });
   }
 }

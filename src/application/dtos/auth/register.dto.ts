@@ -6,9 +6,9 @@ import {
   Matches,
   IsOptional,
   IsBoolean,
-  IsDateString,
   ValidateNested,
   IsArray,
+  IsDate,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -220,9 +220,10 @@ export class RegisterDto {
     description: 'Date until user is banned',
     example: null,
   })
-  @IsDateString()
   @IsOptional()
-  bannedUntil?: string;
+  @Type(() => Date)
+  @IsDate()
+  bannedUntil?: Date;
 
   @ApiPropertyOptional({
     description: 'Reason for ban',

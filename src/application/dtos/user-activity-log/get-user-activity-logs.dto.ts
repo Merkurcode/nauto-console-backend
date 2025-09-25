@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsString, IsDateString, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsInt, Min, Max, IsDate } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { UserActivityType } from '@shared/constants/user-activity-type.enum';
 import { UserActivityImpact } from '@shared/constants/user-activity-impact.enum';
@@ -18,14 +18,14 @@ export class GetUserActivityLogsDto {
   action?: string;
 
   @IsOptional()
-  @IsDateString()
-  @Transform(({ value }) => value?.trim?.())
-  fromDate?: string;
+  @Type(() => Date)
+  @IsDate()
+  fromDate?: Date;
 
   @IsOptional()
-  @IsDateString()
-  @Transform(({ value }) => value?.trim?.())
-  toDate?: string;
+  @Type(() => Date)
+  @IsDate()
+  toDate?: Date;
 
   @IsOptional()
   @Type(() => Number)

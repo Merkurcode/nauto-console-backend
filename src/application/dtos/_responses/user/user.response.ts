@@ -49,6 +49,7 @@ export interface IUserAddressResponse {
 export interface IUserDetailResponse extends IUserBaseResponse {
   secondLastName?: string;
   isActive: boolean;
+  isReactivable: boolean;
   otpEnabled: boolean;
   lastLoginAt?: Date;
   bannedUntil?: Date;

@@ -21,6 +21,7 @@ import {
 } from '@core/exceptions/domain-exceptions';
 import { ICompanyConfigAI } from '@core/interfaces/company-config-ai.interface';
 import { IJwtPayload } from '@application/dtos/_responses/user/user.response';
+import { User } from '@core/entities/user.entity';
 
 @Injectable()
 export class CompanyService {
@@ -558,5 +559,21 @@ export class CompanyService {
 
     company.removeAIConfiguration();
     await this.companyRepository.update(company);
+  }
+
+  async deactivateCompany(companyId: CompanyId, adminUser: User): Promise<Company> {
+    const company = await this.companyRepository.findById(companyId);
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyId.getValue());
+    }
+
+    if (!company.isActive) {
+      throw new ConflictException('Company is already deactivated');
+    }
+
+    // Deactivate the company
+    company.deactivate(adminUser);
+
+    return await this.companyRepository.update(company);
   }
 }

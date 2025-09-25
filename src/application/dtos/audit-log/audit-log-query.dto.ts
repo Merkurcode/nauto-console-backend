@@ -1,13 +1,4 @@
-import {
-  IsOptional,
-  IsString,
-  IsArray,
-  IsDateString,
-  IsNumber,
-  Min,
-  Max,
-  IsIn,
-} from 'class-validator';
+import { IsOptional, IsString, IsArray, IsNumber, Min, Max, IsIn, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AuditLogLevel, AuditLogType } from '@core/entities/audit-log.entity';
@@ -92,16 +83,18 @@ export class AuditLogQueryDto {
     example: '2025-01-01T00:00:00.000Z',
   })
   @IsOptional()
-  @IsDateString()
-  fromDate?: string;
+  @Type(() => Date)
+  @IsDate()
+  fromDate?: Date;
 
   @ApiPropertyOptional({
     description: 'End date for filtering (ISO 8601 format)',
     example: '2025-12-31T23:59:59.999Z',
   })
   @IsOptional()
-  @IsDateString()
-  toDate?: string;
+  @Type(() => Date)
+  @IsDate()
+  toDate?: Date;
 
   @ApiPropertyOptional({
     description: 'Filter by IP address',

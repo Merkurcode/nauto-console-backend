@@ -42,6 +42,7 @@ import { AuthEmailUserRegisteredEvent } from 'src/queues/all/email/event-handler
 import { NotificationStatus } from '@prisma/client';
 import { Country } from '@core/entities/country.entity';
 import { State } from '@core/entities/state.entity';
+import { RolesEnum } from '@shared/constants/enums';
 
 @Injectable()
 export class UserService {
@@ -386,7 +387,7 @@ export class UserService {
       }
 
       // Attempt to find user with comprehensive error handling
-      let user;
+      let user: User;
       try {
         user = await this.userRepository.findByEmail(email.getValue());
       } catch (repositoryError) {
@@ -420,17 +421,10 @@ export class UserService {
         };
       }
 
-      // Check if user is inactive
-      if (!user.isActive) {
-        return {
-          success: false,
-          failureReason: AuthFailureReason.USER_INACTIVE,
-          message: 'User account is deactivated',
-        };
-      }
-
       // Check if user is banned with comprehensive ban validation
-      if (user.bannedUntil) {
+      if (user.isBanned() && user.bannedUntil) {
+        //throw new UserBannedException(user.bannedUntil!, user.banReason!);
+        
         const now = new Date();
         if (user.bannedUntil > now) {
           return {
@@ -445,6 +439,27 @@ export class UserService {
         }
         // If ban has expired, we could optionally clear it here
         // but we'll leave that for a separate cleanup process
+      } else if (user.isBanned()) {
+        //throw new UserBannedException(user.bannedUntil!, user.banReason!);
+
+        return {
+          success: false,
+          failureReason: AuthFailureReason.USER_BANNED,
+          message: `Account is permanently banned`,
+          details: {
+            bannedUntil: null,
+            banReason: user.banReason || 'No reason provided',
+          },
+        };
+      }
+
+      // Check if user is inactive
+      if (!user.isActive) {
+        return {
+          success: false,
+          failureReason: AuthFailureReason.USER_INACTIVE,
+          message: 'User account is deactivated',
+        };
       }
 
       // Validate password with error handling
@@ -688,13 +703,13 @@ export class UserService {
     return await this.removeRoleFromUser(targetUserId, roleId);
   }
 
-  async activateUser(userId: string): Promise<User> {
+  async activateUser(userId: string, by: User): Promise<User> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new EntityNotFoundException('User', userId);
     }
 
-    user.activate();
+    user.activate(by);
 
     return this.userRepository.update(user);
   }
@@ -723,21 +738,78 @@ export class UserService {
     this.userRoleHierarchyService.validateCanModifyUser(currentUser, targetUser);
 
     if (active) {
-      return await this.activateUser(targetUserId);
+      return await this.activateUser(targetUserId, currentUser);
     } else {
-      return await this.deactivateUser(targetUserId);
+      return await this.deactivateUser(targetUserId, currentUser);
     }
   }
 
-  async deactivateUser(userId: string): Promise<User> {
+  async deactivateUser(userId: string, by: User): Promise<User> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new EntityNotFoundException('User', userId);
     }
 
-    user.deactivate();
+    user.deactivate(by);
 
     return this.userRepository.update(user);
+  }
+
+  async banUserWithAuthorization(
+    targetUserId: string,
+    banReason: string,
+    bannedUntil: Date | undefined,
+    currentUserId: string,
+  ): Promise<User> {
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
+    // Get target user
+    const targetUser = await this.userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    // Check authorization using domain service - only ROOT users can ban
+    if (!this.userAuthorizationService.canAccessRootFeatures(currentUser) || !currentUser.roles || !currentUser.roles.some(r => r.name === RolesEnum.ROOT)) {
+      throw new BusinessRuleValidationException('Only root users can ban other users');
+    }
+
+    // Check role hierarchy - cannot ban users with equal or higher roles
+    this.userRoleHierarchyService.validateCanModifyUser(currentUser, targetUser);
+
+    // Ban the user
+    if (bannedUntil) {
+      targetUser.banUser(bannedUntil, banReason);
+    } else {
+      targetUser.permanentlyBanUser(banReason);
+    }
+
+    return this.userRepository.update(targetUser);
+  }
+
+  async unbanUserWithAuthorization(
+    targetUserId: string,
+    currentUserId: string,
+  ): Promise<User> {
+    // Get current user using centralized method
+    const currentUser = await this.userAuthorizationService.getCurrentUserSafely(currentUserId);
+
+    // Get target user
+    const targetUser = await this.userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new EntityNotFoundException('User', targetUserId);
+    }
+
+    // Check authorization using domain service - only ROOT users can unban
+    if (!this.userAuthorizationService.canAccessRootFeatures(currentUser) || !currentUser.roles || !currentUser.roles.some(r => r.name === RolesEnum.ROOT)) {
+      throw new BusinessRuleValidationException('Only root users can unban other users');
+    }
+
+    // Unban the user
+    targetUser.unbanUser();
+
+    return this.userRepository.update(targetUser);
   }
 
   async hashPassword(password: string): Promise<string> {
@@ -924,10 +996,10 @@ export class UserService {
     // Update activation status
     if (updateData.isActive !== undefined) {
       if (updateData.isActive && !targetUser.isActive) {
-        targetUser.activate();
+        targetUser.activate(currentUser);
         hasChanges = true;
       } else if (!updateData.isActive && targetUser.isActive) {
-        targetUser.deactivate();
+        targetUser.deactivate(currentUser);
         hasChanges = true;
       }
     }

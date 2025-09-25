@@ -34,6 +34,7 @@ export class CompanyDeactivatedEvent extends DomainEvent {
   constructor(
     public readonly companyId: CompanyId,
     public readonly name: string,
+    public readonly byUserId: string,
   ) {
     super();
   }
@@ -47,6 +48,7 @@ export class CompanyActivatedEvent extends DomainEvent {
   constructor(
     public readonly companyId: CompanyId,
     public readonly name: string,
+    public readonly byUserId: string,
   ) {
     super();
   }

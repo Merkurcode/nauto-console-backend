@@ -9,6 +9,7 @@ export interface IUserDetailResponse {
   firstName: string;
   lastName: string;
   isActive: boolean;
+  isReactivable: boolean;
   otpEnabled: boolean;
   emailVerified?: boolean;
   lastLoginAt?: Date;
