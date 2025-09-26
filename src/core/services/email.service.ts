@@ -249,44 +249,46 @@ export class EmailService {
     });
   }
 
-  async sendWelcomeEmail(
-    email: string,
-    firstName: string,
-    companyName?: string,
-    roles?: string[],
-  ): Promise<boolean> {
-    const appName = this.configService.get<string>('appName');
-    const frontendUrl = this.configService.get<string>('frontend.url');
-    const dashboardPath = this.configService.get<string>('frontend.dashboardPath');
-    const primaryColor = this.getPrimaryColor();
-    const supportEmail = this.configService.get<string>('email.supportEmail');
-    const dashboardUrl = `${frontendUrl}${dashboardPath}`;
-    const companyText = companyName ? ` de ${companyName}` : '';
-
-    const html = EmailTemplates.welcomeEmail(
-      firstName,
-      appName,
-      companyName,
-      roles,
-      dashboardUrl,
-      primaryColor,
-      supportEmail,
-    );
-
-    this.logger.log({
-      message: 'Sending welcome email',
-      email,
-      firstName,
-      companyName,
-      roles,
-    });
-
-    return this.sendEmail({
-      to: email,
-      subject: `¡Bienvenido a ${appName}${companyText}!`,
-      html,
-    });
-  }
+  //#region deprecated
+  // async sendWelcomeEmail(
+  //   email: string,
+  //   firstName: string,
+  //   companyName?: string,
+  //   roles?: string[],
+  // ): Promise<boolean> {
+  //   const appName = this.configService.get<string>('appName');
+  //   const frontendUrl = this.configService.get<string>('frontend.url');
+  //   const dashboardPath = this.configService.get<string>('frontend.dashboardPath');
+  //   const primaryColor = this.getPrimaryColor();
+  //   const supportEmail = this.configService.get<string>('email.supportEmail');
+  //   const dashboardUrl = `${frontendUrl}${dashboardPath}`;
+  //   const companyText = companyName ? ` de ${companyName}` : '';
+  //
+  //   const html = EmailTemplates.welcomeEmail(
+  //     firstName,
+  //     appName,
+  //     companyName,
+  //     roles,
+  //     dashboardUrl,
+  //     primaryColor,
+  //     supportEmail,
+  //   );
+  //
+  //   this.logger.log({
+  //     message: 'Sending welcome email',
+  //     email,
+  //     firstName,
+  //     companyName,
+  //     roles,
+  //   });
+  //
+  //   return this.sendEmail({
+  //     to: email,
+  //     subject: `¡Bienvenido a ${appName}${companyText}!`,
+  //     html,
+  //   });
+  // }
+  //#endregion
 
   async sendWelcomeEmailWithPassword(
     email: string,

@@ -179,50 +179,52 @@ export class EmailTemplates {
     `;
   }
 
-  static welcomeEmail(
-    firstName: string,
-    appName: string,
-    companyName?: string,
-    roles?: string[],
-    dashboardUrl?: string,
-    primaryColor: string = '#007bff',
-    supportEmail: string = 'support@example.com',
-  ): string {
-    const companyText = companyName ? ` de ${companyName}` : '';
-    const invitationText = companyName
-      ? `Has sido invitado a unirte a ${escapeHtml(companyName)} en ${escapeHtml(appName)}.`
-      : `Tu cuenta en ${escapeHtml(appName)} ha sido creada exitosamente.`;
-
-    // Format roles list
-    let rolesSection = '';
-    if (roles && roles.length > 0) {
-      const rolesList = roles.map(role => `<li>${role}</li>`).join('');
-      rolesSection = `
-        <p><strong>Tus roles asignados:</strong></p>
-        <ul style="margin-left: 20px;">
-          ${rolesList}
-        </ul>
-      `;
-    }
-
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">¡Bienvenido a ${escapeHtml(appName)}${companyText}!</h2>
-        <p>Hola ${escapeHtml(firstName)},</p>
-        <p>${invitationText}</p>
-        ${rolesSection}
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${escapeHtmlAttribute(dashboardUrl || '#')}" 
-             style="background-color: ${primaryColor}; color: white; padding: 12px 25px; 
-                    text-decoration: none; border-radius: 4px; font-weight: bold; 
-                    display: inline-block;">
-            Acceder a ${escapeHtml(appName)}
-          </a>
-        </div>
-        <p>Si tienes alguna pregunta, no dudes en contactar a nuestro equipo de soporte en <a href="mailto:${escapeHtmlAttribute(supportEmail)}">${escapeHtml(supportEmail)}</a>.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">Este es un email automático, por favor no respondas.</p>
-      </div>
-    `;
-  }
+  //#region deprecated
+  // static welcomeEmail(
+  //   firstName: string,
+  //   appName: string,
+  //   companyName?: string,
+  //   roles?: string[],
+  //   dashboardUrl?: string,
+  //   primaryColor: string = '#007bff',
+  //   supportEmail: string = 'support@example.com',
+  // ): string {
+  //   const companyText = companyName ? ` de ${companyName}` : '';
+  //   const invitationText = companyName
+  //     ? `Has sido invitado a unirte a ${escapeHtml(companyName)} en ${escapeHtml(appName)}.`
+  //     : `Tu cuenta en ${escapeHtml(appName)} ha sido creada exitosamente.`;
+  //
+  //   // Format roles list
+  //   let rolesSection = '';
+  //   if (roles && roles.length > 0) {
+  //     const rolesList = roles.map(role => `<li>${role}</li>`).join('');
+  //     rolesSection = `
+  //       <p><strong>Tus roles asignados:</strong></p>
+  //       <ul style="margin-left: 20px;">
+  //         ${rolesList}
+  //       </ul>
+  //     `;
+  //   }
+  //
+  //   return `
+  //     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  //       <h2 style="color: #333;">¡Bienvenido a ${escapeHtml(appName)}${companyText}!</h2>
+  //       <p>Hola ${escapeHtml(firstName)},</p>
+  //       <p>${invitationText}</p>
+  //       ${rolesSection}
+  //       <div style="text-align: center; margin: 30px 0;">
+  //         <a href="${escapeHtmlAttribute(dashboardUrl || '#')}" 
+  //            style="background-color: ${primaryColor}; color: white; padding: 12px 25px; 
+  //                   text-decoration: none; border-radius: 4px; font-weight: bold; 
+  //                   display: inline-block;">
+  //           Acceder a ${escapeHtml(appName)}
+  //         </a>
+  //       </div>
+  //       <p>Si tienes alguna pregunta, no dudes en contactar a nuestro equipo de soporte en <a href="mailto:${escapeHtmlAttribute(supportEmail)}">${escapeHtml(supportEmail)}</a>.</p>
+  //       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+  //       <p style="color: #666; font-size: 12px;">Este es un email automático, por favor no respondas.</p>
+  //     </div>
+  //   `;
+  // }
+  //#endregion
 }
