@@ -14,6 +14,8 @@ export class EmailTemplates {
     },
     appName?: string,
   ): string {
+    const buttonUrl = escapeHtmlAttribute(dashboardUrl || '#');
+
     const companySection = companyName
       ? `<p>Has sido registrado en <strong>${escapeHtml(companyName)}</strong>.</p>`
       : '';
@@ -25,109 +27,175 @@ export class EmailTemplates {
 
     const primaryColor = colors?.primary || '#007bff';
 
+    const year = new Date().getFullYear();
+
+    const whiteAsset =
+      'https://riaowrkbfhrhwcwqnamr.supabase.co/storage/v1/object/public/console/white.png';
+
+    const bottomAsset =
+      'https://riaowrkbfhrhwcwqnamr.supabase.co/storage/v1/object/public/console/background-container5.png';
+
+    const nautoLogoAsset =
+      'https://riaowrkbfhrhwcwqnamr.supabase.co/storage/v1/object/public/console/nauto-logo-clean.png';
+
     return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Bienvenido a la plataforma</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background-color: #f8f9fa;
-              padding: 20px;
-              text-align: center;
-              border-radius: 8px;
-              margin-bottom: 30px;
-            }
-            .content {
-              background-color: #fff;
-              padding: 30px;
-              border-radius: 8px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            .credentials {
-              background-color: #f8f9fa;
-              padding: 20px;
-              border-radius: 8px;
-              margin: 20px 0;
-              border-left: 4px solid #${primaryColor};
-            }
-            .password {
-              font-family: 'Courier New', monospace;
-              font-size: 16px;
-              font-weight: bold;
-              color: #${primaryColor};
-            }
-            .warning {
-              background-color: #fff3cd;
-              border: 1px solid #ffeaa7;
-              padding: 15px;
-              border-radius: 8px;
-              margin: 20px 0;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 30px;
-              padding-top: 20px;
-              border-top: 1px solid #eee;
-              color: #666;
-              font-size: 12px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>¡Bienvenido!</h1>
-          </div>
-          
-          <div class="content">
-            <h2>Hola ${escapeHtml(firstName)},</h2>
-            
-            <p>Te damos la bienvenida a ${appName || 'nuestra plataforma'}. Tu cuenta ha sido creada exitosamente.</p>
-            
-            ${companySection}
-            
-            <div class="credentials">
-              <h3>Tus credenciales de acceso:</h3>
-              <p><strong>Email:</strong> ${escapeHtml(email)}</p>
-              <p><strong>Contraseña temporal:</strong> <span class="password">${escapeHtml(password)}</span></p>
-              ${rolesSection}
-            </div>
-            
-            <div class="warning">
-              <strong>⚠️ Importante:</strong>
-              <ul>
-                <li>Esta es una contraseña temporal generada automáticamente</li>
-                <li>Te recomendamos cambiarla después de tu primer inicio de sesión</li>
-                <li>Mantén esta información segura y no la compartas con nadie</li>
-              </ul>
-            </div>
-            
-            <p>Para acceder a la plataforma, haz clic en el siguiente enlace:</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${escapeHtmlAttribute(dashboardUrl || '#')}"
-                  style="background-color: #${primaryColor}; color: white; padding: 12px 25px;
-                  text-decoration: none; border-radius: 4px; font-weight: bold;">
-                Acceder a la Plataforma
-              </a>
-            </div>
-            
-            <p>Saludos cordiales,<br>El equipo de desarrollo</p>
-          </div>
-          
-          <div class="footer">
-            <p>Este email fue enviado automáticamente. Por favor no respondas a este mensaje.</p>
-          </div>
-        </body>
+      <!doctype html>
+      <html lang="es" xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta charset="utf-8">
+        <title>Bienvenido a ${appName || 'Nauto'}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="x-apple-disable-message-reformatting">
+        <meta name="color-scheme" content="light only">
+        <meta name="supported-color-schemes" content="light only">
+        <style>
+          /* Gmail-first approach - usar solo estilos que Gmail soporta bien */
+          table { border-collapse: collapse; }
+          img { border: 0; display: block; outline: none; text-decoration: none; }
+
+          /* Remover todas las clases CSS - usar solo inline styles */
+          @media screen and (max-width: 520px) {
+            .container { width: 100% !important; }
+            .px-24 { padding-left: 16px !important; padding-right: 16px !important; }
+            .hero-pad { padding: 20px 16px 150px 16px !important; }
+            .btn { display: block !important; width: 100% !important; max-width: none !important; }
+          }
+        </style>
+      </head>
+
+      <body style="margin:0; padding:0; background-color:#EFEAFB; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;" bgcolor="#EFEAFB">
+        <div style="display:none; max-height:0; overflow:hidden;">
+          Invitación a ${appName || 'Nauto'}: completa tu registro con tus credenciales de acceso.
+        </div>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EFEAFB" style="background-color:#EFEAFB;">
+          <tr>
+            <td align="center" bgcolor="#EFEAFB" style="background-color:#EFEAFB;">
+
+              <table role="presentation" width="500" cellpadding="0" cellspacing="0" border="0" class="container" style="width:500px; margin:0 auto;">
+                <tr>
+                  <td style="padding:24px 24px 0 24px;" class="px-24">
+
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fffdf9" style="background-color:#fffdf9; border-radius:14px; overflow:hidden;">
+                      <tr>
+                        <td bgcolor="#fffdf9" style="background-image:url('${whiteAsset}'); background-color:#fffdf9; background-repeat:repeat; background-size:cover; padding:32px 24px;" class="hero-pad">
+
+                        <!-- LOGO -->
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td align="center" style="padding-bottom:20px;">
+                                <img src="${nautoLogoAsset}"
+                                    width="160" height="43" alt="${appName || 'nauto'}"
+                                    style="display:block; border:0; outline:none; text-decoration:none; width:160px; height:auto;">
+                              </td>
+                            </tr>
+                          </table>
+
+                          <!-- Título -->
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td align="center" style="font-family:Arial, Helvetica, sans-serif; color:#382d79; font-size:28px; line-height:36px; font-weight:bold; padding:60px 8px;">
+                                ¡Bienvenido a ${appName || 'nauto web'}! 👋
+                              </td>
+                            </tr>
+                            <tr>
+                              <td align="center" style="font-family:Arial, Helvetica, sans-serif; color:#382d79; font-size:16px; line-height:24px; padding:8px 10px 20px;">
+                                Hola ${escapeHtml(firstName)}, ${companySection}${rolesSection}
+                              </td>
+                            </tr>
+                          </table>
+
+                          <!-- Credenciales Box -->
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F8F9FA" style="background-color:#F8F9FA; border-radius:8px; margin:20px 0;">
+                            <tr>
+                              <td bgcolor="#F8F9FA" style="background-color:#F8F9FA; padding:20px; font-family:Arial, Helvetica, sans-serif; border-radius:8px;">
+                                <h3 style="color:#382d79; font-size:18px; margin:0 0 15px; font-weight:bold;">Tus credenciales de acceso:</h3>
+                                <p style="margin:8px 0; color:#382d79; font-size:14px; line-height:1.4;">
+                                  <strong>Email:</strong> ${escapeHtml(email)}
+                                </p>
+                                <p style="margin:8px 0; color:#382d79; font-size:14px; line-height:1.4;">
+                                  <strong>Contraseña temporal:</strong>
+                                  <span style="font-family: 'Courier New', monospace; font-weight: bold; background-color:#fffdf9; padding:4px 8px; border-radius:4px; color:${primaryColor};">
+                                    ${escapeHtml(password)}
+                                  </span>
+                                </p>
+                                </td>
+                            </tr>
+                          </table>
+
+                          <!-- Warning Box -->
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFF3CD" style="background-color:#FFF3CD; border-radius:8px; margin:0 0 20px 0;">
+                            <tr>
+                              <td bgcolor="#FFF3CD" style="background-color:#FFF3CD; padding:12px; border-radius:8px;">
+                                <p style="margin:0; color:#856404; font-size:13px; line-height:1.4; font-family:Arial, Helvetica, sans-serif;">
+                                  <strong>⚠️ Importante:</strong> Esta es una contraseña temporal. Te recomendamos cambiarla después de tu primer inicio de sesión.
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+
+                          <!-- Botón CTA -->
+                          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                            <tr>
+                              <td align="center">
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#E2E9FF" style="margin: 0 auto; border-radius:8px;">
+                                  <tr>
+                                    <td bgcolor="#E2E9FF" style="background-color:#E2E9FF; border-radius:8px; text-align:center;">
+                                      <a href="${buttonUrl}" style="display:block; padding:12px 24px; color:#382d79; text-decoration:none; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold;">
+                                        Acceder a la Plataforma
+                                      </a>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+
+                        </td>
+                      </tr>
+                      <!-- Nueva fila sin padding para la imagen -->
+                      <tr>
+                        <td style="padding:0; border-radius:0;">
+                          <!-- Imagen decorativa después del botón -->
+                          <img src="${bottomAsset}"
+                              width="100%" height="auto" alt="" border="0"
+                              style="display:block; width:100%; height:auto; max-height:300px; object-fit:contain; border:0; border-radius:0 0 14px 14px;">
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Separador -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr><td style="height:24px; line-height:24px; font-size:0;">&nbsp;</td></tr>
+                    </table>
+
+                    <!-- Cuerpo secundario -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fffdf9" style="background-color:#fffdf9; border-radius:14px;">
+                      <tr>
+                        <td background="${whiteAsset}" bgcolor="#fffdf9" style="background-image:url('${whiteAsset}'); background-color:#fffdf9; background-repeat:repeat; background-size:cover; padding:20px 24px; font-family:Arial, Helvetica, sans-serif; color:#453970; font-size:14px; line-height:22px; border-radius:14px;">
+                          Si no reconoces esta invitación, puedes ignorar este mensaje.
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Footer -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr><td style="height:20px; line-height:20px; font-size:0;">&nbsp;</td></tr>
+                      <tr>
+                        <td align="center" style="font-family:Arial, Helvetica, sans-serif; color:#6B658A; font-size:12px; line-height:18px; padding-bottom:24px;">
+                          © <span>${year}</span> ${appName || 'Nauto'}. Todos los derechos reservados.
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+        </table>
+      </body>
       </html>
     `;
   }
