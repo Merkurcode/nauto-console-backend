@@ -16,7 +16,7 @@ import {
 import { Request } from 'express';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { TrimStringPipe } from '@shared/pipes/trim-string.pipe';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 import { TransactionService } from '@infrastructure/database/prisma/transaction.service';
 import { TransactionContextService } from '@infrastructure/database/prisma/transaction-context.service';
 import { CreateCompanyDto } from '@application/dtos/company/create-company.dto';
@@ -27,6 +27,7 @@ import { CreateCompanyCommand } from '@application/commands/company/create-compa
 import { UpdateCompanyCommand } from '@application/commands/company/update-company.command';
 import { DeleteCompanyCommand } from '@application/commands/company/delete-company.command';
 import { DeactivateCompanyCommand } from '@application/commands/company/deactivate-company.command';
+import { ReactivateCompanyCommand } from '@application/commands/company/reactivate-company.command';
 import { GetCompanyQuery } from '@application/queries/company/get-company.query';
 import { GetCompaniesQuery } from '@application/queries/company/get-companies.query';
 //import { GetCompanyByHostQuery } from '@application/queries/company/get-company-by-host.query';
@@ -409,6 +410,83 @@ export class CompanyController {
       const userAgent = request.get('User-Agent');
 
       const command = new DeactivateCompanyCommand(
+        companyId,
+        currentUserPayload.sub,
+        currentUserPayload.email,
+        ipAddress,
+        userAgent,
+      );
+
+      return this.commandBus.execute(command);
+    });
+  }
+
+  @Patch(':id/reactivate')
+  @NoBots()
+  @Roles(RolesEnum.ROOT)
+  @WriteOperation('company')
+  @ApiOperation({
+    summary: 'Reactivate company (Root only)',
+    description:
+      'Reactivate a deactivated company and automatically reactivate all reactivable users\n\n' +
+      '📋 **Required Permission:** <code style="color: #c0392b; background: #fadbd8; padding: 2px 6px; border-radius: 3px; font-weight: bold;">company:write</code>\n\n' +
+      '👥 **Roles with Access:**\n' +
+      '- <code style="color: #d63031; background: #ffcccc; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ROOT</code> only\n\n' +
+      '⚠️ **Effects:**\n' +
+      '- Company is immediately reactivated\n' +
+      '- All reactivable users are automatically reactivated\n' +
+      '- Banned users remain banned and are not reactivated\n' +
+      '- Users can now login to their accounts again',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Company ID to reactivate',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Company reactivated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: {
+          type: 'string',
+          example: 'Company "ACME Corp" has been successfully reactivated. 12 users were reactivated.',
+        },
+        companyId: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+        companyName: { type: 'string', example: 'ACME Corp' },
+        reactivatedAt: { type: 'string', example: '2024-01-15T10:30:00.000Z' },
+        reactivatedBy: { type: 'string', example: 'admin@company.com' },
+        reactivatedUsersCount: { type: 'number', example: 12 },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Company not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Company is already active',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User does not have Root role or Root readonly users cannot perform write operations',
+  })
+  async reactivateCompany(
+    @Param('id', TrimStringPipe, ParseUUIDPipe) id: string,
+    @CurrentUser() currentUserPayload: IJwtPayload,
+    @Req() request: Request,
+  ) {
+    const companyId = CompanyId.fromString(id);
+
+    return this.executeInTransactionWithContext(async () => {
+      // Extract IP address and user agent from request
+      const ipAddress = CommonUtils.getClientIpAddress(request);
+      const userAgent = request.get('User-Agent');
+
+      const command = new ReactivateCompanyCommand(
         companyId,
         currentUserPayload.sub,
         currentUserPayload.email,

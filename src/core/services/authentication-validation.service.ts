@@ -12,7 +12,7 @@ import {
   TOKEN_PROVIDER,
   LOGGER_SERVICE,
   BOT_TOKEN_REPOSITORY,
-  USER_REPOSITORY
+  USER_REPOSITORY,
 } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
 import { IUserRepository } from '@core/repositories/user.repository.interface';
@@ -23,7 +23,6 @@ import {
 } from '@shared/constants/auth-failure-reason.enum';
 import { ILoginAuthResponse } from '@application/dtos/_responses/auth/login-auth-response.interface';
 import { UserId } from '@core/value-objects/user-id.vo';
-import { CompanyId } from '@core/value-objects/company-id.vo';
 import { AuthResponse } from '@application/dtos/_responses/user/user.response';
 import { UserMapper } from '@application/mappers/user.mapper';
 import { User } from '@core/entities/user.entity';

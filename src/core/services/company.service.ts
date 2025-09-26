@@ -576,4 +576,20 @@ export class CompanyService {
 
     return await this.companyRepository.update(company);
   }
+
+  async reactivateCompany(companyId: CompanyId, adminUser: User): Promise<Company> {
+    const company = await this.companyRepository.findById(companyId);
+    if (!company) {
+      throw new EntityNotFoundException('Company', companyId.getValue());
+    }
+
+    if (company.isActive) {
+      throw new ConflictException('Company is already active');
+    }
+
+    // Reactivate the company
+    company.activate(adminUser);
+
+    return await this.companyRepository.update(company);
+  }
 }

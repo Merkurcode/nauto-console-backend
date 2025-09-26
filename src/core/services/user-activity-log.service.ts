@@ -595,4 +595,28 @@ export class UserActivityLogService {
       },
     );
   }
+
+  async logUserReactivatedByCompany(
+    userId: string,
+    action: string,
+    description: string,
+    metadata: Record<string, any>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.logActivity(
+      UserId.fromString(userId),
+      UserActivityType.SECURITY_SETTINGS(),
+      action,
+      description,
+      UserActivityImpact.HIGH(),
+      ipAddress, // ipAddress
+      userAgent, // userAgent
+      {
+        ...metadata,
+        reason: 'company_reactivation',
+        eventType: 'automated_reactivation',
+      },
+    );
+  }
 }

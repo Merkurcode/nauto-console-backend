@@ -7,17 +7,15 @@ import { AuditLogService } from '@core/services/audit-log.service';
 import { UserActivityLogService } from '@core/services/user-activity-log.service';
 import { REPOSITORY_TOKENS, LOGGER_SERVICE } from '@shared/constants/tokens';
 import { ILogger } from '@core/interfaces/logger.interface';
-import { IDeactivateCompanyResponse } from '@application/dtos/_responses/company/deactivate-company.response';
+import { IReactivateCompanyResponse } from '@application/dtos/_responses/company/reactivate-company.response';
 import {
   BusinessRuleValidationException,
   EntityNotFoundException,
 } from '@core/exceptions/domain-exceptions';
-import { AuthService } from '@core/services/auth.service';
-import { SessionService } from '@core/services/session.service';
 import { UserAuthorizationService } from '@core/services/user-authorization.service';
 import { RolesEnum } from '@shared/constants/enums';
 
-export class DeactivateCompanyCommand implements ICommand {
+export class ReactivateCompanyCommand implements ICommand {
   constructor(
     public readonly companyId: CompanyId,
     public readonly adminUserId: string,
@@ -28,8 +26,8 @@ export class DeactivateCompanyCommand implements ICommand {
 }
 
 @Injectable()
-@CommandHandler(DeactivateCompanyCommand)
-export class DeactivateCompanyCommandHandler implements ICommandHandler<DeactivateCompanyCommand> {
+@CommandHandler(ReactivateCompanyCommand)
+export class ReactivateCompanyCommandHandler implements ICommandHandler<ReactivateCompanyCommand> {
   private readonly logger: ILogger;
 
   constructor(
@@ -38,15 +36,13 @@ export class DeactivateCompanyCommandHandler implements ICommandHandler<Deactiva
     private readonly userRepository: IUserRepository,
     private readonly auditLogService: AuditLogService,
     private readonly userActivityLogService: UserActivityLogService,
-    private readonly authService: AuthService,
-    private readonly sessionService: SessionService,
     private readonly userAuthorizationService: UserAuthorizationService,
     @Optional() @Inject(LOGGER_SERVICE) logger?: ILogger,
   ) {
-    this.logger = logger?.setContext(DeactivateCompanyCommandHandler.name);
+    this.logger = logger?.setContext(ReactivateCompanyCommandHandler.name);
   }
 
-  async execute(command: DeactivateCompanyCommand): Promise<IDeactivateCompanyResponse> {
+  async execute(command: ReactivateCompanyCommand): Promise<IReactivateCompanyResponse> {
     const { companyId, adminUserId, adminUserEmail, ipAddress, userAgent } = command;
 
     try {
@@ -58,54 +54,47 @@ export class DeactivateCompanyCommandHandler implements ICommandHandler<Deactiva
         !adminUser.roles.some(r => r.name === RolesEnum.ROOT) ||
         !this.userAuthorizationService.canAccessCompany(adminUser, companyId.getValue())
       ) {
-        throw new BusinessRuleValidationException('Only root users can deactivate companies');
+        throw new BusinessRuleValidationException('Only root users can reactivate companies');
       }
 
-      // 1. Verificar que la empresa existe y está activa
+      // 1. Verificar que la empresa existe y está inactiva
       const company = await this.companyService.getCompanyById(companyId);
       if (!company) {
         throw new EntityNotFoundException('Company', companyId.getValue());
       }
 
-      if (!company.isActive) {
-        throw new ConflictException(`Company is already deactivated`);
+      if (company.isActive) {
+        throw new ConflictException(`Company is already active`);
       }
 
       // 2. Obtener todos los usuarios de la empresa
       const companyUsers = await this.userRepository.findAllByCompanyId(companyId.getValue());
-      // Solo desactivar usuarios activos y que sean reactivables (no baneados)
-      const activeUsers = companyUsers.filter(user => user.isActive && user.isReactivable);
+      // Solo reactivar usuarios inactivos que sean reactivables (no baneados)
+      const reactivableUsers = companyUsers.filter(user => !user.isActive && user.isReactivable);
 
-      // 3. Desactivar la empresa
-      const _deactivatedCompany = await this.companyService.deactivateCompany(companyId, adminUser);
-      const deactivatedAt = new Date();
+      // 3. Reactivar la empresa
+      const _reactivatedCompany = await this.companyService.reactivateCompany(companyId, adminUser);
+      const reactivatedAt = new Date();
 
-      // 4. Desactivar todos los usuarios de la empresa y registrar actividad
-      let terminatedSessionsCount = 0;
-      for (const user of activeUsers) {
-        // Desactivar usuario
-        user.deactivate(adminUser);
+      // 4. Reactivar todos los usuarios reactivables de la empresa
+      let reactivatedUsersCount = 0;
+      for (const user of reactivableUsers) {
+        // Reactivar usuario
+        user.activate(adminUser);
         await this.userRepository.update(user);
-
-        // Global logout - revoke all sessions for the user
-        terminatedSessionsCount += await this.sessionService.revokeUserSessions(
-          user.id.getValue(),
-          'global',
-        );
-        // Also revoke all refresh tokens as a backup
-        await this.authService.revokeAllRefreshTokens(user.id.getValue());
+        reactivatedUsersCount++;
 
         // Registrar actividad del usuario
-        await this.userActivityLogService.logUserDeactivatedByCompany(
+        await this.userActivityLogService.logUserReactivatedByCompany(
           user.id.getValue(),
-          'company_deactivation',
-          `User deactivated due to company deactivation by administrator`,
+          'company_reactivation',
+          `User reactivated due to company reactivation by administrator`,
           {
             companyId: companyId.getValue(),
             companyName: company.name.getValue(),
-            deactivatedBy: adminUserId,
-            deactivatedByEmail: adminUserEmail,
-            deactivatedAt: deactivatedAt.toISOString(),
+            reactivatedBy: adminUserId,
+            reactivatedByEmail: adminUserEmail,
+            reactivatedAt: reactivatedAt.toISOString(),
           },
           ipAddress,
           userAgent,
@@ -113,50 +102,48 @@ export class DeactivateCompanyCommandHandler implements ICommandHandler<Deactiva
       }
 
       // 5. Registrar en audit log
-      await this.auditLogService.logCompanyDeactivation(
+      await this.auditLogService.logCompanyReactivation(
         adminUserId,
         companyId.getValue(),
         company.name.getValue(),
         {
           companyId: companyId.getValue(),
           companyName: company.name.getValue(),
-          affectedUsersCount: activeUsers.length,
-          terminatedSessionsCount,
-          deactivatedBy: adminUserId,
-          deactivatedByEmail: adminUserEmail,
-          deactivatedAt: deactivatedAt.toISOString(),
-          action: 'company_deactivation',
+          reactivatedUsersCount,
+          reactivatedBy: adminUserId,
+          reactivatedByEmail: adminUserEmail,
+          reactivatedAt: reactivatedAt.toISOString(),
+          action: 'company_reactivation',
           ipAddress,
           userAgent,
         },
       );
 
       this.logger?.log(
-        `Company ${company.name.getValue()} (${companyId.getValue()}) deactivated by admin ${adminUserEmail}. ${activeUsers.length} users affected.`,
+        `Company ${company.name.getValue()} (${companyId.getValue()}) reactivated by admin ${adminUserEmail}. ${reactivatedUsersCount} users reactivated.`,
       );
 
       return {
         success: true,
-        message: `Company "${company.name.getValue()}" has been successfully deactivated. ${activeUsers.length} user sessions terminated.`,
+        message: `Company "${company.name.getValue()}" has been successfully reactivated. ${reactivatedUsersCount} users were reactivated.`,
         companyId: companyId.getValue(),
         companyName: company.name.getValue(),
-        deactivatedAt,
-        deactivatedBy: adminUserEmail,
-        affectedUsersCount: activeUsers.length,
-        terminatedSessionsCount,
+        reactivatedAt,
+        reactivatedBy: adminUserEmail,
+        reactivatedUsersCount,
       };
     } catch (error) {
       this.logger?.error(
-        `Failed to deactivate company ${companyId.getValue()}: ${error.message}`,
+        `Failed to reactivate company ${companyId.getValue()}: ${error.message}`,
         error.stack,
-        DeactivateCompanyCommandHandler.name,
+        ReactivateCompanyCommandHandler.name,
       );
 
       // Registrar error en audit log
       await this.auditLogService.logSystemError(
         adminUserId,
-        'company_deactivation_failed',
-        `Failed to deactivate company ${companyId.getValue()}: ${error.message}`,
+        'company_reactivation_failed',
+        `Failed to reactivate company ${companyId.getValue()}: ${error.message}`,
         {
           companyId: companyId.getValue(),
           error: error.message,

@@ -618,6 +618,33 @@ export class AuditLogService {
   }
 
   /**
+   * Log company reactivation event
+   */
+  async logCompanyReactivation(
+    adminUserId: string,
+    companyId: string,
+    companyName: string,
+    metadata: Record<string, any>,
+  ): Promise<void> {
+    const userId = adminUserId ? UserId.fromString(adminUserId) : null;
+    const auditLog = AuditLog.create(
+      'info',
+      'company',
+      'update',
+      `Company "${companyName}" (${companyId}) reactivated by administrator`,
+      userId,
+      {
+        ...metadata,
+        eventType: 'company_reactivation',
+        severity: 'high',
+        category: 'administrative_action',
+      },
+      'company',
+    );
+    await this.saveAuditLog(auditLog);
+  }
+
+  /**
    * Log user ban event
    */
   async logUserBan(

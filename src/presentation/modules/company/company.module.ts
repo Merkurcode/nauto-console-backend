@@ -8,6 +8,7 @@ import { CreateCompanyCommandHandler } from '@application/commands/company/creat
 import { UpdateCompanyCommandHandler } from '@application/commands/company/update-company.command';
 import { DeleteCompanyCommandHandler } from '@application/commands/company/delete-company.command';
 import { DeactivateCompanyCommandHandler } from '@application/commands/company/deactivate-company.command';
+import { ReactivateCompanyCommandHandler } from '@application/commands/company/reactivate-company.command';
 import { AssignUserToCompanyCommandHandler } from '@application/commands/company/assign-user-to-company.command';
 import { RemoveUserFromCompanyCommandHandler } from '@application/commands/company/remove-user-from-company.command';
 import { SwitchCompanyCommandHandler } from '@application/commands/company/switch-company.command';
@@ -25,6 +26,7 @@ const commandHandlers = [
   UpdateCompanyCommandHandler,
   DeleteCompanyCommandHandler,
   DeactivateCompanyCommandHandler,
+  ReactivateCompanyCommandHandler,
   AssignUserToCompanyCommandHandler,
   RemoveUserFromCompanyCommandHandler,
   SwitchCompanyCommandHandler,
